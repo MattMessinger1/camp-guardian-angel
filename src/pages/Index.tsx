@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+
 import { CheckCircle2, Shield, Zap, CalendarClock } from "lucide-react";
 
 const Index = () => {
@@ -21,7 +21,7 @@ const Index = () => {
     <div>
       <header className="w-full border-b sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <nav className="container mx-auto flex items-center justify-between h-16">
-          <a href="#" className="inline-flex items-center gap-2 font-semibold">
+          <a href="/" className="inline-flex items-center gap-2 font-semibold">
             <span className="hero-gradient bg-clip-text text-transparent">CampRush</span>
           </a>
           <div className="hidden md:flex items-center gap-6">
@@ -30,7 +30,10 @@ const Index = () => {
             <a href="#form" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Prefill</a>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">Secure by design</Badge>
+            <a href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Log in</a>
+            <Button asChild size="sm" variant="hero">
+              <a href="/signup">Sign up</a>
+            </Button>
           </div>
         </nav>
       </header>
