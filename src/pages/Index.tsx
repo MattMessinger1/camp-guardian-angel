@@ -28,6 +28,7 @@ const Index = () => {
             <a href="#how" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it works</a>
             <a href="#fees" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Fees</a>
             <a href="#form" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Prefill</a>
+            <a href="/children" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Children</a>
           </div>
           <div className="flex items-center gap-2">
             <a href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Log in</a>
