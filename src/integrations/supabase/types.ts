@@ -254,6 +254,12 @@ export type Database = {
           rejected: string[]
         }[]
       }
+      check_and_resolve_duplicate_registrations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          resolved_count: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
