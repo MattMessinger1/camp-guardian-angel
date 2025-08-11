@@ -55,6 +55,45 @@ serve(async (req) => {
       );
     }
 
+    // Check fairness cap before allowing new registration
+    const { data: session, error: sessionErr } = await supabaseUser
+      .from("sessions")
+      .select("capacity")
+      .eq("id", body.session_id)
+      .maybeSingle();
+    
+    if (sessionErr) {
+      return new Response(
+        JSON.stringify({ error: "Session not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Count pending registrations for this session
+    const { count: pendingCount, error: countErr } = await supabaseUser
+      .from("registrations")
+      .select("*", { count: "exact", head: true })
+      .eq("session_id", body.session_id)
+      .eq("status", "pending");
+
+    if (countErr) {
+      return new Response(
+        JSON.stringify({ error: "Failed to check registration count" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Calculate fairness cap: min(3*capacity, 15)
+    const capacity = session?.capacity || 10; // default capacity if null
+    const fairnessCap = Math.min(3 * capacity, 15);
+    
+    if ((pendingCount || 0) >= fairnessCap) {
+      return new Response(
+        JSON.stringify({ error: "Fairness cap reached to keep chances realistic." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch user's default payment method (if any) and prepare review flag
     const { data: myBilling } = await supabaseUser
       .from("billing_profiles")
