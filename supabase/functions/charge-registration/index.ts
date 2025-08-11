@@ -159,6 +159,22 @@ serve(async (req) => {
       console.log('[CHARGE-REGISTRATION] Success email error', e);
     }
 
+    // Trigger provider automation (best-effort, non-blocking)
+    if (session.provider_id) {
+      try {
+        console.log(`[CHARGE-REGISTRATION] Triggering provider automation for registration ${reg.id}`);
+        await admin.functions.invoke('automate-provider', {
+          body: { 
+            registration_id: reg.id, 
+            provider_id: session.provider_id,
+            session_data: session 
+          },
+        });
+      } catch (e) {
+        console.log('[CHARGE-REGISTRATION] Provider automation error', e);
+      }
+    }
+
     return new Response(JSON.stringify({ ok: true, registration_id: reg.id, outcomes }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
