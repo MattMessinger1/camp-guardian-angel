@@ -126,6 +126,10 @@ export default function SessionDetail() {
         toast({ title: "Registration failed", description: data.error });
         return;
       }
+      if (data?.review) {
+        toast({ title: "Registration submitted", description: "Your request is under review due to duplicate-detection signals." });
+        return;
+      }
       toast({ title: "Registration submitted", description: "Status: pending" });
     } catch (e: any) {
       setSubmitting(false);

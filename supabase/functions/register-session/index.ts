@@ -55,8 +55,19 @@ serve(async (req) => {
       );
     }
 
+    // Fetch user's default payment method (if any) and prepare review flag
+    const { data: myBilling } = await supabaseUser
+      .from("billing_profiles")
+      .select("default_payment_method_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const myPaymentMethod = myBilling?.default_payment_method_id || null;
+
+    let markReview = false;
+
     // Optional cross-account duplicate check if service role is available
     if (supabaseAdmin) {
+      // 1) Device/IP match with another user's registration => silently block
       const { data: dup, error: dupErr } = await supabaseAdmin
         .from("registrations")
         .select("id, user_id")
@@ -69,6 +80,32 @@ serve(async (req) => {
       if (!dupErr && dup && dup.user_id !== user.id) {
         // Silently block
         return new Response(JSON.stringify({ ok: true, blocked: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // 2) Payment method match with another user targeting same child/session => mark for review
+      if (myPaymentMethod) {
+        const { data: others } = await supabaseAdmin
+          .from("billing_profiles")
+          .select("user_id")
+          .eq("default_payment_method_id", myPaymentMethod)
+          .neq("user_id", user.id)
+          .limit(50);
+
+        const otherUserIds = (others || []).map((o: { user_id: string }) => o.user_id);
+        if (otherUserIds.length > 0) {
+          const { data: pmDup } = await supabaseAdmin
+            .from("registrations")
+            .select("id")
+            .eq("child_id", body.child_id)
+            .eq("session_id", body.session_id)
+            .in("user_id", otherUserIds)
+            .limit(1)
+            .maybeSingle();
+
+          if (pmDup) {
+            markReview = true;
+          }
+        }
       }
     }
 
@@ -83,6 +120,7 @@ serve(async (req) => {
         status: "pending",
         device_fingerprint: body.device_fingerprint || null,
         client_ip: clientIp,
+        review_flag: markReview,
       })
       .select("id")
       .maybeSingle();
@@ -102,7 +140,7 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, id: inserted?.id || null }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, id: inserted?.id || null, review: markReview }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
