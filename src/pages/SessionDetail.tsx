@@ -52,6 +52,7 @@ export default function SessionDetail() {
   const [childId, setChildId] = useState<string>("");
   const [priority, setPriority] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [timeDelta, setTimeDelta] = useState<number | null>(null);
 
   const fp = useMemo(() => {
     try {
@@ -93,6 +94,27 @@ export default function SessionDetail() {
     },
     enabled: Boolean(user),
   });
+
+  // Time diagnostics query
+  const { data: timeData } = useQuery({
+    queryKey: ["time-diagnostics"],
+    queryFn: async () => {
+      const clientTime = Date.now();
+      const { data, error } = await supabase.functions.invoke("time-diagnostics", {
+        body: { client_time_ms: clientTime }
+      });
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Update time delta when timeData changes
+  useEffect(() => {
+    if (timeData?.skew_ms !== undefined) {
+      setTimeDelta(timeData.skew_ms);
+    }
+  }, [timeData]);
 
   const handleRegister = async () => {
     if (!user) {
@@ -175,6 +197,17 @@ export default function SessionDetail() {
               </div>
               <div>Capacity: {sessionData.capacity ?? "—"}</div>
               <div>Upfront fee: {typeof sessionData.upfront_fee_cents === 'number' ? `$${(sessionData.upfront_fee_cents/100).toFixed(2)}` : "—"}</div>
+              {timeDelta !== null && (
+                <div className="flex items-center gap-2">
+                  <span>Server time vs your device:</span>
+                  <span className={`font-mono ${Math.abs(timeDelta) > 500 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    Δ = {timeDelta > 0 ? '+' : ''}{timeDelta}ms
+                  </span>
+                  {Math.abs(timeDelta) > 500 && (
+                    <span className="text-xs text-destructive">(High skew detected)</span>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

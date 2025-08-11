@@ -79,7 +79,17 @@ serve(async (req) => {
 
       console.log(`[RUN-PREWARM] Session "${session.title}" opens in ${msUntilOpen}ms at ${registrationOpenAt.toISOString()}`);
 
-      // Step 3: Load pending registrations
+      // Step 3.1: Time synchronization and skew detection
+      const timingInfo = await synchronizeServerTime();
+      logEntry.activities.push({ 
+        activity: "time_synchronization", 
+        timestamp: new Date().toISOString(), 
+        server_skew_ms: timingInfo.skewMs,
+        ntp_latency_ms: timingInfo.ntpLatencyMs,
+        needs_correction: Math.abs(timingInfo.skewMs) > 500
+      });
+
+      // Step 3.2: Load pending registrations
       const { data: pendingRegistrations, error: regError } = await admin
         .from('registrations')
         .select(`
@@ -159,14 +169,15 @@ serve(async (req) => {
         await new Promise(resolve => setTimeout(resolve, sleepDuration));
       }
 
-      // Step 9: Tight timing loop from T-5s to T+10s
+      // Step 9: Tight timing loop from T-5s to T+10s (with skew correction)
       const registrationResult = await executeRegistrationLoop(
         admin, 
         sessionId, 
         registrationOpenAt, 
         eligibleRegistrations,
         session.capacity || null,
-        logEntry
+        logEntry,
+        timingInfo.skewMs  // Pass skew for correction
       );
 
       // Step 10: Process successful registrations
@@ -314,14 +325,50 @@ async function validateStripeReadiness(): Promise<boolean> {
   }
 }
 
-// Main registration execution loop
+// Helper function to synchronize server time and detect skew
+async function synchronizeServerTime(): Promise<{
+  skewMs: number;
+  ntpLatencyMs: number;
+}> {
+  const startTime = Date.now();
+  
+  try {
+    // Method 1: Try external NTP service (worldtimeapi.org)
+    const ntpResponse = await fetch('https://worldtimeapi.org/api/timezone/UTC', {
+      signal: AbortSignal.timeout(3000)
+    });
+    
+    if (ntpResponse.ok) {
+      const endTime = Date.now();
+      const ntpLatencyMs = endTime - startTime;
+      
+      const ntpData = await ntpResponse.json();
+      const ntpTimeMs = ntpData.unixtime * 1000; // Convert to milliseconds
+      const localTimeMs = (startTime + endTime) / 2; // Approximate request midpoint
+      const skewMs = localTimeMs - ntpTimeMs;
+      
+      console.log(`[TIME-SYNC] NTP sync successful - Local: ${localTimeMs}, NTP: ${ntpTimeMs}, Skew: ${skewMs}ms, Latency: ${ntpLatencyMs}ms`);
+      
+      return { skewMs, ntpLatencyMs };
+    }
+  } catch (e) {
+    console.warn('[TIME-SYNC] NTP sync failed, using local time:', e);
+  }
+  
+  // Method 2: Fallback to local time (no external correction)
+  console.log('[TIME-SYNC] Using local server time as reference');
+  return { skewMs: 0, ntpLatencyMs: 0 };
+}
+
+// Main registration execution loop (with skew correction)
 async function executeRegistrationLoop(
   admin: any,
   sessionId: string,
   registrationOpenAt: Date,
   eligibleRegistrations: any[],
   capacity: number | null,
-  logEntry: any
+  logEntry: any,
+  serverSkewMs: number = 0
 ): Promise<{
   successful: string[];
   failed: string[];
@@ -333,22 +380,27 @@ async function executeRegistrationLoop(
   let totalAttempts = 0;
   let firstSuccessLatencyMs: number | null = null;
   
-  const targetOpenMs = registrationOpenAt.getTime();
-  const endMs = targetOpenMs + 10000; // T+10 seconds
+  // Apply skew correction to target time
+  const correctedTargetOpenMs = registrationOpenAt.getTime() - serverSkewMs;
+  const endMs = correctedTargetOpenMs + 10000; // T+10 seconds
   const attemptInterval = 100; // 10Hz - every 100ms
   
-  console.log(`[REGISTRATION-LOOP] Starting tight loop from T-5s to T+10s`);
+  if (Math.abs(serverSkewMs) > 500) {
+    console.log(`[REGISTRATION-LOOP] High skew detected (${serverSkewMs}ms) - adjusting timing`);
+  }
+  
+  console.log(`[REGISTRATION-LOOP] Starting tight loop from T-5s to T+10s (skew-corrected: ${serverSkewMs}ms)`);
   
   while (Date.now() < endMs && successful.length === 0) {
     const attemptStartTime = performance.now();
     const currentTime = Date.now();
-    const msFromOpen = currentTime - targetOpenMs;
+    const msFromCorrectedOpen = currentTime - correctedTargetOpenMs;
     
-    // Only attempt submissions from T0 onwards
-    if (msFromOpen >= 0) {
+    // Only attempt submissions from corrected T0 onwards
+    if (msFromCorrectedOpen >= 0) {
       totalAttempts++;
       
-      console.log(`[ATTEMPT-${totalAttempts}] T+${msFromOpen}ms - Attempting registrations`);
+      console.log(`[ATTEMPT-${totalAttempts}] T+${msFromCorrectedOpen}ms (skew-corrected) - Attempting registrations`);
       
       // Execute conflict resolution: priority first, then requested_at
       const sortedRegistrations = [...eligibleRegistrations].sort((a, b) => {
@@ -379,7 +431,7 @@ async function executeRegistrationLoop(
             if (firstSuccessLatencyMs === null) {
               firstSuccessLatencyMs = performance.now() - attemptStartTime;
             }
-            console.log(`[SUCCESS] Registration ${registration.id} accepted at T+${msFromOpen}ms`);
+            console.log(`[SUCCESS] Registration ${registration.id} accepted at T+${msFromCorrectedOpen}ms (skew-corrected)`);
             
             // Break after first success to implement backoff
             break;
