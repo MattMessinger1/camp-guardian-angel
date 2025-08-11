@@ -4,11 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 import { CheckCircle2, Shield, Zap, CalendarClock } from "lucide-react";
 
 const Index = () => {
   const [pointer, setPointer] = useState({ x: 50, y: 50 });
+  const { toast } = useToast();
+  const [isSending, setIsSending] = useState(false);
 
   const onMove = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -17,6 +21,39 @@ const Index = () => {
     setPointer({ x, y });
   };
 
+  const sendTestEmail = async () => {
+    setIsSending(true);
+    try {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userData?.user) {
+        toast({
+          title: "Log in required",
+          description: "Please log in to send a test email.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const { error } = await supabase.functions.invoke("send-email-sendgrid", {
+        body: { type: "activation", user_id: userData.user.id },
+      });
+      if (error) {
+        throw error;
+      }
+      toast({
+        title: "Email sent",
+        description: "Check your inbox for the activation test email.",
+      });
+    } catch (err: any) {
+      console.error("SendGrid test failed:", err);
+      toast({
+        title: "Email failed",
+        description: err?.message || "Unexpected error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
   return (
     <div>
       <header className="w-full border-b sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -136,6 +173,20 @@ const Index = () => {
               <li>Optional $20 flat priority (if selected)</li>
             </ul>
           </div>
+        </section>
+
+        {/* Integration Test */}
+        <section id="integrations" className="container mx-auto py-8">
+          <Card className="surface-card">
+            <CardHeader>
+              <CardTitle>Integration Test</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-3">
+              <Button variant="secondary" onClick={sendTestEmail} disabled={isSending}>
+                {isSending ? "Sending..." : "Send test activation email (SendGrid)"}
+              </Button>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Prefill form (UI only) */}
