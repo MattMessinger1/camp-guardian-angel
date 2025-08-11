@@ -133,6 +133,23 @@ export default function SessionDetail() {
     }
   };
 
+  const handleSaveCard = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("create-setup-session", { body: {} });
+      if (error) {
+        toast({ title: "Setup failed", description: error.message });
+        return;
+      }
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      } else {
+        toast({ title: "Setup error", description: "No URL returned" });
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message });
+    }
+  };
+
   return (
     <main className="container mx-auto py-10">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -188,9 +205,14 @@ export default function SessionDetail() {
               <input id="priority" type="checkbox" className="h-4 w-4" checked={priority} onChange={(e) => setPriority(e.target.checked)} />
               <label htmlFor="priority" className="text-sm">Add $20 priority (optional)</label>
             </div>
-            <Button onClick={handleRegister} variant="hero" disabled={submitting || !user}>
-              {submitting ? "Submitting…" : "Submit registration"}
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleRegister} variant="hero" disabled={submitting || !user}>
+                {submitting ? "Submitting…" : "Submit registration"}
+              </Button>
+              <Button onClick={handleSaveCard} variant="secondary" disabled={!user}>
+                Save a card for future charges
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

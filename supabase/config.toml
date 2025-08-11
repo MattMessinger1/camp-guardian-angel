@@ -2,3 +2,9 @@ project_id = "ezvwyfqtyanwnoyymhav"
 
 [functions.register-session]
 verify_jwt = false
+
+[functions.create-setup-session]
+verify_jwt = true
+
+[functions.process-registration-success]
+verify_jwt = true
