@@ -93,6 +93,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: msg }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Fire pending email (best-effort, non-blocking)
+    if (supabaseAdmin && inserted?.id) {
+      try {
+        await supabaseAdmin.functions.invoke('send-email-sendgrid', { body: { type: 'pending', registration_id: inserted.id } });
+      } catch (e) {
+        console.log('[REGISTER-SESSION] Pending email error', e);
+      }
+    }
+
     return new Response(JSON.stringify({ ok: true, id: inserted?.id || null }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

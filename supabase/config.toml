@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.charge-registration]
 verify_jwt = false
+
+[functions.send-email-sendgrid]
+verify_jwt = false

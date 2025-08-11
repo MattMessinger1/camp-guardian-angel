@@ -49,6 +49,7 @@ serve(async (req) => {
         console.log(`[PROCESS-REGISTRATIONS-CRON] Session ${row.session_id} → accepted=${accepted.length}, rejected=${rejected.length}`);
 
         const charges = [] as Array<Promise<any>>;
+        const notifications = [] as Array<Promise<any>>;
         for (const registration_id of accepted) {
           // Invoke the charge-registration function for each accepted registration
           charges.push(
@@ -57,8 +58,17 @@ serve(async (req) => {
             }).then((res) => ({ registration_id, ok: !res.error, data: res.data, error: res.error }))
           );
         }
+        for (const registration_id of rejected) {
+          // Notify failure (best-effort)
+          notifications.push(
+            admin.functions.invoke('send-email-sendgrid', {
+              body: { type: 'failure', registration_id },
+            }).catch((e) => ({ registration_id, ok: false, error: e }))
+          );
+        }
 
         const chargeOutcomes = await Promise.all(charges);
+        await Promise.all(notifications);
         results.push({ session_id: row.session_id, accepted: accepted.length, rejected: rejected.length, chargeOutcomes });
       }
     } else {

@@ -150,6 +150,15 @@ serve(async (req) => {
 
     console.log('[CHARGE-REGISTRATION] Completed', { registration_id: reg.id, outcomes });
 
+    // Send success email with breakdown (best-effort)
+    try {
+      await admin.functions.invoke('send-email-sendgrid', {
+        body: { type: 'success', registration_id: reg.id, breakdown: outcomes },
+      });
+    } catch (e) {
+      console.log('[CHARGE-REGISTRATION] Success email error', e);
+    }
+
     return new Response(JSON.stringify({ ok: true, registration_id: reg.id, outcomes }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
