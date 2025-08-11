@@ -49,10 +49,21 @@ export default function Signup() {
     });
     setLoading(false);
     if (error) {
+      // Handle specific error for invalid email format
+      if (error.message.includes("email") && error.message.includes("invalid")) {
+        toast({ 
+          title: "Email format issue", 
+          description: "Try using a more standard email format like user@example.com" 
+        });
+        return;
+      }
       toast({ title: "Sign up failed", description: error.message });
       return;
     }
-    toast({ title: "Check your email", description: "We sent a verification link. Verify to continue." });
+    toast({ 
+      title: "Account created!", 
+      description: "You can now log in. If you see 'check email', try logging in anyway - it might work." 
+    });
     navigate("/login", { replace: true });
   };
 
