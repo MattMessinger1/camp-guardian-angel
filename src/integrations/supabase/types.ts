@@ -243,7 +243,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      allocate_registrations: {
+        Args: { p_max_sessions?: number }
+        Returns: {
+          session_id: string
+          accepted: string[]
+          rejected: string[]
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
