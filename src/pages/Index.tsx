@@ -13,6 +13,7 @@ const Index = () => {
   const [pointer, setPointer] = useState({ x: 50, y: 50 });
   const { toast } = useToast();
   const [isSending, setIsSending] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
 
   const onMove = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -33,12 +34,14 @@ const Index = () => {
         });
         return;
       }
-      const { error } = await supabase.functions.invoke("send-email-sendgrid", {
+      const { data, error } = await supabase.functions.invoke("send-email-sendgrid", {
         body: { type: "activation", user_id: userData.user.id },
       });
       if (error) {
+        setResult(`Error: ${error.message || "unknown"}`);
         throw error;
       }
+      setResult(`Success: ${JSON.stringify(data)}`);
       toast({
         title: "Email sent",
         description: "Check your inbox for the activation test email.",
@@ -181,10 +184,17 @@ const Index = () => {
             <CardHeader>
               <CardTitle>Integration Test</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={sendTestEmail} disabled={isSending}>
-                {isSending ? "Sending..." : "Send test activation email (SendGrid)"}
-              </Button>
+            <CardContent className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-3">
+                <Button variant="secondary" onClick={sendTestEmail} disabled={isSending}>
+                  {isSending ? "Sending..." : "Send test activation email (SendGrid)"}
+                </Button>
+              </div>
+              {result && (
+                <div aria-live="polite" className="text-sm text-muted-foreground">
+                  {result}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
