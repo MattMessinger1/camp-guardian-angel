@@ -1,123 +1,178 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+// This function runs every minute via pg_cron to process due prewarm jobs
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-    // Get all due prewarm jobs (prewarm_at <= now AND status='scheduled')
-    const { data: dueJobs, error: fetchError } = await supabase
+  if (!supabaseUrl || !serviceRoleKey) {
+    return new Response(JSON.stringify({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+
+  try {
+    console.log("[PROCESS-PREWARM-CRON] Starting prewarm job processing");
+
+    // Find due prewarm jobs (prewarm_at <= now AND status = 'scheduled')
+    const { data: dueJobs, error: fetchError } = await admin
       .from('prewarm_jobs')
-      .select('id, session_id')
-      .lte('prewarm_at', new Date().toISOString())
+      .select(`
+        id, session_id, prewarm_at,
+        sessions:session_id(title, registration_open_at)
+      `)
       .eq('status', 'scheduled')
+      .lte('prewarm_at', new Date().toISOString())
+      .order('prewarm_at', { ascending: true })
+      .limit(10); // Process up to 10 jobs per run
 
     if (fetchError) {
-      console.error('Error fetching due prewarm jobs:', fetchError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch due jobs' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      console.error("[PROCESS-PREWARM-CRON] Error fetching due jobs:", fetchError);
+      throw fetchError;
     }
 
     if (!dueJobs || dueJobs.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No due prewarm jobs found', processed: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      console.log("[PROCESS-PREWARM-CRON] No due prewarm jobs found");
+      return new Response(JSON.stringify({ ok: true, processed: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
-    console.log(`Processing ${dueJobs.length} due prewarm jobs`)
+    console.log(`[PROCESS-PREWARM-CRON] Found ${dueJobs.length} due prewarm jobs`);
 
-    // Process each due job
-    const results = await Promise.allSettled(
-      dueJobs.map(async (job) => {
+    const results = [];
+
+    for (const job of dueJobs) {
+      try {
+        console.log(`[PROCESS-PREWARM-CRON] Processing job ${job.id} for session ${job.session_id}`);
+
         // Mark job as running
-        const { error: updateError } = await supabase
+        const { error: updateError } = await admin
           .from('prewarm_jobs')
-          .update({ status: 'running', updated_at: new Date().toISOString() })
-          .eq('id', job.id)
+          .update({ 
+            status: 'running',
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', job.id);
 
         if (updateError) {
-          console.error(`Error updating job ${job.id} to running:`, updateError)
-          throw updateError
+          console.error(`[PROCESS-PREWARM-CRON] Failed to update job ${job.id}:`, updateError);
+          results.push({
+            job_id: job.id,
+            session_id: job.session_id,
+            status: 'failed',
+            error: updateError.message,
+          });
+          continue;
         }
 
         // Invoke runPrewarm function
-        try {
-          const response = await fetch(
-            `${Deno.env.get('SUPABASE_URL')}/functions/v1/run-prewarm`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ session_id: job.session_id }),
-            }
-          )
+        console.log(`[PROCESS-PREWARM-CRON] Invoking run-prewarm for session ${job.session_id}`);
+        
+        const { data: prewarmResult, error: prewarmError } = await admin.functions.invoke('run-prewarm', {
+          body: { session_id: job.session_id },
+        });
 
-          if (!response.ok) {
-            throw new Error(`runPrewarm failed with status ${response.status}`)
-          }
-
-          // Mark job as completed
-          await supabase
-            .from('prewarm_jobs')
-            .update({ status: 'completed', updated_at: new Date().toISOString() })
-            .eq('id', job.id)
-
-          return { job_id: job.id, session_id: job.session_id, status: 'completed' }
-        } catch (error) {
-          console.error(`Error running prewarm for job ${job.id}:`, error)
+        if (prewarmError) {
+          console.error(`[PROCESS-PREWARM-CRON] Prewarm failed for session ${job.session_id}:`, prewarmError);
           
           // Mark job as failed
-          await supabase
+          await admin
             .from('prewarm_jobs')
             .update({ 
-              status: 'failed', 
-              error_message: error.message,
+              status: 'failed',
+              error_message: prewarmError.message,
               updated_at: new Date().toISOString() 
             })
-            .eq('id', job.id)
+            .eq('id', job.id);
 
-          throw error
+          results.push({
+            job_id: job.id,
+            session_id: job.session_id,
+            status: 'failed',
+            error: prewarmError.message,
+          });
+          continue;
         }
-      })
-    )
 
-    const successful = results.filter(r => r.status === 'fulfilled').length
-    const failed = results.filter(r => r.status === 'rejected').length
+        // Mark job as completed
+        await admin
+          .from('prewarm_jobs')
+          .update({ 
+            status: 'completed',
+            updated_at: new Date().toISOString(),
+            error_message: null
+          })
+          .eq('id', job.id);
 
-    console.log(`Prewarm processing complete: ${successful} successful, ${failed} failed`)
+        console.log(`[PROCESS-PREWARM-CRON] Successfully completed prewarm for session ${job.session_id}`);
+        
+        results.push({
+          job_id: job.id,
+          session_id: job.session_id,
+          status: 'completed',
+          prewarm_result: prewarmResult,
+        });
 
-    return new Response(
-      JSON.stringify({ 
-        message: 'Prewarm cron processing complete',
-        total: dueJobs.length,
-        successful,
-        failed,
-        results: results.map(r => r.status === 'fulfilled' ? r.value : { error: r.reason?.message })
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+      } catch (jobError) {
+        const errorMessage = jobError instanceof Error ? jobError.message : String(jobError);
+        console.error(`[PROCESS-PREWARM-CRON] Unexpected error processing job ${job.id}:`, errorMessage);
+        
+        // Mark job as failed
+        await admin
+          .from('prewarm_jobs')
+          .update({ 
+            status: 'failed',
+            error_message: errorMessage,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', job.id);
 
-  } catch (error) {
-    console.error('Error in process-prewarm-cron function:', error)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+        results.push({
+          job_id: job.id,
+          session_id: job.session_id,
+          status: 'failed',
+          error: errorMessage,
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.status === 'completed').length;
+    const failureCount = results.filter(r => r.status === 'failed').length;
+
+    console.log(`[PROCESS-PREWARM-CRON] Processed ${results.length} jobs: ${successCount} successful, ${failureCount} failed`);
+
+    return new Response(JSON.stringify({
+      ok: true,
+      processed: results.length,
+      successful: successCount,
+      failed: failureCount,
+      results,
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[PROCESS-PREWARM-CRON] Error:", message);
+    return new Response(JSON.stringify({ error: message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
   }
-})
+});

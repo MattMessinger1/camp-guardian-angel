@@ -107,6 +107,44 @@ export type Database = {
         }
         Relationships: []
       }
+      prewarm_jobs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          prewarm_at: string
+          session_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          prewarm_at: string
+          session_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          prewarm_at?: string
+          session_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prewarm_jobs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       providers: {
         Row: {
           created_at: string
