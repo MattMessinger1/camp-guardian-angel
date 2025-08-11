@@ -27,6 +27,14 @@ serve(async (req) => {
 
   try {
     console.log("[PROCESS-REGISTRATIONS-CRON] Starting allocation run");
+    
+    // First, check and resolve any duplicate registrations
+    const { data: duplicateData, error: duplicateError } = await admin.rpc('check_and_resolve_duplicate_registrations');
+    if (duplicateError) {
+      console.error("[PROCESS-REGISTRATIONS-CRON] Duplicate check error:", duplicateError);
+    } else if (duplicateData && duplicateData.length > 0) {
+      console.log(`[PROCESS-REGISTRATIONS-CRON] Resolved ${duplicateData[0].resolved_count} duplicate registrations`);
+    }
 
     // Allocate up to N sessions per run
     const { data: allocations, error: allocError } = await admin.rpc('allocate_registrations', { p_max_sessions: 5 });
