@@ -1,2 +1,6 @@
-export const VGS_VAULT_ID = "tntkftyf7qi"; // TODO: add your VGS Vault ID (e.g., tnt123abc456)
-export const VGS_ENV: "sandbox" | "live" = "sandbox"; // change to "live" when ready
+// VGS Configuration - Updated to use environment variables
+import { env } from "./environment";
+
+export const VGS_VAULT_ID = env.VGS_VAULT_ID;
+export const VGS_ENV = env.VGS_ENV || 'sandbox';
+export const VGS_COLLECT_PUBLIC_KEY = env.VGS_COLLECT_PUBLIC_KEY;
