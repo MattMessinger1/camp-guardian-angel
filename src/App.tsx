@@ -12,6 +12,7 @@ import Signup from "./pages/Signup";
 import Sessions from "./pages/Sessions";
 import SessionDetail from "./pages/SessionDetail";
 import Children from "./pages/Children";
+import SessionForm from "./pages/SessionForm";
 import Settings from "./pages/Settings";
 import BillingSetupSuccess from "./pages/BillingSetupSuccess";
 import BillingSetupCancelled from "./pages/BillingSetupCancelled";
@@ -33,7 +34,9 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/sessions" element={<Sessions />} />
+              <Route path="/sessions/new" element={<SessionForm />} />
               <Route path="/sessions/:id" element={<SessionDetail />} />
+              <Route path="/sessions/:id/edit" element={<SessionForm />} />
               <Route path="/billing/setup-success" element={<BillingSetupSuccess />} />
               <Route path="/billing/setup-cancelled" element={<BillingSetupCancelled />} />
               <Route path="/billing/payment-success" element={<PaymentSuccess />} />

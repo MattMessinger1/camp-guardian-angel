@@ -33,6 +33,7 @@ interface SessionRow {
   end_at: string | null;
   capacity: number | null;
   upfront_fee_cents: number | null;
+  registration_open_at: string | null;
   provider: { name: string | null } | null;
 }
 
@@ -63,11 +64,13 @@ export default function Sessions() {
     queryFn: async (): Promise<SessionRow[]> => {
       const { data, error } = await supabase
         .from("sessions")
-        .select("id,title,start_at,end_at,capacity,upfront_fee_cents,provider:provider_id(name)")
-        .gte("start_at", new Date().toISOString())
+        .select(`
+          id, title, start_at, end_at, capacity, upfront_fee_cents, registration_open_at,
+          provider:providers(name)
+        `)
         .order("start_at", { ascending: true });
       if (error) throw error;
-      return data as any;
+      return data as SessionRow[];
     },
   });
 
@@ -81,7 +84,12 @@ export default function Sessions() {
 
   return (
     <main className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">Upcoming Sessions</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Upcoming Sessions</h1>
+        <Button asChild>
+          <Link to="/sessions/new">Create Session</Link>
+        </Button>
+      </div>
       {showBanner && (
         <div className="surface-card p-4 rounded-md border mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -104,6 +112,11 @@ export default function Sessions() {
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-1">
                 <div>Provider: {s.provider?.name || "—"}</div>
+                {s.registration_open_at && (
+                  <div className="font-medium text-orange-600">
+                    Registration opens: {new Date(s.registration_open_at).toLocaleString()}
+                  </div>
+                )}
                 <div>
                   {s.start_at ? new Date(s.start_at).toLocaleString() : ""}
                   {s.end_at ? ` – ${new Date(s.end_at).toLocaleString()}` : ""}
