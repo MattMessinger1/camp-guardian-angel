@@ -42,6 +42,7 @@ interface SessionFormData {
   capacity: number | null;
   upfront_fee_cents: number | null;
   high_demand: boolean;
+  open_time_exact: boolean;
   start_at: Date | null;
   end_at: Date | null;
   registration_open_at: Date | null;
@@ -67,6 +68,7 @@ export default function SessionForm() {
     capacity: null,
     upfront_fee_cents: null,
     high_demand: false,
+    open_time_exact: true,
     start_at: null,
     end_at: null,
     registration_open_at: null,
@@ -222,6 +224,7 @@ export default function SessionForm() {
         capacity: formData.capacity,
         upfront_fee_cents: formData.upfront_fee_cents,
         high_demand: formData.high_demand,
+        open_time_exact: formData.open_time_exact,
         start_at: formData.start_at?.toISOString() || null,
         end_at: formData.end_at?.toISOString() || null,
         registration_open_at: formData.registration_open_at.toISOString(),
@@ -359,8 +362,30 @@ export default function SessionForm() {
                   value={formData.registration_open_at}
                   onChange={(date) => setFormData({ ...formData, registration_open_at: date })}
                   required
-                  helperText="We'll start preparing ~60s before this time and submit at the exact second."
+                  helperText={formData.open_time_exact 
+                    ? "We'll start preparing ~60s before this time and submit at the exact second."
+                    : "We'll start preparing 2 minutes early and poll the provider page aggressively until open."
+                  }
                 />
+
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="open_time_exact"
+                    checked={formData.open_time_exact}
+                    onCheckedChange={(checked) => setFormData({ 
+                      ...formData, 
+                      open_time_exact: Boolean(checked) 
+                    })}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="open_time_exact" className="text-sm">
+                      I know the exact second registration opens
+                    </Label>
+                    <div className="text-xs text-muted-foreground">
+                      If you're not sure of the exact second, we'll poll aggressively until the provider page shows registration is open.
+                    </div>
+                  </div>
+                </div>
 
                 <DateTimePicker
                   label="Session Start Time"

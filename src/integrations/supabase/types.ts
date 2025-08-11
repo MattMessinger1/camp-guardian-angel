@@ -237,6 +237,7 @@ export type Database = {
           high_demand: boolean
           id: string
           location: string | null
+          open_time_exact: boolean
           provider_id: string | null
           registration_open_at: string | null
           start_at: string | null
@@ -250,6 +251,7 @@ export type Database = {
           high_demand?: boolean
           id?: string
           location?: string | null
+          open_time_exact?: boolean
           provider_id?: string | null
           registration_open_at?: string | null
           start_at?: string | null
@@ -263,6 +265,7 @@ export type Database = {
           high_demand?: boolean
           id?: string
           location?: string | null
+          open_time_exact?: boolean
           provider_id?: string | null
           registration_open_at?: string | null
           start_at?: string | null

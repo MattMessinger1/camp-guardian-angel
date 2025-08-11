@@ -59,7 +59,7 @@ serve(async (req) => {
       const { data: session, error: sessionError } = await admin
         .from('sessions')
         .select(`
-          id, title, registration_open_at, provider_id, capacity,
+          id, title, registration_open_at, provider_id, capacity, open_time_exact,
           providers:provider_id(name, site_url)
         `)
         .eq('id', sessionId)
@@ -77,7 +77,7 @@ serve(async (req) => {
       const now = new Date();
       const msUntilOpen = registrationOpenAt.getTime() - now.getTime();
 
-      console.log(`[RUN-PREWARM] Session "${session.title}" opens in ${msUntilOpen}ms at ${registrationOpenAt.toISOString()}`);
+      console.log(`[RUN-PREWARM] Session "${session.title}" opens in ${msUntilOpen}ms at ${registrationOpenAt.toISOString()} (exact: ${session.open_time_exact})`);
 
       // Step 3.1: Time synchronization and skew detection
       const timingInfo = await synchronizeServerTime();
@@ -159,26 +159,44 @@ serve(async (req) => {
         ready: stripeReady 
       });
 
-      // Step 8: Wait until T-5 seconds
-      const currentMs = new Date().getTime();
-      const targetStartMs = registrationOpenAt.getTime() - 5000; // T-5 seconds
+      // Step 8: Handle timing based on open_time_exact flag
+      let registrationResult;
       
-      if (currentMs < targetStartMs) {
-        const sleepDuration = targetStartMs - currentMs;
-        console.log(`[RUN-PREWARM] Sleeping ${sleepDuration}ms until T-5 seconds`);
-        await new Promise(resolve => setTimeout(resolve, sleepDuration));
-      }
+      if (session.open_time_exact) {
+        // Traditional exact timing: Wait until T-5 seconds
+        const currentMs = new Date().getTime();
+        const targetStartMs = registrationOpenAt.getTime() - 5000; // T-5 seconds
+        
+        if (currentMs < targetStartMs) {
+          const sleepDuration = targetStartMs - currentMs;
+          console.log(`[RUN-PREWARM] Exact timing: Sleeping ${sleepDuration}ms until T-5 seconds`);
+          await new Promise(resolve => setTimeout(resolve, sleepDuration));
+        }
 
-      // Step 9: Tight timing loop from T-5s to T+10s (with skew correction)
-      const registrationResult = await executeRegistrationLoop(
-        admin, 
-        sessionId, 
-        registrationOpenAt, 
-        eligibleRegistrations,
-        session.capacity || null,
-        logEntry,
-        timingInfo.skewMs  // Pass skew for correction
-      );
+        // Step 9a: Tight timing loop from T-5s to T+10s (with skew correction)
+        registrationResult = await executeRegistrationLoop(
+          admin, 
+          sessionId, 
+          registrationOpenAt, 
+          eligibleRegistrations,
+          session.capacity || null,
+          logEntry,
+          timingInfo.skewMs  // Pass skew for correction
+        );
+      } else {
+        // Step 9b: Aggressive polling mode - poll provider page every 750ms for "open" state
+        console.log(`[RUN-PREWARM] Inexact timing: Starting aggressive polling mode`);
+        registrationResult = await executePollingRegistrationLoop(
+          admin,
+          sessionId,
+          registrationOpenAt,
+          eligibleRegistrations,
+          session.capacity || null,
+          session.providers?.site_url || null,
+          logEntry,
+          timingInfo.skewMs
+        );
+      }
 
       // Step 10: Process successful registrations
       if (registrationResult.successful.length > 0) {
@@ -495,4 +513,222 @@ async function executeRegistrationLoop(
     totalAttempts,
     firstSuccessLatencyMs
   };
+}
+
+// Polling registration loop for inexact timing (polls provider page every 750ms)
+async function executePollingRegistrationLoop(
+  admin: any,
+  sessionId: string,
+  registrationOpenAt: Date,
+  eligibleRegistrations: any[],
+  capacity: number | null,
+  providerSiteUrl: string | null,
+  logEntry: any,
+  serverSkewMs: number = 0
+): Promise<{
+  successful: string[];
+  failed: string[];
+  totalAttempts: number;
+  firstSuccessLatencyMs: number | null;
+}> {
+  const successful: string[] = [];
+  const failed: string[] = [];
+  let totalAttempts = 0;
+  let firstSuccessLatencyMs: number | null = null;
+  let pollAttempts = 0;
+  
+  const endMs = registrationOpenAt.getTime() + 300000; // Stop polling 5 minutes after expected open time
+  const pollInterval = 750; // Poll every 750ms
+  
+  console.log(`[POLLING-LOOP] Starting aggressive polling for provider page: ${providerSiteUrl}`);
+  
+  // Keep polling until we detect "open" state or timeout
+  while (Date.now() < endMs && successful.length === 0) {
+    pollAttempts++;
+    
+    const pollStartTime = performance.now();
+    const currentTime = Date.now();
+    const msFromExpectedOpen = currentTime - registrationOpenAt.getTime();
+    
+    console.log(`[POLL-${pollAttempts}] T${msFromExpectedOpen > 0 ? '+' : ''}${msFromExpectedOpen}ms - Checking provider page status`);
+    
+    // Check if the provider page indicates "open" state
+    const pageIsOpen = await checkProviderPageOpenState(providerSiteUrl);
+    
+    logEntry.activities.push({
+      activity: "provider_page_poll",
+      timestamp: new Date().toISOString(),
+      poll_attempt: pollAttempts,
+      page_open: pageIsOpen,
+      ms_from_expected: msFromExpectedOpen
+    });
+    
+    if (pageIsOpen) {
+      console.log(`[POLLING-LOOP] Provider page indicates OPEN state at poll ${pollAttempts}! Starting registrations...`);
+      
+      // Execute conflict resolution: priority first, then requested_at
+      const sortedRegistrations = [...eligibleRegistrations].sort((a, b) => {
+        if (a.priority_opt_in !== b.priority_opt_in) {
+          return b.priority_opt_in ? 1 : -1; // priority first
+        }
+        return new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime(); // then by time
+      });
+      
+      // Determine how many we can accept based on capacity
+      const maxAcceptable = capacity || sortedRegistrations.length;
+      const candidates = sortedRegistrations.slice(0, maxAcceptable);
+      
+      // Attempt to register candidates immediately
+      for (const registration of candidates) {
+        try {
+          totalAttempts++;
+          const { error } = await admin
+            .from('registrations')
+            .update({ 
+              status: 'accepted',
+              processed_at: new Date().toISOString()
+            })
+            .eq('id', registration.id)
+            .eq('status', 'pending'); // Only update if still pending
+          
+          if (!error) {
+            successful.push(registration.id);
+            if (firstSuccessLatencyMs === null) {
+              firstSuccessLatencyMs = performance.now() - pollStartTime;
+            }
+            console.log(`[POLLING-SUCCESS] Registration ${registration.id} accepted after ${pollAttempts} polls`);
+            
+            // Continue trying to register all eligible candidates
+          }
+        } catch (e) {
+          console.error(`[POLLING-ATTEMPT] Failed to accept registration ${registration.id}:`, e);
+        }
+      }
+      
+      // Mark remaining as failed if we have successful ones
+      if (successful.length > 0) {
+        const remainingIds = sortedRegistrations
+          .slice(successful.length)
+          .map(r => r.id);
+          
+        if (remainingIds.length > 0) {
+          await admin
+            .from('registrations')
+            .update({ 
+              status: 'failed',
+              processed_at: new Date().toISOString()
+            })
+            .in('id', remainingIds)
+            .eq('status', 'pending');
+            
+          failed.push(...remainingIds);
+        }
+        
+        // Break after processing all registrations
+        break;
+      }
+    }
+    
+    // Wait before next poll
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
+  }
+  
+  // Mark any remaining pending registrations as failed if we timed out
+  if (successful.length === 0) {
+    const pendingIds = eligibleRegistrations.map(r => r.id);
+    if (pendingIds.length > 0) {
+      await admin
+        .from('registrations')
+        .update({ 
+          status: 'failed',
+          processed_at: new Date().toISOString()
+        })
+        .in('id', pendingIds)
+        .eq('status', 'pending');
+        
+      failed.push(...pendingIds);
+    }
+  }
+  
+  console.log(`[POLLING-LOOP] Completed: ${successful.length} successful, ${failed.length} failed, ${totalAttempts} registration attempts, ${pollAttempts} page polls`);
+  
+  return {
+    successful,
+    failed,
+    totalAttempts,
+    firstSuccessLatencyMs
+  };
+}
+
+// Helper function to check if provider page indicates "open" state
+async function checkProviderPageOpenState(siteUrl: string | null): Promise<boolean> {
+  if (!siteUrl) {
+    console.warn('[PAGE-CHECK] No site URL provided, assuming open');
+    return true; // If no URL, assume open
+  }
+  
+  try {
+    // Make request to provider page
+    const response = await fetch(siteUrl, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000),
+      headers: {
+        'User-Agent': 'CampRush-Prewarm-Bot/1.0'
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn(`[PAGE-CHECK] Provider page returned ${response.status}`);
+      return false;
+    }
+    
+    const html = await response.text();
+    
+    // Look for common indicators that registration is open
+    // This is a simulation - in real implementation, this would be more sophisticated
+    const openIndicators = [
+      'register now',
+      'registration open',
+      'sign up now',
+      'register your child',
+      'registration-open',
+      'class="register-button"',
+      'submit-registration',
+      'enrollment open'
+    ];
+    
+    const closedIndicators = [
+      'registration closed',
+      'sold out',
+      'registration not open',
+      'coming soon',
+      'registration-closed',
+      'class="disabled"',
+      'disabled="true"'
+    ];
+    
+    const htmlLower = html.toLowerCase();
+    
+    // Check for closed indicators first (more definitive)
+    const hasClosed = closedIndicators.some(indicator => htmlLower.includes(indicator));
+    if (hasClosed) {
+      console.log(`[PAGE-CHECK] Found closed indicator in page content`);
+      return false;
+    }
+    
+    // Check for open indicators
+    const hasOpen = openIndicators.some(indicator => htmlLower.includes(indicator));
+    if (hasOpen) {
+      console.log(`[PAGE-CHECK] Found open indicator in page content`);
+      return true;
+    }
+    
+    // If no clear indicators, check HTTP status (200 might indicate open)
+    console.log(`[PAGE-CHECK] No clear indicators found, using HTTP status (${response.status})`);
+    return response.status === 200;
+    
+  } catch (e) {
+    console.warn(`[PAGE-CHECK] Failed to check provider page:`, e);
+    return false; // Conservative approach - don't assume open on error
+  }
 }
