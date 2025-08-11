@@ -141,6 +141,7 @@ export type Database = {
           processed_at: string | null
           provider_confirmation_id: string | null
           requested_at: string
+          review_flag: boolean
           session_id: string
           status: string
           user_id: string
@@ -154,6 +155,7 @@ export type Database = {
           processed_at?: string | null
           provider_confirmation_id?: string | null
           requested_at?: string
+          review_flag?: boolean
           session_id: string
           status: string
           user_id: string
@@ -167,6 +169,7 @@ export type Database = {
           processed_at?: string | null
           provider_confirmation_id?: string | null
           requested_at?: string
+          review_flag?: boolean
           session_id?: string
           status?: string
           user_id?: string
