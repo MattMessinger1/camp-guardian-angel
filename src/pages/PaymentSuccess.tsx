@@ -36,6 +36,20 @@ export default function PaymentSuccess() {
   const [opening, setOpening] = useState(false);
 
   useEffect(() => {
+    // Send activation email when user lands on payment success page
+    const sendActivationEmail = async () => {
+      if (!user) return;
+      try {
+        await supabase.functions.invoke("send-email-sendgrid", { 
+          body: { type: "activation", user_id: user.id } 
+        });
+      } catch (e) {
+        console.log("Activation email error:", e);
+      }
+    };
+    
+    sendActivationEmail();
+    
     // Auto-prompt to save a card shortly after landing
     const t = setTimeout(async () => {
       if (!user) return; // must be authenticated for setup session
