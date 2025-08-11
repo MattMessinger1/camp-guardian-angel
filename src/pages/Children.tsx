@@ -198,12 +198,17 @@ export default function Children() {
               </div>
             </div>
           </div>
+        )}
 
         {!vgsReady && (
           <div className="surface-card p-4 text-sm text-muted-foreground">
             VGS Collect not configured. Add your vault ID in src/config/vgs.ts to enable tokenization.
           </div>
         )}
+
+        <Card className="surface-card">
+          <CardHeader>
+            <CardTitle>Add child</CardTitle>
           </CardHeader>
           <CardContent>
             <form className="grid gap-4" onSubmit={handleSubmit}>
