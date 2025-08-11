@@ -38,6 +38,23 @@ serve(async (req) => {
     const body = (await req.json()) as Body;
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
 
+    // Block if this user already has a registration for this child/session
+    const { data: existing, error: existingErr } = await supabaseUser
+      .from("registrations")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("child_id", body.child_id)
+      .eq("session_id", body.session_id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingErr && existing) {
+      return new Response(
+        JSON.stringify({ error: "You already registered this child for this session." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Optional cross-account duplicate check if service role is available
     if (supabaseAdmin) {
       const { data: dup, error: dupErr } = await supabaseAdmin
