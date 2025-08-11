@@ -35,6 +35,137 @@ export type Database = {
         }
         Relationships: []
       }
+      providers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          site_url: string | null
+          stripe_connect_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          site_url?: string | null
+          stripe_connect_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          site_url?: string | null
+          stripe_connect_id?: string | null
+        }
+        Relationships: []
+      }
+      registrations: {
+        Row: {
+          child_id: string
+          client_ip: string | null
+          device_fingerprint: string | null
+          id: string
+          priority_opt_in: boolean
+          processed_at: string | null
+          provider_confirmation_id: string | null
+          requested_at: string
+          session_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          child_id: string
+          client_ip?: string | null
+          device_fingerprint?: string | null
+          id?: string
+          priority_opt_in?: boolean
+          processed_at?: string | null
+          provider_confirmation_id?: string | null
+          requested_at?: string
+          session_id: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          child_id?: string
+          client_ip?: string | null
+          device_fingerprint?: string | null
+          id?: string
+          priority_opt_in?: boolean
+          processed_at?: string | null
+          provider_confirmation_id?: string | null
+          requested_at?: string
+          session_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registrations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registrations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          end_at: string | null
+          high_demand: boolean
+          id: string
+          location: string | null
+          provider_id: string | null
+          registration_open_at: string | null
+          start_at: string | null
+          title: string | null
+          upfront_fee_cents: number | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          end_at?: string | null
+          high_demand?: boolean
+          id?: string
+          location?: string | null
+          provider_id?: string | null
+          registration_open_at?: string | null
+          start_at?: string | null
+          title?: string | null
+          upfront_fee_cents?: number | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          end_at?: string | null
+          high_demand?: boolean
+          id?: string
+          location?: string | null
+          provider_id?: string | null
+          registration_open_at?: string | null
+          start_at?: string | null
+          title?: string | null
+          upfront_fee_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
