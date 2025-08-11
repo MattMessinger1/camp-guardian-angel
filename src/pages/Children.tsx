@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { VGS_ENV, VGS_VAULT_ID } from "@/config/vgs";
-
+import { useQuery } from "@tanstack/react-query";
 // Minimal SEO util
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -46,6 +46,18 @@ export default function Children() {
   const [rows, setRows] = useState<ChildRow[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const { data: billing } = useQuery({
+    queryKey: ["billing_profile"],
+    queryFn: async (): Promise<{ default_payment_method_id: string | null } | null> => {
+      const { data } = await supabase
+        .from("billing_profiles")
+        .select("default_payment_method_id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return (data as any) || null;
+    },
+    enabled: Boolean(user),
+  });
   const vgsReady = useMemo(() => Boolean(VGS_VAULT_ID), []);
   const scriptLoadedRef = useRef(false);
   const formRef = useRef<any>(null);
@@ -173,15 +185,25 @@ export default function Children() {
           <p className="text-muted-foreground">Your child’s data is secured with bank-grade encryption.</p>
         </div>
 
+        {user && !sessionStorage.getItem("hide_save_card_banner") && (!billing || !billing.default_payment_method_id) && (
+          <div className="surface-card p-4 rounded-md border">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-muted-foreground">Save a card for faster billing when your registration is accepted.</div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={async () => {
+                  const { data, error } = await supabase.functions.invoke("create-setup-session", { body: {} });
+                  if (!error && data?.url) window.open(data.url, "_blank");
+                }}>Save a card</Button>
+                <Button size="sm" variant="outline" onClick={() => sessionStorage.setItem("hide_save_card_banner", "1")}>Dismiss</Button>
+              </div>
+            </div>
+          </div>
+
         {!vgsReady && (
           <div className="surface-card p-4 text-sm text-muted-foreground">
             VGS Collect not configured. Add your vault ID in src/config/vgs.ts to enable tokenization.
           </div>
         )}
-
-        <Card className="surface-card">
-          <CardHeader>
-            <CardTitle>Add child (tokenized)</CardTitle>
           </CardHeader>
           <CardContent>
             <form className="grid gap-4" onSubmit={handleSubmit}>

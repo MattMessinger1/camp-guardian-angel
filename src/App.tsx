@@ -13,6 +13,7 @@ import SessionDetail from "./pages/SessionDetail";
 import Children from "./pages/Children";
 import BillingSetupSuccess from "./pages/BillingSetupSuccess";
 import BillingSetupCancelled from "./pages/BillingSetupCancelled";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/sessions/:id" element={<SessionDetail />} />
             <Route path="/billing/setup-success" element={<BillingSetupSuccess />} />
             <Route path="/billing/setup-cancelled" element={<BillingSetupCancelled />} />
+            <Route path="/billing/payment-success" element={<PaymentSuccess />} />
             <Route
               path="/children"
               element={
