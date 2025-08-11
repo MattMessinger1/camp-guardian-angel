@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_profiles: {
+        Row: {
+          created_at: string
+          default_payment_method_id: string | null
+          id: string
+          stripe_customer_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_payment_method_id?: string | null
+          id?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_payment_method_id?: string | null
+          id?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       children: {
         Row: {
           created_at: string
@@ -31,6 +58,51 @@ export type Database = {
           created_at?: string
           id?: string
           info_token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          id: string
+          provider_id: string | null
+          registration_id: string
+          session_id: string
+          status: string
+          stripe_payment_intent_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          id?: string
+          provider_id?: string | null
+          registration_id: string
+          session_id: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          provider_id?: string | null
+          registration_id?: string
+          session_id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          type?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
