@@ -45,6 +45,8 @@ export default function Children() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<ChildRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [attempts, setAttempts] = useState<Record<string, number>>({});
+  const [limitCfg, setLimitCfg] = useState<{ count: number; week_tz: string }>({ count: 5, week_tz: 'America/Chicago' });
 
   const { data: billing } = useQuery({
     queryKey: ["billing_profile"],
@@ -118,6 +120,35 @@ export default function Children() {
   useEffect(() => {
     if (user) fetchRows();
   }, [user]);
+
+  // Load weekly attempts per child for current week (America/Chicago by default)
+  useEffect(() => {
+    const load = async () => {
+      if (!user || rows.length === 0) return;
+      try {
+        const { data: cfgRow } = await supabase
+          .from('app_config')
+          .select('value')
+          .eq('key', 'weekly_child_exec_limit')
+          .maybeSingle();
+        const val = (cfgRow?.value as any) || {};
+        const count = Number(val?.count) || 5;
+        const tz = typeof val?.week_tz === 'string' ? val.week_tz : 'America/Chicago';
+        setLimitCfg({ count, week_tz: tz });
+
+        const entries = await Promise.all(
+          rows.map(async (r) => {
+            const { data } = await supabase.rpc('get_attempts_count_week', { p_child_id: r.id, p_tz: tz });
+            return [r.id, Number(data || 0)] as const;
+          })
+        );
+        setAttempts(Object.fromEntries(entries));
+      } catch (e) {
+        // ignore
+      }
+    };
+    load();
+  }, [user, rows]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,12 +267,17 @@ export default function Children() {
             <div className="grid gap-3">
               {rows.map((row) => (
                 <Card key={row.id} className="surface-card">
-                  <CardContent className="py-4 flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground truncate">
-                      Token: {row.info_token.slice(0, 48)}{row.info_token.length > 48 ? "…" : ""}
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground truncate">
+                        Token: {row.info_token.slice(0, 48)}{row.info_token.length > 48 ? "…" : ""}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="secondary" onClick={() => handleDelete(row.id)}>Delete</Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="secondary" onClick={() => handleDelete(row.id)}>Delete</Button>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      This Mon–Sun: {attempts[row.id] ?? 0} of {limitCfg.count} attempts used.
                     </div>
                   </CardContent>
                 </Card>

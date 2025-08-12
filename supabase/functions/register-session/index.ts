@@ -38,6 +38,80 @@ serve(async (req) => {
     const body = (await req.json()) as Body;
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
 
+    // Weekly attempts metering: enforce per-child cap before any registration attempt
+    try {
+      // Load config
+      const { data: cfgRow } = await supabaseUser
+        .from("app_config")
+        .select("value")
+        .eq("key", "weekly_child_exec_limit")
+        .maybeSingle();
+      const cfg = (cfgRow?.value as any) || { count: 5, week_tz: "America/Chicago", week_basis: "MonSun" };
+      const limitCount = Number(cfg.count) || 5;
+      const tz = typeof cfg.week_tz === 'string' ? cfg.week_tz : 'America/Chicago';
+
+      // Count attempts for current Mon–Sun week in specified timezone
+      const { data: cntData, error: cntErr } = await supabaseUser.rpc("get_attempts_count_week", {
+        p_child_id: body.child_id,
+        p_tz: tz,
+      });
+      const attemptsUsed = Number(cntData || 0);
+
+      if (!cntErr && attemptsUsed >= limitCount) {
+        // Create a failed registration record for auditability
+        const { data: failedReg, error: failRegErr } = await supabaseUser
+          .from("registrations")
+          .insert({
+            user_id: user.id,
+            child_id: body.child_id,
+            session_id: body.session_id,
+            priority_opt_in: !!body.priority_opt_in,
+            status: "failed",
+            device_fingerprint: body.device_fingerprint || null,
+            client_ip: clientIp,
+            review_flag: false,
+            processed_at: new Date().toISOString(),
+          })
+          .select("id")
+          .maybeSingle();
+
+        const regId = failedReg?.id || null;
+
+        // Log the skipped attempt (service role to bypass RLS)
+        if (supabaseAdmin) {
+          try {
+            await supabaseAdmin.from("registration_attempts").insert({
+              registration_id: regId,
+              child_id: body.child_id,
+              outcome: "skipped_weekly_limit",
+              meta: { reason: "weekly_limit", limit: limitCount, tz },
+            } as any);
+          } catch (e) {
+            console.log("[REGISTER-SESSION] attempt log insert error", e);
+          }
+
+          // Best-effort notification
+          if (regId) {
+            try {
+              await supabaseAdmin.functions.invoke("send-email-sendgrid", {
+                body: { type: "skipped_weekly_limit", registration_id: regId },
+              });
+            } catch (e) {
+              console.log("[REGISTER-SESSION] weekly-limit email error", e);
+            }
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ ok: true, skipped_weekly_limit: true, attempts_used: attemptsUsed, limit: limitCount }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } catch (e) {
+      console.log("[REGISTER-SESSION] attempts metering check error", e);
+      // Proceed without blocking on meter error
+    }
+
     // Block if this user already has a registration for this child/session
     const { data: existing, error: existingErr } = await supabaseUser
       .from("registrations")

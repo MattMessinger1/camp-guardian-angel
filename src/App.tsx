@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import SignupActivate from "./pages/SignupActivate";
 import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
+import DevLimits from "./pages/DevLimits";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
               />
               <Route path="/sanity-check" element={<SanityCheck />} />
               <Route path="/dev/run-prewarm" element={<DevRunPrewarm />} />
+              <Route path="/dev/limits" element={<DevLimits />} />
               <Route path="/settings" element={<Settings />} />
               <Route
                 path="/children"

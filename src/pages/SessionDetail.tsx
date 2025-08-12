@@ -53,6 +53,8 @@ export default function SessionDetail() {
   const [priority, setPriority] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [timeDelta, setTimeDelta] = useState<number | null>(null);
+  const [attemptsUsed, setAttemptsUsed] = useState<number>(0);
+  const [limitCfg, setLimitCfg] = useState<{ count: number; week_tz: string }>({ count: 5, week_tz: 'America/Chicago' });
 
   const fp = useMemo(() => {
     try {
@@ -115,6 +117,29 @@ export default function SessionDetail() {
       setTimeDelta(timeData.skew_ms);
     }
   }, [timeData]);
+
+  // Attempts metering: fetch current week attempts for selected child
+  useEffect(() => {
+    const run = async () => {
+      if (!user || !childId) { setAttemptsUsed(0); return; }
+      try {
+        const { data: cfgRow } = await supabase
+          .from('app_config')
+          .select('value')
+          .eq('key', 'weekly_child_exec_limit')
+          .maybeSingle();
+        const val = (cfgRow?.value as any) || {};
+        const count = Number(val?.count) || 5;
+        const tz = typeof val?.week_tz === 'string' ? val.week_tz : 'America/Chicago';
+        setLimitCfg({ count, week_tz: tz });
+        const { data } = await supabase.rpc('get_attempts_count_week', { p_child_id: childId, p_tz: tz });
+        setAttemptsUsed(Number(data || 0));
+      } catch {
+        setAttemptsUsed(0);
+      }
+    };
+    run();
+  }, [user, childId]);
 
   const handleRegister = async () => {
     if (!user) {
@@ -236,6 +261,9 @@ export default function SessionDetail() {
               </Select>
               {user && (!children || children.length === 0) && (
                 <div className="text-xs text-muted-foreground">No children yet. Add one on the <Link className="underline" to="/children">Children</Link> page.</div>
+              )}
+              {user && childId && (
+                <div className="text-xs text-muted-foreground">This Mon–Sun: {attemptsUsed} of {limitCfg.count} attempts used.</div>
               )}
             </div>
             <div className="flex items-center gap-3">
