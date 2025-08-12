@@ -10,18 +10,24 @@ const SanityCheck = () => {
   const { toast } = useToast();
   const [testSessionId] = useState('b6ac916f-0187-4658-be3b-5a07949c49be');
   const [testChildId, setTestChildId] = useState<string>(crypto.randomUUID());
-  const [testUserId, setTestUserId] = useState<string>(crypto.randomUUID());
+  const [userId, setUserId] = useState<string | null>(null);
+  React.useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
 
   const createTestChild = async () => {
     try {
+      if (!userId) {
+        toast({ title: "Not authenticated", description: "Please log in first.", variant: "destructive" });
+        return;
+      }
       const { error } = await supabase
         .from('children')
         .insert({
           id: testChildId,
-          user_id: testUserId,
+          user_id: userId as string,
           info_token: `test-token-${testChildId.substring(0, 8)}`
         });
-      
       if (error) throw error;
       toast({ title: "Test child created", description: testChildId });
     } catch (error: any) {
@@ -31,14 +37,17 @@ const SanityCheck = () => {
 
   const createTestBillingProfile = async () => {
     try {
+      if (!userId) {
+        toast({ title: "Not authenticated", description: "Please log in first.", variant: "destructive" });
+        return;
+      }
       const { error } = await supabase
         .from('billing_profiles')
         .insert({
-          user_id: testUserId,
+          user_id: userId as string,
           stripe_customer_id: 'cus_test_priority',
           default_payment_method_id: 'pm_test_priority'
         });
-      
       if (error) throw error;
       toast({ title: "Test billing profile created" });
     } catch (error: any) {
@@ -48,16 +57,19 @@ const SanityCheck = () => {
 
   const createPriorityRegistration = async () => {
     try {
+      if (!userId) {
+        toast({ title: "Not authenticated", description: "Please log in first.", variant: "destructive" });
+        return;
+      }
       const { error } = await supabase
         .from('registrations')
         .insert({
-          user_id: testUserId,
+          user_id: userId as string,
           child_id: testChildId,
           session_id: testSessionId,
           priority_opt_in: true,
           status: 'pending'
         });
-      
       if (error) throw error;
       toast({ title: "Priority registration created", description: "priority_opt_in: true" });
     } catch (error: any) {
@@ -67,34 +79,28 @@ const SanityCheck = () => {
 
   const createNormalRegistration = async () => {
     try {
-      const normalUserId = crypto.randomUUID();
+      if (!userId) {
+        toast({ title: "Not authenticated", description: "Please log in first.", variant: "destructive" });
+        return;
+      }
       const normalChildId = crypto.randomUUID();
-      
-      // Create normal user's child
-      await supabase.from('children').insert({
+      // Create another child for the current user
+      const { error: childError } = await supabase.from('children').insert({
         id: normalChildId,
-        user_id: normalUserId,
+        user_id: userId as string,
         info_token: `test-token-${normalChildId.substring(0, 8)}`
       });
-
-      // Create normal user's billing profile
-      await supabase.from('billing_profiles').insert({
-        user_id: normalUserId,
-        stripe_customer_id: 'cus_test_normal',
-        default_payment_method_id: 'pm_test_normal'
-      });
-
-      // Create normal registration
+      if (childError) throw childError;
+      // Create normal registration for the same user
       const { error } = await supabase
         .from('registrations')
         .insert({
-          user_id: normalUserId,
+          user_id: userId as string,
           child_id: normalChildId,
           session_id: testSessionId,
           priority_opt_in: false,
           status: 'pending'
         });
-      
       if (error) throw error;
       toast({ title: "Normal registration created", description: "priority_opt_in: false" });
     } catch (error: any) {
@@ -136,8 +142,8 @@ const SanityCheck = () => {
               <Input value={testSessionId} readOnly />
             </div>
             <div>
-              <Label>Test User ID:</Label>
-              <Input value={testUserId} onChange={(e) => setTestUserId(e.target.value)} />
+              <Label>Current User ID:</Label>
+              <Input value={userId ?? ''} readOnly placeholder="Log in to enable" />
             </div>
           </div>
           
