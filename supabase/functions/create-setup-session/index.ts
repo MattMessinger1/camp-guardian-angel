@@ -33,7 +33,7 @@ serve(async (req) => {
       });
     }
 
-    const origin = req.headers.get("origin") || "https://example.com";
+    const appBaseUrl = Deno.env.get("APP_BASE_URL") || req.headers.get("origin") || "https://example.com";
 
     const stripe = new Stripe(stripeSecret, { apiVersion: "2023-10-16" });
 
@@ -69,12 +69,18 @@ serve(async (req) => {
     }
 
     // Create a Checkout Session in setup mode to save a card
+    const successUrl = `${appBaseUrl}/billing/setup-success`;
+    const cancelUrl = `${appBaseUrl}/billing/setup-cancelled`;
+    console.log("success_url:", successUrl);
+    console.log("cancel_url:", cancelUrl);
+
     const session = await stripe.checkout.sessions.create({
       mode: "setup",
       customer: customerId,
       payment_method_types: ["card"],
-      success_url: `${origin}/billing/setup-success`,
-      cancel_url: `${origin}/billing/setup-cancelled`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { kind: "card_setup", user_id: user.id },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
