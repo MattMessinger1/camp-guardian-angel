@@ -50,14 +50,30 @@ export default function SignupActivate() {
       setErrorMsg(null);
       console.log('activation-status:request');
       const { data, error } = await supabase.functions.invoke("activation-status");
-      if (error) {
-        console.error('activation-status:error', error);
-        setErrorMsg(error.message);
+      if (!error) {
+        const activated = Boolean((data as any)?.activated);
+        console.log('activation-status:response', data, { activated });
+        setActivated(activated);
+        return activated;
+      }
+      // Fallback to direct query if function is unavailable or errors out
+      console.warn('activation-status:function_error -> fallback_query', error);
+      const { data: row, error: qError } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('type', 'signup_fee')
+        .eq('status', 'captured')
+        .limit(1)
+        .maybeSingle();
+      if (qError) {
+        console.error('activation-status:fallback_query_error', qError);
+        setErrorMsg(qError.message);
         setPhase('error');
+        setActivated(false);
         return false;
       }
-      const activated = Boolean((data as any)?.activated);
-      console.log('activation-status:response', data, { activated });
+      const activated = Boolean(row);
+      console.log('activation-status:fallback_result', { activated });
       setActivated(activated);
       return activated;
     } catch (e: any) {
