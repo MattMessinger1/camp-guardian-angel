@@ -20,6 +20,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import DevRunPrewarm from "./pages/DevRunPrewarm";
 import SanityCheck from "./pages/SanityCheck";
 import NotFound from "./pages/NotFound";
+import SignupActivate from "./pages/SignupActivate";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/billing/setup-success" element={<BillingSetupSuccess />} />
               <Route path="/billing/setup-cancelled" element={<BillingSetupCancelled />} />
               <Route path="/billing/payment-success" element={<PaymentSuccess />} />
+              <Route path="/signup/activate" element={<SignupActivate />} />
               <Route path="/sanity-check" element={<SanityCheck />} />
               <Route path="/dev/run-prewarm" element={<DevRunPrewarm />} />
               <Route path="/settings" element={<Settings />} />

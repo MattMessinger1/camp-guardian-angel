@@ -69,8 +69,8 @@ export type Database = {
           currency: string
           id: string
           provider_id: string | null
-          registration_id: string
-          session_id: string
+          registration_id: string | null
+          session_id: string | null
           status: string
           stripe_payment_intent_id: string | null
           type: string
@@ -83,8 +83,8 @@ export type Database = {
           currency?: string
           id?: string
           provider_id?: string | null
-          registration_id: string
-          session_id: string
+          registration_id?: string | null
+          session_id?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
           type: string
@@ -97,8 +97,8 @@ export type Database = {
           currency?: string
           id?: string
           provider_id?: string | null
-          registration_id?: string
-          session_id?: string
+          registration_id?: string | null
+          session_id?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
           type?: string

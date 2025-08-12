@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.send-email-sendgrid]
 verify_jwt = false
+
+[functions.create-payment]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
