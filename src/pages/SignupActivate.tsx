@@ -22,6 +22,11 @@ export default function SignupActivate() {
   const startedRef = useRef(false);
   const pollRef = useRef<number | null>(null);
 
+  const [isIframed, setIsIframed] = useState(false);
+  useEffect(() => {
+    try { setIsIframed(window.top !== window.self); } catch { setIsIframed(false); }
+  }, []);
+
   // Debug derived states
   const authState: 'unknown' | 'authed' | 'not_authed' = loading ? 'unknown' : user ? 'authed' : 'not_authed';
   const activationState: 'unknown' | 'activated' | 'not_activated' = checking ? 'unknown' : activated ? 'activated' : 'not_activated';
@@ -124,16 +129,13 @@ export default function SignupActivate() {
       console.log('checkout url', url);
       setCheckoutUrl(url);
       
-      // allow UI to render the fallback link before navigating
-      setTimeout(() => {
-        console.log('Redirecting to Stripe Checkout...');
-        // If running inside an iframe (Lovable preview), open in a new tab to avoid X-Frame-Options blocking
-        if (window.top && window.top !== window.self) {
-          window.open(url, '_blank', 'noopener,noreferrer');
-        } else {
-          window.location.href = url; // Same-tab redirect when not iframed
-        }
-      }, 150); // Slight delay to render fallback link
+      console.log('Redirecting to Stripe Checkout...');
+      // Open immediately to avoid popup blockers; fallback link remains visible
+      if (window.top && window.top !== window.self) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        window.location.href = url; // Same-tab redirect when not iframed
+      }
       
     } catch (e: any) {
       console.error('create-payment:exception', e);
@@ -200,7 +202,13 @@ export default function SignupActivate() {
       if (!startedRef.current) {
         console.log('init:create_checkout');
         startedRef.current = true;
-        openCheckout();
+        if (isIframed) {
+          console.log('init:iframed -> wait for user click');
+          setPhase('idle');
+          toast({ title: "Open Stripe", description: "Click the button below to open checkout in a new tab." });
+        } else {
+          openCheckout();
+        }
       }
     };
     init();
@@ -263,6 +271,10 @@ export default function SignupActivate() {
         <CardContent className="flex flex-col gap-3">
           {ok && pollTimedOut ? (
             <Button onClick={startPolling} disabled={phase === 'redirecting'}>Retry</Button>
+          ) : phase === 'idle' ? (
+            <Button onClick={openCheckout} disabled={checking}>Open Stripe Checkout</Button>
+          ) : phase === 'creating_checkout' ? (
+            <Button disabled>Opening Stripe…</Button>
           ) : phase === 'error' ? (
             <Button onClick={openCheckout} disabled={checking}>Try again</Button>
           ) : phase === 'redirecting' && checkoutUrl ? (
