@@ -10,6 +10,23 @@ interface RunPrewarmRequest {
   session_id: string;
 }
 
+/**
+ * HIGH-PRECISION PREWARM RUNNER
+ * 
+ * This function provides sub-second timing precision for critical registration windows.
+ * Architecture:
+ * - Allocator cron = coarse (minute granularity, triggers this function)
+ * - Prewarm runner = precise (handles exact timing down to milliseconds)
+ * 
+ * Key responsibilities:
+ * 1. Time synchronization and skew correction
+ * 2. Sub-second timing for registration attempts
+ * 3. Jitter and anti-bot countermeasures
+ * 4. Precise execution within T-5s to T+10s window
+ * 
+ * This function is designed to be triggered by the coarse cron scheduler
+ * but handles all precise timing internally.
+ */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });

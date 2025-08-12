@@ -6,7 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// This function runs every minute via pg_cron to process due prewarm jobs
+/**
+ * PREWARM CRON SCHEDULER (COARSE TIMING)
+ * 
+ * This function runs every minute via pg_cron as a safety net and coarse scheduler.
+ * Architecture:
+ * - Allocator cron = coarse (minute granularity)
+ * - Prewarm runner = precise (sub-second timing)
+ * 
+ * The cron's job is to:
+ * 1. Detect when prewarm jobs are roughly due (minute-level precision)
+ * 2. Trigger the high-precision run-prewarm function
+ * 3. Let run-prewarm handle exact timing with sub-second precision
+ * 
+ * This two-tiered approach ensures:
+ * - Reliability: Cron won't miss jobs due to timing issues
+ * - Precision: The runner handles exact second/millisecond timing
+ * - Scalability: Cron handles scheduling, runner handles execution
+ */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -80,8 +97,9 @@ serve(async (req) => {
           continue;
         }
 
-        // Invoke runPrewarm function
-        console.log(`[PROCESS-PREWARM-CRON] Invoking run-prewarm for session ${job.session_id}`);
+        // Invoke high-precision prewarm runner
+        // The runner will handle exact timing, sub-second precision, and registration execution
+        console.log(`[PROCESS-PREWARM-CRON] Triggering high-precision runner for session ${job.session_id}`);
         
         const { data: prewarmResult, error: prewarmError } = await admin.functions.invoke('run-prewarm', {
           body: { session_id: job.session_id },
