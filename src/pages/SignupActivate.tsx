@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { loadStripe } from "@stripe/stripe-js";
+import { STRIPE_PUBLISHABLE_KEY } from "@/config/stripe";
 
 export default function SignupActivate() {
   const { user, loading } = useAuth();
@@ -15,7 +17,7 @@ export default function SignupActivate() {
   const [checking, setChecking] = useState(true);
   const [activated, setActivated] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [phase, setPhase] = useState<'idle' | 'creating_checkout' | 'redirecting' | 'polling' | 'error'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'creating_checkout' | 'redirecting' | 'polling' | 'embedded' | 'error'>('idle');
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const [detailedError, setDetailedError] = useState<string | null>(null);
@@ -98,6 +100,11 @@ export default function SignupActivate() {
 
   const openCheckout = async () => {
     try {
+      if (isIframed) {
+        await openEmbeddedCheckout();
+        return;
+      }
+
       setPhase('creating_checkout');
       setDetailedError(null);
       console.log('phase:creating_checkout');
@@ -145,6 +152,60 @@ export default function SignupActivate() {
     }
   };
 
+  const openEmbeddedCheckout = async () => {
+    try {
+      setPhase('creating_checkout');
+      setDetailedError(null);
+      console.log('phase:creating_embedded_checkout');
+      console.log('Invoking create-embedded-checkout function...');
+
+      const { data, error } = await supabase.functions.invoke("create-embedded-checkout");
+      console.log('create-embedded-checkout response:', { data, error });
+      if (error) {
+        console.error('create-embedded-checkout:error', error);
+        setPhase('error');
+        setDetailedError(`Function error: ${error.message}`);
+        toast({ title: "Payment error", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      const clientSecret = (data as any)?.client_secret as string | undefined;
+      if (!clientSecret) {
+        console.error('create-embedded-checkout:no_client_secret', data);
+        setPhase('error');
+        setDetailedError('No client secret returned from Stripe');
+        toast({ title: "Payment error", description: "No client secret returned.", variant: "destructive" });
+        return;
+      }
+
+      const stripe = await loadStripe(STRIPE_PUBLISHABLE_KEY);
+      if (!stripe) {
+        setPhase('error');
+        setDetailedError('Failed to load Stripe.js');
+        toast({ title: "Payment error", description: "Failed to load Stripe.js", variant: "destructive" });
+        return;
+      }
+
+      setPhase('embedded');
+      setCheckoutUrl(null);
+
+      const checkout = await (stripe as any).initEmbeddedCheckout({
+        clientSecret,
+        onComplete: () => {
+          console.log('embedded_checkout:complete');
+          startPolling();
+        },
+      });
+
+      checkout.mount('#embedded-checkout');
+      console.log('embedded_checkout:mounted');
+    } catch (e: any) {
+      console.error('embedded-checkout:exception', e);
+      setPhase('error');
+      setDetailedError(`Exception: ${e?.message ?? 'Unknown error'}`);
+      toast({ title: "Payment error", description: e?.message ?? 'Unknown error', variant: "destructive" });
+    }
+  };
   const startPolling = () => {
     setPollTimedOut(false);
     setPhase('polling');
@@ -290,6 +351,11 @@ export default function SignupActivate() {
               </a>
             </div>
           ) : null}
+
+          {phase === 'embedded' && (
+            <div id="embedded-checkout" className="min-h-[620px] w-full border rounded-md" />
+          )}
+
           {errorMsg && (
             <div className="text-destructive text-sm">{errorMsg}</div>
           )}
@@ -299,6 +365,7 @@ export default function SignupActivate() {
             </div>
           )}
         </CardContent>
+
       </Card>
     </main>
   );
