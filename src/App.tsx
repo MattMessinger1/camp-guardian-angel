@@ -17,6 +17,7 @@ import Settings from "./pages/Settings";
 import BillingSetupSuccess from "./pages/BillingSetupSuccess";
 import BillingSetupCancelled from "./pages/BillingSetupCancelled";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import DevRunPrewarm from "./pages/DevRunPrewarm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/billing/setup-success" element={<BillingSetupSuccess />} />
               <Route path="/billing/setup-cancelled" element={<BillingSetupCancelled />} />
               <Route path="/billing/payment-success" element={<PaymentSuccess />} />
+              <Route path="/dev/run-prewarm" element={<DevRunPrewarm />} />
               <Route path="/settings" element={<Settings />} />
               <Route
                 path="/children"
