@@ -107,7 +107,11 @@ export default function SignupActivate() {
       setPhase('redirecting');
       console.log('phase:redirecting', { url });
       console.log('checkout url', url);
-      window.location.href = url; // Redirect to Stripe Checkout in same tab
+      const win = window.open(url, '_blank', 'noopener');
+      if (!win) {
+        console.warn('window.open blocked or failed; falling back to same-tab redirect');
+        window.location.href = url; // Fallback to same-tab redirect
+      }
     } catch (e: any) {
       console.error('create-payment:exception', e);
       setPhase('error');
