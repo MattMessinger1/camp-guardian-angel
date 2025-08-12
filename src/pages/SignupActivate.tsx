@@ -21,6 +21,7 @@ export default function SignupActivate() {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const [detailedError, setDetailedError] = useState<string | null>(null);
+  const [embeddedClientSecret, setEmbeddedClientSecret] = useState<string | null>(null);
   const startedRef = useRef(false);
   const pollRef = useRef<number | null>(null);
   const finalizeRef = useRef(false);
@@ -179,6 +180,7 @@ export default function SignupActivate() {
         toast({ title: "Payment error", description: "No client secret returned.", variant: "destructive" });
         return;
       }
+      setEmbeddedClientSecret(clientSecret);
 
       const stripe = await loadStripe(STRIPE_PUBLISHABLE_KEY);
       if (!stripe) {
@@ -193,8 +195,9 @@ export default function SignupActivate() {
 
       const checkout = await (stripe as any).initEmbeddedCheckout({
         clientSecret,
-        onComplete: () => {
+        onComplete: async () => {
           console.log('embedded_checkout:complete');
+          await finalizeActivation(clientSecret);
           startPolling();
         },
       });
@@ -208,9 +211,10 @@ export default function SignupActivate() {
       toast({ title: "Payment error", description: e?.message ?? 'Unknown error', variant: "destructive" });
     }
   };
-  const finalizeActivation = async () => {
+  const finalizeActivation = async (overrideSessionId?: string) => {
     try {
-      if (!sessionId) {
+      const sid = overrideSessionId ?? sessionId;
+      if (!sid) {
         console.log('finalize:skip - no sessionId');
         return;
       }
@@ -219,9 +223,9 @@ export default function SignupActivate() {
         return;
       }
       finalizeRef.current = true;
-      console.log('finalize:invoke', { sessionId });
+      console.log('finalize:invoke', { sessionId: sid });
       const { data, error } = await supabase.functions.invoke("finalize-activation", {
-        body: { session_id: sessionId },
+        body: { session_id: sid },
       });
       console.log('finalize:response', { data, error });
       if (error) {
