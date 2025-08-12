@@ -21,6 +21,7 @@ import DevRunPrewarm from "./pages/DevRunPrewarm";
 import SanityCheck from "./pages/SanityCheck";
 import NotFound from "./pages/NotFound";
 import SignupActivate from "./pages/SignupActivate";
+import Dashboard from "./pages/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,14 @@ const App = () => (
               <Route path="/billing/setup-cancelled" element={<BillingSetupCancelled />} />
               <Route path="/billing/payment-success" element={<PaymentSuccess />} />
               <Route path="/signup/activate" element={<SignupActivate />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/sanity-check" element={<SanityCheck />} />
               <Route path="/dev/run-prewarm" element={<DevRunPrewarm />} />
               <Route path="/settings" element={<Settings />} />
