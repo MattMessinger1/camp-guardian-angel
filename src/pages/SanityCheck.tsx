@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 const SanityCheck = () => {
   const { toast } = useToast();
   const [testSessionId] = useState('b6ac916f-0187-4658-be3b-5a07949c49be');
-  const [testChildId, setTestChildId] = useState('test-child-' + Math.random().toString(36).substr(2, 9));
-  const [testUserId, setTestUserId] = useState('test-user-' + Math.random().toString(36).substr(2, 9));
+  const [testChildId, setTestChildId] = useState<string>(crypto.randomUUID());
+  const [testUserId, setTestUserId] = useState<string>(crypto.randomUUID());
 
   const createTestChild = async () => {
     try {
@@ -19,7 +19,7 @@ const SanityCheck = () => {
         .insert({
           id: testChildId,
           user_id: testUserId,
-          info_token: `test-token-${testChildId}`
+          info_token: `test-token-${testChildId.substring(0, 8)}`
         });
       
       if (error) throw error;
@@ -67,14 +67,14 @@ const SanityCheck = () => {
 
   const createNormalRegistration = async () => {
     try {
-      const normalUserId = 'test-user-normal-' + Math.random().toString(36).substr(2, 9);
-      const normalChildId = 'test-child-normal-' + Math.random().toString(36).substr(2, 9);
+      const normalUserId = crypto.randomUUID();
+      const normalChildId = crypto.randomUUID();
       
       // Create normal user's child
       await supabase.from('children').insert({
         id: normalChildId,
         user_id: normalUserId,
-        info_token: `test-token-${normalChildId}`
+        info_token: `test-token-${normalChildId.substring(0, 8)}`
       });
 
       // Create normal user's billing profile
