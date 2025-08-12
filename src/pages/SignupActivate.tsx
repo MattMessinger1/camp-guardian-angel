@@ -15,6 +15,7 @@ export default function SignupActivate() {
   const [activated, setActivated] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [phase, setPhase] = useState<'idle' | 'creating_checkout' | 'redirecting' | 'polling' | 'error'>('idle');
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const startedRef = useRef(false);
   const pollRef = useRef<number | null>(null);
@@ -107,7 +108,11 @@ export default function SignupActivate() {
       setPhase('redirecting');
       console.log('phase:redirecting', { url });
       console.log('checkout url', url);
-      window.location.href = url; // Same-tab redirect to avoid popup blockers
+      setCheckoutUrl(url);
+      // allow UI to render the fallback link before navigating
+      setTimeout(() => {
+        window.location.href = url; // Same-tab redirect to avoid popup blockers
+      }, 50);
     } catch (e: any) {
       console.error('create-payment:exception', e);
       setPhase('error');
@@ -233,6 +238,8 @@ export default function SignupActivate() {
             <Button onClick={startPolling} disabled={phase === 'redirecting'}>Retry</Button>
           ) : phase === 'error' ? (
             <Button onClick={openCheckout} disabled={checking}>Try again</Button>
+          ) : phase === 'redirecting' && checkoutUrl ? (
+            <a href={checkoutUrl} className="text-sm story-link">If not redirected, click here</a>
           ) : null}
           {errorMsg && (
             <div className="text-destructive text-sm">{errorMsg}</div>
