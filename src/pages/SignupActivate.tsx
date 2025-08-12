@@ -23,6 +23,7 @@ export default function SignupActivate() {
   const [detailedError, setDetailedError] = useState<string | null>(null);
   const startedRef = useRef(false);
   const pollRef = useRef<number | null>(null);
+  const finalizeRef = useRef(false);
 
   const [isIframed, setIsIframed] = useState(false);
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function SignupActivate() {
 
   const ok = searchParams.get("ok") === "1";
   const canceled = searchParams.get("canceled") === "1";
+  const sessionId = searchParams.get("session_id");
 
   const title = useMemo(() => (activated ? "Account Activated" : "Activate Your Account"), [activated]);
 
@@ -206,6 +208,31 @@ export default function SignupActivate() {
       toast({ title: "Payment error", description: e?.message ?? 'Unknown error', variant: "destructive" });
     }
   };
+  const finalizeActivation = async () => {
+    try {
+      if (!sessionId) {
+        console.log('finalize:skip - no sessionId');
+        return;
+      }
+      if (finalizeRef.current) {
+        console.log('finalize:already_called');
+        return;
+      }
+      finalizeRef.current = true;
+      console.log('finalize:invoke', { sessionId });
+      const { data, error } = await supabase.functions.invoke("finalize-activation", {
+        body: { session_id: sessionId },
+      });
+      console.log('finalize:response', { data, error });
+      if (error) {
+        console.warn('finalize:error', error);
+        setDetailedError(`Finalize error: ${error.message}`);
+      }
+    } catch (e: any) {
+      console.error('finalize:exception', e);
+      setDetailedError(`Finalize exception: ${e?.message ?? 'Unknown'}`);
+    }
+  };
   const startPolling = () => {
     setPollTimedOut(false);
     setPhase('polling');
@@ -256,6 +283,7 @@ export default function SignupActivate() {
       }
 
       if (ok) {
+        await finalizeActivation();
         startPolling();
         return;
       }
