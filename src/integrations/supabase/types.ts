@@ -19,6 +19,10 @@ export type Database = {
           created_at: string
           default_payment_method_id: string | null
           id: string
+          pm_brand: string | null
+          pm_exp_month: number | null
+          pm_exp_year: number | null
+          pm_last4: string | null
           stripe_customer_id: string | null
           updated_at: string
           user_id: string
@@ -27,6 +31,10 @@ export type Database = {
           created_at?: string
           default_payment_method_id?: string | null
           id?: string
+          pm_brand?: string | null
+          pm_exp_month?: number | null
+          pm_exp_year?: number | null
+          pm_last4?: string | null
           stripe_customer_id?: string | null
           updated_at?: string
           user_id: string
@@ -35,6 +43,10 @@ export type Database = {
           created_at?: string
           default_payment_method_id?: string | null
           id?: string
+          pm_brand?: string | null
+          pm_exp_month?: number | null
+          pm_exp_year?: number | null
+          pm_last4?: string | null
           stripe_customer_id?: string | null
           updated_at?: string
           user_id?: string
