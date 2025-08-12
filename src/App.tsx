@@ -22,6 +22,7 @@ import SanityCheck from "./pages/SanityCheck";
 import NotFound from "./pages/NotFound";
 import SignupActivate from "./pages/SignupActivate";
 import Dashboard from "./pages/Dashboard";
+import Billing from "./pages/Billing";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Children />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/billing"
+                element={
+                  <ProtectedRoute>
+                    <Billing />
                   </ProtectedRoute>
                 }
               />
