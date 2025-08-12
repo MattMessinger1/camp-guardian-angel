@@ -397,6 +397,7 @@ async function executeRegistrationLoop(
   const failed: string[] = [];
   let totalAttempts = 0;
   let firstSuccessLatencyMs: number | null = null;
+  const maxAttempts = 50; // Bound total attempts
   
   // Apply skew correction to target time
   const correctedTargetOpenMs = registrationOpenAt.getTime() - serverSkewMs;
@@ -407,9 +408,9 @@ async function executeRegistrationLoop(
     console.log(`[REGISTRATION-LOOP] High skew detected (${serverSkewMs}ms) - adjusting timing`);
   }
   
-  console.log(`[REGISTRATION-LOOP] Starting tight loop from T-5s to T+10s (skew-corrected: ${serverSkewMs}ms)`);
+  console.log(`[REGISTRATION-LOOP] Starting tight loop from T-5s to T+10s (skew-corrected: ${serverSkewMs}ms, max attempts: ${maxAttempts})`);
   
-  while (Date.now() < endMs && successful.length === 0) {
+  while (Date.now() < endMs && successful.length === 0 && totalAttempts < maxAttempts) {
     const attemptStartTime = performance.now();
     const currentTime = Date.now();
     const msFromCorrectedOpen = currentTime - correctedTargetOpenMs;
@@ -418,7 +419,11 @@ async function executeRegistrationLoop(
     if (msFromCorrectedOpen >= 0) {
       totalAttempts++;
       
-      console.log(`[ATTEMPT-${totalAttempts}] T+${msFromCorrectedOpen}ms (skew-corrected) - Attempting registrations`);
+      // Add random jitter (0-120ms) to avoid synchronized spikes and anti-bot detection
+      const jitter = Math.random() * 120;
+      await new Promise(resolve => setTimeout(resolve, jitter));
+      
+      console.log(`[ATTEMPT-${totalAttempts}] T+${msFromCorrectedOpen}ms (skew-corrected, jitter: ${jitter.toFixed(1)}ms) - Attempting registrations`);
       
       // Execute conflict resolution: priority first, then requested_at
       const sortedRegistrations = [...eligibleRegistrations].sort((a, b) => {
@@ -484,7 +489,7 @@ async function executeRegistrationLoop(
       }
     }
     
-    // Wait until next attempt time
+    // Wait until next attempt time (subtract jitter already applied above)
     await new Promise(resolve => setTimeout(resolve, attemptInterval));
   }
   
@@ -536,14 +541,15 @@ async function executePollingRegistrationLoop(
   let totalAttempts = 0;
   let firstSuccessLatencyMs: number | null = null;
   let pollAttempts = 0;
+  const maxAttempts = 50; // Bound total attempts
   
   const endMs = registrationOpenAt.getTime() + 300000; // Stop polling 5 minutes after expected open time
   const pollInterval = 750; // Poll every 750ms
   
-  console.log(`[POLLING-LOOP] Starting aggressive polling for provider page: ${providerSiteUrl}`);
+  console.log(`[POLLING-LOOP] Starting aggressive polling for provider page: ${providerSiteUrl} (max attempts: ${maxAttempts})`);
   
   // Keep polling until we detect "open" state or timeout
-  while (Date.now() < endMs && successful.length === 0) {
+  while (Date.now() < endMs && successful.length === 0 && totalAttempts < maxAttempts) {
     pollAttempts++;
     
     const pollStartTime = performance.now();
@@ -578,10 +584,17 @@ async function executePollingRegistrationLoop(
       const maxAcceptable = capacity || sortedRegistrations.length;
       const candidates = sortedRegistrations.slice(0, maxAcceptable);
       
-      // Attempt to register candidates immediately
+      // Attempt to register candidates with jitter
       for (const registration of candidates) {
         try {
           totalAttempts++;
+          
+          // Add random jitter (0-120ms) to avoid synchronized spikes and anti-bot detection
+          const jitter = Math.random() * 120;
+          await new Promise(resolve => setTimeout(resolve, jitter));
+          
+          console.log(`[POLLING-ATTEMPT-${totalAttempts}] Jitter: ${jitter.toFixed(1)}ms - Attempting registration ${registration.id}`);
+          
           const { error } = await admin
             .from('registrations')
             .update({ 
