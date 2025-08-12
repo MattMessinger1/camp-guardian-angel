@@ -12,38 +12,33 @@ export default function SignupActivate() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [checking, setChecking] = useState(true);
-  const [paid, setPaid] = useState(false);
+  const [activated, setActivated] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const startedRef = useRef(false);
 
   const ok = searchParams.get("ok") === "1";
   const canceled = searchParams.get("canceled") === "1";
 
-  const title = useMemo(() => (paid ? "Account Activated" : "Activate Your Account"), [paid]);
+  const title = useMemo(() => (activated ? "Account Activated" : "Activate Your Account"), [activated]);
 
   useEffect(() => {
     document.title = `${title} | CampRush`;
-    const desc = paid ? "Your signup fee is confirmed."
-      : "Complete a one-time $9 activation fee to unlock your dashboard.";
+    const desc = activated ? "Your signup fee is confirmed." : "Complete a one-time $9 activation fee to unlock your dashboard.";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", desc);
-  }, [title, paid]);
+  }, [title, activated]);
 
-  const checkPaid = async () => {
-    if (!user) return false;
-    const { data, error } = await supabase
-      .from("payments")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("type", "signup_fee")
-      .eq("status", "captured")
-      .limit(1);
+  const getActivationStatus = async (): Promise<boolean> => {
+    setErrorMsg(null);
+    const { data, error } = await supabase.functions.invoke("activation-status");
     if (error) {
       console.error(error);
+      setErrorMsg(error.message);
       return false;
     }
-    const found = !!(data && data.length > 0);
-    setPaid(found);
-    return found;
+    const activated = Boolean((data as any)?.activated);
+    setActivated(activated);
+    return activated;
   };
 
   const openCheckout = async () => {
@@ -57,7 +52,7 @@ export default function SignupActivate() {
       toast({ title: "Payment error", description: "No checkout URL returned.", variant: "destructive" });
       return;
     }
-    window.open(url, "_blank");
+    window.location.href = url; // Redirect to Stripe Checkout in same tab
   };
 
   useEffect(() => {
@@ -68,22 +63,28 @@ export default function SignupActivate() {
         return;
       }
 
-      const already = await checkPaid();
+      const already = await getActivationStatus();
       setChecking(false);
 
       // If returning from Checkout, poll until webhook writes the row
       if (ok && !already) {
         const start = Date.now();
         const interval = setInterval(async () => {
-          const done = await checkPaid();
+          const done = await getActivationStatus();
           if (done || Date.now() - start > 60_000) {
             clearInterval(interval);
             if (done) {
               toast({ title: "Activation complete", description: "Welcome aboard!" });
-              navigate("/sessions", { replace: true });
+              navigate("/dashboard", { replace: true });
             }
           }
         }, 2000);
+        return;
+      }
+
+      // If already activated, go to dashboard
+      if (already) {
+        navigate("/dashboard", { replace: true });
         return;
       }
 
@@ -106,7 +107,7 @@ export default function SignupActivate() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <main className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardHeader>
             <CardTitle>Sign in required</CardTitle>
@@ -116,7 +117,7 @@ export default function SignupActivate() {
             <Button onClick={() => navigate("/login")}>Go to Login</Button>
           </CardContent>
         </Card>
-      </div>
+      </main>
     );
   }
 
@@ -124,23 +125,25 @@ export default function SignupActivate() {
     <main className="min-h-screen flex items-center justify-center p-4">
       <Card className="max-w-lg w-full">
         <CardHeader>
-          <CardTitle>{paid ? "You're all set!" : "Activate your account"}</CardTitle>
+          <CardTitle>{activated ? "You're all set!" : "Activate your account"}</CardTitle>
           <CardDescription>
-            {paid
-              ? "Your $9 signup activation fee is confirmed. Continue to your dashboard."
+            {activated
+              ? "Your $9 signup activation fee is confirmed. Redirecting to your dashboard..."
+              : ok
+              ? "Finalizing your activation…"
               : canceled
               ? "Payment canceled. You can try again below."
               : "A one-time $9 activation fee unlocks your dashboard."}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex gap-3">
-          {paid ? (
-            <Button onClick={() => navigate("/sessions")}>Go to Dashboard</Button>
-          ) : (
-            <>
-              <Button onClick={openCheckout} disabled={checking}>Pay $9 activation fee</Button>
-              <Button variant="secondary" onClick={() => navigate("/")}>Back to Home</Button>
-            </>
+          {canceled ? (
+            <Button onClick={openCheckout} disabled={checking}>Try again</Button>
+          ) : !ok ? (
+            <Button onClick={openCheckout} disabled={checking}>Pay $9 activation fee</Button>
+          ) : null}
+          {errorMsg && (
+            <div className="text-destructive text-sm">{errorMsg}</div>
           )}
         </CardContent>
       </Card>
