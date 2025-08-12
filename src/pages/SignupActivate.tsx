@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ export default function SignupActivate() {
   const [phase, setPhase] = useState<'idle' | 'creating_checkout' | 'redirecting' | 'polling' | 'error'>('idle');
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
+  const [detailedError, setDetailedError] = useState<string | null>(null);
   const startedRef = useRef(false);
   const pollRef = useRef<number | null>(null);
 
@@ -28,6 +30,7 @@ export default function SignupActivate() {
   const DebugBar = () => (
     <div className="w-full text-xs text-muted-foreground mb-2">
       <span>params: ok={String(ok)} canceled={String(canceled)}</span> | <span>phase: {phase}</span> | <span>authState: {authState}</span> | <span>activationState: {activationState}</span>
+      {detailedError && <div className="text-red-500 mt-1">Debug: {detailedError}</div>}
     </div>
   );
 
@@ -51,6 +54,7 @@ export default function SignupActivate() {
   const getActivationStatus = async (): Promise<boolean> => {
     try {
       setErrorMsg(null);
+      setDetailedError(null);
       console.log('activation-status:request');
       const { data, error } = await supabase.functions.invoke("activation-status");
       if (!error) {
@@ -90,32 +94,46 @@ export default function SignupActivate() {
   const openCheckout = async () => {
     try {
       setPhase('creating_checkout');
+      setDetailedError(null);
       console.log('phase:creating_checkout');
+      console.log('Invoking create-payment function...');
+      
       const { data, error } = await supabase.functions.invoke("create-payment");
+      
+      console.log('create-payment response:', { data, error });
+      
       if (error) {
         console.error('create-payment:error', error);
         setPhase('error');
+        setDetailedError(`Function error: ${error.message}`);
         toast({ title: "Payment error", description: error.message, variant: "destructive" });
         return;
       }
+      
       const url = (data as any)?.url as string | undefined;
       if (!url) {
         console.error('create-payment:no_url_returned', data);
         setPhase('error');
+        setDetailedError('No checkout URL returned from Stripe');
         toast({ title: "Payment error", description: "No checkout URL returned.", variant: "destructive" });
         return;
       }
+      
       setPhase('redirecting');
       console.log('phase:redirecting', { url });
       console.log('checkout url', url);
       setCheckoutUrl(url);
+      
       // allow UI to render the fallback link before navigating
       setTimeout(() => {
+        console.log('Redirecting to Stripe Checkout...');
         window.location.href = url; // Same-tab redirect to avoid popup blockers
-      }, 50);
+      }, 100); // Increased delay to allow UI to render
+      
     } catch (e: any) {
       console.error('create-payment:exception', e);
       setPhase('error');
+      setDetailedError(`Exception: ${e?.message ?? 'Unknown error'}`);
       toast({ title: "Payment error", description: e?.message ?? 'Unknown error', variant: "destructive" });
     }
   };
@@ -230,19 +248,38 @@ export default function SignupActivate() {
               ? "Still waiting — payment confirmation hasn't arrived yet. You can retry polling."
               : phase === 'error'
               ? "We couldn't start checkout. Please try again."
+              : phase === 'creating_checkout'
+              ? "Setting up your payment..."
+              : phase === 'redirecting'
+              ? "Redirecting to Stripe Checkout..."
               : "A one-time $9 activation fee unlocks your dashboard."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex gap-3">
+        <CardContent className="flex flex-col gap-3">
           {ok && pollTimedOut ? (
             <Button onClick={startPolling} disabled={phase === 'redirecting'}>Retry</Button>
           ) : phase === 'error' ? (
             <Button onClick={openCheckout} disabled={checking}>Try again</Button>
           ) : phase === 'redirecting' && checkoutUrl ? (
-            <a href={checkoutUrl} className="text-sm story-link">If not redirected, click here</a>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">Taking too long?</p>
+              <a 
+                href={checkoutUrl} 
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Click here to open Stripe Checkout
+              </a>
+            </div>
           ) : null}
           {errorMsg && (
             <div className="text-destructive text-sm">{errorMsg}</div>
+          )}
+          {detailedError && (
+            <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+              Debug info: {detailedError}
+            </div>
           )}
         </CardContent>
       </Card>
