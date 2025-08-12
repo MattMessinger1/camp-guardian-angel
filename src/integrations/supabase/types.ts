@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       billing_profiles: {
         Row: {
           created_at: string
@@ -181,6 +199,48 @@ export type Database = {
         }
         Relationships: []
       }
+      registration_attempts: {
+        Row: {
+          attempted_at: string
+          child_id: string
+          id: string
+          meta: Json | null
+          outcome: string
+          registration_id: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          child_id: string
+          id?: string
+          meta?: Json | null
+          outcome: string
+          registration_id?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          child_id?: string
+          id?: string
+          meta?: Json | null
+          outcome?: string
+          registration_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_attempts_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_attempts_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registrations: {
         Row: {
           child_id: string
@@ -312,6 +372,10 @@ export type Database = {
         Returns: {
           resolved_count: number
         }[]
+      }
+      get_attempts_count_week: {
+        Args: { p_child_id: string; p_tz?: string }
+        Returns: number
       }
     }
     Enums: {
