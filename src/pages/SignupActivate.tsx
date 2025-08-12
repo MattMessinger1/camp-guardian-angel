@@ -127,8 +127,13 @@ export default function SignupActivate() {
       // allow UI to render the fallback link before navigating
       setTimeout(() => {
         console.log('Redirecting to Stripe Checkout...');
-        window.location.href = url; // Same-tab redirect to avoid popup blockers
-      }, 100); // Increased delay to allow UI to render
+        // If running inside an iframe (Lovable preview), open in a new tab to avoid X-Frame-Options blocking
+        if (window.top && window.top !== window.self) {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        } else {
+          window.location.href = url; // Same-tab redirect when not iframed
+        }
+      }, 150); // Slight delay to render fallback link
       
     } catch (e: any) {
       console.error('create-payment:exception', e);
