@@ -50,3 +50,6 @@ verify_jwt = true
 
 [functions.watch-signup-open]
 verify_jwt = false
+
+[functions.test-adaptive-polling]
+verify_jwt = false
