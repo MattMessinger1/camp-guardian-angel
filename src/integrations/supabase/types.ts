@@ -71,6 +71,157 @@ export type Database = {
         }
         Relationships: []
       }
+      camp_locations: {
+        Row: {
+          address: string | null
+          camp_id: string
+          city: string | null
+          created_at: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          location_name: string
+          postal_code: string | null
+          state: string | null
+        }
+        Insert: {
+          address?: string | null
+          camp_id: string
+          city?: string | null
+          created_at?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_name: string
+          postal_code?: string | null
+          state?: string | null
+        }
+        Update: {
+          address?: string | null
+          camp_id?: string
+          city?: string | null
+          created_at?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_name?: string
+          postal_code?: string | null
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camp_locations_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      camp_sources: {
+        Row: {
+          camp_id: string
+          crawl_error: string | null
+          crawl_status: string | null
+          created_at: string | null
+          id: string
+          last_crawled_at: string | null
+          location_id: string | null
+          provider: string | null
+          source_url: string
+        }
+        Insert: {
+          camp_id: string
+          crawl_error?: string | null
+          crawl_status?: string | null
+          created_at?: string | null
+          id?: string
+          last_crawled_at?: string | null
+          location_id?: string | null
+          provider?: string | null
+          source_url: string
+        }
+        Update: {
+          camp_id?: string
+          crawl_error?: string | null
+          crawl_status?: string | null
+          created_at?: string | null
+          id?: string
+          last_crawled_at?: string | null
+          location_id?: string | null
+          provider?: string | null
+          source_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camp_sources_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "camp_sources_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "camp_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      camp_synonyms: {
+        Row: {
+          alias: string
+          camp_id: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          alias: string
+          camp_id: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          alias?: string
+          camp_id?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camp_synonyms_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      camps: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          normalized_name: string | null
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          normalized_name?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          normalized_name?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       captcha_events: {
         Row: {
           challenge_url: string | null
@@ -460,8 +611,39 @@ export type Database = {
           },
         ]
       }
+      search_embeddings: {
+        Row: {
+          created_at: string | null
+          embedding: string | null
+          id: string
+          kind: string
+          ref_id: string
+          text: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          kind: string
+          ref_id: string
+          text: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          kind?: string
+          ref_id?: string
+          text?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
+          camp_location_id: string | null
           capacity: number | null
           created_at: string
           end_at: string | null
@@ -476,6 +658,7 @@ export type Database = {
           upfront_fee_cents: number | null
         }
         Insert: {
+          camp_location_id?: string | null
           capacity?: number | null
           created_at?: string
           end_at?: string | null
@@ -490,6 +673,7 @@ export type Database = {
           upfront_fee_cents?: number | null
         }
         Update: {
+          camp_location_id?: string | null
           capacity?: number | null
           created_at?: string
           end_at?: string | null
@@ -504,6 +688,13 @@ export type Database = {
           upfront_fee_cents?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sessions_camp_location_id_fkey"
+            columns: ["camp_location_id"]
+            isOneToOne: false
+            referencedRelation: "camp_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sessions_provider_id_fkey"
             columns: ["provider_id"]
@@ -646,6 +837,10 @@ export type Database = {
           rejected: string[]
         }[]
       }
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       check_and_resolve_duplicate_registrations: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -662,6 +857,94 @@ export type Database = {
       }
       get_attempts_count_week: {
         Args: { p_child_id: string; p_tz?: string }
+        Returns: number
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
         Returns: number
       }
     }
