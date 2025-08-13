@@ -44,6 +44,8 @@ export interface ReserveResult {
   waitlisted?: boolean;
   candidate?: ProviderSessionCandidate;
   reason?: string;
+  needs_captcha?: boolean;
+  provider?: string;
 }
 
 export interface FinalizeResult {

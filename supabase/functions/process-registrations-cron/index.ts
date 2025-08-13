@@ -58,14 +58,50 @@ serve(async (req) => {
 
         const charges = [] as Array<Promise<any>>;
         const notifications = [] as Array<Promise<any>>;
+        
         for (const registration_id of accepted) {
-          // Invoke the charge-registration function for each accepted registration
-          charges.push(
-            admin.functions.invoke('charge-registration', {
-              body: { registration_id },
-            }).then((res) => ({ registration_id, ok: !res.error, data: res.data, error: res.error }))
-          );
+          // Check if registration needs captcha before charging
+          const { data: registration, error: regError } = await admin
+            .from('registrations')
+            .select('user_id, status')
+            .eq('id', registration_id)
+            .single();
+
+          if (regError) {
+            console.error(`[PROCESS-REGISTRATIONS-CRON] Error fetching registration ${registration_id}:`, regError);
+            continue;
+          }
+
+          // TODO: Here we would normally call the provider adapter to attempt reservation
+          // For now, simulate a captcha detection scenario (you would replace this with actual provider adapter calls)
+          const needsCaptcha = Math.random() < 0.1; // 10% chance of captcha for demo purposes
+          
+          if (needsCaptcha) {
+            console.log(`[PROCESS-REGISTRATIONS-CRON] Captcha detected for registration ${registration_id}`);
+            
+            // Handle captcha event
+            const { error: captchaError } = await admin.functions.invoke('handle-captcha', {
+              body: {
+                user_id: registration.user_id,
+                registration_id: registration_id,
+                session_id: row.session_id,
+                provider: 'daysmart_recreation' // This would come from the provider adapter
+              }
+            });
+
+            if (captchaError) {
+              console.error(`[PROCESS-REGISTRATIONS-CRON] Error handling captcha for ${registration_id}:`, captchaError);
+            }
+          } else {
+            // Proceed with normal charge
+            charges.push(
+              admin.functions.invoke('charge-registration', {
+                body: { registration_id },
+              }).then((res) => ({ registration_id, ok: !res.error, data: res.data, error: res.error }))
+            );
+          }
         }
+        
         for (const registration_id of rejected) {
           // Notify failure (best-effort)
           notifications.push(

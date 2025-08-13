@@ -6,13 +6,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type EmailType = "pending" | "success" | "failure" | "activation";
+type EmailType = "pending" | "success" | "failure" | "activation" | "captcha_required";
 
 type Payload = {
   type: EmailType;
   registration_id?: string;
   breakdown?: Array<{ type: string; status: string; amount_cents: number }>;
-  user_id?: string; // for activation
+  user_id?: string; // for activation and captcha_required
+  session_id?: string; // for captcha_required
+  magic_url?: string; // for captcha_required
+  expires_at?: string; // for captcha_required
 };
 
 function usd(cents: number | null | undefined) {
@@ -140,6 +143,40 @@ serve(async (req) => {
         <h2>Welcome!</h2>
         <p>Your account has been activated. You're all set to register for camps.</p>
       `;
+      await sendWithSendGrid(userRes.user.email as string, subject, html);
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+    }
+
+    if (body.type === 'captcha_required') {
+      // Handle captcha required notification
+      const { user_id, session_id, magic_url, expires_at } = body;
+      
+      if (!user_id || !session_id || !magic_url) {
+        throw new Error("Missing required fields for captcha notification");
+      }
+
+      // Get user email
+      const { data: userRes, error: userErr } = await admin.auth.admin.getUserById(user_id);
+      if (userErr || !userRes?.user?.email) {
+        throw new Error("User email not found");
+      }
+
+      // Get session details
+      const { data: session, error: sessionError } = await admin.from('sessions').select('title, start_at').eq('id', session_id).single();
+      if (sessionError) {
+        throw new Error("Could not find session");
+      }
+
+      const expiryTime = expires_at ? new Date(expires_at).toLocaleString() : 'in 10 minutes';
+      const subject = `Action Required: Complete Registration for ${session.title ?? "Camp Session"}`;
+      const html = `
+        <h2>Human Verification Required</h2>
+        <p>We need to verify you're human to complete your registration for <strong>${session.title ?? "Camp Session"}</strong>.</p>
+        <p><strong><a href="${magic_url}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Complete Verification</a></strong></p>
+        <p>This link expires: <strong>${expiryTime}</strong></p>
+        <p>If you didn't request this registration, you can safely ignore this email.</p>
+      `;
+      
       await sendWithSendGrid(userRes.user.email as string, subject, html);
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }

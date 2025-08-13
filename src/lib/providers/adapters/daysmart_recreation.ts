@@ -15,6 +15,10 @@ const adapter: ProviderAdapter = {
     return [];
   },
   async reserve(_ctx: ProviderContext, candidate: ProviderSessionCandidate): Promise<ReserveResult> {
+    // TODO: Implement reservation logic
+    // If human challenge detected during reservation process:
+    // return { success: false, needs_captcha: true, provider: 'daysmart_recreation', candidate };
+    
     return { success: false, candidate, reason: 'Adapter not implemented' };
   },
   async finalizePayment(_ctx: ProviderContext, _candidate: ProviderSessionCandidate): Promise<FinalizeResult> {
