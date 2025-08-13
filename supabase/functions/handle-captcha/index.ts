@@ -15,9 +15,21 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'https://ezvwyfqtyanwnoyymhav.supabase.co';
 
 function generateSecureToken(): string {
+  // Generate 32 random bytes (256 bits) for security
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  
+  // Convert to base64url encoding (URL-safe, no padding)
+  const base64 = btoa(String.fromCharCode(...array));
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function maskToken(token: string): string {
+  return token.length > 4 ? `...${token.slice(-4)}` : token;
+}
+
+function maskPhone(phone: string): string {
+  return phone.length > 4 ? `...${phone.slice(-4)}` : phone;
 }
 
 serve(async (req: Request) => {
@@ -90,7 +102,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`[HANDLE-CAPTCHA] Created captcha event ${captchaEvent.id} with token ${resumeToken}`);
+    console.log(`[HANDLE-CAPTCHA] Created captcha event ${captchaEvent.id} with token ${maskToken(resumeToken)}`);
 
     // Check if user has verified phone for SMS
     const { data: userProfile, error: profileError } = await supabase
@@ -109,7 +121,7 @@ serve(async (req: Request) => {
 
     // If user has verified phone, send SMS using the new SMS service
     if (userProfile?.phone_verified && userProfile.phone_e164) {
-      console.log(`[HANDLE-CAPTCHA] Sending SMS to verified phone ${userProfile.phone_e164}`);
+      console.log(`[HANDLE-CAPTCHA] Sending SMS to verified phone ${maskPhone(userProfile.phone_e164)}`);
       
       // Get session details for SMS template
       const { data: session, error: sessionError } = await supabase
@@ -145,7 +157,7 @@ serve(async (req: Request) => {
         notificationSent = true;
         notificationMethod = 'sms';
         notificationDetails = {
-          phone_masked: userProfile.phone_e164.replace(/(\+\d{1,3})\d*(\d{2})$/, '$1•••-••$2'),
+          phone_masked: maskPhone(userProfile.phone_e164),
           expires_minutes: 10
         };
         console.log(`[HANDLE-CAPTCHA] SMS sent successfully, SID: ${smsResult.message_sid}`);

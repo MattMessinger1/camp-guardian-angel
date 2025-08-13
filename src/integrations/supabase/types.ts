@@ -376,6 +376,27 @@ export type Database = {
           },
         ]
       }
+      registration_locks: {
+        Row: {
+          expires_at: string
+          locked_at: string
+          locked_by: string
+          registration_id: string
+        }
+        Insert: {
+          expires_at?: string
+          locked_at?: string
+          locked_by: string
+          registration_id: string
+        }
+        Update: {
+          expires_at?: string
+          locked_at?: string
+          locked_by?: string
+          registration_id?: string
+        }
+        Relationships: []
+      }
       registrations: {
         Row: {
           canonical_url: string | null
@@ -522,6 +543,27 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_rate_limits: {
+        Row: {
+          created_at: string
+          sent_at: string
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          sent_at?: string
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          sent_at?: string
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sms_sends: {
         Row: {
           created_at: string
@@ -613,6 +655,10 @@ export type Database = {
       child_session_overlap_exists: {
         Args: { p_child_id: string; p_start: string; p_end: string }
         Returns: boolean
+      }
+      cleanup_expired_locks: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       get_attempts_count_week: {
         Args: { p_child_id: string; p_tz?: string }

@@ -11,6 +11,10 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+function maskToken(token: string): string {
+  return token.length > 4 ? `...${token.slice(-4)}` : token;
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -67,12 +71,15 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`[RESUME-CAPTCHA] Processing resume request for user ${user.id}, token ${resume_token}`);
+    console.log(`[RESUME-CAPTCHA] Processing resume request for user ${user.id}, token ${maskToken(resume_token)}`);
+
+    // Clean up any expired locks first
+    await supabase.rpc('cleanup_expired_locks');
 
     // Find and validate the captcha event
     const { data: captchaEvent, error: captchaError } = await supabase
       .from('captcha_events')
-      .select('*')
+      .select('id, user_id, registration_id, status, expires_at')
       .eq('resume_token', resume_token)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -89,8 +96,9 @@ serve(async (req: Request) => {
     }
 
     if (!captchaEvent) {
+      console.log(`[RESUME-CAPTCHA] No captcha event found for token ${maskToken(resume_token)} and user ${user.id}`);
       return new Response(
-        JSON.stringify({ error: 'Invalid resume token or access denied' }),
+        JSON.stringify({ error: 'Invalid or expired token' }),
         {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -144,70 +152,111 @@ serve(async (req: Request) => {
       );
     }
 
-    // Mark captcha as resolved
-    const { error: updateError } = await supabase
-      .from('captcha_events')
-      .update({ 
-        status: 'resolved', 
-        updated_at: now.toISOString() 
-      })
-      .eq('id', captchaEvent.id);
+    // Implement registration locking to prevent concurrent resumes
+    if (captchaEvent.registration_id) {
+      const { error: lockError } = await supabase
+        .from('registration_locks')
+        .insert({
+          registration_id: captchaEvent.registration_id,
+          locked_by: maskToken(resume_token),
+          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes
+        });
 
-    if (updateError) {
-      console.error('[RESUME-CAPTCHA] Error updating captcha status:', updateError);
+      if (lockError && lockError.code === '23505') { // Unique constraint violation
+        console.log(`[RESUME-CAPTCHA] Registration ${captchaEvent.registration_id} is already being processed`);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Registration is already being processed by another request',
+            status: 'locked' 
+          }),
+          {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      } else if (lockError) {
+        console.error('[RESUME-CAPTCHA] Error creating lock:', lockError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to acquire lock' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
+
+    try {
+      // Mark captcha as resolved and make token single-use
+      const { error: updateError } = await supabase
+        .from('captcha_events')
+        .update({ 
+          status: 'resolved', 
+          resume_token: null, // Clear token to make it single-use
+          updated_at: now.toISOString() 
+        })
+        .eq('id', captchaEvent.id)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('[RESUME-CAPTCHA] Error updating captcha status:', updateError);
+        throw new Error('Failed to update captcha status');
+      }
+
+      console.log(`[RESUME-CAPTCHA] Marked captcha event ${captchaEvent.id} as resolved`);
+
+      // TODO: Resume the adapter reserve() flow
+      // This would involve:
+      // 1. Loading the original registration context
+      // 2. Calling the appropriate provider adapter with preserved session/cookies
+      // 3. Attempting the reserve() operation again
+      // 4. On success, proceeding to finalizePayment
+      // 5. On failure, marking the registration as failed
+      
+      // For now, we'll simulate success and proceed with charge
+      if (captchaEvent.registration_id) {
+        console.log(`[RESUME-CAPTCHA] Attempting to charge registration ${captchaEvent.registration_id}`);
+        
+        try {
+          // Attempt to charge the registration
+          const { error: chargeError } = await supabase.functions.invoke('charge-registration', {
+            body: { registration_id: captchaEvent.registration_id }
+          });
+
+          if (chargeError) {
+            console.error('[RESUME-CAPTCHA] Error charging registration:', chargeError);
+            // Don't fail the entire operation - the captcha is still resolved
+          } else {
+            console.log(`[RESUME-CAPTCHA] Successfully charged registration ${captchaEvent.registration_id}`);
+          }
+        } catch (chargeError) {
+          console.error('[RESUME-CAPTCHA] Exception charging registration:', chargeError);
+          // Don't fail the entire operation - the captcha is still resolved
+        }
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Failed to update captcha status' }),
+        JSON.stringify({ 
+          success: true, 
+          message: 'Captcha resolved and registration resumed',
+          status: 'resolved',
+          captcha_event_id: captchaEvent.id
+        }),
         {
-          status: 500,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
-    }
 
-    console.log(`[RESUME-CAPTCHA] Marked captcha event ${captchaEvent.id} as resolved`);
-
-    // TODO: Resume the adapter reserve() flow
-    // This would involve:
-    // 1. Loading the original registration context
-    // 2. Calling the appropriate provider adapter with preserved session/cookies
-    // 3. Attempting the reserve() operation again
-    // 4. On success, proceeding to finalizePayment
-    // 5. On failure, marking the registration as failed
-    
-    // For now, we'll simulate success and proceed with charge
-    if (captchaEvent.registration_id) {
-      console.log(`[RESUME-CAPTCHA] Attempting to charge registration ${captchaEvent.registration_id}`);
-      
-      try {
-        // Attempt to charge the registration
-        const { error: chargeError } = await supabase.functions.invoke('charge-registration', {
-          body: { registration_id: captchaEvent.registration_id }
-        });
-
-        if (chargeError) {
-          console.error('[RESUME-CAPTCHA] Error charging registration:', chargeError);
-          // Don't fail the entire operation - the captcha is still resolved
-        } else {
-          console.log(`[RESUME-CAPTCHA] Successfully charged registration ${captchaEvent.registration_id}`);
-        }
-      } catch (chargeError) {
-        console.error('[RESUME-CAPTCHA] Exception charging registration:', chargeError);
-        // Don't fail the entire operation - the captcha is still resolved
+    } finally {
+      // Always clean up the lock
+      if (captchaEvent.registration_id) {
+        await supabase
+          .from('registration_locks')
+          .delete()
+          .eq('registration_id', captchaEvent.registration_id);
       }
     }
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Captcha resolved and registration resumed',
-        status: 'resolved',
-        captcha_event_id: captchaEvent.id
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
 
   } catch (error) {
     console.error('[RESUME-CAPTCHA] Unexpected error:', error);

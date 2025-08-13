@@ -26,9 +26,16 @@ interface SMSTemplate {
 }
 
 const SMS_TEMPLATES: Record<string, SMSTemplate> = {
+  verification: {
+    id: 'verification',
+    template: "Your verification code: {{code}}. Expires in 10 minutes.",
+    rateLimitKey: 'verification',
+    maxPerPeriod: 2,
+    periodMinutes: 10
+  },
   captcha_assist: {
     id: 'captcha_assist',
-    template: "Heads up — {{provider}} wants a quick human check for '{{session}}'. Tap to continue: {{magic_url}}. Expires in 10 min. Reply HELP for help, STOP to opt-out.",
+    template: "{{provider}} needs quick verification for '{{session}}'. Complete here: {{magic_url}}. Expires in 10 min. Reply STOP to opt-out.",
     rateLimitKey: 'captcha_assist',
     maxPerPeriod: 2,
     periodMinutes: 10
@@ -58,33 +65,63 @@ function renderTemplate(template: string, variables: SMSVariables): string {
 async function checkRateLimit(
   userId: string, 
   templateConfig: SMSTemplate
-): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
+): Promise<{ allowed: boolean; remaining: number; resetAt: Date; error?: string }> {
   if (!templateConfig.rateLimitKey || !templateConfig.maxPerPeriod || !templateConfig.periodMinutes) {
     return { allowed: true, remaining: Infinity, resetAt: new Date() };
   }
 
-  const periodStart = new Date(Date.now() - templateConfig.periodMinutes * 60 * 1000);
-  
-  // Check recent SMS sends for this user and template
-  const { data: recentSends, error } = await supabase
-    .from('sms_sends')
-    .select('id')
+  const now = new Date();
+  const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  // Check 10-minute limit (max 2)
+  const { count: recentCount, error: recentError } = await supabase
+    .from('sms_rate_limits')
+    .select('*', { count: 'exact' })
     .eq('user_id', userId)
     .eq('template_id', templateConfig.id)
-    .gte('sent_at', periodStart.toISOString());
+    .gte('sent_at', tenMinutesAgo.toISOString());
 
-  if (error) {
-    console.error('Error checking rate limit:', error);
-    // On error, allow the send (fail open)
-    return { allowed: true, remaining: templateConfig.maxPerPeriod, resetAt: new Date(Date.now() + templateConfig.periodMinutes * 60 * 1000) };
+  if (recentError) {
+    console.error('[SMS-SEND] Error checking recent rate limits:', recentError);
+    return { allowed: false, remaining: 0, resetAt: now, error: 'Rate limit check failed' };
   }
 
-  const currentCount = recentSends?.length || 0;
-  const remaining = Math.max(0, templateConfig.maxPerPeriod - currentCount);
-  const allowed = currentCount < templateConfig.maxPerPeriod;
-  const resetAt = new Date(Date.now() + templateConfig.periodMinutes * 60 * 1000);
+  if (recentCount && recentCount >= 2) {
+    return { 
+      allowed: false, 
+      remaining: 0,
+      resetAt: new Date(tenMinutesAgo.getTime() + 10 * 60 * 1000),
+      error: 'Rate limit exceeded: Maximum 2 SMS per 10 minutes. Please wait before requesting another.' 
+    };
+  }
 
-  return { allowed, remaining, resetAt };
+  // Check daily limit (max 10)
+  const { count: dailyCount, error: dailyError } = await supabase
+    .from('sms_rate_limits')
+    .select('*', { count: 'exact' })
+    .eq('user_id', userId)
+    .eq('template_id', templateConfig.id)
+    .gte('sent_at', oneDayAgo.toISOString());
+
+  if (dailyError) {
+    console.error('[SMS-SEND] Error checking daily rate limits:', dailyError);
+    return { allowed: false, remaining: 0, resetAt: now, error: 'Rate limit check failed' };
+  }
+
+  if (dailyCount && dailyCount >= 10) {
+    return { 
+      allowed: false, 
+      remaining: 0,
+      resetAt: new Date(oneDayAgo.getTime() + 24 * 60 * 60 * 1000),
+      error: 'Daily limit reached: Maximum 10 SMS per day. Please try again tomorrow.' 
+    };
+  }
+
+  const remaining = Math.max(0, templateConfig.maxPerPeriod - (recentCount || 0));
+  const resetAt = new Date(now.getTime() + templateConfig.periodMinutes * 60 * 1000);
+
+  return { allowed: true, remaining, resetAt };
 }
 
 async function sendSMS(to: string, message: string): Promise<{ success: boolean; messageSid?: string; error?: string }> {
@@ -166,7 +203,8 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`[SMS-SEND] Processing SMS for user ${user_id}, template ${template_id}, phone ${to_phone_e164}`);
+    const phoneLog = to_phone_e164.length > 4 ? `...${to_phone_e164.slice(-4)}` : to_phone_e164;
+    console.log(`[SMS-SEND] Processing SMS for user ${user_id}, template ${template_id}, phone ${phoneLog}`);
 
     // Get template configuration
     const templateConfig = SMS_TEMPLATES[template_id];
@@ -183,9 +221,12 @@ serve(async (req: Request) => {
     // Check rate limiting
     const rateLimit = await checkRateLimit(user_id, templateConfig);
     if (!rateLimit.allowed) {
+      console.log(`[SMS-SEND] Rate limit exceeded for user ${user_id}: ${rateLimit.error}`);
       return new Response(
         JSON.stringify({ 
-          error: 'Rate limit exceeded',
+          success: false,
+          error: rateLimit.error || 'Rate limit exceeded',
+          rate_limited: true,
           remaining: rateLimit.remaining,
           reset_at: rateLimit.resetAt.toISOString()
         }),
@@ -213,8 +254,17 @@ serve(async (req: Request) => {
       );
     }
 
-    // Log the send for rate limiting (best effort - don't fail if this errors)
+    // Record the SMS send for rate limiting
     try {
+      await supabase
+        .from('sms_rate_limits')
+        .insert({
+          user_id,
+          template_id,
+          sent_at: new Date().toISOString(),
+        });
+
+      // Also log the send in sms_sends table (best effort)
       await supabase
         .from('sms_sends')
         .insert({
