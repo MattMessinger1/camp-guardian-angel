@@ -5,7 +5,7 @@ export function matchWeek(
   weekOfISO: string | Date,
   sessionStartISO: string | Date,
   tz: string = 'America/Chicago',
-  offsetDays: number = 2
+  offsetDays: number = 0
 ): boolean {
   const weekDate = typeof weekOfISO === 'string' ? new Date(weekOfISO) : weekOfISO;
   const sessionDate = typeof sessionStartISO === 'string' ? new Date(sessionStartISO) : sessionStartISO;

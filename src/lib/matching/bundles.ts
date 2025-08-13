@@ -14,7 +14,7 @@ interface SortOptions {
 
 export function sortCandidates<T extends CandidateLike>(
   cands: T[],
-  { priorityRankMap = {}, weekOfISO, tz = 'America/Chicago', offsetDays = 2 }: SortOptions = {}
+  { priorityRankMap = {}, weekOfISO, tz = 'America/Chicago', offsetDays = 0 }: SortOptions = {}
 ): T[] {
   const arr = [...(cands || [])];
 
