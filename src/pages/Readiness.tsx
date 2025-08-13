@@ -8,7 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 
 interface RegistrationPlan {
@@ -27,6 +28,8 @@ export default function Readiness() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [hasCredentials, setHasCredentials] = useState(false);
   
   const [accountMode, setAccountMode] = useState<'autopilot' | 'assist'>('assist');
   const [openStrategy, setOpenStrategy] = useState<'manual' | 'published' | 'auto'>('manual');
@@ -59,6 +62,23 @@ export default function Readiness() {
     }
   }, [user]);
 
+  const checkForCredentials = async (planId: string) => {
+    if (!planId) return;
+    
+    try {
+      const { data } = await supabase
+        .from('provider_credentials')
+        .select('id')
+        .eq('user_id', user?.id)
+        .limit(1)
+        .maybeSingle();
+        
+      setHasCredentials(!!data);
+    } catch (error) {
+      console.error('Error checking credentials:', error);
+    }
+  };
+
   const loadOrCreatePlan = async () => {
     try {
       // Try to load existing plan
@@ -81,6 +101,9 @@ export default function Readiness() {
         setManualOpenAt(data.manual_open_at ? new Date(data.manual_open_at).toISOString().slice(0, 16) : '');
         setDetectUrl(data.detect_url || '');
         setTimezone(data.timezone || 'America/Chicago');
+        
+        // Check for existing credentials
+        await checkForCredentials(data.id);
       } else {
         // Create new plan
         const { data: newPlan, error: createError } = await supabase
@@ -94,6 +117,7 @@ export default function Readiness() {
 
         if (createError) throw createError;
         setPlan(newPlan);
+        await checkForCredentials(newPlan.id);
       }
     } catch (error) {
       console.error('Error loading plan:', error);
@@ -162,6 +186,11 @@ export default function Readiness() {
       setCardNumber('');
       setCvv('');
       setAccountNumber('');
+      
+      // Update credentials status
+      if (accountMode === 'autopilot' && (username || cardNumber)) {
+        setHasCredentials(true);
+      }
 
       toast({
         title: "Success",
@@ -211,6 +240,50 @@ export default function Readiness() {
       });
     } finally {
       setChecking(false);
+    }
+  };
+
+  const deleteCredentials = async () => {
+    if (!plan) return;
+    
+    setDeleting(true);
+    try {
+      const response = await supabase.functions.invoke('delete-provider-credentials', {
+        body: { plan_id: plan.id }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      // Update local state immediately
+      setAccountMode('assist');
+      setHasCredentials(false);
+      setPlan({ ...plan, account_mode: 'assist' });
+      
+      // Clear form fields
+      setUsername('');
+      setPassword('');
+      setCardNumber('');
+      setCvv('');
+      setAccountNumber('');
+      setRoutingNumber('');
+      setCardholderName('');
+      setAccountHolderName('');
+
+      toast({
+        title: "Success",
+        description: "Credentials deleted and switched to Assist mode"
+      });
+    } catch (error) {
+      console.error('Error deleting credentials:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete credentials",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -294,7 +367,34 @@ export default function Readiness() {
 
             {accountMode === 'autopilot' && (
               <div className="space-y-4 p-4 border rounded-lg">
-                <h4 className="font-medium">Camp Account Credentials</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Camp Account Credentials</h4>
+                  {hasCredentials && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={deleteCredentials}
+                            disabled={deleting}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            {deleting ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                            Delete Saved Credentials
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>We'll switch to Assist mode if credentials are deleted.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="username">Username/Email</Label>
@@ -321,7 +421,34 @@ export default function Readiness() {
 
             {accountMode === 'autopilot' && (
               <div className="space-y-4 p-4 border rounded-lg">
-                <h4 className="font-medium">Payment Information</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Payment Information</h4>
+                  {hasCredentials && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={deleteCredentials}
+                            disabled={deleting}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            {deleting ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                            Delete Payment Info
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>We'll switch to Assist mode if credentials are deleted.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
                 
                 <div className="space-y-4">
                   <div>
