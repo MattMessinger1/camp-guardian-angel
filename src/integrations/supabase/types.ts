@@ -243,6 +243,7 @@ export type Database = {
       }
       registrations: {
         Row: {
+          canonical_url: string | null
           child_id: string
           client_ip: string | null
           device_fingerprint: string | null
@@ -257,6 +258,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          canonical_url?: string | null
           child_id: string
           client_ip?: string | null
           device_fingerprint?: string | null
@@ -271,6 +273,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          canonical_url?: string | null
           child_id?: string
           client_ip?: string | null
           device_fingerprint?: string | null
