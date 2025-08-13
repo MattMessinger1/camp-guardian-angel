@@ -1,5 +1,5 @@
-import { startOfWeek, addDays, format } from "https://deno.land/x/date_fns@v2.22.1/index.js";
-import { toZonedTime } from "https://deno.land/x/date_fns_tz@v2.0.0/index.js";
+import { startOfWeek, addDays, format } from "https://esm.sh/date-fns@3.6.0";
+import { toZonedTime } from "https://esm.sh/date-fns-tz@3.2.0";
 
 /**
  * Normalize camp names for consistent matching
