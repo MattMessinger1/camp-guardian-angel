@@ -1,5 +1,8 @@
 project_id = "ezvwyfqtyanwnoyymhav"
 
+[functions.twilio-status-callback]
+verify_jwt = false
+
 [functions.register-session]
 verify_jwt = false
 
