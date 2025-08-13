@@ -5,8 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Calendar, Clock, MapPin, Settings } from "lucide-react";
+import { Loader2, Calendar, Clock, MapPin, Settings, RotateCcw, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { VisualTimeline } from "@/components/VisualTimeline";
 
@@ -21,6 +24,10 @@ interface RegistrationPlan {
   status?: string;
   created_at?: string;
   updated_at?: string;
+  retry_attempts?: number;
+  retry_delay_ms?: number;
+  fallback_strategy?: string;
+  error_recovery?: string;
 }
 
 export default function PlanDetail() {
@@ -28,6 +35,13 @@ export default function PlanDetail() {
   const { user } = useAuth();
   const [plan, setPlan] = useState<RegistrationPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // Retry settings state
+  const [retryAttempts, setRetryAttempts] = useState(3);
+  const [retryDelay, setRetryDelay] = useState(500);
+  const [fallbackStrategy, setFallbackStrategy] = useState<'alert_parent' | 'keep_trying'>('alert_parent');
+  const [errorRecovery, setErrorRecovery] = useState<'continue_from_step' | 'restart'>('restart');
 
   useEffect(() => {
     if (user && id) {
@@ -56,7 +70,14 @@ export default function PlanDetail() {
         throw error;
       }
 
-      setPlan(data);
+      const planData = data as RegistrationPlan;
+      setPlan(planData);
+      
+      // Set retry settings from plan data
+      setRetryAttempts(planData.retry_attempts || 3);
+      setRetryDelay(planData.retry_delay_ms || 500);
+      setFallbackStrategy((planData.fallback_strategy as 'alert_parent' | 'keep_trying') || 'alert_parent');
+      setErrorRecovery((planData.error_recovery as 'continue_from_step' | 'restart') || 'restart');
     } catch (error) {
       console.error('Error loading plan:', error);
       toast({
@@ -66,6 +87,49 @@ export default function PlanDetail() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveRetrySettings = async () => {
+    if (!plan) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('registration_plans')
+        .update({
+          retry_attempts: retryAttempts,
+          retry_delay_ms: retryDelay,
+          fallback_strategy: fallbackStrategy,
+          error_recovery: errorRecovery
+        } as any)
+        .eq('id', plan.id)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setPlan({
+        ...plan,
+        retry_attempts: retryAttempts,
+        retry_delay_ms: retryDelay,
+        fallback_strategy: fallbackStrategy,
+        error_recovery: errorRecovery
+      });
+
+      toast({
+        title: "Success",
+        description: "Retry settings updated successfully"
+      });
+    } catch (error) {
+      console.error('Error updating retry settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update retry settings",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -368,6 +432,112 @@ export default function PlanDetail() {
                   Preflight check not run
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Retry Settings */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <RotateCcw className="h-5 w-5 mr-2" />
+                Retry Settings
+              </CardTitle>
+              <CardDescription>
+                Configure how registration failures are handled
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="retry-attempts">Max Retry Attempts</Label>
+                  <Input
+                    id="retry-attempts"
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={retryAttempts}
+                    onChange={(e) => setRetryAttempts(parseInt(e.target.value) || 0)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    How many times to retry before giving up
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="retry-delay">Retry Delay (ms)</Label>
+                  <Input
+                    id="retry-delay"
+                    type="number"
+                    min="100"
+                    max="30000"
+                    value={retryDelay}
+                    onChange={(e) => setRetryDelay(parseInt(e.target.value) || 500)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Delay between retry attempts
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="fallback-strategy">Fallback Strategy</Label>
+                  <Select value={fallbackStrategy} onValueChange={(value: 'alert_parent' | 'keep_trying') => setFallbackStrategy(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="alert_parent">Alert Parent</SelectItem>
+                      <SelectItem value="keep_trying">Keep Trying</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {fallbackStrategy === 'alert_parent' 
+                      ? 'Send immediate alert when all retries fail'
+                      : 'Continue trying in next cron cycle'
+                    }
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="error-recovery">Error Recovery</Label>
+                  <Select value={errorRecovery} onValueChange={(value: 'continue_from_step' | 'restart') => setErrorRecovery(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="restart">Restart from Scratch</SelectItem>
+                      <SelectItem value="continue_from_step">Continue from Step</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {errorRecovery === 'restart' 
+                      ? 'Start registration process from beginning'
+                      : 'Resume from where error occurred'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <Button 
+                  onClick={saveRetrySettings} 
+                  disabled={saving}
+                  className="w-full"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Retry Settings
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

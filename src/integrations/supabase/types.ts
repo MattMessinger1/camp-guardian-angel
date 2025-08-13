@@ -703,11 +703,15 @@ export type Database = {
           child_id: string
           client_ip: string | null
           device_fingerprint: string | null
+          error_recovery: string | null
+          fallback_strategy: string | null
           id: string
           priority_opt_in: boolean
           processed_at: string | null
           provider_confirmation_id: string | null
           requested_at: string
+          retry_attempts: number | null
+          retry_delay_ms: number | null
           review_flag: boolean
           session_id: string
           status: string
@@ -718,11 +722,15 @@ export type Database = {
           child_id: string
           client_ip?: string | null
           device_fingerprint?: string | null
+          error_recovery?: string | null
+          fallback_strategy?: string | null
           id?: string
           priority_opt_in?: boolean
           processed_at?: string | null
           provider_confirmation_id?: string | null
           requested_at?: string
+          retry_attempts?: number | null
+          retry_delay_ms?: number | null
           review_flag?: boolean
           session_id: string
           status: string
@@ -733,11 +741,15 @@ export type Database = {
           child_id?: string
           client_ip?: string | null
           device_fingerprint?: string | null
+          error_recovery?: string | null
+          fallback_strategy?: string | null
           id?: string
           priority_opt_in?: boolean
           processed_at?: string | null
           provider_confirmation_id?: string | null
           requested_at?: string
+          retry_attempts?: number | null
+          retry_delay_ms?: number | null
           review_flag?: boolean
           session_id?: string
           status?: string
