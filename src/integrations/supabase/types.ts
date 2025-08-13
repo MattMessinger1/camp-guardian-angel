@@ -871,6 +871,36 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit: {
+        Row: {
+          created_at: string | null
+          event: string
+          id: string
+          ip: unknown | null
+          metadata: Json | null
+          ua: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event: string
+          id?: string
+          ip?: unknown | null
+          metadata?: Json | null
+          ua?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event?: string
+          id?: string
+          ip?: unknown | null
+          metadata?: Json | null
+          ua?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           camp_location_id: string | null

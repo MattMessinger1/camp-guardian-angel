@@ -1,5 +1,8 @@
 project_id = "ezvwyfqtyanwnoyymhav"
 
+[functions.environment-check]
+verify_jwt = false
+
 [functions.save-readiness]
 verify_jwt = true
 
