@@ -560,6 +560,8 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          assisted_signup_consent_at: string | null
+          backup_email: string | null
           created_at: string
           id: string
           phone_e164: string | null
@@ -568,6 +570,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assisted_signup_consent_at?: string | null
+          backup_email?: string | null
           created_at?: string
           id?: string
           phone_e164?: string | null
@@ -576,6 +580,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assisted_signup_consent_at?: string | null
+          backup_email?: string | null
           created_at?: string
           id?: string
           phone_e164?: string | null

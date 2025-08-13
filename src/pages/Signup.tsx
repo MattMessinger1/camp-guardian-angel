@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import AssistedSignupRequirements from "@/components/AssistedSignupRequirements";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -38,6 +39,22 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"signup" | "requirements">("signup");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check auth state
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setIsAuthenticated(true);
+        if (step === "signup") {
+          setStep("requirements");
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [step]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,11 +77,26 @@ export default function Signup() {
       toast({ title: "Sign up failed", description: error.message });
       return;
     }
-    toast({ 
-      title: "Account created!", 
-      description: "You can now log in. If you see 'check email', try logging in anyway - it might work." 
-    });
-    navigate("/login", { replace: true });
+    
+    // Check if user is already authenticated (immediate signup without email confirmation)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      setIsAuthenticated(true);
+      setStep("requirements");
+    } else {
+      toast({ 
+        title: "Account created!", 
+        description: "Please check your email to verify your account, then complete the setup." 
+      });
+    }
+  };
+
+  const handleRequirementsComplete = () => {
+    navigate("/dashboard", { replace: true });
+  };
+
+  const handleSkipRequirements = () => {
+    navigate("/dashboard", { replace: true });
   };
 
   const handleGoogle = async () => {
@@ -77,6 +109,19 @@ export default function Signup() {
       toast({ title: "Google sign-in failed", description: e.message });
     }
   };
+
+  if (step === "requirements" && isAuthenticated) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl">
+          <AssistedSignupRequirements 
+            onComplete={handleRequirementsComplete}
+            onSkip={handleSkipRequirements}
+          />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
