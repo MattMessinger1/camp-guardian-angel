@@ -641,6 +641,27 @@ export type Database = {
         }
         Relationships: []
       }
+      search_events: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           camp_location_id: string | null
@@ -910,6 +931,20 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
+      }
+      match_embeddings: {
+        Args: {
+          query_embedding: string
+          match_threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          id: string
+          kind: string
+          ref_id: string
+          text: string
+          similarity: number
+        }[]
       }
       sparsevec_out: {
         Args: { "": unknown }
