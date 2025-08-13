@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.delete-provider-credentials]
 verify_jwt = true
+
+[functions.watch-signup-open]
+verify_jwt = false
