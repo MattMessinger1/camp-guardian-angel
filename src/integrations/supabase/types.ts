@@ -78,7 +78,12 @@ export type Database = {
           detected_at: string
           expires_at: string
           id: string
-          registration_id: string
+          last_sms_sent_at: string | null
+          magic_url: string | null
+          meta: Json | null
+          provider: string | null
+          registration_id: string | null
+          resume_token: string | null
           session_id: string
           status: string
           updated_at: string
@@ -90,7 +95,12 @@ export type Database = {
           detected_at?: string
           expires_at: string
           id?: string
-          registration_id: string
+          last_sms_sent_at?: string | null
+          magic_url?: string | null
+          meta?: Json | null
+          provider?: string | null
+          registration_id?: string | null
+          resume_token?: string | null
           session_id: string
           status?: string
           updated_at?: string
@@ -102,13 +112,33 @@ export type Database = {
           detected_at?: string
           expires_at?: string
           id?: string
-          registration_id?: string
+          last_sms_sent_at?: string | null
+          magic_url?: string | null
+          meta?: Json | null
+          provider?: string | null
+          registration_id?: string | null
+          resume_token?: string | null
           session_id?: string
           status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_captcha_events_registration"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_captcha_events_session"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       children: {
         Row: {
