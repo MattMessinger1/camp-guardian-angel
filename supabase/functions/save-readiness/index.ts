@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { encrypt } from '../_shared/crypto.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,11 +29,6 @@ serve(async (req) => {
     // Get Supabase credentials from environment
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const encryptionKey = Deno.env.get('ENCRYPTION_KEY');
-    
-    if (!encryptionKey) {
-      throw new Error('ENCRYPTION_KEY not configured');
-    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -75,42 +71,37 @@ serve(async (req) => {
 
     // Handle credentials for autopilot mode
     if (account_mode === 'autopilot' && credentials) {
-      // Simple encryption using base64 (in production, use proper encryption)
-      const encoder = new TextEncoder();
-      const keyBytes = encoder.encode(encryptionKey);
-      const passwordBytes = encoder.encode(credentials.password);
-      
-      // XOR encryption (simple for demo - use proper crypto in production)
-      const encrypted = new Uint8Array(passwordBytes.length);
-      for (let i = 0; i < passwordBytes.length; i++) {
-        encrypted[i] = passwordBytes[i] ^ keyBytes[i % keyBytes.length];
-      }
-      
-      const passwordCipher = btoa(String.fromCharCode(...encrypted));
+      try {
+        // Encrypt the password using AES-256-GCM
+        const passwordCipher = await encrypt(credentials.password);
 
-      // Get plan details for camp_id
-      const { data: planData } = await supabase
-        .from('registration_plans')
-        .select('camp_id')
-        .eq('id', plan_id)
-        .eq('user_id', user.id)
-        .single();
+        // Get plan details for camp_id
+        const { data: planData } = await supabase
+          .from('registration_plans')
+          .select('camp_id')
+          .eq('id', plan_id)
+          .eq('user_id', user.id)
+          .single();
 
-      // Upsert credentials
-      const { error: credError } = await supabase
-        .from('provider_credentials')
-        .upsert({
-          user_id: user.id,
-          camp_id: planData?.camp_id || null,
-          username: credentials.username,
-          password_cipher: passwordCipher,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,camp_id'
-        });
+        // Upsert credentials
+        const { error: credError } = await supabase
+          .from('provider_credentials')
+          .upsert({
+            user_id: user.id,
+            camp_id: planData?.camp_id || null,
+            username: credentials.username,
+            password_cipher: passwordCipher,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,camp_id'
+          });
 
-      if (credError) {
-        console.warn('Failed to save credentials:', credError.message);
+        if (credError) {
+          throw new Error(`Failed to save credentials: ${credError.message}`);
+        }
+      } catch (encryptError) {
+        console.error('Error encrypting credentials:', encryptError);
+        throw new Error('Failed to encrypt credentials');
       }
     }
 
