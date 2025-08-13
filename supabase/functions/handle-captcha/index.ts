@@ -105,6 +105,7 @@ serve(async (req: Request) => {
 
     let notificationSent = false;
     let notificationMethod = 'none';
+    let notificationDetails: any = null;
 
     // If user has verified phone, send SMS using the new SMS service
     if (userProfile?.phone_verified && userProfile.phone_e164) {
@@ -143,6 +144,10 @@ serve(async (req: Request) => {
         
         notificationSent = true;
         notificationMethod = 'sms';
+        notificationDetails = {
+          phone_masked: userProfile.phone_e164.replace(/(\+\d{1,3})\d*(\d{2})$/, '$1•••-••$2'),
+          expires_minutes: 10
+        };
         console.log(`[HANDLE-CAPTCHA] SMS sent successfully, SID: ${smsResult.message_sid}`);
       }
     }
@@ -182,7 +187,8 @@ serve(async (req: Request) => {
         magic_url: magicUrl,
         expires_at: expiresAt.toISOString(),
         notification_sent: notificationSent,
-        notification_method: notificationMethod
+        notification_method: notificationMethod,
+        notification_details: notificationDetails
       }),
       {
         status: 200,

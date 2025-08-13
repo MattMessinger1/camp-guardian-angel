@@ -168,10 +168,10 @@ serve(async (req) => {
       }
 
       const expiryTime = expires_at ? new Date(expires_at).toLocaleString() : 'in 10 minutes';
-      const subject = `Action Required: Complete Registration for ${session.title ?? "Camp Session"}`;
+      const subject = `Quick confirm to finish your signup`;
       const html = `
-        <h2>Human Verification Required</h2>
-        <p>We need to verify you're human to complete your registration for <strong>${session.title ?? "Camp Session"}</strong>.</p>
+        <h2>Quick confirm to finish your signup</h2>
+        <p>A quick human verification is needed to complete your registration for <strong>${session.title ?? "Camp Session"}</strong>.</p>
         <p><strong><a href="${magic_url}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Complete Verification</a></strong></p>
         <p>This link expires: <strong>${expiryTime}</strong></p>
         <p>If you didn't request this registration, you can safely ignore this email.</p>

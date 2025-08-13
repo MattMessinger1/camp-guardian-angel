@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import Sessions from "./Sessions";
+import PhoneVerificationBanner from "@/components/PhoneVerificationBanner";
 
 export default function Dashboard() {
   const [activated, setActivated] = useState<boolean | null>(null);
@@ -44,6 +45,8 @@ export default function Dashboard() {
 
   return (
     <main className="container mx-auto py-8">
+      <PhoneVerificationBanner />
+      
       {!activated && showBanner && (
         <section className="surface-card p-4 rounded-md border mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
