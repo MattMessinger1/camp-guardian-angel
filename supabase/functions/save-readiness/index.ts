@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { encrypt, encryptPaymentMethod } from '../_shared/crypto.ts';
+import { DateTime } from 'https://esm.sh/luxon@3.4.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +13,8 @@ interface SaveReadinessRequest {
   plan_id: string;
   account_mode: 'autopilot' | 'assist';
   open_strategy: 'manual' | 'published' | 'auto';
-  manual_open_at?: string;
+  manual_open_at_local?: string;
+  timezone?: string;
   detect_url?: string;
   credentials?: {
     username: string;
@@ -65,9 +67,29 @@ serve(async (req) => {
     }
 
     const requestData: SaveReadinessRequest = await req.json();
-    const { plan_id, account_mode, open_strategy, manual_open_at, detect_url, credentials, payment_info } = requestData;
+    const { plan_id, account_mode, open_strategy, manual_open_at_local, timezone, detect_url, credentials, payment_info } = requestData;
 
-    console.log('Saving readiness for plan:', plan_id, 'mode:', account_mode);
+    console.log('Saving readiness for plan:', plan_id, 'mode:', account_mode, 'timezone:', timezone);
+
+    // Convert local time to UTC if manual strategy and local time provided
+    let manualOpenAtUTC: string | null = null;
+    if (open_strategy === 'manual' && manual_open_at_local && timezone) {
+      try {
+        // Parse the local datetime string in the specified timezone
+        const localDateTime = DateTime.fromISO(manual_open_at_local, { zone: timezone });
+        
+        if (!localDateTime.isValid) {
+          throw new Error(`Invalid datetime: ${localDateTime.invalidReason}`);
+        }
+        
+        // Convert to UTC
+        manualOpenAtUTC = localDateTime.toUTC().toISO();
+        console.log(`Converted ${manual_open_at_local} in ${timezone} to UTC: ${manualOpenAtUTC}`);
+      } catch (error) {
+        console.error('Error converting datetime:', error);
+        throw new Error('Failed to convert datetime to UTC');
+      }
+    }
 
     // Update registration plan
     const { error: updateError } = await supabase
@@ -75,7 +97,8 @@ serve(async (req) => {
       .update({
         account_mode,
         open_strategy,
-        manual_open_at: manual_open_at || null,
+        manual_open_at: manualOpenAtUTC,
+        timezone: timezone || 'America/Chicago',
         detect_url: detect_url || null,
         updated_at: new Date().toISOString()
       })

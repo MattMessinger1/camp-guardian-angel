@@ -36,6 +36,7 @@ export default function Readiness() {
   const [manualOpenAt, setManualOpenAt] = useState('');
   const [detectUrl, setDetectUrl] = useState('');
   const [timezone, setTimezone] = useState('America/Chicago');
+  const [manualOpenAtLocal, setManualOpenAtLocal] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -98,9 +99,17 @@ export default function Readiness() {
         setPlan(data);
         setAccountMode((data.account_mode as 'autopilot' | 'assist') || 'assist');
         setOpenStrategy((data.open_strategy as 'manual' | 'published' | 'auto') || 'manual');
-        setManualOpenAt(data.manual_open_at ? new Date(data.manual_open_at).toISOString().slice(0, 16) : '');
-        setDetectUrl(data.detect_url || '');
         setTimezone(data.timezone || 'America/Chicago');
+        
+        // Convert UTC manual_open_at back to local time for display
+        if (data.manual_open_at && data.timezone) {
+          const utcDate = new Date(data.manual_open_at);
+          // Create a datetime-local string (browser handles timezone display)
+          const localISOString = new Date(utcDate.getTime() - (utcDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+          setManualOpenAtLocal(localISOString);
+        } else {
+          setManualOpenAtLocal('');
+        }
         
         // Check for existing credentials
         await checkForCredentials(data.id);
@@ -158,7 +167,8 @@ export default function Readiness() {
           plan_id: plan.id,
           account_mode: accountMode,
           open_strategy: openStrategy,
-          manual_open_at: openStrategy === 'manual' ? manualOpenAt : null,
+          manual_open_at_local: openStrategy === 'manual' ? manualOpenAtLocal : null,
+          timezone: timezone,
           detect_url: ['published', 'auto'].includes(openStrategy) ? detectUrl : null,
           credentials: accountMode === 'autopilot' && username && password ? {
             username,
@@ -177,8 +187,8 @@ export default function Readiness() {
         ...plan,
         account_mode: accountMode,
         open_strategy: openStrategy,
-        manual_open_at: openStrategy === 'manual' ? manualOpenAt : null,
-        detect_url: ['published', 'auto'].includes(openStrategy) ? detectUrl : null
+        timezone: timezone,
+        manual_open_at: null // This will be set by the server response
       });
 
       // Clear sensitive data for security
@@ -641,15 +651,18 @@ export default function Readiness() {
 
             {openStrategy === 'manual' && (
               <div className="space-y-4 p-4 border rounded-lg">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="datetime">Open Date & Time</Label>
+                    <Label htmlFor="datetime">Open Date & Time (Local)</Label>
                     <Input
                       id="datetime"
                       type="datetime-local"
-                      value={manualOpenAt}
-                      onChange={(e) => setManualOpenAt(e.target.value)}
+                      value={manualOpenAtLocal}
+                      onChange={(e) => setManualOpenAtLocal(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enter time in your selected timezone
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="timezone">Timezone</Label>
@@ -657,13 +670,20 @@ export default function Readiness() {
                       id="timezone"
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <option value="America/Chicago">Central Time</option>
-                      <option value="America/New_York">Eastern Time</option>
-                      <option value="America/Denver">Mountain Time</option>
-                      <option value="America/Los_Angeles">Pacific Time</option>
+                      <option value="America/New_York">Eastern Time (ET)</option>
+                      <option value="America/Chicago">Central Time (CT)</option>
+                      <option value="America/Denver">Mountain Time (MT)</option>
+                      <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                      <option value="America/Phoenix">Arizona Time (MST)</option>
+                      <option value="America/Anchorage">Alaska Time (AKST)</option>
+                      <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
+                      <option value="UTC">UTC</option>
                     </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Times will be stored in UTC and converted back for display
+                    </p>
                   </div>
                 </div>
               </div>

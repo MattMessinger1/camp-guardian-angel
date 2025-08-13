@@ -27,6 +27,7 @@ import DevLimits from "./pages/DevLimits";
 import CaptchaAssist from "./pages/CaptchaAssist";
 import FindCamps from "./pages/FindCamps";
 import Readiness from "./pages/Readiness";
+import PlanDetail from "./pages/PlanDetail";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +93,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Readiness />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/plan/:id"
+                element={
+                  <ProtectedRoute>
+                    <PlanDetail />
                   </ProtectedRoute>
                 }
               />
