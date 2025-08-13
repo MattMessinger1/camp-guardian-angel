@@ -19,6 +19,8 @@ export interface EnvironmentConfig {
   VGS_VAULT_ID: string;
   VGS_ENV: 'sandbox' | 'live';
   VGS_COLLECT_PUBLIC_KEY: string;
+  VGS_INBOUND_HOST: string;
+  VGS_OUTBOUND_HOST: string;
   
   // Application Configuration
   APP_BASE_URL: string;
@@ -99,6 +101,18 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     required: true,
     description: 'VGS Collect public key for frontend tokenization',
     sensitive: false,
+  },
+  {
+    key: 'VGS_INBOUND_HOST',
+    required: true,
+    description: 'VGS inbound proxy host for secure data collection',
+    sensitive: false,
+  },
+  {
+    key: 'VGS_OUTBOUND_HOST',
+    required: true,
+    description: 'VGS outbound proxy host for secure data transmission',
+    sensitive: true,
   },
   {
     key: 'APP_BASE_URL',
