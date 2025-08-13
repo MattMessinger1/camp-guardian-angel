@@ -12,6 +12,7 @@ import { Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from "lucide-react
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { VisualTimeline } from "@/components/VisualTimeline";
+import { MultiSessionPlanner } from "@/components/MultiSessionPlanner";
 
 interface RegistrationPlan {
   id: string;
@@ -297,6 +298,36 @@ export default function Readiness() {
       });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const scheduleFromReadiness = async () => {
+    if (!plan) return;
+    
+    try {
+      const response = await supabase.functions.invoke('schedule-from-readiness', {
+        body: { plan_id: plan.id }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      toast({
+        title: "Scheduling Complete",
+        description: `Created ${result.registrations_created} registrations for ${result.children_processed} children`,
+      });
+
+      // Reload the plan to get updated status
+      await loadOrCreatePlan();
+    } catch (error) {
+      console.error('Error scheduling from readiness:', error);
+      toast({
+        title: "Error",
+        description: "Failed to schedule registrations",
+        variant: "destructive"
+      });
     }
   };
 
@@ -770,6 +801,39 @@ export default function Readiness() {
             {getPreflightBadge()}
           </Button>
         </div>
+
+        {/* Multi-Child Registration Planner */}
+        {plan && (
+          <MultiSessionPlanner 
+            planId={plan.id} 
+            onUpdate={loadOrCreatePlan}
+          />
+        )}
+
+        {/* Schedule Registrations */}
+        {plan && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Execute Registration Plan</CardTitle>
+              <CardDescription>
+                Create registrations for all planned children based on their priority and conflict resolution settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={scheduleFromReadiness} 
+                className="w-full" 
+                size="lg"
+                disabled={!plan}
+              >
+                Schedule All Registrations
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                This will create registration requests for all children in priority order
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

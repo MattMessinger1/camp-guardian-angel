@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Calendar, Clock, MapPin, Settings, RotateCcw, Save } from "lucide-react";
+import { Loader2, Calendar, Clock, MapPin, Settings, RotateCcw, Save, Users } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { VisualTimeline } from "@/components/VisualTimeline";
+import { MultiChildSummary } from "@/components/MultiChildSummary";
 
 interface RegistrationPlan {
   id: string;
@@ -257,6 +258,22 @@ export default function PlanDetail() {
         </div>
 
         <div className="grid grid-cols-1 gap-6">
+          {/* Multi-Child Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Users className="h-5 w-5 mr-2" />
+                Multi-Child Registration Summary
+              </CardTitle>
+              <CardDescription>
+                Overview of children and sessions planned for registration
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MultiChildSummary planId={plan.id} />
+            </CardContent>
+          </Card>
+
           {/* Progress Timeline */}
           <Card>
             <CardHeader>

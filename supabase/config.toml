@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.test-adaptive-polling]
 verify_jwt = false
+
+[functions.schedule-from-readiness]
+verify_jwt = true

@@ -419,6 +419,54 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_children_map: {
+        Row: {
+          child_id: string
+          conflict_resolution: string | null
+          created_at: string | null
+          id: string
+          plan_id: string
+          priority: number | null
+          session_ids: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          child_id: string
+          conflict_resolution?: string | null
+          created_at?: string | null
+          id?: string
+          plan_id: string
+          priority?: number | null
+          session_ids?: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          child_id?: string
+          conflict_resolution?: string | null
+          created_at?: string | null
+          id?: string
+          plan_id?: string
+          priority?: number | null
+          session_ids?: string[]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_children_map_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_children_map_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "registration_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prewarm_jobs: {
         Row: {
           created_at: string
