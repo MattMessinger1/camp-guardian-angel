@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { encrypt } from '../_shared/crypto.ts';
+import { encrypt, encryptPaymentMethod } from '../_shared/crypto.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,6 +17,23 @@ interface SaveReadinessRequest {
   credentials?: {
     username: string;
     password: string;
+  } | null;
+  payment_info?: {
+    payment_type: 'card' | 'ach' | 'defer';
+    amount_strategy: 'deposit' | 'full' | 'minimum';
+    payment_method?: {
+      // For card payments
+      card_number?: string;
+      exp_month?: string;
+      exp_year?: string;
+      cvv?: string;
+      cardholder_name?: string;
+      // For ACH payments
+      account_number?: string;
+      routing_number?: string;
+      account_type?: 'checking' | 'savings';
+      account_holder_name?: string;
+    };
   } | null;
 }
 
@@ -48,7 +65,7 @@ serve(async (req) => {
     }
 
     const requestData: SaveReadinessRequest = await req.json();
-    const { plan_id, account_mode, open_strategy, manual_open_at, detect_url, credentials } = requestData;
+    const { plan_id, account_mode, open_strategy, manual_open_at, detect_url, credentials, payment_info } = requestData;
 
     console.log('Saving readiness for plan:', plan_id, 'mode:', account_mode);
 
@@ -69,12 +86,9 @@ serve(async (req) => {
       throw new Error(`Failed to update plan: ${updateError.message}`);
     }
 
-    // Handle credentials for autopilot mode
-    if (account_mode === 'autopilot' && credentials) {
+    // Handle credentials and payment info for autopilot mode
+    if (account_mode === 'autopilot' && (credentials || payment_info)) {
       try {
-        // Encrypt the password using AES-256-GCM
-        const passwordCipher = await encrypt(credentials.password);
-
         // Get plan details for camp_id
         const { data: planData } = await supabase
           .from('registration_plans')
@@ -83,16 +97,46 @@ serve(async (req) => {
           .eq('user_id', user.id)
           .single();
 
+        let passwordCipher: string | undefined;
+        let paymentMethodCipher: string | undefined;
+
+        // Encrypt password if provided
+        if (credentials?.password) {
+          passwordCipher = await encrypt(credentials.password);
+        }
+
+        // Encrypt payment method if provided
+        if (payment_info?.payment_method && payment_info.payment_type !== 'defer') {
+          paymentMethodCipher = await encryptPaymentMethod(payment_info.payment_method);
+        }
+
         // Upsert credentials
+        const updateData: any = {
+          user_id: user.id,
+          camp_id: planData?.camp_id || null,
+          updated_at: new Date().toISOString()
+        };
+
+        if (credentials?.username) {
+          updateData.username = credentials.username;
+        }
+        
+        if (passwordCipher) {
+          updateData.password_cipher = passwordCipher;
+        }
+
+        if (payment_info) {
+          updateData.payment_type = payment_info.payment_type;
+          updateData.amount_strategy = payment_info.amount_strategy;
+          
+          if (paymentMethodCipher) {
+            updateData.payment_method_cipher = paymentMethodCipher;
+          }
+        }
+
         const { error: credError } = await supabase
           .from('provider_credentials')
-          .upsert({
-            user_id: user.id,
-            camp_id: planData?.camp_id || null,
-            username: credentials.username,
-            password_cipher: passwordCipher,
-            updated_at: new Date().toISOString()
-          }, {
+          .upsert(updateData, {
             onConflict: 'user_id,camp_id'
           });
 
@@ -100,8 +144,8 @@ serve(async (req) => {
           throw new Error(`Failed to save credentials: ${credError.message}`);
         }
       } catch (encryptError) {
-        console.error('Error encrypting credentials:', encryptError);
-        throw new Error('Failed to encrypt credentials');
+        console.error('Error encrypting credentials or payment info:', encryptError);
+        throw new Error('Failed to encrypt sensitive data');
       }
     }
 

@@ -95,3 +95,23 @@ export async function decrypt(cipherBase64: string): Promise<string> {
   // Return as string
   return new TextDecoder().decode(decrypted);
 }
+
+/**
+ * Encrypts payment method data (card or ACH details)
+ * @param paymentData - Payment method object to encrypt
+ * @returns Promise<string> - Base64 encoded encrypted payment data
+ */
+export async function encryptPaymentMethod(paymentData: any): Promise<string> {
+  const jsonString = JSON.stringify(paymentData);
+  return await encrypt(jsonString);
+}
+
+/**
+ * Decrypts payment method data
+ * @param encryptedData - Base64 encoded encrypted payment data
+ * @returns Promise<any> - Decrypted payment method object
+ */
+export async function decryptPaymentMethod(encryptedData: string): Promise<any> {
+  const jsonString = await decrypt(encryptedData);
+  return JSON.parse(jsonString);
+}

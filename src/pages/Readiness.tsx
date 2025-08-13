@@ -35,6 +35,23 @@ export default function Readiness() {
   const [timezone, setTimezone] = useState('America/Chicago');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Payment info state
+  const [paymentType, setPaymentType] = useState<'card' | 'ach' | 'defer'>('card');
+  const [amountStrategy, setAmountStrategy] = useState<'deposit' | 'full' | 'minimum'>('full');
+  
+  // Card payment fields
+  const [cardNumber, setCardNumber] = useState('');
+  const [expMonth, setExpMonth] = useState('');
+  const [expYear, setExpYear] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
+  
+  // ACH payment fields
+  const [accountNumber, setAccountNumber] = useState('');
+  const [routingNumber, setRoutingNumber] = useState('');
+  const [accountType, setAccountType] = useState<'checking' | 'savings'>('checking');
+  const [accountHolderName, setAccountHolderName] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -95,6 +112,23 @@ export default function Readiness() {
     
     setSaving(true);
     try {
+      const paymentInfo = accountMode === 'autopilot' ? {
+        payment_type: paymentType,
+        amount_strategy: amountStrategy,
+        payment_method: paymentType === 'defer' ? null : paymentType === 'card' ? {
+          card_number: cardNumber,
+          exp_month: expMonth,
+          exp_year: expYear,
+          cvv: cvv,
+          cardholder_name: cardholderName
+        } : {
+          account_number: accountNumber,
+          routing_number: routingNumber,
+          account_type: accountType,
+          account_holder_name: accountHolderName
+        }
+      } : null;
+
       const response = await supabase.functions.invoke('save-readiness', {
         body: {
           plan_id: plan.id,
@@ -105,7 +139,8 @@ export default function Readiness() {
           credentials: accountMode === 'autopilot' && username && password ? {
             username,
             password
-          } : null
+          } : null,
+          payment_info: paymentInfo
         }
       });
 
@@ -122,8 +157,11 @@ export default function Readiness() {
         detect_url: ['published', 'auto'].includes(openStrategy) ? detectUrl : null
       });
 
-      // Clear password for security
+      // Clear sensitive data for security
       setPassword('');
+      setCardNumber('');
+      setCvv('');
+      setAccountNumber('');
 
       toast({
         title: "Success",
@@ -277,6 +315,166 @@ export default function Readiness() {
                       placeholder="••••••••"
                     />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {accountMode === 'autopilot' && (
+              <div className="space-y-4 p-4 border rounded-lg">
+                <h4 className="font-medium">Payment Information</h4>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label>Payment Type</Label>
+                    <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as 'card' | 'ach' | 'defer')}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="card" id="card" />
+                        <Label htmlFor="card">Credit/Debit Card</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="ach" id="ach" />
+                        <Label htmlFor="ach">Bank Account (ACH)</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="defer" id="defer" />
+                        <Label htmlFor="defer">Defer Payment (Skip)</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div>
+                    <Label>Amount Strategy</Label>
+                    <RadioGroup value={amountStrategy} onValueChange={(value) => setAmountStrategy(value as 'deposit' | 'full' | 'minimum')}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="deposit" id="deposit" />
+                        <Label htmlFor="deposit">Deposit Only</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="full" id="full" />
+                        <Label htmlFor="full">Full Amount</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="minimum" id="minimum" />
+                        <Label htmlFor="minimum">Minimum Required</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {paymentType === 'card' && (
+                    <div className="space-y-4">
+                      <h5 className="font-medium text-sm">Card Details</h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                          <Label htmlFor="cardNumber">Card Number</Label>
+                          <Input
+                            id="cardNumber"
+                            value={cardNumber}
+                            onChange={(e) => setCardNumber(e.target.value)}
+                            placeholder="1234 5678 9012 3456"
+                            type="password"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="expMonth">Exp Month</Label>
+                          <Input
+                            id="expMonth"
+                            value={expMonth}
+                            onChange={(e) => setExpMonth(e.target.value)}
+                            placeholder="MM"
+                            maxLength={2}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="expYear">Exp Year</Label>
+                          <Input
+                            id="expYear"
+                            value={expYear}
+                            onChange={(e) => setExpYear(e.target.value)}
+                            placeholder="YY"
+                            maxLength={2}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cvv">CVV</Label>
+                          <Input
+                            id="cvv"
+                            value={cvv}
+                            onChange={(e) => setCvv(e.target.value)}
+                            placeholder="123"
+                            type="password"
+                            maxLength={4}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cardholderName">Cardholder Name</Label>
+                          <Input
+                            id="cardholderName"
+                            value={cardholderName}
+                            onChange={(e) => setCardholderName(e.target.value)}
+                            placeholder="John Doe"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentType === 'ach' && (
+                    <div className="space-y-4">
+                      <h5 className="font-medium text-sm">Bank Account Details</h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="routingNumber">Routing Number</Label>
+                          <Input
+                            id="routingNumber"
+                            value={routingNumber}
+                            onChange={(e) => setRoutingNumber(e.target.value)}
+                            placeholder="123456789"
+                            type="password"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="accountNumber">Account Number</Label>
+                          <Input
+                            id="accountNumber"
+                            value={accountNumber}
+                            onChange={(e) => setAccountNumber(e.target.value)}
+                            placeholder="Account number"
+                            type="password"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="accountType">Account Type</Label>
+                          <select
+                            id="accountType"
+                            value={accountType}
+                            onChange={(e) => setAccountType(e.target.value as 'checking' | 'savings')}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          >
+                            <option value="checking">Checking</option>
+                            <option value="savings">Savings</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                          <Input
+                            id="accountHolderName"
+                            value={accountHolderName}
+                            onChange={(e) => setAccountHolderName(e.target.value)}
+                            placeholder="John Doe"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentType === 'defer' && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Payment will be skipped during registration. You'll need to complete payment manually.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               </div>
             )}

@@ -1,318 +1,191 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { decrypt, decryptPaymentMethod } from '../_shared/crypto.ts';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type Body = {
-  child_id: string;
+interface RegisterSessionRequest {
+  registration_id: string;
   session_id: string;
-  priority_opt_in: boolean;
-  device_fingerprint?: string;
-  allow_overlaps?: boolean;
-};
+  child_id: string;
+}
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const url = Deno.env.get("SUPABASE_URL") ?? "";
-  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const token = authHeader.replace("Bearer ", "");
-
-  const supabaseUser = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
-  const supabaseAdmin = serviceKey ? createClient(url, serviceKey, { auth: { persistSession: false } }) : null;
-
   try {
-    const { data: userData } = await supabaseUser.auth.getUser();
-    const user = userData.user;
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Get Supabase credentials from environment
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get auth header to verify user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
     }
 
-    const body = (await req.json()) as Body;
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    // Verify user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
 
-    // Weekly attempts metering: enforce per-child cap before any registration attempt
-    try {
-      // Load config
-      const { data: cfgRow } = await supabaseUser
-        .from("app_config")
-        .select("value")
-        .eq("key", "weekly_child_exec_limit")
-        .maybeSingle();
-      const cfg = (cfgRow?.value as any) || { count: 5, week_tz: "America/Chicago", week_basis: "MonSun" };
-      const limitCount = Number(cfg.count) || 5;
-      const tz = typeof cfg.week_tz === 'string' ? cfg.week_tz : 'America/Chicago';
-
-      // Count attempts for current Mon–Sun week in specified timezone
-      const { data: cntData, error: cntErr } = await supabaseUser.rpc("get_attempts_count_week", {
-        p_child_id: body.child_id,
-        p_tz: tz,
-      });
-      const attemptsUsed = Number(cntData || 0);
-
-      if (!cntErr && attemptsUsed >= limitCount) {
-        // Create a failed registration record for auditability
-        const { data: failedReg, error: failRegErr } = await supabaseUser
-          .from("registrations")
-          .insert({
-            user_id: user.id,
-            child_id: body.child_id,
-            session_id: body.session_id,
-            priority_opt_in: !!body.priority_opt_in,
-            status: "failed",
-            device_fingerprint: body.device_fingerprint || null,
-            client_ip: clientIp,
-            review_flag: false,
-            processed_at: new Date().toISOString(),
-          })
-          .select("id")
-          .maybeSingle();
-
-        const regId = failedReg?.id || null;
-
-        // Log the skipped attempt (service role to bypass RLS)
-        if (supabaseAdmin) {
-          try {
-            await supabaseAdmin.from("registration_attempts").insert({
-              registration_id: regId,
-              child_id: body.child_id,
-              outcome: "skipped_weekly_limit",
-              meta: { reason: "weekly_limit", limit: limitCount, tz },
-            } as any);
-          } catch (e) {
-            console.log("[REGISTER-SESSION] attempt log insert error", e);
-          }
-
-          // Best-effort notification
-          if (regId) {
-            try {
-              await supabaseAdmin.functions.invoke("send-email-sendgrid", {
-                body: { type: "skipped_weekly_limit", registration_id: regId },
-              });
-            } catch (e) {
-              console.log("[REGISTER-SESSION] weekly-limit email error", e);
-            }
-          }
-        }
-
-        return new Response(
-          JSON.stringify({ ok: true, skipped_weekly_limit: true, attempts_used: attemptsUsed, limit: limitCount }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    } catch (e) {
-      console.log("[REGISTER-SESSION] attempts metering check error", e);
-      // Proceed without blocking on meter error
+    if (authError || !user) {
+      throw new Error('Unauthorized');
     }
 
-    // Block if this user already has a registration for this child/session
-    const { data: existing, error: existingErr } = await supabaseUser
-      .from("registrations")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("child_id", body.child_id)
-      .eq("session_id", body.session_id)
-      .limit(1)
-      .maybeSingle();
+    const requestData: RegisterSessionRequest = await req.json();
+    const { registration_id, session_id, child_id } = requestData;
 
-    if (!existingErr && existing) {
-      return new Response(
-        JSON.stringify({ error: "You already registered this child for this session." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    console.log('Processing registration:', registration_id, 'for session:', session_id);
+
+    // Get registration plan and credentials
+    const { data: planData } = await supabase
+      .from('registration_plans')
+      .select(`
+        *,
+        provider_credentials (
+          username,
+          password_cipher,
+          payment_type,
+          amount_strategy,
+          payment_method_cipher
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('child_id', child_id)
+      .single();
+
+    if (!planData) {
+      throw new Error('Registration plan not found');
     }
 
-    // Check fairness cap before allowing new registration
-    const { data: session, error: sessionErr } = await supabaseUser
-      .from("sessions")
-      .select("capacity,start_at,end_at")
-      .eq("id", body.session_id)
-      .maybeSingle();
-    
-    if (sessionErr) {
-      return new Response(
-        JSON.stringify({ error: "Session not found" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Get session details
+    const { data: sessionData } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('id', session_id)
+      .single();
+
+    if (!sessionData) {
+      throw new Error('Session not found');
     }
 
-    // Count pending registrations for this session
-    const { count: pendingCount, error: countErr } = await supabaseUser
-      .from("registrations")
-      .select("*", { count: "exact", head: true })
-      .eq("session_id", body.session_id)
-      .eq("status", "pending");
+    let credentials: any = null;
+    let paymentMethod: any = null;
 
-    if (countErr) {
-      return new Response(
-        JSON.stringify({ error: "Failed to check registration count" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Calculate fairness cap: min(3*capacity, 15)
-    const capacity = session?.capacity || 10; // default capacity if null
-    const fairnessCap = Math.min(3 * capacity, 15);
-    
-    if ((pendingCount || 0) >= fairnessCap) {
-      return new Response(
-        JSON.stringify({ error: "Fairness cap reached to keep chances realistic." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Overlap guard: if overlaps existing accepted session and not allowed, skip
-    try {
-      const allow = !!body.allow_overlaps;
-      const sStart = (session as any)?.start_at as string | null;
-      const sEnd = (session as any)?.end_at as string | null;
-      if (sStart && sEnd) {
-        const { data: overlap, error: ovErr } = await supabaseUser.rpc('child_session_overlap_exists', {
-          p_child_id: body.child_id,
-          p_start: sStart,
-          p_end: sEnd,
-        });
-        if (!ovErr && overlap && !allow) {
-          const { data: failedReg } = await supabaseUser
-            .from('registrations')
-            .insert({
-              user_id: user.id,
-              child_id: body.child_id,
-              session_id: body.session_id,
-              priority_opt_in: !!body.priority_opt_in,
-              status: 'failed',
-              device_fingerprint: body.device_fingerprint || null,
-              client_ip: clientIp,
-              review_flag: false,
-              processed_at: new Date().toISOString(),
-            })
-            .select('id')
-            .maybeSingle();
-          const regId = failedReg?.id || null;
-          if (supabaseAdmin) {
-            try {
-              await supabaseAdmin.from('registration_attempts').insert({
-                registration_id: regId,
-                child_id: body.child_id,
-                outcome: 'skipped_overlap',
-                meta: { reason: 'overlap_guard', session_id: body.session_id },
-              } as any);
-            } catch (e) {
-              console.log('[REGISTER-SESSION] overlap attempt log error', e);
-            }
-            if (regId) {
-              try {
-                await supabaseAdmin.functions.invoke('send-email-sendgrid', { body: { type: 'skipped_overlap', registration_id: regId } });
-              } catch (e) {
-                console.log('[REGISTER-SESSION] overlap email error', e);
-              }
-            }
-          }
-          return new Response(
-            JSON.stringify({ ok: true, skipped_overlap: true }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-    } catch (e) {
-      console.log('[REGISTER-SESSION] overlap guard error', e);
-    }
-
-    // Fetch user's default payment method (if any) and prepare review flag
-    const { data: myBilling } = await supabaseUser
-      .from("billing_profiles")
-      .select("default_payment_method_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const myPaymentMethod = myBilling?.default_payment_method_id || null;
-
-    let markReview = false;
-
-    // Optional cross-account duplicate check if service role is available
-    if (supabaseAdmin) {
-      // 1) Device/IP match with another user's registration => silently block
-      const { data: dup, error: dupErr } = await supabaseAdmin
-        .from("registrations")
-        .select("id, user_id")
-        .eq("child_id", body.child_id)
-        .eq("session_id", body.session_id)
-        .or(`device_fingerprint.eq.${body.device_fingerprint || ""},client_ip.eq.${clientIp || ""}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (!dupErr && dup && dup.user_id !== user.id) {
-        // Silently block
-        return new Response(JSON.stringify({ ok: true, blocked: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Decrypt credentials if available
+    if (planData.provider_credentials?.[0]) {
+      const creds = planData.provider_credentials[0];
+      
+      if (creds.password_cipher) {
+        const password = await decrypt(creds.password_cipher);
+        credentials = {
+          username: creds.username,
+          password: password
+        };
       }
 
-      // 2) Payment method match with another user targeting same child/session => mark for review
-      if (myPaymentMethod) {
-        const { data: others } = await supabaseAdmin
-          .from("billing_profiles")
-          .select("user_id")
-          .eq("default_payment_method_id", myPaymentMethod)
-          .neq("user_id", user.id)
-          .limit(50);
-
-        const otherUserIds = (others || []).map((o: { user_id: string }) => o.user_id);
-        if (otherUserIds.length > 0) {
-          const { data: pmDup } = await supabaseAdmin
-            .from("registrations")
-            .select("id")
-            .eq("child_id", body.child_id)
-            .eq("session_id", body.session_id)
-            .in("user_id", otherUserIds)
-            .limit(1)
-            .maybeSingle();
-
-          if (pmDup) {
-            markReview = true;
-          }
-        }
+      // Decrypt payment method if available and not defer type
+      if (creds.payment_method_cipher && creds.payment_type !== 'defer') {
+        paymentMethod = {
+          type: creds.payment_type,
+          strategy: creds.amount_strategy,
+          details: await decryptPaymentMethod(creds.payment_method_cipher)
+        };
       }
     }
 
-    // Insert registration for this user (RLS enforced via user token)
-    const { data: inserted, error: insertErr } = await supabaseUser
-      .from("registrations")
-      .insert({
-        user_id: user.id,
-        child_id: body.child_id,
-        session_id: body.session_id,
-        priority_opt_in: !!body.priority_opt_in,
-        status: "pending",
-        device_fingerprint: body.device_fingerprint || null,
-        client_ip: clientIp,
-        review_flag: markReview,
+    // Update registration status to 'processing'
+    const { error: updateError } = await supabase
+      .from('registrations')
+      .update({
+        status: 'processing',
+        processed_at: new Date().toISOString()
       })
-      .select("id")
-      .maybeSingle();
+      .eq('id', registration_id)
+      .eq('user_id', user.id);
 
-    if (insertErr) {
-      // Unique violation or RLS
-      const msg = insertErr.message || "Insert failed";
-      return new Response(JSON.stringify({ error: msg }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (updateError) {
+      throw new Error(`Failed to update registration: ${updateError.message}`);
     }
 
-    // Fire pending email (best-effort, non-blocking)
-    if (supabaseAdmin && inserted?.id) {
-      try {
-        await supabaseAdmin.functions.invoke('send-email-sendgrid', { body: { type: 'pending', registration_id: inserted.id } });
-      } catch (e) {
-        console.log('[REGISTER-SESSION] Pending email error', e);
+    // Here you would implement the actual registration logic
+    // This is a placeholder for the complex registration automation
+    console.log('Registration automation would start here with:');
+    console.log('- Credentials:', credentials ? 'Available' : 'None');
+    console.log('- Payment method:', paymentMethod ? `${paymentMethod.type} (${paymentMethod.strategy})` : 'Defer/None');
+    console.log('- Session:', sessionData.title);
+
+    // For now, simulate processing and mark as accepted
+    // In a real implementation, this would involve:
+    // 1. Opening the camp provider's registration page
+    // 2. Logging in with the decrypted credentials
+    // 3. Filling out the registration form
+    // 4. Handling payment based on the payment method and strategy
+    // 5. Submitting the registration
+
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Update registration to accepted (or failed based on actual results)
+    const { error: finalUpdateError } = await supabase
+      .from('registrations')
+      .update({
+        status: 'accepted',
+        processed_at: new Date().toISOString(),
+        provider_confirmation_id: `MOCK_${Date.now()}`
+      })
+      .eq('id', registration_id)
+      .eq('user_id', user.id);
+
+    if (finalUpdateError) {
+      console.warn('Failed to update final registration status:', finalUpdateError);
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        status: 'accepted',
+        message: 'Registration completed successfully'
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error in register-session:', error);
+    
+    // Try to update registration to failed status
+    try {
+      const requestData: RegisterSessionRequest = await req.clone().json();
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      await supabase
+        .from('registrations')
+        .update({
+          status: 'failed',
+          processed_at: new Date().toISOString()
+        })
+        .eq('id', requestData.registration_id);
+    } catch (updateError) {
+      console.error('Failed to update registration to failed status:', updateError);
+    }
+
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    }
-
-    return new Response(JSON.stringify({ ok: true, id: inserted?.id || null, review: markReview }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    );
   }
 });

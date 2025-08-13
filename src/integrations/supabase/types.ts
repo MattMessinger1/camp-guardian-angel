@@ -459,25 +459,34 @@ export type Database = {
       }
       provider_credentials: {
         Row: {
+          amount_strategy: string | null
           camp_id: string | null
           id: string
           password_cipher: string
+          payment_method_cipher: string | null
+          payment_type: string | null
           updated_at: string | null
           user_id: string
           username: string
         }
         Insert: {
+          amount_strategy?: string | null
           camp_id?: string | null
           id?: string
           password_cipher: string
+          payment_method_cipher?: string | null
+          payment_type?: string | null
           updated_at?: string | null
           user_id: string
           username: string
         }
         Update: {
+          amount_strategy?: string | null
           camp_id?: string | null
           id?: string
           password_cipher?: string
+          payment_method_cipher?: string | null
+          payment_type?: string | null
           updated_at?: string | null
           user_id?: string
           username?: string
