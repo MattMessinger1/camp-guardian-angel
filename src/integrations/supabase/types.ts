@@ -71,6 +71,45 @@ export type Database = {
         }
         Relationships: []
       }
+      captcha_events: {
+        Row: {
+          challenge_url: string | null
+          created_at: string
+          detected_at: string
+          expires_at: string
+          id: string
+          registration_id: string
+          session_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_url?: string | null
+          created_at?: string
+          detected_at?: string
+          expires_at: string
+          id?: string
+          registration_id: string
+          session_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_url?: string | null
+          created_at?: string
+          detected_at?: string
+          expires_at?: string
+          id?: string
+          registration_id?: string
+          session_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       children: {
         Row: {
           created_at: string
@@ -392,6 +431,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sms_opt_ins: {
+        Row: {
+          carrier_metadata: Json | null
+          created_at: string
+          last_opt_in_at: string
+          opted_in: boolean
+          phone_e164: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          carrier_metadata?: Json | null
+          created_at?: string
+          last_opt_in_at?: string
+          opted_in?: boolean
+          phone_e164: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          carrier_metadata?: Json | null
+          created_at?: string
+          last_opt_in_at?: string
+          opted_in?: boolean
+          phone_e164?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

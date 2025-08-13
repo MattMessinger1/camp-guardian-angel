@@ -182,6 +182,18 @@ export default function Settings() {
               <p className="text-sm text-red-600">Error loading Twilio status: {twilioError}</p>
             ) : (
               <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-medium text-amber-800">Production Requirement</h4>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Register A2P 10DLC before production to ensure deliverability and compliance.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex items-center gap-2">
                   {twilioStatus?.ok ? (
                     <CheckCircle className="h-5 w-5 text-green-500" />
