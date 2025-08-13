@@ -167,13 +167,32 @@ function getEnvironmentVariable(key: string): string | undefined {
   // In browser environment, only NEXT_PUBLIC_ variables are available
   if (typeof window !== 'undefined') {
     if (key.startsWith('NEXT_PUBLIC_')) {
-      return (window as any).__ENV__?.[key] || (process as any)?.env?.[key];
+      // Try to get from window.__ENV__ first (if set by build process)
+      const windowEnv = (window as any).__ENV__?.[key];
+      if (windowEnv) return windowEnv;
+      
+      // For Lovable environment, hardcode the known values
+      if (key === 'NEXT_PUBLIC_SUPABASE_URL') {
+        return 'https://ezvwyfqtyanwnoyymhav.supabase.co';
+      }
+      if (key === 'NEXT_PUBLIC_SUPABASE_ANON_KEY') {
+        return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dnd5ZnF0eWFud25veXltaGF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NjY5MjQsImV4cCI6MjA3MDQ0MjkyNH0.FxQZcpBxYVmnUI-yyE15N7y-ai6ADPiQV9X8szQtIjI';
+      }
     }
     return undefined;
   }
   
   // In server environment (Edge Functions), all variables are available
-  return (globalThis as any).Deno?.env?.get?.(key) || (process as any)?.env?.[key];
+  if (typeof globalThis !== 'undefined' && (globalThis as any).Deno) {
+    return (globalThis as any).Deno.env.get(key);
+  }
+  
+  // Fallback for Node.js environments (if process is available)
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  
+  return undefined;
 }
 
 export function getEnvironmentStatus() {
