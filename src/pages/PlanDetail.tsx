@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Calendar, Clock, MapPin, Settings } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { VisualTimeline } from "@/components/VisualTimeline";
 
 interface RegistrationPlan {
   id: string;
@@ -130,6 +131,27 @@ export default function PlanDetail() {
     );
   };
 
+  const getCurrentStage = () => {
+    if (!plan) return 'research';
+    
+    if (plan.status === 'completed') return 'registration';
+    if (plan.account_mode === 'assist') return 'research';
+    if (!plan.preflight_status || plan.preflight_status === 'unknown' || plan.preflight_status === 'failed') return 'preflight';
+    
+    if (plan.open_strategy === 'manual' && plan.manual_open_at) {
+      const openTime = new Date(plan.manual_open_at);
+      const now = new Date();
+      if (now >= openTime) return 'registration';
+      return 'activate';
+    }
+    
+    if (['published', 'auto'].includes(plan.open_strategy || '') && plan.detect_url) {
+      return 'monitor';
+    }
+    
+    return 'preflight';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -167,6 +189,30 @@ export default function PlanDetail() {
             <Settings className="h-4 w-4 mr-2" />
             Edit Plan
           </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          {/* Progress Timeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Registration Progress</CardTitle>
+              <CardDescription>
+                Your current progress through the automated registration process
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <VisualTimeline 
+                currentStage={getCurrentStage()}
+                planData={{
+                  research_start: plan.created_at,
+                  preflight_date: plan.updated_at,
+                  monitor_start: ['published', 'auto'].includes(plan.open_strategy || '') ? plan.updated_at : undefined,
+                  scheduled_time: plan.open_strategy === 'manual' && plan.manual_open_at ? plan.manual_open_at : undefined,
+                  timezone: plan.timezone
+                }}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
+import { VisualTimeline } from "@/components/VisualTimeline";
 
 interface RegistrationPlan {
   id: string;
@@ -20,6 +21,8 @@ interface RegistrationPlan {
   detect_url?: string;
   timezone?: string;
   preflight_status?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export default function Readiness() {
@@ -327,14 +330,43 @@ export default function Readiness() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="space-y-6">
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold">Registration Readiness</h1>
           <p className="text-muted-foreground mt-2">
             Configure how Guardian Angel will handle your camp registration.
           </p>
         </div>
+
+        {/* Visual Timeline */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Registration Process</CardTitle>
+            <CardDescription>
+              Track your progress through the automated registration setup
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <VisualTimeline 
+              currentStage={
+                !accountMode || accountMode === 'assist' ? 'research' :
+                !plan?.preflight_status || plan.preflight_status === 'unknown' ? 'preflight' :
+                plan.preflight_status === 'failed' ? 'preflight' :
+                openStrategy === 'manual' && manualOpenAtLocal ? 'activate' :
+                ['published', 'auto'].includes(openStrategy) && detectUrl ? 'monitor' :
+                'preflight'
+              }
+              planData={{
+                research_start: plan?.created_at,
+                preflight_date: plan?.updated_at,
+                monitor_start: ['published', 'auto'].includes(openStrategy) ? plan?.updated_at : undefined,
+                scheduled_time: openStrategy === 'manual' && plan?.manual_open_at ? plan.manual_open_at : undefined,
+                timezone: timezone
+              }}
+            />
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -684,9 +716,9 @@ export default function Readiness() {
                     <p className="text-xs text-muted-foreground mt-1">
                       Times will be stored in UTC and converted back for display
                     </p>
-                  </div>
-                </div>
-              </div>
+        </div>
+      </div>
+    </div>
             )}
 
             {(['published', 'auto'].includes(openStrategy)) && (
