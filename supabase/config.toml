@@ -1,5 +1,11 @@
 project_id = "ezvwyfqtyanwnoyymhav"
 
+[functions.save-readiness]
+verify_jwt = true
+
+[functions.preflight-check]
+verify_jwt = true
+
 [functions.twilio-status-callback]
 verify_jwt = false
 

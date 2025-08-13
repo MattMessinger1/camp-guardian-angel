@@ -312,6 +312,38 @@ export type Database = {
         }
         Relationships: []
       }
+      open_detection_logs: {
+        Row: {
+          id: string
+          note: string | null
+          plan_id: string
+          seen_at: string
+          signal: string | null
+        }
+        Insert: {
+          id?: string
+          note?: string | null
+          plan_id: string
+          seen_at?: string
+          signal?: string | null
+        }
+        Update: {
+          id?: string
+          note?: string | null
+          plan_id?: string
+          seen_at?: string
+          signal?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_detection_logs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "registration_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       otp_attempts: {
         Row: {
           code: string
@@ -421,6 +453,41 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: true
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_credentials: {
+        Row: {
+          camp_id: string | null
+          id: string
+          password_cipher: string
+          updated_at: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          camp_id?: string | null
+          id?: string
+          password_cipher: string
+          updated_at?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          camp_id?: string | null
+          id?: string
+          password_cipher?: string
+          updated_at?: string | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_credentials_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
             referencedColumns: ["id"]
           },
         ]
@@ -547,6 +614,79 @@ export type Database = {
           registration_id?: string
         }
         Relationships: []
+      }
+      registration_plans: {
+        Row: {
+          account_mode: string | null
+          camp_id: string | null
+          child_id: string | null
+          created_at: string | null
+          detect_url: string | null
+          id: string
+          manual_open_at: string | null
+          open_strategy: string | null
+          preflight_status: string | null
+          session_id: string | null
+          status: string | null
+          timezone: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_mode?: string | null
+          camp_id?: string | null
+          child_id?: string | null
+          created_at?: string | null
+          detect_url?: string | null
+          id?: string
+          manual_open_at?: string | null
+          open_strategy?: string | null
+          preflight_status?: string | null
+          session_id?: string | null
+          status?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_mode?: string | null
+          camp_id?: string | null
+          child_id?: string | null
+          created_at?: string | null
+          detect_url?: string | null
+          id?: string
+          manual_open_at?: string | null
+          open_strategy?: string | null
+          preflight_status?: string | null
+          session_id?: string | null
+          status?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_plans_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_plans_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_plans_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       registrations: {
         Row: {

@@ -26,6 +26,7 @@ import Billing from "./pages/Billing";
 import DevLimits from "./pages/DevLimits";
 import CaptchaAssist from "./pages/CaptchaAssist";
 import FindCamps from "./pages/FindCamps";
+import Readiness from "./pages/Readiness";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <CaptchaAssist />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/readiness"
+                element={
+                  <ProtectedRoute>
+                    <Readiness />
                   </ProtectedRoute>
                 }
               />
