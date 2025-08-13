@@ -24,6 +24,7 @@ import SignupActivate from "./pages/SignupActivate";
 import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
 import DevLimits from "./pages/DevLimits";
+import CaptchaAssist from "./pages/CaptchaAssist";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Billing />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/assist/captcha"
+                element={
+                  <ProtectedRoute>
+                    <CaptchaAssist />
                   </ProtectedRoute>
                 }
               />
