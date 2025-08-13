@@ -373,6 +373,10 @@ export type Database = {
           resolved_count: number
         }[]
       }
+      child_session_overlap_exists: {
+        Args: { p_child_id: string; p_start: string; p_end: string }
+        Returns: boolean
+      }
       get_attempts_count_week: {
         Args: { p_child_id: string; p_tz?: string }
         Returns: number

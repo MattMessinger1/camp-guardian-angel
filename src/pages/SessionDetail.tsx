@@ -55,6 +55,8 @@ export default function SessionDetail() {
   const [timeDelta, setTimeDelta] = useState<number | null>(null);
   const [attemptsUsed, setAttemptsUsed] = useState<number>(0);
   const [limitCfg, setLimitCfg] = useState<{ count: number; week_tz: string }>({ count: 5, week_tz: 'America/Chicago' });
+  const [overlapDetected, setOverlapDetected] = useState(false);
+  const [allowOverlaps, setAllowOverlaps] = useState(false);
 
   const fp = useMemo(() => {
     try {
@@ -141,6 +143,27 @@ export default function SessionDetail() {
     run();
   }, [user, childId]);
 
+  // Overlap detection: non-blocking warning and toggle
+  useEffect(() => {
+    const run = async () => {
+      if (!user || !childId || !sessionData?.start_at || !sessionData?.end_at) {
+        setOverlapDetected(false);
+        return;
+      }
+      try {
+        const { data } = await supabase.rpc('child_session_overlap_exists', {
+          p_child_id: childId,
+          p_start: sessionData.start_at,
+          p_end: sessionData.end_at,
+        });
+        setOverlapDetected(Boolean(data));
+      } catch {
+        setOverlapDetected(false);
+      }
+    };
+    run();
+  }, [user, childId, sessionData?.start_at, sessionData?.end_at]);
+
   const handleRegister = async () => {
     if (!user) {
       navigate("/login", { state: { from: `/sessions/${sessionId}` } });
@@ -158,6 +181,7 @@ export default function SessionDetail() {
           session_id: sessionId,
           priority_opt_in: priority,
           device_fingerprint: fp,
+          allow_overlaps: allowOverlaps,
         },
       });
       setSubmitting(false);
@@ -175,6 +199,10 @@ export default function SessionDetail() {
       }
       if (data?.review) {
         toast({ title: "Registration submitted", description: "Your request is under review due to duplicate-detection signals." });
+        return;
+      }
+      if (data?.skipped_overlap) {
+        toast({ title: "Overlapping session", description: "This session overlaps a confirmed one for this child. You can enable 'Allow overlaps' to proceed." });
         return;
       }
       toast({ title: "Registration submitted", description: "Status: pending" });
@@ -270,6 +298,15 @@ export default function SessionDetail() {
               <input id="priority" type="checkbox" className="h-4 w-4" checked={priority} onChange={(e) => setPriority(e.target.checked)} />
               <label htmlFor="priority" className="text-sm">Add $20 priority (optional)</label>
             </div>
+            {overlapDetected && (
+              <div className="space-y-1">
+                <div className="text-sm text-destructive">Warning: This session overlaps a confirmed one for this child.</div>
+                <div className="flex items-center gap-3">
+                  <input id="allowOverlaps" type="checkbox" className="h-4 w-4" checked={allowOverlaps} onChange={(e) => setAllowOverlaps(e.target.checked)} />
+                  <label htmlFor="allowOverlaps" className="text-sm">Allow overlaps</label>
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               <Button onClick={handleRegister} variant="hero" disabled={submitting || !user}>
                 {submitting ? "Submitting…" : "Submit registration"}

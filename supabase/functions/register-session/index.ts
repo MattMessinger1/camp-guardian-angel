@@ -11,6 +11,7 @@ type Body = {
   session_id: string;
   priority_opt_in: boolean;
   device_fingerprint?: string;
+  allow_overlaps?: boolean;
 };
 
 serve(async (req) => {
@@ -132,7 +133,7 @@ serve(async (req) => {
     // Check fairness cap before allowing new registration
     const { data: session, error: sessionErr } = await supabaseUser
       .from("sessions")
-      .select("capacity")
+      .select("capacity,start_at,end_at")
       .eq("id", body.session_id)
       .maybeSingle();
     
@@ -166,6 +167,63 @@ serve(async (req) => {
         JSON.stringify({ error: "Fairness cap reached to keep chances realistic." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Overlap guard: if overlaps existing accepted session and not allowed, skip
+    try {
+      const allow = !!body.allow_overlaps;
+      const sStart = (session as any)?.start_at as string | null;
+      const sEnd = (session as any)?.end_at as string | null;
+      if (sStart && sEnd) {
+        const { data: overlap, error: ovErr } = await supabaseUser.rpc('child_session_overlap_exists', {
+          p_child_id: body.child_id,
+          p_start: sStart,
+          p_end: sEnd,
+        });
+        if (!ovErr && overlap && !allow) {
+          const { data: failedReg } = await supabaseUser
+            .from('registrations')
+            .insert({
+              user_id: user.id,
+              child_id: body.child_id,
+              session_id: body.session_id,
+              priority_opt_in: !!body.priority_opt_in,
+              status: 'failed',
+              device_fingerprint: body.device_fingerprint || null,
+              client_ip: clientIp,
+              review_flag: false,
+              processed_at: new Date().toISOString(),
+            })
+            .select('id')
+            .maybeSingle();
+          const regId = failedReg?.id || null;
+          if (supabaseAdmin) {
+            try {
+              await supabaseAdmin.from('registration_attempts').insert({
+                registration_id: regId,
+                child_id: body.child_id,
+                outcome: 'skipped_overlap',
+                meta: { reason: 'overlap_guard', session_id: body.session_id },
+              } as any);
+            } catch (e) {
+              console.log('[REGISTER-SESSION] overlap attempt log error', e);
+            }
+            if (regId) {
+              try {
+                await supabaseAdmin.functions.invoke('send-email-sendgrid', { body: { type: 'skipped_overlap', registration_id: regId } });
+              } catch (e) {
+                console.log('[REGISTER-SESSION] overlap email error', e);
+              }
+            }
+          }
+          return new Response(
+            JSON.stringify({ ok: true, skipped_overlap: true }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    } catch (e) {
+      console.log('[REGISTER-SESSION] overlap guard error', e);
     }
 
     // Fetch user's default payment method (if any) and prepare review flag
