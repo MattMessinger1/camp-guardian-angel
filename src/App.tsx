@@ -25,6 +25,7 @@ import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
 import DevLimits from "./pages/DevLimits";
 import CaptchaAssist from "./pages/CaptchaAssist";
+import FindCamps from "./pages/FindCamps";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/find" element={<FindCamps />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/sessions" element={<Sessions />} />

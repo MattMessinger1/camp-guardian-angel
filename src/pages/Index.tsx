@@ -65,6 +65,7 @@ const Index = () => {
             <span className="hero-gradient bg-clip-text text-transparent">CampRush</span>
           </a>
           <div className="hidden md:flex items-center gap-6">
+            <a href="/find" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Find Camps</a>
             <a href="#how" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it works</a>
             <a href="#fees" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Fees</a>
             <a href="#form" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Prefill</a>
