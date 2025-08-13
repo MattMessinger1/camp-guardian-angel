@@ -131,6 +131,36 @@ export type Database = {
         }
         Relationships: []
       }
+      otp_attempts: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          phone_e164: string
+          user_id: string
+          verified: boolean
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone_e164: string
+          user_id: string
+          verified?: boolean
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone_e164?: string
+          user_id?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -457,6 +487,33 @@ export type Database = {
           last_opt_in_at?: string
           opted_in?: boolean
           phone_e164?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          phone_e164: string | null
+          phone_verified: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone_e164?: string | null
+          phone_verified?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone_e164?: string | null
+          phone_verified?: boolean
           updated_at?: string
           user_id?: string
         }

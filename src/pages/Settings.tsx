@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, XCircle, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { getEnvironmentStatus, ENVIRONMENT_VARIABLES } from "@/config/environment";
 import { supabase } from "@/integrations/supabase/client";
+import PhoneVerification from "@/components/PhoneVerification";
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
     document.title = title;
@@ -246,6 +247,9 @@ export default function Settings() {
             )}
           </CardContent>
         </Card>
+
+        {/* Phone & SMS Verification */}
+        <PhoneVerification />
 
         {/* Environment Variables */}
         <Card>
