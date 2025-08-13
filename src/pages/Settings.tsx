@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, XCircle, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { getEnvironmentStatus, ENVIRONMENT_VARIABLES } from "@/config/environment";
-
+import { supabase } from "@/integrations/supabase/client";
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
     document.title = title;
@@ -39,6 +39,34 @@ export default function Settings() {
   const [showValues, setShowValues] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Twilio config status (from Edge Function - server-only secrets)
+  const [twilioStatus, setTwilioStatus] = useState<
+    | {
+        ok: boolean;
+        using: 'messaging_service' | 'from_number' | 'none';
+        variables: Record<string, { set: boolean; masked: string | null }>;
+        warnings: string[];
+      }
+    | null
+  >(null);
+  const [twilioLoading, setTwilioLoading] = useState(true);
+  const [twilioError, setTwilioError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadTwilio = async () => {
+      setTwilioLoading(true);
+      const { data, error } = await supabase.functions.invoke('twilio-config-status', { body: {} });
+      if (error) {
+        setTwilioError(error.message ?? 'Failed to load Twilio status');
+      } else {
+        setTwilioStatus(data as any);
+        setTwilioError(null);
+      }
+      setTwilioLoading(false);
+    };
+    loadTwilio();
+  }, []);
+
   // Only show in development or for authenticated users
   const isDev = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
   
@@ -55,12 +83,18 @@ export default function Settings() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       setEnvStatus(getEnvironmentStatus());
+      // Refresh Twilio status
+      const { data, error } = await supabase.functions.invoke('twilio-config-status', { body: {} });
+      if (error) setTwilioError(error.message ?? 'Failed to load Twilio status');
+      else {
+        setTwilioStatus(data as any);
+        setTwilioError(null);
+      }
       setIsRefreshing(false);
-    }, 500);
+    }, 300);
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'SET': return 'default';
@@ -131,6 +165,71 @@ export default function Settings() {
                     <li key={key}>{key}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Twilio SMS Configuration (server-only secrets) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Twilio SMS Configuration</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {twilioLoading ? (
+              <p className="text-sm text-muted-foreground">Checking Twilio secrets…</p>
+            ) : twilioError ? (
+              <p className="text-sm text-red-600">Error loading Twilio status: {twilioError}</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  {twilioStatus?.ok ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500" />
+                  )}
+                  <span className="font-medium">{twilioStatus?.ok ? 'Ready' : 'Needs setup'}</span>
+                  <Badge variant="outline" className="text-xs">
+                    Using: {twilioStatus?.using === 'messaging_service' ? 'Messaging Service SID' : twilioStatus?.using === 'from_number' ? 'From Number' : 'None'}
+                  </Badge>
+                </div>
+
+                {twilioStatus?.warnings?.length ? (
+                  <ul className="list-disc list-inside text-sm text-yellow-700">
+                    {twilioStatus.warnings.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {['TWILIO_ACCOUNT_SID','TWILIO_AUTH_TOKEN','TWILIO_MESSAGING_SERVICE_SID','TWILIO_FROM_NUMBER','APP_BASE_URL'].map((k) => {
+                  const v = (twilioStatus as any)?.variables?.[k];
+                  if (!v) {
+                    return (
+                      <div key={k} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon('MISSING')}
+                          <h3 className="font-mono text-sm font-semibold">{k}</h3>
+                          <Badge variant='destructive' className='text-xs'>MISSING</Badge>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={k} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(v.set ? 'SET' : 'MISSING')}
+                        <h3 className="font-mono text-sm font-semibold">{k}</h3>
+                        <Badge variant={getStatusColor(v.set ? 'SET' : 'MISSING')} className="text-xs">
+                          {v.set ? 'SET' : 'MISSING'}
+                        </Badge>
+                      </div>
+                      {showValues && v.masked && (
+                        <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{v.masked}</code>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
