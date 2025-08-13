@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Loader2, Calendar, Clock, MapPin, Settings } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { VisualTimeline } from "@/components/VisualTimeline";
@@ -228,6 +229,34 @@ export default function PlanDetail() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Account Mode</span>
                 {getModeBadge(plan.account_mode)}
+              </div>
+              
+              {/* Registration Requirements Badge */}
+              <div className="p-3 bg-muted/30 rounded border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">May require during registration:</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-xs text-muted-foreground cursor-help">ℹ️</span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>We can't bypass CAPTCHAs. If it happens, you'll get a secure link by text.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1">
+                    <span className="text-green-600">✓</span> Login
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-green-600">✓</span> OTP
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-green-600">✓</span> CAPTCHA
+                  </span>
+                </div>
               </div>
               
               <div className="flex items-center justify-between">

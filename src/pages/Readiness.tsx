@@ -383,9 +383,14 @@ export default function Readiness() {
                   Assist Mode
                 </Label>
               </div>
-              <p className="text-sm text-muted-foreground ml-6">
-                Guardian Angel guides you through registration step-by-step
-              </p>
+              <div className="ml-6 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Guardian Angel guides you through registration step-by-step
+                </p>
+                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded border">
+                  <strong>What to expect:</strong> If login requires OTP or CAPTCHA, you'll receive a secure text link to complete those steps yourself.
+                </div>
+              </div>
               
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="autopilot" id="autopilot" />
@@ -393,9 +398,14 @@ export default function Readiness() {
                   Autopilot Mode
                 </Label>
               </div>
-              <p className="text-sm text-muted-foreground ml-6">
-                Guardian Angel automatically completes registration for you
-              </p>
+              <div className="ml-6 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Guardian Angel automatically completes registration for you
+                </p>
+                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded border">
+                  <strong>What to expect:</strong> Uses your saved credentials and payment info. OTP codes sent via text. CAPTCHAs handled through secure text links you complete.
+                </div>
+              </div>
             </RadioGroup>
 
             {accountMode === 'autopilot' && (
