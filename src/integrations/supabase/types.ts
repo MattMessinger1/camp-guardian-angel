@@ -522,6 +522,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_sends: {
+        Row: {
+          created_at: string
+          id: string
+          message_content: string
+          message_sid: string | null
+          phone_e164: string
+          sent_at: string
+          template_id: string
+          user_id: string
+          variables: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_content: string
+          message_sid?: string | null
+          phone_e164: string
+          sent_at?: string
+          template_id: string
+          user_id: string
+          variables?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_content?: string
+          message_sid?: string | null
+          phone_e164?: string
+          sent_at?: string
+          template_id?: string
+          user_id?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           created_at: string

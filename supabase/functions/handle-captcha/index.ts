@@ -20,61 +20,6 @@ function generateSecureToken(): string {
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function sendSMS(to: string, message: string): Promise<{ success: boolean; error?: string }> {
-  const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-  const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-  const twilioMessagingServiceSid = Deno.env.get('TWILIO_MESSAGING_SERVICE_SID');
-  const twilioFromNumber = Deno.env.get('TWILIO_FROM_NUMBER');
-
-  if (!twilioAccountSid || !twilioAuthToken) {
-    return { success: false, error: 'Twilio credentials not configured' };
-  }
-
-  const messagingMethod = twilioMessagingServiceSid ? 'messaging_service' : 'from_number';
-  const fromValue = twilioMessagingServiceSid || twilioFromNumber;
-  
-  if (!fromValue) {
-    return { success: false, error: 'No Twilio messaging service or from number configured' };
-  }
-
-  try {
-    const auth = btoa(`${twilioAccountSid}:${twilioAuthToken}`);
-    const body = new URLSearchParams({
-      To: to,
-      Body: message,
-      ...(messagingMethod === 'messaging_service' 
-        ? { MessagingServiceSid: fromValue }
-        : { From: fromValue }
-      )
-    });
-
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: body.toString(),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Twilio API error:', response.status, errorData);
-      return { success: false, error: `Twilio API error: ${response.status}` };
-    }
-
-    const result = await response.json();
-    console.log('SMS sent successfully:', result.sid);
-    return { success: true };
-  } catch (error) {
-    console.error('Error sending SMS:', error);
-    return { success: false, error: 'Failed to send SMS' };
-  }
-}
-
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -161,14 +106,35 @@ serve(async (req: Request) => {
     let notificationSent = false;
     let notificationMethod = 'none';
 
-    // If user has verified phone, send SMS
+    // If user has verified phone, send SMS using the new SMS service
     if (userProfile?.phone_verified && userProfile.phone_e164) {
       console.log(`[HANDLE-CAPTCHA] Sending SMS to verified phone ${userProfile.phone_e164}`);
       
-      const smsMessage = `A human verification is required to complete your registration. Please visit: ${magicUrl}`;
-      const smsResult = await sendSMS(userProfile.phone_e164, smsMessage);
+      // Get session details for SMS template
+      const { data: session, error: sessionError } = await supabase
+        .from('sessions')
+        .select('title')
+        .eq('id', session_id)
+        .maybeSingle();
       
-      if (smsResult.success) {
+      const sessionTitle = session?.title || 'Camp Session';
+      
+      const { data: smsResult, error: smsError } = await supabase.functions.invoke('sms-send', {
+        body: {
+          user_id,
+          to_phone_e164: userProfile.phone_e164,
+          template_id: 'captcha_assist',
+          variables: {
+            provider: provider || 'Provider',
+            session: sessionTitle,
+            magic_url: magicUrl
+          }
+        }
+      });
+      
+      if (smsError || !smsResult?.success) {
+        console.error('[HANDLE-CAPTCHA] Failed to send SMS:', smsError || smsResult);
+      } else {
         // Update captcha event with SMS sent timestamp
         await supabase
           .from('captcha_events')
@@ -177,9 +143,7 @@ serve(async (req: Request) => {
         
         notificationSent = true;
         notificationMethod = 'sms';
-        console.log(`[HANDLE-CAPTCHA] SMS sent successfully to ${userProfile.phone_e164}`);
-      } else {
-        console.error('[HANDLE-CAPTCHA] Failed to send SMS:', smsResult.error);
+        console.log(`[HANDLE-CAPTCHA] SMS sent successfully, SID: ${smsResult.message_sid}`);
       }
     }
 
