@@ -175,6 +175,42 @@ export type Database = {
           },
         ]
       }
+      provider_profiles: {
+        Row: {
+          captcha_expected: boolean
+          created_at: string
+          domain_patterns: string[]
+          id: string
+          login_type: Database["public"]["Enums"]["provider_login_type"]
+          name: string
+          notes: string | null
+          platform: Database["public"]["Enums"]["provider_platform"]
+          updated_at: string
+        }
+        Insert: {
+          captcha_expected?: boolean
+          created_at?: string
+          domain_patterns?: string[]
+          id?: string
+          login_type?: Database["public"]["Enums"]["provider_login_type"]
+          name: string
+          notes?: string | null
+          platform: Database["public"]["Enums"]["provider_platform"]
+          updated_at?: string
+        }
+        Update: {
+          captcha_expected?: boolean
+          created_at?: string
+          domain_patterns?: string[]
+          id?: string
+          login_type?: Database["public"]["Enums"]["provider_login_type"]
+          name?: string
+          notes?: string | null
+          platform?: Database["public"]["Enums"]["provider_platform"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       providers: {
         Row: {
           created_at: string
@@ -386,7 +422,12 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      provider_login_type: "none" | "email_password" | "account_required"
+      provider_platform:
+        | "jackrabbit_class"
+        | "daysmart_recreation"
+        | "shopify_product"
+        | "playmetrics"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -513,6 +554,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      provider_login_type: ["none", "email_password", "account_required"],
+      provider_platform: [
+        "jackrabbit_class",
+        "daysmart_recreation",
+        "shopify_product",
+        "playmetrics",
+      ],
+    },
   },
 } as const
