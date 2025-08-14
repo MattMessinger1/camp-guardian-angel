@@ -49,8 +49,8 @@ const HomePage = () => {
             {[
               {
                 icon: Clipboard,
-                title: "Step 1 — Find your chosen activity",
-                description: "Camps, Lessons, Leagues and more.",
+                title: "Step 1 — Find your chosen Activity or Camp",
+                description: "Choose the specific session(s) you'd like",
               },
               {
                 icon: Zap,
