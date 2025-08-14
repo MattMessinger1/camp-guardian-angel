@@ -29,15 +29,24 @@ const HomePage = () => {
         <div className="relative z-10 mx-auto max-w-4xl">
           <div className="inline-block p-4 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(17,24,39,0.6)' }}>
             <h1 className="text-white mb-4 text-[32px] md:text-[48px] font-extrabold tracking-tight leading-tight">
-              Get the spot you want, without the stress.
+              Give yourself the best chance at registering for the activity you want
             </h1>
             
-            <div className="w-16 h-1 bg-primary mx-auto mb-4 rounded"></div>
+            <div className="w-16 h-1 bg-primary mx-auto mb-3 rounded"></div>
             
-            <p className="text-white text-base md:text-[20px] font-normal max-w-2xl mx-auto leading-relaxed">
-              Tell us your event, we'll be ready to sign you up the moment registration opens. 
-              You handle any final steps.
+            <p className="text-white text-base md:text-[20px] font-normal max-w-2xl mx-auto leading-relaxed mb-6">
+              We monitor when registration opens and submit your application instantly — then hand it over to you for the human verification steps.
             </p>
+            
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button className="bg-primary hover:bg-primary/90 text-white font-bold px-8 py-3 rounded-lg transition-colors min-h-[44px] w-full sm:w-auto">
+                Maximize My Chance
+              </button>
+              <button className="bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold px-8 py-3 rounded-lg transition-colors min-h-[44px] w-full sm:w-auto">
+                Learn How It Works
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -54,21 +63,21 @@ const HomePage = () => {
               {/* Icon Circles on Rail */}
               <div className="absolute top-0 w-full flex justify-between" style={{ transform: 'translateY(-50%)' }}>
                 {[
-                  {
-                    iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
-                    title: "Step 1 — Tell Us What You Want",
-                    description: "Name, location, and dates.",
-                  },
-                  {
-                    iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
-                    title: "Step 2 — We're On It",
-                    description: "We prep your signup and watch for opening.",
-                  },
-                  {
-                    iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
-                    title: "Step 3 — Get Your Spot",
-                    description: "Instant sign-up when it opens. You only pay if you get in.",
-                  }
+                   {
+                     iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
+                     title: "Step 1 — Tell Us What You Want",
+                     description: "Event name, location, dates, and your info.",
+                   },
+                   {
+                     iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
+                     title: "Step 2 — We Monitor & Submit Instantly",
+                     description: "We watch for registration to open and submit the millisecond it's available.",
+                   },
+                   {
+                     iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
+                     title: "Step 3 — You Complete the Human Steps",
+                     description: "Handle captchas, account verification, and any final details we can't automate.",
+                   }
                 ].map((item, index) => (
                   <div key={index} className="flex flex-col items-center" style={{ width: 'calc(100% / 3)' }}>
                     <div className="h-16 w-16 bg-primary rounded-full flex items-center justify-center mb-4">
@@ -86,18 +95,18 @@ const HomePage = () => {
             {/* Content Below Rail */}
             <div className="grid grid-cols-3 gap-20">
               {[
-                {
-                  title: "Step 1 — Tell Us What You Want",
-                  description: "Name, location, and dates.",
-                },
-                {
-                  title: "Step 2 — We're On It",
-                  description: "We prep your signup and watch for opening.",
-                },
-                {
-                  title: "Step 3 — Get Your Spot",
-                  description: "Instant sign-up when it opens. You only pay if you get in.",
-                }
+                 {
+                   title: "Step 1 — Tell Us What You Want",
+                   description: "Event name, location, dates, and your info.",
+                 },
+                 {
+                   title: "Step 2 — We Monitor & Submit Instantly",
+                   description: "We watch for registration to open and submit the millisecond it's available.",
+                 },
+                 {
+                   title: "Step 3 — You Complete the Human Steps",
+                   description: "Handle captchas, account verification, and any final details we can't automate.",
+                 }
               ].map((item, index) => (
                 <div key={index} className="text-center">
                   <h3 className="text-lg font-semibold mb-2 text-gray-900">
@@ -120,21 +129,21 @@ const HomePage = () => {
               {/* Steps */}
               <div className="space-y-5">
                 {[
-                  {
-                    iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
-                    title: "Step 1 — Tell Us What You Want",
-                    description: "Name, location, and dates.",
-                  },
-                  {
-                    iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
-                    title: "Step 2 — We're On It",
-                    description: "We prep your signup and watch for opening.",
-                  },
-                  {
-                    iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
-                    title: "Step 3 — Get Your Spot",
-                    description: "Instant sign-up when it opens. You only pay if you get in.",
-                  }
+                   {
+                     iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
+                     title: "Step 1 — Tell Us What You Want",
+                     description: "Event name, location, dates, and your info.",
+                   },
+                   {
+                     iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
+                     title: "Step 2 — We Monitor & Submit Instantly",
+                     description: "We watch for registration to open and submit the millisecond it's available.",
+                   },
+                   {
+                     iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
+                     title: "Step 3 — You Complete the Human Steps",
+                     description: "Handle captchas, account verification, and any final details we can't automate.",
+                   }
                 ].map((item, index) => (
                   <div key={index} className="flex items-start">
                     {/* Icon Circle */}
@@ -178,7 +187,7 @@ const HomePage = () => {
                 />
               </div>
               <button className="bg-primary hover:bg-primary/90 text-white font-bold px-6 py-3 rounded-lg transition-colors min-h-[44px] w-full md:w-auto">
-                Search
+                Secure My Spot
               </button>
             </div>
           </div>
@@ -190,21 +199,21 @@ const HomePage = () => {
         <div className="mx-auto max-w-5xl">
           <div className="flex flex-col md:grid md:grid-cols-3 gap-5 md:gap-8">
             {[
-              {
-                icon: Globe,
-                title: "Works Broadly",
-                description: "Compatible with most registration sites."
-              },
-              {
-                icon: Lock,
-                title: "Data Protected",
-                description: "Encrypted in transit and at rest."
-              },
-              {
-                icon: DollarSign,
-                title: "Only Pay If You Get In",
-                description: "No success, no fee."
-              }
+               {
+                 icon: Globe,
+                 title: "Lightning-fast submission",
+                 description: "We submit within milliseconds of registration opening."
+               },
+               {
+                 icon: Lock,
+                 title: "Human oversight when needed",
+                 description: "You handle captchas and verification steps we can't automate."
+               },
+               {
+                 icon: DollarSign,
+                 title: "Success-based pricing",
+                 description: "Only pay if we successfully get you through the initial submission."
+               }
             ].map((item, index) => {
               const Icon = item.icon
               return (
@@ -222,6 +231,56 @@ const HomePage = () => {
                 </div>
               )
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Partnership Messaging Strip */}
+      <section className="px-4 py-12 md:py-16 bg-white">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">
+            We give you the best chance at securing your spot
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">We handle</h3>
+              <p className="text-gray-600">Monitoring, instant submission, speed advantage.</p>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">You handle</h3>
+              <p className="text-gray-600">Captchas, account setup, final verification steps.</p>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Together</h3>
+              <p className="text-gray-600">You get the best chance at securing spots.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="px-4 py-12 md:py-16 bg-alt-light">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                Do you complete the entire registration for me?
+              </h3>
+              <p className="text-gray-600">
+                We handle the speed-critical parts — monitoring when registration opens and submitting your application instantly. You handle the human verification steps like captchas and account confirmations that we can't automate.
+              </p>
+            </div>
+            <div className="bg-white rounded-lg p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                What if there are captchas or other verification steps?
+              </h3>
+              <p className="text-gray-600">
+                We prepare everything in advance and send you immediate notifications with step-by-step guidance. You'll have all the prep work done and just need to complete the human verification steps.
+              </p>
+            </div>
           </div>
         </div>
       </section>
