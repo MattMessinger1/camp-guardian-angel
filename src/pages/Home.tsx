@@ -54,8 +54,8 @@ const HomePage = () => {
               },
               {
                 icon: Zap,
-                title: "Step 2 — We tell you info we'll need",
-                description: "You complete it and we'll prompt you if we need your help at registration",
+                title: "Step 2 — Enter the info the Activity requires",
+                description: "All info is encrypted and we re-use for future sign-ups.",
               },
               {
                 icon: Trophy,
