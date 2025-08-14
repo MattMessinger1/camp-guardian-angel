@@ -7,9 +7,9 @@ All colors MUST be HSL. */
 
 @layer base {
   :root {
-    /* Core surfaces - Background light: #F9FAFB (Gray 50) */
-    --background: 220 14% 98%;
-    --foreground: 220 13% 9%; /* Text primary: #111827 (Gray 900) */
+    /* SignUpAssist Brand Colors - Exact specification */
+    --background: 220 14% 98%; /* #F9FAFB - Light Neutral */
+    --foreground: 220 13% 9%; /* #111827 - Dark Neutral for text */
 
     --card: 0 0% 100%;
     --card-foreground: 220 13% 9%;
@@ -17,10 +17,13 @@ All colors MUST be HSL. */
     --popover: 0 0% 100%;
     --popover-foreground: 220 13% 9%;
 
-    /* Brand palette */
-    --primary-blue: 213 93% 60%; /* Primary: #2563EB (Blue 600) */
-    --secondary-emerald: 165 93% 38%; /* Secondary: #059669 (Emerald 600) */
-    --error-red: 0 84% 50%; /* Error: #DC2626 (Red 600) */
+    /* Brand palette - exact colors from spec */
+    --primary-blue: 213 93% 60%; /* #2563EB - Primary */
+    --secondary-emerald: 165 93% 38%; /* #059669 - Secondary */
+    --error-red: 0 84% 50%; /* #DC2626 - Error */
+    --accent-amber: 37 91% 55%; /* #F59E0B - Optional Accent */
+    --dark-neutral: 210 19% 18%; /* #1F2937 - Dark overlay/headings */
+    --alt-light: 217 12% 96%; /* #F3F4F6 - Alternating sections */
 
     /* Semantic mapping */
     --primary: var(--primary-blue);
@@ -29,11 +32,11 @@ All colors MUST be HSL. */
     --secondary: var(--secondary-emerald);
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%; /* Text secondary: #4B5563 (Gray 600) */
+    --muted: var(--alt-light);
+    --muted-foreground: 220 9% 46%; /* Text secondary */
 
-    --accent: 220 14% 96%;
-    --accent-foreground: 220 13% 9%;
+    --accent: var(--accent-amber);
+    --accent-foreground: 0 0% 100%;
 
     --destructive: var(--error-red);
     --destructive-foreground: 0 0% 100%;
@@ -42,7 +45,7 @@ All colors MUST be HSL. */
     --input: 220 13% 91%;
     --ring: var(--primary-blue);
 
-    --radius: 0.75rem; /* slightly softer */
+    --radius: 0.5rem;
 
     /* Sidebar (if used) */
     --sidebar-background: 0 0% 98%;
@@ -58,8 +61,8 @@ All colors MUST be HSL. */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary-blue)), hsl(var(--secondary-emerald)));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 14% 98%));
 
-    --shadow-elegant: 0 10px 30px -10px hsl(var(--primary-blue) / 0.25);
-    --shadow-glow: 0 10px 40px -8px hsl(var(--primary-blue) / 0.35);
+    --shadow-elegant: 0 4px 16px -8px hsl(var(--primary-blue) / 0.15);
+    --shadow-card: 0 1px 3px 0 hsl(220 13% 9% / 0.1), 0 1px 2px -1px hsl(220 13% 9% / 0.1);
 
     /* Motion */
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -127,27 +130,72 @@ All colors MUST be HSL. */
     background-attachment: fixed;
   }
 
-  /* Typography styles for accessibility and design system */
-  h1, h2, h3, h4, h5, h6 {
-    font-weight: 700; /* Bold for headings */
+  /* SignUpAssist Typography System */
+  h1 {
+    font-size: clamp(1.75rem, 5vw, 3rem); /* 28-48px */
+    font-weight: 800; /* ExtraBold */
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+
+  h2 {
+    font-size: clamp(1.5rem, 3.5vw, 2rem); /* 24-32px */
+    font-weight: 700; /* Bold */
+    line-height: 1.2;
+  }
+
+  .subheadline {
+    font-size: clamp(1rem, 2.5vw, 1.25rem); /* 16-20px */
+    font-weight: 400; /* Regular */
+    line-height: 1.5;
   }
 
   button, .btn, label {
     font-weight: 600; /* Semi-bold for buttons/labels */
+    font-size: 1rem;
   }
 }
 
 @layer components {
   .surface-card {
     @apply bg-card border rounded-lg;
-    box-shadow: var(--shadow-elegant);
+    box-shadow: var(--shadow-card);
   }
+  
   .surface-card:hover {
-    box-shadow: var(--shadow-glow);
+    box-shadow: var(--shadow-elegant);
   }
 
   .hero-gradient {
     background: var(--gradient-primary);
+  }
+
+  /* Hero background shapes */
+  .hero-bg {
+    background-color: hsl(var(--background));
+    background-image: 
+      radial-gradient(circle at 20% 20%, hsl(var(--primary-blue) / 0.2) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsl(var(--secondary-emerald) / 0.15) 0%, transparent 50%);
+  }
+
+  .hero-dot-pattern {
+    background-image: radial-gradient(circle, hsl(220 13% 91% / 0.25) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+  }
+
+  .text-overlay-dark {
+    background-color: rgba(31, 41, 55, 0.6); /* Dark neutral with 60% opacity */
+    backdrop-filter: blur(4px);
+    border-radius: 0.75rem;
+    padding: 1rem;
+  }
+
+  .accent-bar {
+    width: 4rem;
+    height: 0.25rem;
+    background-color: hsl(var(--primary-blue));
+    border-radius: 0.125rem;
   }
 }
 
