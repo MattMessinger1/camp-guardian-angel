@@ -331,6 +331,22 @@ All colors MUST be HSL. */
   padding: 0 16px;
 }
 
+.search-card {
+  max-width: 960px !important;
+  margin: 0 auto 24px !important;
+  background: #ffffff !important;
+  border-radius: 14px !important;
+  padding: 0 16px !important;
+  border: 2px solid #E5E7EB !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.10) !important;
+  display: flex !important; 
+  align-items: center !important; 
+  justify-content: space-between !important;
+  height: 64px !important;
+  overflow: hidden !important;
+  transition: border-color 0.2s ease !important;
+}
+
 .search-input {
   display: flex !important; 
   align-items: center !important;
