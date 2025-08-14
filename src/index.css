@@ -131,10 +131,9 @@ All colors MUST be HSL. */
   }
 
   /* SignUpAssist Typography System */
-  h1, h2, h3, h4 {
+  h1, h2, h3, h4, .section-title, .card-title {
     text-wrap: balance;
     -webkit-text-wrap: balance; /* Safari support */
-    max-width: 30ch; /* Limit width to encourage balanced lines */
     margin-left: auto;
     margin-right: auto;
   }
@@ -152,6 +151,13 @@ All colors MUST be HSL. */
     font-weight: 700; /* Bold */
     line-height: 1.2;
     max-width: 28ch; /* Slightly wider for section headings */
+  }
+
+  h4 {
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.5;
+    max-width: 28ch;
   }
 
   .subheadline {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake, Clipboard, Zap, Trophy } from "lucide-react"
+import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
 
@@ -45,67 +45,69 @@ const HomePage = () => {
         <div className="mx-auto max-w-5xl" style={{ maxWidth: '1200px' }}>
           
           {/* Three Steps Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-20 md:gap-20">
             {[
               {
-                icon: Clipboard,
-                title: "#1 — Find your activity or camp",
+                stepNum: 1,
+                title: "#1 — Find your activity or&nbsp;camp",
                 description: "Choose the specific session(s) you'd like",
               },
               {
-                icon: Zap,
-                title: "#2 — Load your signup info ahead of time",
+                stepNum: 2,
+                title: "#2 — Load your signup info ahead of&nbsp;time",
                 description: "It's all encrypted and we'll use it for future registrations too",
               },
               {
-                icon: Trophy,
-                title: "#3 — We submit the millisecond registration opens",
+                stepNum: 3,
+                title: "#3 — We submit the millisecond registration&nbsp;opens",
                 description: "You pay us only if you get the session you chose in Step 1",
               }
             ].map((step, index) => {
-              const IconComponent = step.icon;
               return (
-                <div key={index} className="flex flex-col items-center text-center">
-                  {/* Icon Circle */}
-                  <div 
-                    className="rounded-full flex items-center justify-center"
-                    style={{ 
-                      width: '80px', 
-                      height: '80px', 
-                      backgroundColor: '#2563EB',
-                      marginBottom: '20px'
-                    }}
-                  >
-                    <IconComponent size={40} color="white" strokeWidth={2} />
+                <div key={index} className="flex flex-col md:items-center md:text-center">
+                  {/* Mobile: Horizontal layout with vertical rail */}
+                  <div className="flex md:flex-col items-start md:items-center">
+                    {/* Icon */}
+                    <div className="flex-shrink-0 md:mb-4">
+                      <img 
+                        src={`/lovable-uploads/${
+                          step.stepNum === 1 ? (isMobile ? 'e88a85a6-c75e-43fd-b4ac-581c77a45aa5' : 'e0afe2db-46c2-4c34-8241-53332b2530d1') :
+                          step.stepNum === 2 ? (isMobile ? '3211fcb9-4f08-461f-afb1-4c5501001176' : '6478d05d-f016-4d01-bdc4-c9a6ac488780') :
+                          (isMobile ? '72c3ff73-9fa9-4a10-b2f9-21dc24a08117' : '7e12dd73-da89-4c10-b41e-cf1ec587f858')
+                        }.png`}
+                        alt=""
+                        className={isMobile ? "w-12 h-12 mr-4" : "w-24 h-24"}
+                      />
+                    </div>
+                    
+                    {/* Text Content */}
+                    <div className="flex-1 md:flex-none">
+                      {/* Title */}
+                      <h3 
+                        className="mb-3 font-bold text-[#111827]"
+                        style={{ 
+                          fontSize: '20px', 
+                          fontWeight: '700',
+                          maxWidth: '26ch',
+                          lineHeight: '1.3',
+                          textWrap: 'balance'
+                        }}
+                        dangerouslySetInnerHTML={{ __html: step.title }}
+                      />
+                      
+                      {/* Description */}
+                      <p 
+                        className="text-[#4B5563]"
+                        style={{ 
+                          fontSize: '16px', 
+                          maxWidth: '36ch',
+                          lineHeight: '1.5'
+                        }}
+                      >
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
-                  
-                  {/* Title */}
-                  <h3 
-                    className="mb-3"
-                    style={{ 
-                      fontSize: '20px', 
-                      fontWeight: '700', 
-                      color: '#111827',
-                      textAlign: 'center',
-                      maxWidth: '28ch',
-                      lineHeight: '1.3'
-                    }}
-                  >
-                    {step.title}
-                  </h3>
-                  
-                  {/* Description */}
-                  <p 
-                    style={{ 
-                      fontSize: '16px', 
-                      color: '#4B5563',
-                      textAlign: 'center',
-                      maxWidth: '32ch',
-                      lineHeight: '1.5'
-                    }}
-                  >
-                    {step.description}
-                  </p>
                 </div>
               );
             })}
@@ -139,7 +141,7 @@ const HomePage = () => {
       <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto" style={{ maxWidth: '1200px' }}>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-12 text-center max-w-[28ch] mx-auto" style={{ fontWeight: '700', textWrap: 'balance' }}>
-            How It Works
+            How It&nbsp;Works
           </h2>
           
           <div className="max-w-4xl mx-auto">
