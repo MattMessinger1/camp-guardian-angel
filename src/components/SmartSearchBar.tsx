@@ -63,23 +63,23 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
 
   return (
     <div className={cn("w-full", className)}>
-      <form onSubmit={handleSubmit} className="flex rounded-lg overflow-hidden border border-border bg-background shadow-sm">
+      <form onSubmit={handleSubmit} className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <Input
             type="text"
             placeholder="Event name, city/state, session dates..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={isLoading}
-            className="pl-10 pr-4 h-12 text-base border-0 focus:ring-0 focus:border-0 bg-transparent"
+            className="pl-10 pr-4 h-12 text-base border-0 focus:ring-0 focus:border-0 bg-transparent placeholder:text-gray-500"
           />
         </div>
         
         <Button 
           type="submit" 
           disabled={!query.trim() || isLoading}
-          className="h-12 px-8 rounded-none font-semibold"
+          className="h-12 px-8 rounded-none font-bold bg-[#2563EB] hover:bg-[#1d4ed8] text-white"
         >
           {isLoading ? (
             <>
