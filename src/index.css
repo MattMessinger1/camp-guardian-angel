@@ -7,40 +7,40 @@ All colors MUST be HSL. */
 
 @layer base {
   :root {
-    /* Core surfaces */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core surfaces - Background light: #F9FAFB (Gray 50) */
+    --background: 220 14% 98%;
+    --foreground: 220 13% 9%; /* Text primary: #111827 (Gray 900) */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 13% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 13% 9%;
 
     /* Brand palette */
-    --brand-700: 248 63% 46%; /* deep indigo */
-    --brand-600: 235 85% 56%; /* electric blue */
-    --brand-500: 190 85% 42%; /* teal accent */
+    --primary-blue: 213 93% 60%; /* Primary: #2563EB (Blue 600) */
+    --secondary-emerald: 165 93% 38%; /* Secondary: #059669 (Emerald 600) */
+    --error-red: 0 84% 50%; /* Error: #DC2626 (Red 600) */
 
     /* Semantic mapping */
-    --primary: var(--brand-700);
-    --primary-foreground: 210 40% 98%;
+    --primary: var(--primary-blue);
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: var(--secondary-emerald);
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%; /* Text secondary: #4B5563 (Gray 600) */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 13% 9%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: var(--error-red);
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: var(--primary-blue);
 
     --radius: 0.75rem; /* slightly softer */
 
@@ -55,47 +55,48 @@ All colors MUST be HSL. */
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Gradients & shadows */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--brand-700)), hsl(var(--brand-600)) 60%, hsl(var(--brand-500)));
-    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 40% 98%));
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary-blue)), hsl(var(--secondary-emerald)));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 14% 98%));
 
-    --shadow-elegant: 0 10px 30px -10px hsl(var(--brand-700) / 0.25);
-    --shadow-glow: 0 10px 40px -8px hsl(var(--brand-600) / 0.35);
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--primary-blue) / 0.25);
+    --shadow-glow: 0 10px 40px -8px hsl(var(--primary-blue) / 0.35);
 
     /* Motion */
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* Typography */
-    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+    /* Typography - Inter font family */
+    --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Background dark: #1F2937 (Gray 800) */
+    --background: 220 13% 18%;
+    --foreground: 220 14% 98%;
 
-    --card: 222.2 84% 6.5%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 13% 22%;
+    --card-foreground: 220 14% 98%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 13% 18%;
+    --popover-foreground: 220 14% 98%;
 
-    --primary: var(--brand-600);
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: var(--primary-blue);
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: var(--secondary-emerald);
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 13% 22%;
+    --muted-foreground: 220 9% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 220 13% 22%;
+    --accent-foreground: 220 14% 98%;
 
-    --destructive: 0 62.8% 40.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: var(--error-red);
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 22.5%;
-    --input: 217.2 32.6% 22.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 220 13% 28%;
+    --input: 220 13% 28%;
+    --ring: var(--primary-blue);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -120,9 +121,19 @@ All colors MUST be HSL. */
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
-    background-image: radial-gradient(1200px 600px at 10% -10%, hsl(var(--brand-600) / 0.12), transparent 60%),
-      radial-gradient(1200px 600px at 110% 10%, hsl(var(--brand-500) / 0.10), transparent 60%);
+    font-weight: 400; /* Regular for body text */
+    background-image: radial-gradient(1200px 600px at 10% -10%, hsl(var(--primary-blue) / 0.08), transparent 60%),
+      radial-gradient(1200px 600px at 110% 10%, hsl(var(--secondary-emerald) / 0.06), transparent 60%);
     background-attachment: fixed;
+  }
+
+  /* Typography styles for accessibility and design system */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700; /* Bold for headings */
+  }
+
+  button, .btn, label {
+    font-weight: 600; /* Semi-bold for buttons/labels */
   }
 }
 
