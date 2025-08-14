@@ -286,10 +286,10 @@ export default function PlanDetail() {
               <VisualTimeline 
                 currentStage={getCurrentStage()}
                 planData={{
-                  research_start: plan.created_at,
+                  created_at: plan.created_at,
                   preflight_date: plan.updated_at,
                   monitor_start: ['published', 'auto'].includes(plan.open_strategy || '') ? plan.updated_at : undefined,
-                  scheduled_time: plan.open_strategy === 'manual' && plan.manual_open_at ? plan.manual_open_at : undefined,
+                  manual_open_at: plan.open_strategy === 'manual' && plan.manual_open_at ? plan.manual_open_at : undefined,
                   timezone: plan.timezone
                 }}
               />

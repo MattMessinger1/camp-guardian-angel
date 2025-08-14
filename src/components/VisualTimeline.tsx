@@ -14,10 +14,10 @@ interface TimelineStage {
 interface VisualTimelineProps {
   currentStage: string;
   planData?: {
-    research_start?: string;
+    created_at?: string;
     preflight_date?: string;
     monitor_start?: string;
-    scheduled_time?: string;
+    manual_open_at?: string;
     timezone?: string;
   };
   className?: string;
@@ -48,7 +48,7 @@ export function VisualTimeline({ currentStage, planData, className }: VisualTime
       id: 'research',
       title: 'Research',
       subtitle: 'Find camps & sessions',
-      date: formatDate(planData?.research_start),
+      date: formatDate(planData?.created_at),
       icon: <AlertCircle className="h-4 w-4" />,
       status: currentStage === 'research' ? 'active' : 
               ['preflight', 'monitor', 'activate', 'registration'].includes(currentStage) ? 'completed' : 'upcoming'
@@ -77,7 +77,7 @@ export function VisualTimeline({ currentStage, planData, className }: VisualTime
       id: 'activate',
       title: 'Guardian Angel',
       subtitle: 'Auto-registration activates',
-      date: formatDate(planData?.scheduled_time, planData?.timezone),
+      date: formatDate(planData?.manual_open_at, planData?.timezone),
       icon: <Zap className="h-4 w-4" />,
       status: currentStage === 'activate' ? 'active' :
               currentStage === 'registration' ? 'completed' :

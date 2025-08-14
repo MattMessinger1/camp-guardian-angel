@@ -399,10 +399,10 @@ export default function Readiness() {
                 'preflight'
               }
               planData={{
-                research_start: plan?.created_at,
+                created_at: plan?.created_at,
                 preflight_date: plan?.updated_at,
                 monitor_start: ['published', 'auto'].includes(openStrategy) ? plan?.updated_at : undefined,
-                scheduled_time: openStrategy === 'manual' && plan?.manual_open_at ? plan.manual_open_at : undefined,
+                manual_open_at: openStrategy === 'manual' && plan?.manual_open_at ? plan.manual_open_at : undefined,
                 timezone: timezone
               }}
             />
