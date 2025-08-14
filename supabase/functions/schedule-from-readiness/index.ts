@@ -19,6 +19,8 @@ interface RegistrationPlan {
   id: string;
   user_id: string;
   account_mode: string;
+  open_strategy: string;
+  manual_open_at: string | null;
   status: string;
 }
 
@@ -94,6 +96,44 @@ serve(async (req) => {
     const mappings = childMappings as PlanChildMap[];
     let totalRegistrationsCreated = 0;
     const results: any[] = [];
+
+    // Handle different scheduling strategies
+    if (planData.open_strategy === 'manual') {
+      if (!planData.manual_open_at) {
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            message: 'Manual open time not set for manual strategy'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // For manual strategy, create scheduled registrations
+      return await createScheduledRegistrations(supabase, planData, mappings, user.id);
+    }
+
+    if (planData.open_strategy === 'published' || planData.open_strategy === 'auto') {
+      // For published/auto strategies, create watcher (stub implementation)
+      console.log(`[SCHEDULE-FROM-READINESS] Creating watcher for ${planData.open_strategy} strategy`);
+      
+      await supabase
+        .from('registration_plans')
+        .update({ status: 'monitoring' })
+        .eq('id', plan_id);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Enabled monitoring for ${planData.open_strategy} strategy`,
+          watcher_created: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Legacy immediate registration logic (fallback)
+    console.log(`[SCHEDULE-FROM-READINESS] Using legacy immediate registration logic`);
 
     // Process each child mapping in priority order
     for (const mapping of mappings) {
@@ -190,15 +230,16 @@ serve(async (req) => {
             }
           }
 
-          // Create the registration
+          // Create the registration with plan_id
           const { data: newRegistration, error: regError } = await supabase
             .from('registrations')
             .insert({
               user_id: user.id,
+              plan_id: plan_id,
               child_id: mapping.child_id,
               session_id: sessionId,
               status: 'pending',
-              priority_opt_in: mapping.priority === 0, // First priority gets priority opt-in
+              priority_opt_in: mapping.priority === 0,
               requested_at: new Date().toISOString()
             })
             .select()
@@ -409,5 +450,106 @@ async function findAlternativeSession(
   } catch (error) {
     console.error('Error finding alternative session:', error);
     return null;
+  }
+}
+
+// Create scheduled registrations for manual strategy
+async function createScheduledRegistrations(
+  supabase: any,
+  plan: RegistrationPlan,
+  mappings: PlanChildMap[],
+  userId: string
+): Promise<Response> {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+
+  try {
+    const registrations = [];
+
+    // Create registrations for each child-session combination
+    for (const mapping of mappings) {
+      for (const sessionId of mapping.session_ids) {
+        // Check if registration already exists
+        const { data: existingReg } = await supabase
+          .from('registrations')
+          .select('id')
+          .eq('child_id', mapping.child_id)
+          .eq('session_id', sessionId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (existingReg) {
+          console.log(`[SCHEDULE] Registration already exists for child ${mapping.child_id}, session ${sessionId}`);
+          continue;
+        }
+
+        const registration = {
+          user_id: userId,
+          plan_id: plan.id,
+          child_id: mapping.child_id,
+          session_id: sessionId,
+          scheduled_time: plan.manual_open_at,
+          status: 'scheduled',
+          priority_opt_in: mapping.priority === 0,
+          retry_attempts: 3,
+          retry_delay_ms: 500,
+          fallback_strategy: 'alert_parent',
+          error_recovery: 'restart'
+        };
+
+        registrations.push(registration);
+      }
+    }
+
+    if (registrations.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          message: 'No new registrations to schedule - all already exist'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Insert scheduled registrations
+    const { data: inserted, error: insertError } = await supabase
+      .from('registrations')
+      .insert(registrations)
+      .select();
+
+    if (insertError) {
+      console.error('[SCHEDULE] Registration insert error:', insertError);
+      throw new Error(`Failed to create registrations: ${insertError.message}`);
+    }
+
+    console.log(`[SCHEDULE] Created ${inserted.length} scheduled registrations`);
+
+    // Update plan status
+    await supabase
+      .from('registration_plans')
+      .update({ status: 'scheduled' })
+      .eq('id', plan.id);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: `Created ${inserted.length} scheduled registrations for ${plan.manual_open_at}`,
+        registrations_created: inserted.length,
+        scheduled_time: plan.manual_open_at
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('[SCHEDULE] Error creating scheduled registrations:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
   }
 }

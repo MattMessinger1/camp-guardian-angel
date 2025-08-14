@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Calendar, Clock, MapPin, Settings, RotateCcw, Save, Users } from "lucide-react";
+import { Loader2, Calendar, Clock, MapPin, Settings, RotateCcw, Save, Users, Play } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { VisualTimeline } from "@/components/VisualTimeline";
 import { MultiChildSummary } from "@/components/MultiChildSummary";
@@ -37,6 +37,7 @@ export default function PlanDetail() {
   const [plan, setPlan] = useState<RegistrationPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   
   // Retry settings state
   const [retryAttempts, setRetryAttempts] = useState(3);
@@ -131,6 +132,53 @@ export default function PlanDetail() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const scheduleRegistrations = async () => {
+    if (!plan) return;
+    
+    setScheduling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('schedule-from-readiness', {
+        body: { plan_id: plan.id }
+      });
+
+      if (error) {
+        console.error('Schedule error:', error);
+        toast({
+          title: "Scheduling Failed",
+          description: error.message || "Failed to schedule registrations",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (data.success) {
+        toast({
+          title: "Registrations Scheduled",
+          description: data.message,
+          variant: "default"
+        });
+        
+        // Reload plan to update status
+        await loadPlan();
+      } else {
+        toast({
+          title: "Scheduling Failed", 
+          description: data.message || "Unknown error occurred",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while scheduling registrations",
+        variant: "destructive"
+      });
+    } finally {
+      setScheduling(false);
     }
   };
 
@@ -293,6 +341,38 @@ export default function PlanDetail() {
                   timezone: plan.timezone
                 }}
               />
+              
+              {/* Schedule Button */}
+              {plan && plan.status !== 'scheduled' && plan.status !== 'monitoring' && (
+                <div className="pt-4 border-t">
+                  <div className="flex flex-col space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      {plan.open_strategy === 'manual' 
+                        ? `Ready to schedule registrations for ${plan.manual_open_at ? new Date(plan.manual_open_at).toLocaleString() : 'the manual time'}`
+                        : `Ready to enable monitoring for ${plan.open_strategy} registration opening`
+                      }
+                    </p>
+                    <Button 
+                      onClick={scheduleRegistrations}
+                      disabled={scheduling}
+                      className="w-full"
+                      variant="default"
+                    >
+                      {scheduling ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Scheduling...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4 mr-2" />
+                          Schedule Now
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

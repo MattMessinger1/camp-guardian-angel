@@ -753,17 +753,21 @@ export type Database = {
           canonical_url: string | null
           child_id: string
           client_ip: string | null
+          completed_at: string | null
           device_fingerprint: string | null
           error_recovery: string | null
           fallback_strategy: string | null
           id: string
+          plan_id: string | null
           priority_opt_in: boolean
           processed_at: string | null
           provider_confirmation_id: string | null
           requested_at: string
+          result_message: string | null
           retry_attempts: number | null
           retry_delay_ms: number | null
           review_flag: boolean
+          scheduled_time: string | null
           session_id: string
           status: string
           user_id: string
@@ -772,17 +776,21 @@ export type Database = {
           canonical_url?: string | null
           child_id: string
           client_ip?: string | null
+          completed_at?: string | null
           device_fingerprint?: string | null
           error_recovery?: string | null
           fallback_strategy?: string | null
           id?: string
+          plan_id?: string | null
           priority_opt_in?: boolean
           processed_at?: string | null
           provider_confirmation_id?: string | null
           requested_at?: string
+          result_message?: string | null
           retry_attempts?: number | null
           retry_delay_ms?: number | null
           review_flag?: boolean
+          scheduled_time?: string | null
           session_id: string
           status: string
           user_id: string
@@ -791,17 +799,21 @@ export type Database = {
           canonical_url?: string | null
           child_id?: string
           client_ip?: string | null
+          completed_at?: string | null
           device_fingerprint?: string | null
           error_recovery?: string | null
           fallback_strategy?: string | null
           id?: string
+          plan_id?: string | null
           priority_opt_in?: boolean
           processed_at?: string | null
           provider_confirmation_id?: string | null
           requested_at?: string
+          result_message?: string | null
           retry_attempts?: number | null
           retry_delay_ms?: number | null
           review_flag?: boolean
+          scheduled_time?: string | null
           session_id?: string
           status?: string
           user_id?: string
@@ -812,6 +824,13 @@ export type Database = {
             columns: ["child_id"]
             isOneToOne: false
             referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registrations_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "registration_plans"
             referencedColumns: ["id"]
           },
           {
