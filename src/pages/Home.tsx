@@ -113,59 +113,61 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* SEARCH CARD */}
-      <section className="search-wrap" style={{ paddingBottom: '64px' }}>
-        <div className="search-card">
-          <div className="search-input">
-            <span className="search-icon" aria-hidden="true">🔎</span>
-            <input
-              type="text"
-              placeholder={isMobile ? "Activity name, location…" : "Activity name, city/state, session dates…"}
-              aria-label="Search activities by name, location, and dates"
-            />
+      {/* STICKY SEARCH CARD */}
+      <div 
+        className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200/50"
+        style={{ paddingTop: '8px', paddingBottom: '8px' }}
+      >
+        <div className="search-wrap" style={{ marginTop: '0', paddingBottom: '0' }}>
+          <div className="search-card" style={{ margin: '0 auto' }}>
+            <div className="search-input">
+              <span className="search-icon" aria-hidden="true">🔎</span>
+              <input
+                type="text"
+                placeholder={isMobile ? "Activity name, location…" : "Activity name, city/state, session dates…"}
+                aria-label="Search activities by name, location, and dates"
+              />
+            </div>
+            <button className="btn-primary btn-search">Secure My Spot</button>
           </div>
-          <button className="btn-primary btn-search">Secure My Spot</button>
         </div>
-      </section>
+      </div>
 
 
 
-      {/* FAQ Section */}
+      {/* Key Information Section */}
       <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto" style={{ maxWidth: '1200px' }}>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-12 text-center max-w-[28ch] mx-auto" style={{ fontWeight: '700', textWrap: 'balance' }}>
-            FAQs
+            How It Works
           </h2>
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl p-6 border shadow-sm" style={{ borderColor: '#E5E7EB', borderRadius: '14px' }}>
-              <div className="flex items-start mb-3">
-                <img 
-                  src="/lovable-uploads/5fd2573c-5da6-4ede-bb5a-a5171c65594f.png" 
-                  alt="Help icon"
-                  className="h-8 w-8 mr-3 mt-0.5 flex-shrink-0"
-                />
-                <h3 className="text-[18px] font-bold text-gray-900 max-w-[28ch]" style={{ fontWeight: '700', textWrap: 'balance' }}>
-                  Do you complete the entire registration for&nbsp;me?
-                </h3>
-              </div>
-              <p className="text-[16px] text-[#4B5563] ml-11" style={{ lineHeight: '1.6' }}>
-                We handle the speed-critical parts — monitoring when registration opens and submitting your application instantly. You handle the human verification steps like captchas and account confirmations that we can't automate.
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-6 border shadow-sm" style={{ borderColor: '#E5E7EB', borderRadius: '14px' }}>
-              <div className="flex items-start mb-3">
-                <img 
-                  src="/lovable-uploads/5fd2573c-5da6-4ede-bb5a-a5171c65594f.png" 
-                  alt="Help icon"
-                  className="h-8 w-8 mr-3 mt-0.5 flex-shrink-0"
-                />
-                <h3 className="text-[18px] font-bold text-gray-900 max-w-[28ch]" style={{ fontWeight: '700', textWrap: 'balance' }}>
-                  What if there are captchas or other verification&nbsp;steps?
-                </h3>
-              </div>
-              <p className="text-[16px] text-[#4B5563] ml-11" style={{ lineHeight: '1.6' }}>
-                We prepare everything in advance and send you immediate notifications with step-by-step guidance. You'll have all the prep work done and just need to complete the human verification steps.
-              </p>
+          
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+              {[
+                "We monitor registration openings and submit your application instantly when spots become available.",
+                "You handle human verification steps like captchas and account confirmations that require manual completion.",
+                "All your registration information is encrypted and securely stored for use in current and future sign-ups.",
+                "We send immediate text notifications with step-by-step guidance when your action is needed.",
+                "You only pay our service fee if you successfully secure the session you chose.",
+                "We prepare everything in advance so you're ready when verification steps appear."
+              ].map((statement, index) => (
+                <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                  <div 
+                    className="flex-shrink-0 w-2 h-2 rounded-full mt-2"
+                    style={{ backgroundColor: '#2563EB' }}
+                  ></div>
+                  <p 
+                    className="text-gray-700 leading-relaxed"
+                    style={{ 
+                      fontSize: isMobile ? '15px' : '16px',
+                      lineHeight: '1.6'
+                    }}
+                  >
+                    {statement}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
