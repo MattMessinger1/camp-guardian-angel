@@ -1,11 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { getSecureCorsHeaders, logSecurityEvent, extractClientInfo } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const corsHeaders = getSecureCorsHeaders();
 
 interface PreflightCheckRequest {
   plan_id: string;
@@ -57,19 +55,33 @@ serve(async (req) => {
     let preflightStatus = 'unknown';
     const checks = [];
 
-    // Check autopilot credentials
+    // Check autopilot credentials - validate VGS aliases exist
     if (planData.account_mode === 'autopilot') {
       const { data: credData } = await supabase
         .from('provider_credentials')
-        .select('id')
+        .select('vgs_username_alias, vgs_password_alias, vgs_payment_alias, payment_type')
         .eq('user_id', user.id)
         .eq('camp_id', planData.camp_id)
         .single();
 
       if (credData) {
-        checks.push('✓ Autopilot credentials stored');
+        // Validate required aliases exist
+        const hasUsername = !!credData.vgs_username_alias;
+        const hasPassword = !!credData.vgs_password_alias;
+        const hasPayment = credData.payment_type === 'defer' || !!credData.vgs_payment_alias;
+        
+        if (hasUsername && hasPassword && hasPayment) {
+          checks.push('✓ Autopilot credentials complete');
+        } else {
+          const missing = [];
+          if (!hasUsername) missing.push('username');
+          if (!hasPassword) missing.push('password');
+          if (!hasPayment) missing.push('payment');
+          checks.push(`✗ Missing VGS aliases: ${missing.join(', ')}`);
+          preflightStatus = 'failed';
+        }
       } else {
-        checks.push('✗ Autopilot credentials missing');
+        checks.push('✗ No autopilot credentials stored');
         preflightStatus = 'failed';
       }
     } else {
@@ -113,6 +125,23 @@ serve(async (req) => {
     if (updateError) {
       console.warn('Failed to update preflight status:', updateError.message);
     }
+
+    // Log security event
+    const clientInfo = extractClientInfo(req);
+    await logSecurityEvent(
+      'preflight_check',
+      user.id,
+      clientInfo.ip,
+      clientInfo.userAgent,
+      { 
+        plan_id,
+        camp_id: planData.camp_id,
+        account_mode: planData.account_mode,
+        detect_url: planData.detect_url,
+        status: preflightStatus,
+        checks_count: checks.length
+      }
+    );
 
     return new Response(
       JSON.stringify({ 

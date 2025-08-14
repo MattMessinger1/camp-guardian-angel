@@ -683,6 +683,7 @@ export type Database = {
           manual_open_at: string | null
           open_strategy: string | null
           preflight_status: string | null
+          rules: Json | null
           session_id: string | null
           status: string | null
           timezone: string | null
@@ -699,6 +700,7 @@ export type Database = {
           manual_open_at?: string | null
           open_strategy?: string | null
           preflight_status?: string | null
+          rules?: Json | null
           session_id?: string | null
           status?: string | null
           timezone?: string | null
@@ -715,6 +717,7 @@ export type Database = {
           manual_open_at?: string | null
           open_strategy?: string | null
           preflight_status?: string | null
+          rules?: Json | null
           session_id?: string | null
           status?: string | null
           timezone?: string | null

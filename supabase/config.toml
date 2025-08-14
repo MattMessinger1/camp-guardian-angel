@@ -9,6 +9,9 @@ verify_jwt = true
 [functions.preflight-check]
 verify_jwt = true
 
+[functions.twilio-config-status]
+verify_jwt = false
+
 [functions.twilio-status-callback]
 verify_jwt = false
 
@@ -60,5 +63,3 @@ verify_jwt = false
 [functions.schedule-from-readiness]
 verify_jwt = true
 
-[functions.delete-provider-credentials]
-verify_jwt = true

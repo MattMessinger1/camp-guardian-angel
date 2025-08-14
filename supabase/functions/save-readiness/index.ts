@@ -22,6 +22,7 @@ interface SaveReadinessRequest {
     amount_strategy: 'deposit' | 'full' | 'minimum';
     vgs_payment_alias?: string;
   } | null;
+  rules?: Record<string, any>;
 }
 
 serve(async (req) => {
@@ -52,7 +53,7 @@ serve(async (req) => {
     }
 
     const requestData: SaveReadinessRequest = await req.json();
-    const { plan_id, account_mode, open_strategy, manual_open_at_local, timezone, detect_url, credentials, payment_info } = requestData;
+    const { plan_id, account_mode, open_strategy, manual_open_at_local, timezone, detect_url, credentials, payment_info, rules } = requestData;
 
     console.log('Saving readiness for plan:', plan_id, 'mode:', account_mode, 'timezone:', timezone);
 
@@ -76,17 +77,35 @@ serve(async (req) => {
       }
     }
 
-    // Update registration plan
+    // Update registration plan with all new fields
+    const updateData: any = {
+      account_mode,
+      open_strategy,
+      timezone: timezone || 'America/Chicago',
+      updated_at: new Date().toISOString()
+    };
+
+    // Add manual_open_at in UTC if provided
+    if (manualOpenAtUTC) {
+      updateData.manual_open_at = manualOpenAtUTC;
+    }
+
+    // Add detect_url if provided
+    if (detect_url) {
+      updateData.detect_url = detect_url;
+    }
+
+    // Add rules if provided
+    if (rules) {
+      updateData.rules = rules;
+    }
+
+    // Clear preflight_status when readiness is updated
+    updateData.preflight_status = null;
+
     const { error: updateError } = await supabase
       .from('registration_plans')
-      .update({
-        account_mode,
-        open_strategy,
-        manual_open_at: manualOpenAtUTC,
-        timezone: timezone || 'America/Chicago',
-        detect_url: detect_url || null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', plan_id)
       .eq('user_id', user.id);
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +15,19 @@ import { toast } from "@/hooks/use-toast";
 import { VisualTimeline } from "@/components/VisualTimeline";
 import { MultiSessionPlanner } from "@/components/MultiSessionPlanner";
 
+const timezones = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Phoenix', label: 'Arizona Time (AZ)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AK)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HI)' },
+];
+
 interface RegistrationPlan {
   id: string;
+  camp_id?: string;
   account_mode?: string;
   open_strategy?: string;
   manual_open_at?: string;
@@ -24,6 +36,7 @@ interface RegistrationPlan {
   preflight_status?: string;
   created_at?: string;
   updated_at?: string;
+  rules?: any;
 }
 
 export default function Readiness() {
@@ -41,25 +54,15 @@ export default function Readiness() {
   const [detectUrl, setDetectUrl] = useState('');
   const [timezone, setTimezone] = useState('America/Chicago');
   const [manualOpenAtLocal, setManualOpenAtLocal] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  
+  // VGS alias fields for credentials
+  const [vgsUsernameAlias, setVgsUsernameAlias] = useState('');
+  const [vgsPasswordAlias, setVgsPasswordAlias] = useState('');
   
   // Payment info state
   const [paymentType, setPaymentType] = useState<'card' | 'ach' | 'defer'>('card');
   const [amountStrategy, setAmountStrategy] = useState<'deposit' | 'full' | 'minimum'>('full');
-  
-  // Card payment fields
-  const [cardNumber, setCardNumber] = useState('');
-  const [expMonth, setExpMonth] = useState('');
-  const [expYear, setExpYear] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [cardholderName, setCardholderName] = useState('');
-  
-  // ACH payment fields
-  const [accountNumber, setAccountNumber] = useState('');
-  const [routingNumber, setRoutingNumber] = useState('');
-  const [accountType, setAccountType] = useState<'checking' | 'savings'>('checking');
-  const [accountHolderName, setAccountHolderName] = useState('');
+  const [vgsPaymentAlias, setVgsPaymentAlias] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -71,14 +74,22 @@ export default function Readiness() {
     if (!planId) return;
     
     try {
-      const { data } = await supabase
-        .from('provider_credentials')
-        .select('id')
-        .eq('user_id', user?.id)
-        .limit(1)
-        .maybeSingle();
-        
-      setHasCredentials(!!data);
+      const { data: planData } = await supabase
+        .from('registration_plans')
+        .select('camp_id')
+        .eq('id', planId)
+        .single();
+
+      if (planData?.camp_id) {
+        const { data } = await supabase
+          .from('provider_credentials')
+          .select('vgs_username_alias, vgs_password_alias, vgs_payment_alias')
+          .eq('user_id', user?.id)
+          .eq('camp_id', planData.camp_id)
+          .maybeSingle();
+          
+        setHasCredentials(!!data?.vgs_username_alias && !!data?.vgs_password_alias);
+      }
     } catch (error) {
       console.error('Error checking credentials:', error);
     }
@@ -149,37 +160,41 @@ export default function Readiness() {
     
     setSaving(true);
     try {
-      const paymentInfo = accountMode === 'autopilot' ? {
-        payment_type: paymentType,
-        amount_strategy: amountStrategy,
-        payment_method: paymentType === 'defer' ? null : paymentType === 'card' ? {
-          card_number: cardNumber,
-          exp_month: expMonth,
-          exp_year: expYear,
-          cvv: cvv,
-          cardholder_name: cardholderName
-        } : {
-          account_number: accountNumber,
-          routing_number: routingNumber,
-          account_type: accountType,
-          account_holder_name: accountHolderName
+      const payload: any = {
+        plan_id: plan.id,
+        account_mode: accountMode,
+        open_strategy: openStrategy,
+        timezone: timezone,
+        detect_url: ['published', 'auto'].includes(openStrategy) ? detectUrl : null,
+      };
+
+      // Add manual time if manual strategy
+      if (openStrategy === 'manual' && manualOpenAtLocal) {
+        payload.manual_open_at_local = manualOpenAtLocal;
+      }
+
+      // Add VGS credential aliases for autopilot mode
+      if (accountMode === 'autopilot' && vgsUsernameAlias && vgsPasswordAlias) {
+        payload.credentials = {
+          vgs_username_alias: vgsUsernameAlias,
+          vgs_password_alias: vgsPasswordAlias,
+        };
+      }
+
+      // Add payment info for autopilot mode
+      if (accountMode === 'autopilot') {
+        payload.payment_info = {
+          payment_type: paymentType,
+          amount_strategy: amountStrategy,
+        };
+
+        if (paymentType !== 'defer' && vgsPaymentAlias) {
+          payload.payment_info.vgs_payment_alias = vgsPaymentAlias;
         }
-      } : null;
+      }
 
       const response = await supabase.functions.invoke('save-readiness', {
-        body: {
-          plan_id: plan.id,
-          account_mode: accountMode,
-          open_strategy: openStrategy,
-          manual_open_at_local: openStrategy === 'manual' ? manualOpenAtLocal : null,
-          timezone: timezone,
-          detect_url: ['published', 'auto'].includes(openStrategy) ? detectUrl : null,
-          credentials: accountMode === 'autopilot' && username && password ? {
-            username,
-            password
-          } : null,
-          payment_info: paymentInfo
-        }
+        body: payload
       });
 
       if (response.error) {
@@ -195,14 +210,10 @@ export default function Readiness() {
         manual_open_at: null // This will be set by the server response
       });
 
-      // Clear sensitive data for security
-      setPassword('');
-      setCardNumber('');
-      setCvv('');
-      setAccountNumber('');
+      // Clear sensitive data for security (VGS aliases can stay)
       
       // Update credentials status
-      if (accountMode === 'autopilot' && (username || cardNumber)) {
+      if (accountMode === 'autopilot' && vgsUsernameAlias && vgsPasswordAlias) {
         setHasCredentials(true);
       }
 
@@ -262,8 +273,12 @@ export default function Readiness() {
     
     setDeleting(true);
     try {
+      // Get plan details to find camp_id
+      if (!plan) return;
+      
       const response = await supabase.functions.invoke('delete-provider-credentials', {
-        body: { plan_id: plan.id }
+        method: 'DELETE',
+        body: { camp_id: plan.camp_id || null }
       });
 
       if (response.error) {
@@ -276,14 +291,9 @@ export default function Readiness() {
       setPlan({ ...plan, account_mode: 'assist' });
       
       // Clear form fields
-      setUsername('');
-      setPassword('');
-      setCardNumber('');
-      setCvv('');
-      setAccountNumber('');
-      setRoutingNumber('');
-      setCardholderName('');
-      setAccountHolderName('');
+      setVgsUsernameAlias('');
+      setVgsPasswordAlias('');
+      setVgsPaymentAlias('');
 
       toast({
         title: "Success",
@@ -480,22 +490,22 @@ export default function Readiness() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="username">Username/Email</Label>
+                    <Label htmlFor="vgsUsernameAlias">Username/Email (VGS Alias)</Label>
                     <Input
-                      id="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="your-email@example.com"
+                      id="vgsUsernameAlias"
+                      value={vgsUsernameAlias}
+                      onChange={(e) => setVgsUsernameAlias(e.target.value)}
+                      placeholder="tok_****"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="vgsPasswordAlias">Password (VGS Alias)</Label>
                     <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
+                      id="vgsPasswordAlias"
+                      type="text"
+                      value={vgsPasswordAlias}
+                      onChange={(e) => setVgsPasswordAlias(e.target.value)}
+                      placeholder="tok_****"
                     />
                   </div>
                 </div>
@@ -572,107 +582,36 @@ export default function Readiness() {
 
                   {paymentType === 'card' && (
                     <div className="space-y-4">
-                      <h5 className="font-medium text-sm">Card Details</h5>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                          <Label htmlFor="cardNumber">Card Number</Label>
-                          <Input
-                            id="cardNumber"
-                            value={cardNumber}
-                            onChange={(e) => setCardNumber(e.target.value)}
-                            placeholder="1234 5678 9012 3456"
-                            type="password"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="expMonth">Exp Month</Label>
-                          <Input
-                            id="expMonth"
-                            value={expMonth}
-                            onChange={(e) => setExpMonth(e.target.value)}
-                            placeholder="MM"
-                            maxLength={2}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="expYear">Exp Year</Label>
-                          <Input
-                            id="expYear"
-                            value={expYear}
-                            onChange={(e) => setExpYear(e.target.value)}
-                            placeholder="YY"
-                            maxLength={2}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="cvv">CVV</Label>
-                          <Input
-                            id="cvv"
-                            value={cvv}
-                            onChange={(e) => setCvv(e.target.value)}
-                            placeholder="123"
-                            type="password"
-                            maxLength={4}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="cardholderName">Cardholder Name</Label>
-                          <Input
-                            id="cardholderName"
-                            value={cardholderName}
-                            onChange={(e) => setCardholderName(e.target.value)}
-                            placeholder="John Doe"
-                          />
-                        </div>
+                      <h5 className="font-medium text-sm">Payment Alias</h5>
+                      <div>
+                        <Label htmlFor="vgsPaymentAlias">Payment VGS Alias</Label>
+                        <Input
+                          id="vgsPaymentAlias"
+                          value={vgsPaymentAlias}
+                          onChange={(e) => setVgsPaymentAlias(e.target.value)}
+                          placeholder="tok_****"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          VGS token for your payment method
+                        </p>
                       </div>
                     </div>
                   )}
 
                   {paymentType === 'ach' && (
                     <div className="space-y-4">
-                      <h5 className="font-medium text-sm">Bank Account Details</h5>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="routingNumber">Routing Number</Label>
-                          <Input
-                            id="routingNumber"
-                            value={routingNumber}
-                            onChange={(e) => setRoutingNumber(e.target.value)}
-                            placeholder="123456789"
-                            type="password"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="accountNumber">Account Number</Label>
-                          <Input
-                            id="accountNumber"
-                            value={accountNumber}
-                            onChange={(e) => setAccountNumber(e.target.value)}
-                            placeholder="Account number"
-                            type="password"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="accountType">Account Type</Label>
-                          <select
-                            id="accountType"
-                            value={accountType}
-                            onChange={(e) => setAccountType(e.target.value as 'checking' | 'savings')}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="checking">Checking</option>
-                            <option value="savings">Savings</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label htmlFor="accountHolderName">Account Holder Name</Label>
-                          <Input
-                            id="accountHolderName"
-                            value={accountHolderName}
-                            onChange={(e) => setAccountHolderName(e.target.value)}
-                            placeholder="John Doe"
-                          />
-                        </div>
+                      <h5 className="font-medium text-sm">Payment Alias</h5>
+                      <div>
+                        <Label htmlFor="vgsPaymentAlias">Payment VGS Alias</Label>
+                        <Input
+                          id="vgsPaymentAlias"
+                          value={vgsPaymentAlias}
+                          onChange={(e) => setVgsPaymentAlias(e.target.value)}
+                          placeholder="tok_****"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          VGS token for your bank account
+                        </p>
                       </div>
                     </div>
                   )}
@@ -739,27 +678,24 @@ export default function Readiness() {
                   </div>
                   <div>
                     <Label htmlFor="timezone">Timezone</Label>
-                    <select
-                      id="timezone"
-                      value={timezone}
-                      onChange={(e) => setTimezone(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="America/New_York">Eastern Time (ET)</option>
-                      <option value="America/Chicago">Central Time (CT)</option>
-                      <option value="America/Denver">Mountain Time (MT)</option>
-                      <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                      <option value="America/Phoenix">Arizona Time (MST)</option>
-                      <option value="America/Anchorage">Alaska Time (AKST)</option>
-                      <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
-                      <option value="UTC">UTC</option>
-                    </select>
+                    <Select value={timezone} onValueChange={setTimezone}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timezones.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground mt-1">
                       Times will be stored in UTC and converted back for display
                     </p>
-        </div>
-      </div>
-    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {(['published', 'auto'].includes(openStrategy)) && (
