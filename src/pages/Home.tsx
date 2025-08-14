@@ -136,66 +136,69 @@ const HomePage = () => {
             How We&nbsp;Work
           </h2>
           
-          {/* Two Column Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-8">
-            {/* We Handle Column */}
-            <div className="bg-white rounded-xl p-8 shadow-sm border">
-              <div className="flex items-center mb-6">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mr-4">
-                  <Clock className="h-6 w-6 text-white" />
+          {/* Three Steps Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Clipboard,
+                title: "Tell Us What You Want",
+                description: "Event name, location, and dates",
+              },
+              {
+                icon: Zap,
+                title: "We're On It",
+                description: "We monitor and submit instantly when registration opens",
+              },
+              {
+                icon: Trophy,
+                title: "Get Your Spot",
+                description: "You handle verification steps and secure your spot",
+              }
+            ].map((step, index) => {
+              const IconComponent = step.icon;
+              return (
+                <div key={index} className="flex flex-col items-center text-center">
+                  {/* Icon Circle */}
+                  <div 
+                    className="rounded-full flex items-center justify-center"
+                    style={{ 
+                      width: '80px', 
+                      height: '80px', 
+                      backgroundColor: '#2563EB',
+                      marginBottom: '20px'
+                    }}
+                  >
+                    <IconComponent size={40} color="white" strokeWidth={2} />
+                  </div>
+                  
+                  {/* Title */}
+                  <h3 
+                    className="mb-3"
+                    style={{ 
+                      fontSize: '20px', 
+                      fontWeight: '700', 
+                      color: '#111827',
+                      textAlign: 'center',
+                      lineHeight: '1.3'
+                    }}
+                  >
+                    {step.title}
+                  </h3>
+                  
+                  {/* Description */}
+                  <p 
+                    style={{ 
+                      fontSize: '16px', 
+                      color: '#4B5563',
+                      textAlign: 'center',
+                      lineHeight: '1.5'
+                    }}
+                  >
+                    {step.description}
+                  </p>
                 </div>
-                <h3 className="text-[20px] font-bold text-gray-900" style={{ fontWeight: '700' }}>We&nbsp;handle</h3>
-              </div>
-              <ul className="space-y-3 text-[16px] text-[#4B5563]">
-                <li className="flex items-start">
-                  <span className="text-primary mr-3 mt-1.5">•</span>
-                  Monitoring registration opening times
-                </li>
-                <li className="flex items-start">
-                  <span className="text-primary mr-3 mt-1.5">•</span>
-                  Instant submission when registration opens
-                </li>
-                <li className="flex items-start">
-                  <span className="text-primary mr-3 mt-1.5">•</span>
-                  Speed advantage over manual registration
-                </li>
-              </ul>
-            </div>
-
-            {/* You Handle Column */}
-            <div className="bg-white rounded-xl p-8 shadow-sm border">
-              <div className="flex items-center mb-6">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mr-4">
-                  <User className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-[20px] font-bold text-gray-900" style={{ fontWeight: '700' }}>You&nbsp;handle</h3>
-              </div>
-              <ul className="space-y-3 text-[16px] text-[#4B5563]">
-                <li className="flex items-start">
-                  <span className="text-primary mr-3 mt-1.5">•</span>
-                  Captchas and human verification
-                </li>
-                <li className="flex items-start">
-                  <span className="text-primary mr-3 mt-1.5">•</span>
-                  Account setup and login steps
-                </li>
-                <li className="flex items-start">
-                  <span className="text-primary mr-3 mt-1.5">•</span>
-                  Final verification and confirmation
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Together Strip */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border text-center">
-            <div className="flex items-center justify-center mb-3">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mr-4">
-                <Handshake className="h-6 w-6 text-white" />
-              </div>
-              <h3 className="text-[20px] font-bold text-gray-900" style={{ fontWeight: '700' }}>Together</h3>
-            </div>
-            <p className="text-[16px] text-[#4B5563]">You get the best chance at securing spots</p>
+              );
+            })}
           </div>
         </div>
       </section>
