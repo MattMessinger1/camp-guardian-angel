@@ -122,10 +122,38 @@ serve(async (req) => {
 
     console.log(`[NOTIFY-PARENT] SMS sent successfully: ${smsResult.sid}`);
 
+    // Send email if SendGrid is configured
+    let emailResult = null;
+    const sendGridApiKey = Deno.env.get('SENDGRID_API_KEY');
+    
+    if (sendGridApiKey) {
+      try {
+        // Get user's email from auth
+        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user_id);
+        
+        if (!authError && authUser?.user?.email) {
+          const emailSubject = getEmailSubject(template_id, variables);
+          const emailBody = createEmailBody(messageText, tokenUrl, variables);
+          
+          emailResult = await sendSendGridEmail(
+            authUser.user.email,
+            emailSubject,
+            emailBody
+          );
+          
+          console.log(`[NOTIFY-PARENT] Email sent successfully to ${authUser.user.email}`);
+        }
+      } catch (emailError) {
+        console.error('[NOTIFY-PARENT] Email send failed:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         message_sid: smsResult.sid,
+        email_sent: !!emailResult,
         token_url: tokenUrl || undefined,
         message_preview: messageText.substring(0, 100) + (messageText.length > 100 ? '...' : '')
       }),
@@ -213,4 +241,115 @@ async function sendTwilioSMS(to: string, body: string) {
   }
 
   return await response.json();
+}
+
+// Get email subject based on template
+function getEmailSubject(templateId: string, variables: Record<string, any>): string {
+  const subjects: Record<string, string> = {
+    signup_success: '✅ Registration Confirmed - {{session_title}}',
+    signup_failed: '❌ Registration Failed - {{session_title}}',
+    retrying: '🔄 Registration Retry - {{session_title}}',
+    captcha_required: '🤖 Verification Required - {{session_title}}',
+    otp_required: '🔐 Code Required - {{session_title}}',
+    price_over_cap: '💰 Approval Needed - {{session_title}}'
+  };
+
+  let subject = subjects[templateId] || `CampRush Notification - ${templateId}`;
+  
+  // Replace variables in subject
+  for (const [key, value] of Object.entries(variables)) {
+    subject = subject.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
+  }
+  
+  return subject;
+}
+
+// Create HTML email body
+function createEmailBody(messageText: string, tokenUrl: string, variables: Record<string, any>): string {
+  const baseUrl = Deno.env.get('APP_BASE_URL') || 'https://your-app.com';
+  
+  let htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>CampRush Notification</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #2563eb; }
+            .message { font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 20px; }
+            .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">🏕️ CampRush</div>
+            </div>
+            <div class="message">
+                ${messageText.replace(/\n/g, '<br>')}
+            </div>`;
+
+  // Add action button if there's a token URL
+  if (tokenUrl) {
+    htmlBody += `
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="${tokenUrl}" class="button">Take Action</a>
+            </div>`;
+  }
+
+  htmlBody += `
+            <div class="footer">
+                <p>This is an automated message from CampRush.</p>
+                <p>If you have questions, please contact support.</p>
+            </div>
+        </div>
+    </body>
+    </html>`;
+
+  return htmlBody;
+}
+
+// Send email via SendGrid
+async function sendSendGridEmail(to: string, subject: string, htmlContent: string) {
+  const apiKey = Deno.env.get('SENDGRID_API_KEY');
+  const fromEmail = Deno.env.get('SENDGRID_FROM_EMAIL') || 'noreply@camprush.com';
+  
+  if (!apiKey) {
+    throw new Error('SendGrid API key not configured');
+  }
+
+  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [
+        {
+          to: [{ email: to }],
+          subject: subject
+        }
+      ],
+      from: { email: fromEmail, name: 'CampRush' },
+      content: [
+        {
+          type: 'text/html',
+          value: htmlContent
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`SendGrid API error: ${response.status} - ${error}`);
+  }
+
+  return { success: true, status: response.status };
 }
