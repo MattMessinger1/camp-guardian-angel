@@ -35,7 +35,18 @@ const HomePage = () => {
             <p className="hero-sub">
               You pre-load your info, we submit the millisecond registration opens, and we help you complete any human steps (captcha) via text message
             </p>
-            <button className="btn-primary">Manage My SignUp Stress</button>
+            <button 
+              className="btn-primary"
+              onClick={() => {
+                const searchInput = document.querySelector('.search-input input') as HTMLInputElement;
+                if (searchInput) {
+                  searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  setTimeout(() => searchInput.focus(), 500);
+                }
+              }}
+            >
+              Manage my signup stress
+            </button>
           </div>
         </div>
       </section>
