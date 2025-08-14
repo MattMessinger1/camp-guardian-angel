@@ -178,6 +178,20 @@ All colors MUST be HSL. */
       radial-gradient(circle at 80% 80%, hsl(var(--secondary-emerald) / 0.15) 0%, transparent 50%);
   }
 
+  /* Hero section with responsive backgrounds */
+  .hero-section {
+    background-image: url('/lovable-uploads/4de45da3-7853-4d56-b6a0-629b7005cf1f.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  @media (min-width: 768px) {
+    .hero-section {
+      background-image: url('/lovable-uploads/34b306e2-bf20-410d-ba29-c46390e5f193.png');
+    }
+  }
+
   .hero-dot-pattern {
     background-image: radial-gradient(circle, hsl(220 13% 91% / 0.25) 1px, transparent 1px);
     background-size: 20px 20px;

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Search, Globe, Lock, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
@@ -9,29 +9,32 @@ const HomePage = () => {
     freezeOnceVisible: true
   })
 
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        className="relative px-4 py-12 md:py-24 text-center overflow-hidden min-h-[520px] md:min-h-[70vh] flex items-center justify-center"
-        style={{
-          backgroundImage: `url('/lovable-uploads/34b306e2-bf20-410d-ba29-c46390e5f193.png')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
+        className="hero-section relative px-4 py-12 md:py-24 text-center overflow-hidden min-h-[520px] md:min-h-[70vh] flex items-center justify-center"
       >
         {/* Hero content with dark overlay */}
         <div className="relative z-10 mx-auto max-w-4xl">
           <div className="inline-block p-4 rounded-xl" style={{ backgroundColor: 'rgba(17,24,39,0.6)' }}>
-            <h1 className="text-white mb-3 text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
+            <h1 className="text-white mb-3 text-[32px] md:text-[48px] font-extrabold tracking-tight leading-tight">
               Get the spot you want, without the stress.
             </h1>
             
             <div className="w-16 h-1 bg-primary mx-auto mb-3 rounded"></div>
             
-            <p className="text-white text-base md:text-xl font-normal max-w-2xl mx-auto leading-relaxed">
+            <p className="text-white text-base md:text-[20px] font-normal max-w-2xl mx-auto leading-relaxed">
               Tell us your event, we'll be ready to sign you up the moment registration opens. 
               You handle any final steps.
             </p>
@@ -106,8 +109,8 @@ const HomePage = () => {
               <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
               <input 
                 type="text"
-                placeholder="Event name, city/state, session dates…"
-                className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-base md:placeholder:text-base placeholder:text-sm"
+                placeholder={isMobile ? "Event name, location…" : "Event name, city/state, session dates…"}
+                className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-base"
               />
               <button className="bg-primary hover:bg-primary/90 text-white font-bold px-6 py-3 rounded-lg transition-colors">
                 Search
