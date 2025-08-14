@@ -1,101 +1,142 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-interface DeleteCredentialsRequest {
-  plan_id: string;
-}
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getSecureCorsHeaders, logSecurityEvent, extractClientInfo } from '../_shared/security.ts';
 
 serve(async (req) => {
+  const corsHeaders = getSecureCorsHeaders();
+  
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get Supabase credentials from environment
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get auth header to verify user
+    
+    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('No authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    // Verify user
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
 
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    const requestData: DeleteCredentialsRequest = await req.json();
-    const { plan_id } = requestData;
-
-    console.log('Deleting credentials for plan:', plan_id);
-
-    // Get plan details to find camp_id
-    const { data: planData, error: planError } = await supabase
-      .from('registration_plans')
-      .select('camp_id')
-      .eq('id', plan_id)
-      .eq('user_id', user.id)
-      .single();
-
-    if (planError || !planData) {
-      throw new Error('Registration plan not found or unauthorized');
+    if (req.method !== 'DELETE') {
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        { 
+          status: 405,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
+
+    const { camp_id } = await req.json();
+
+    if (!camp_id) {
+      return new Response(
+        JSON.stringify({ error: 'camp_id is required' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Extract client info for logging
+    const clientInfo = extractClientInfo(req);
 
     // Delete provider credentials for this user and camp
     const { error: deleteError } = await supabase
       .from('provider_credentials')
       .delete()
       .eq('user_id', user.id)
-      .eq('camp_id', planData.camp_id);
+      .eq('camp_id', camp_id);
 
     if (deleteError) {
-      console.error('Error deleting credentials:', deleteError);
-      throw new Error(`Failed to delete credentials: ${deleteError.message}`);
+      console.error('Error deleting provider credentials:', deleteError);
+      
+      await logSecurityEvent(
+        'delete_credentials_failed',
+        user.id,
+        clientInfo.ip,
+        clientInfo.userAgent,
+        { camp_id, error: deleteError.message }
+      );
+
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete credentials' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    // Update registration plan to assist mode
+    // Update registration plans to set account_mode to 'assist' for this user and camp
     const { error: updateError } = await supabase
       .from('registration_plans')
-      .update({
+      .update({ 
         account_mode: 'assist',
         updated_at: new Date().toISOString()
       })
-      .eq('id', plan_id)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('camp_id', camp_id);
 
     if (updateError) {
-      console.error('Error updating plan mode:', updateError);
-      throw new Error(`Failed to update plan mode: ${updateError.message}`);
+      console.error('Error updating registration plans:', updateError);
+      // Don't fail the response since credentials were deleted successfully
     }
 
-    console.log('Successfully deleted credentials and updated plan to assist mode');
+    // Log successful deletion
+    await logSecurityEvent(
+      'credentials_deleted',
+      user.id,
+      clientInfo.ip,
+      clientInfo.userAgent,
+      { camp_id, account_mode_updated: !updateError }
+    );
 
     return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: true,
+        message: 'Provider credentials deleted and account mode set to assist'
+      }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
     );
 
   } catch (error) {
-    console.error('Error in delete-provider-credentials:', error);
+    console.error('Delete provider credentials error:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

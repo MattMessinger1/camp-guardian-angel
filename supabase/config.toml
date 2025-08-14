@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.schedule-from-readiness]
 verify_jwt = true
+
+[functions.delete-provider-credentials]
+verify_jwt = true

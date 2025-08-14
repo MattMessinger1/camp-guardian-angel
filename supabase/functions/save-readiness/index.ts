@@ -1,13 +1,10 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { encrypt, encryptPaymentMethod } from '../_shared/crypto.ts';
 import { DateTime } from 'https://esm.sh/luxon@3.4.4';
+import { getSecureCorsHeaders, logSecurityEvent, extractClientInfo } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const corsHeaders = getSecureCorsHeaders();
 
 interface SaveReadinessRequest {
   plan_id: string;
@@ -17,25 +14,13 @@ interface SaveReadinessRequest {
   timezone?: string;
   detect_url?: string;
   credentials?: {
-    username: string;
-    password: string;
+    vgs_username_alias: string;
+    vgs_password_alias: string;
   } | null;
   payment_info?: {
     payment_type: 'card' | 'ach' | 'defer';
     amount_strategy: 'deposit' | 'full' | 'minimum';
-    payment_method?: {
-      // For card payments
-      card_number?: string;
-      exp_month?: string;
-      exp_year?: string;
-      cvv?: string;
-      cardholder_name?: string;
-      // For ACH payments
-      account_number?: string;
-      routing_number?: string;
-      account_type?: 'checking' | 'savings';
-      account_holder_name?: string;
-    };
+    vgs_payment_alias?: string;
   } | null;
 }
 
@@ -120,40 +105,27 @@ serve(async (req) => {
           .eq('user_id', user.id)
           .single();
 
-        let passwordCipher: string | undefined;
-        let paymentMethodCipher: string | undefined;
-
-        // Encrypt password if provided
-        if (credentials?.password) {
-          passwordCipher = await encrypt(credentials.password);
-        }
-
-        // Encrypt payment method if provided
-        if (payment_info?.payment_method && payment_info.payment_type !== 'defer') {
-          paymentMethodCipher = await encryptPaymentMethod(payment_info.payment_method);
-        }
-
-        // Upsert credentials
+        // Prepare upsert data with VGS aliases
         const updateData: any = {
           user_id: user.id,
           camp_id: planData?.camp_id || null,
           updated_at: new Date().toISOString()
         };
 
-        if (credentials?.username) {
-          updateData.username = credentials.username;
+        if (credentials?.vgs_username_alias) {
+          updateData.vgs_username_alias = credentials.vgs_username_alias;
         }
         
-        if (passwordCipher) {
-          updateData.password_cipher = passwordCipher;
+        if (credentials?.vgs_password_alias) {
+          updateData.vgs_password_alias = credentials.vgs_password_alias;
         }
 
         if (payment_info) {
           updateData.payment_type = payment_info.payment_type;
           updateData.amount_strategy = payment_info.amount_strategy;
           
-          if (paymentMethodCipher) {
-            updateData.payment_method_cipher = paymentMethodCipher;
+          if (payment_info.vgs_payment_alias) {
+            updateData.vgs_payment_alias = payment_info.vgs_payment_alias;
           }
         }
 
@@ -166,9 +138,26 @@ serve(async (req) => {
         if (credError) {
           throw new Error(`Failed to save credentials: ${credError.message}`);
         }
-      } catch (encryptError) {
-        console.error('Error encrypting credentials or payment info:', encryptError);
-        throw new Error('Failed to encrypt sensitive data');
+
+        // Log successful credential save
+        const clientInfo = extractClientInfo(req);
+        await logSecurityEvent(
+          'credentials_saved',
+          user.id,
+          clientInfo.ip,
+          clientInfo.userAgent,
+          { 
+            plan_id,
+            camp_id: planData?.camp_id,
+            has_username: !!credentials?.vgs_username_alias,
+            has_password: !!credentials?.vgs_password_alias,
+            has_payment: !!payment_info?.vgs_payment_alias,
+            payment_type: payment_info?.payment_type
+          }
+        );
+      } catch (saveError) {
+        console.error('Error saving credentials:', saveError);
+        throw new Error('Failed to save credential aliases');
       }
     }
 
