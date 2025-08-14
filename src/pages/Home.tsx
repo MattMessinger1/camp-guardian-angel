@@ -162,7 +162,7 @@ const HomePage = () => {
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
               {[
-                "You pay our service fee only if you successfully secure the session you chose.",
+                "You pay our flat $20 Registration Fee only if you successfully secure the session you chose.",
                 "We monitor registration openings and submit your application instantly when spots become available.",
                 "You handle captchas and account verification when needed - we prepare everything in advance and send instant alerts with step-by-step guidance.",
                 "All your registration information is encrypted and securely stored for use in current and future sign-ups."
@@ -173,7 +173,7 @@ const HomePage = () => {
                     style={{ backgroundColor: '#2563EB' }}
                   ></div>
                   <p 
-                    className={`leading-relaxed ${index === 0 ? 'text-blue-700 font-semibold' : 'text-gray-700'}`}
+                    className="text-gray-700 leading-relaxed"
                     style={{ 
                       fontSize: isMobile ? '15px' : '16px',
                       lineHeight: '1.6'
