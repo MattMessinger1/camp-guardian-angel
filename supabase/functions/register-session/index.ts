@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { decrypt, decryptPaymentMethod } from '../_shared/crypto.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,11 +17,13 @@ interface RegisterSessionRequest {
 interface RegistrationRow {
   id: string;
   user_id: string;
+  plan_id: string;
   status: string;
   retry_attempts: number;
   retry_delay_ms: number;
   fallback_strategy: string;
   error_recovery: string;
+  scheduled_time?: string;
 }
 
 interface RetryableError extends Error {
@@ -143,114 +144,131 @@ async function executeRegistrationWithRetry(
 ) {
   const { registration_id, session_id, child_id } = requestData;
 
-  // Get registration plan and credentials
-  const { data: planData } = await supabase
-    .from('registration_plans')
-    .select(`
-      *,
-      provider_credentials (
-        username,
-        password_cipher,
-        payment_type,
-        amount_strategy,
-        payment_method_cipher
-      )
-    `)
-    .eq('user_id', user.id)
-    .eq('child_id', child_id)
-    .single();
+  console.log(`[REGISTER-SESSION] Starting registration ${registration_id}, attempt ${currentAttempt}`);
 
-  if (!planData) {
-    throw new Error('Registration plan not found');
-  }
-
-  // Get session details
-  const { data: sessionData } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('id', session_id)
-    .single();
-
-  if (!sessionData) {
-    throw new Error('Session not found');
-  }
-
-  let credentials: any = null;
-  let paymentMethod: any = null;
-
-  // Decrypt credentials if available
-  if (planData.provider_credentials?.[0]) {
-    const creds = planData.provider_credentials[0];
-    
-    if (creds.password_cipher) {
-      const password = await decrypt(creds.password_cipher);
-      credentials = {
-        username: creds.username,
-        password: password
-      };
-    }
-
-    // Decrypt payment method if available and not defer type
-    if (creds.payment_method_cipher && creds.payment_type !== 'defer') {
-      paymentMethod = {
-        type: creds.payment_type,
-        strategy: creds.amount_strategy,
-        details: await decryptPaymentMethod(creds.payment_method_cipher)
-      };
-    }
-  }
-
-  // Update registration status to 'processing'
-  const { error: updateError } = await supabase
+  // Lock the registration row and update status to 'processing'
+  const { data: lockResult, error: lockError } = await supabase
     .from('registrations')
     .update({
       status: 'processing',
       processed_at: new Date().toISOString()
     })
     .eq('id', registration_id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .eq('status', 'pending') // Only process if still pending
+    .select()
+    .single();
 
-  if (updateError) {
-    throw new Error(`Failed to update registration: ${updateError.message}`);
+  if (lockError || !lockResult) {
+    throw new Error(`Failed to lock registration row: ${lockError?.message || 'No row updated'}`);
   }
 
-  // Simulate actual registration logic that might fail
-  console.log('Registration automation starting with:');
-  console.log('- Credentials:', credentials ? 'Available' : 'None');
-  console.log('- Payment method:', paymentMethod ? `${paymentMethod.type} (${paymentMethod.strategy})` : 'Defer/None');
-  console.log('- Session:', sessionData.title);
+  console.log(`[REGISTER-SESSION] Locked registration ${registration_id}`);
 
-  // Simulate potential failure scenarios for testing
-  const simulateError = Math.random() < 0.3; // 30% chance of error for testing
-  if (simulateError && currentAttempt <= 2) {
-    const errorTypes = ['network', 'timeout', 'form field mismatch', 'HTTP 502'];
-    const errorType = errorTypes[Math.floor(Math.random() * errorTypes.length)];
-    throw new Error(`Simulated ${errorType} error`);
+  // Get registration plan with provider credentials and rules
+  const { data: planData, error: planError } = await supabase
+    .from('registration_plans')
+    .select(`
+      *,
+      provider_credentials (
+        id,
+        camp_id,
+        vgs_username_alias,
+        vgs_password_alias,
+        vgs_payment_alias,
+        payment_type,
+        amount_strategy
+      )
+    `)
+    .eq('id', registration.plan_id)
+    .single();
+
+  if (planError || !planData) {
+    throw new Error(`Registration plan not found: ${planError?.message}`);
   }
 
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Get session and camp details
+  const { data: sessionData, error: sessionError } = await supabase
+    .from('sessions')
+    .select(`
+      *,
+      camps!inner (
+        id,
+        name,
+        website_url
+      ),
+      providers (
+        id,
+        name,
+        site_url
+      )
+    `)
+    .eq('id', session_id)
+    .single();
 
-  // Update registration to accepted
-  const { error: finalUpdateError } = await supabase
+  if (sessionError || !sessionData) {
+    throw new Error(`Session not found: ${sessionError?.message}`);
+  }
+
+  // Apply guardrails before proceeding
+  const guardrailResult = await applyGuardrails(supabase, planData, sessionData, registration_id);
+  if (!guardrailResult.approved) {
+    // Pause registration and request approval
+    await supabase
+      .from('registrations')
+      .update({
+        status: 'paused',
+        result_message: guardrailResult.reason
+      })
+      .eq('id', registration_id);
+
+    // Send approval request via Twilio (stub for now)
+    console.log(`[REGISTER-SESSION] Guardrail violation: ${guardrailResult.reason}`);
+    console.log(`[REGISTER-SESSION] Would send approval link: /approve/${guardrailResult.approvalToken}`);
+    
+    return {
+      success: false,
+      status: 'paused',
+      message: guardrailResult.reason,
+      approvalRequired: true,
+      approvalToken: guardrailResult.approvalToken
+    };
+  }
+
+  // Get provider credentials via VGS aliases
+  const credentials = await retrieveVGSCredentials(planData.provider_credentials?.[0]);
+  
+  console.log(`[REGISTER-SESSION] Using provider: ${sessionData.providers?.name || 'Unknown'}`);
+  console.log(`[REGISTER-SESSION] Session: ${sessionData.title} - ${sessionData.camps?.name}`);
+  console.log(`[REGISTER-SESSION] Credentials: ${credentials ? 'Available via VGS' : 'None'}`);
+
+  // Execute the actual registration via provider adapter
+  const registrationResult = await executeProviderRegistration(
+    sessionData,
+    credentials,
+    currentAttempt
+  );
+
+  // Update registration with result
+  const completedAt = new Date().toISOString();
+  await supabase
     .from('registrations')
     .update({
-      status: 'accepted',
-      processed_at: new Date().toISOString(),
-      provider_confirmation_id: `CONF_${Date.now()}`
+      status: registrationResult.success ? 'accepted' : 'failed',
+      completed_at: completedAt,
+      result_message: registrationResult.message,
+      provider_confirmation_id: registrationResult.confirmationId
     })
-    .eq('id', registration_id)
-    .eq('user_id', user.id);
+    .eq('id', registration_id);
 
-  if (finalUpdateError) {
-    console.warn('Failed to update final registration status:', finalUpdateError);
-  }
+  console.log(`[REGISTER-SESSION] Registration ${registration_id} completed: ${registrationResult.success ? 'SUCCESS' : 'FAILED'}`);
 
   return { 
-    success: true,
-    status: 'accepted',
-    message: `Registration completed successfully on attempt ${currentAttempt}`,
-    attempt: currentAttempt
+    success: registrationResult.success,
+    status: registrationResult.success ? 'accepted' : 'failed',
+    message: registrationResult.message,
+    attempt: currentAttempt,
+    confirmationId: registrationResult.confirmationId
   };
 }
 
@@ -353,4 +371,135 @@ async function applyFallbackStrategy(
     // In a real implementation, you would add this to a retry queue
     // or update a cron job schedule
   }
+}
+
+// Apply guardrails from registration plan rules
+async function applyGuardrails(supabase: any, plan: any, session: any, registrationId: string) {
+  const rules = plan.rules || {};
+  const violations = [];
+
+  // Check price cap
+  if (rules.price_cap && session.upfront_fee_cents) {
+    const priceCents = session.upfront_fee_cents;
+    const capCents = rules.price_cap * 100; // Convert dollars to cents
+    
+    if (priceCents > capCents) {
+      violations.push(`Price $${priceCents/100} exceeds cap of $${rules.price_cap}`);
+    }
+  }
+
+  // Check earliest dropoff time
+  if (rules.earliest_dropoff && session.start_at) {
+    const sessionStart = new Date(session.start_at);
+    const sessionStartTime = sessionStart.getHours() * 60 + sessionStart.getMinutes();
+    const [dropoffHour, dropoffMin] = rules.earliest_dropoff.split(':').map(Number);
+    const earliestDropoffTime = dropoffHour * 60 + dropoffMin;
+    
+    if (sessionStartTime < earliestDropoffTime) {
+      violations.push(`Session starts at ${sessionStart.toLocaleTimeString()} which is before earliest dropoff ${rules.earliest_dropoff}`);
+    }
+  }
+
+  // Check latest pickup time
+  if (rules.latest_pickup && session.end_at) {
+    const sessionEnd = new Date(session.end_at);
+    const sessionEndTime = sessionEnd.getHours() * 60 + sessionEnd.getMinutes();
+    const [pickupHour, pickupMin] = rules.latest_pickup.split(':').map(Number);
+    const latestPickupTime = pickupHour * 60 + pickupMin;
+    
+    if (sessionEndTime > latestPickupTime) {
+      violations.push(`Session ends at ${sessionEnd.toLocaleTimeString()} which is after latest pickup ${rules.latest_pickup}`);
+    }
+  }
+
+  if (violations.length > 0) {
+    const approvalToken = `approval_${registrationId}_${Date.now()}`;
+    return {
+      approved: false,
+      reason: `Guardrail violations: ${violations.join('; ')}`,
+      approvalToken
+    };
+  }
+
+  return { approved: true };
+}
+
+// Retrieve credentials via VGS outbound proxy
+async function retrieveVGSCredentials(providerCreds: any) {
+  if (!providerCreds || !providerCreds.vgs_username_alias) {
+    return null;
+  }
+
+  try {
+    const vgsHost = Deno.env.get('VGS_OUTBOUND_HOST');
+    if (!vgsHost) {
+      console.warn('[REGISTER-SESSION] VGS_OUTBOUND_HOST not configured');
+      return null;
+    }
+
+    // Make requests via VGS outbound proxy to reveal aliases
+    const response = await fetch(`https://${vgsHost}/reveal-credentials`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('VGS_ENV')}`
+      },
+      body: JSON.stringify({
+        username_alias: providerCreds.vgs_username_alias,
+        password_alias: providerCreds.vgs_password_alias,
+        payment_alias: providerCreds.vgs_payment_alias
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`VGS request failed: ${response.status}`);
+    }
+
+    const credentials = await response.json();
+    console.log('[REGISTER-SESSION] Retrieved credentials via VGS');
+    
+    return {
+      username: credentials.username,
+      password: credentials.password,
+      payment: credentials.payment,
+      payment_type: providerCreds.payment_type,
+      amount_strategy: providerCreds.amount_strategy
+    };
+  } catch (error) {
+    console.error('[REGISTER-SESSION] VGS credential retrieval failed:', error);
+    return null;
+  }
+}
+
+// Execute registration via provider adapter (Jackrabbit, etc.)
+async function executeProviderRegistration(session: any, credentials: any, attempt: number) {
+  // Simulate network delay and potential failures
+  await sleep(1000 + Math.random() * 2000);
+
+  // Simulate different failure scenarios based on attempt
+  const failureRate = Math.max(0.3 - (attempt - 1) * 0.1, 0.1); // Decreasing failure rate
+  
+  if (Math.random() < failureRate) {
+    const errorTypes = [
+      'Network timeout connecting to provider',
+      'HTTP 502 Bad Gateway from provider', 
+      'Form field mismatch - session may have changed',
+      'DOM structure changed - provider updated their site',
+      'CAPTCHA challenge detected'
+    ];
+    
+    const errorType = errorTypes[Math.floor(Math.random() * errorTypes.length)];
+    throw new Error(`Provider adapter error: ${errorType}`);
+  }
+
+  // Simulate successful registration
+  const confirmationId = `CONF_${session.id}_${Date.now()}`;
+  
+  console.log(`[REGISTER-SESSION] Provider registration successful: ${confirmationId}`);
+  
+  return {
+    success: true,
+    message: `Successfully registered for ${session.title} on attempt ${attempt}`,
+    confirmationId
+  };
 }

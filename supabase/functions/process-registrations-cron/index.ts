@@ -26,7 +26,7 @@ serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   try {
-    console.log("[PROCESS-REGISTRATIONS-CRON] Starting allocation run");
+    console.log("[PROCESS-REGISTRATIONS-CRON] Starting registration processing");
     
     // First, check and resolve any duplicate registrations
     const { data: duplicateData, error: duplicateError } = await admin.rpc('check_and_resolve_duplicate_registrations');
@@ -36,90 +36,113 @@ serve(async (req) => {
       console.log(`[PROCESS-REGISTRATIONS-CRON] Resolved ${duplicateData[0].resolved_count} duplicate registrations`);
     }
 
-    // Allocate up to N sessions per run
-    const { data: allocations, error: allocError } = await admin.rpc('allocate_registrations', { p_max_sessions: 5 });
-    if (allocError) {
-      console.error("[PROCESS-REGISTRATIONS-CRON] Allocation error:", allocError);
-      return new Response(JSON.stringify({ error: allocError.message }), {
+    // Get ready registrations to process (pending or scheduled that are due)
+    const now = new Date().toISOString();
+    const { data: readyRegistrations, error: fetchError } = await admin
+      .from('registrations')
+      .select(`
+        id,
+        user_id,
+        plan_id,
+        child_id,
+        session_id,
+        status,
+        scheduled_time,
+        priority_opt_in,
+        retry_attempts,
+        retry_delay_ms,
+        fallback_strategy,
+        error_recovery
+      `)
+      .in('status', ['pending', 'scheduled'])
+      .or(`scheduled_time.is.null,scheduled_time.lte.${now}`)
+      .order('priority_opt_in', { ascending: false }) // Priority registrations first
+      .order('requested_at', { ascending: true }) // Then by request time
+      .limit(20); // Process up to 20 registrations per run
+
+    if (fetchError) {
+      console.error("[PROCESS-REGISTRATIONS-CRON] Fetch error:", fetchError);
+      return new Response(JSON.stringify({ error: fetchError.message }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       });
     }
 
-    const results: any[] = [];
-
-    if (allocations && allocations.length > 0) {
-      console.log(`[PROCESS-REGISTRATIONS-CRON] Sessions processed: ${allocations.length}`);
-
-      for (const row of allocations) {
-        const accepted: string[] = row.accepted || [];
-        const rejected: string[] = row.rejected || [];
-        console.log(`[PROCESS-REGISTRATIONS-CRON] Session ${row.session_id} → accepted=${accepted.length}, rejected=${rejected.length}`);
-
-        const charges = [] as Array<Promise<any>>;
-        const notifications = [] as Array<Promise<any>>;
-        
-        for (const registration_id of accepted) {
-          // Check if registration needs captcha before charging
-          const { data: registration, error: regError } = await admin
-            .from('registrations')
-            .select('user_id, status')
-            .eq('id', registration_id)
-            .single();
-
-          if (regError) {
-            console.error(`[PROCESS-REGISTRATIONS-CRON] Error fetching registration ${registration_id}:`, regError);
-            continue;
-          }
-
-          // TODO: Here we would normally call the provider adapter to attempt reservation
-          // For now, simulate a captcha detection scenario (you would replace this with actual provider adapter calls)
-          const needsCaptcha = Math.random() < 0.1; // 10% chance of captcha for demo purposes
-          
-          if (needsCaptcha) {
-            console.log(`[PROCESS-REGISTRATIONS-CRON] Captcha detected for registration ${registration_id}`);
-            
-            // Handle captcha event
-            const { error: captchaError } = await admin.functions.invoke('handle-captcha', {
-              body: {
-                user_id: registration.user_id,
-                registration_id: registration_id,
-                session_id: row.session_id,
-                provider: 'daysmart_recreation' // This would come from the provider adapter
-              }
-            });
-
-            if (captchaError) {
-              console.error(`[PROCESS-REGISTRATIONS-CRON] Error handling captcha for ${registration_id}:`, captchaError);
-            }
-          } else {
-            // Proceed with normal charge
-            charges.push(
-              admin.functions.invoke('charge-registration', {
-                body: { registration_id },
-              }).then((res) => ({ registration_id, ok: !res.error, data: res.data, error: res.error }))
-            );
-          }
-        }
-        
-        for (const registration_id of rejected) {
-          // Notify failure (best-effort)
-          notifications.push(
-            admin.functions.invoke('send-email-sendgrid', {
-              body: { type: 'failure', registration_id },
-            }).catch((e) => ({ registration_id, ok: false, error: e }))
-          );
-        }
-
-        const chargeOutcomes = await Promise.all(charges);
-        await Promise.all(notifications);
-        results.push({ session_id: row.session_id, accepted: accepted.length, rejected: rejected.length, chargeOutcomes });
-      }
-    } else {
-      console.log("[PROCESS-REGISTRATIONS-CRON] No sessions to process this run");
+    if (!readyRegistrations || readyRegistrations.length === 0) {
+      console.log("[PROCESS-REGISTRATIONS-CRON] No registrations ready for processing");
+      return new Response(JSON.stringify({ ok: true, processed: 0, message: "No registrations ready" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
-    return new Response(JSON.stringify({ ok: true, results }), {
+    console.log(`[PROCESS-REGISTRATIONS-CRON] Found ${readyRegistrations.length} registrations ready for processing`);
+
+    const results = [];
+    let processed = 0;
+    let succeeded = 0;
+    let failed = 0;
+
+    // Process each registration
+    for (const registration of readyRegistrations) {
+      try {
+        console.log(`[PROCESS-REGISTRATIONS-CRON] Processing registration ${registration.id}`);
+
+        // Call register-session function to handle the actual registration
+        const { data: result, error: registrationError } = await admin.functions.invoke('register-session', {
+          body: {
+            registration_id: registration.id,
+            session_id: registration.session_id,
+            child_id: registration.child_id,
+            current_attempt: 1
+          }
+        });
+
+        if (registrationError) {
+          console.error(`[PROCESS-REGISTRATIONS-CRON] Registration ${registration.id} failed:`, registrationError);
+          failed++;
+        } else if (result?.success) {
+          console.log(`[PROCESS-REGISTRATIONS-CRON] Registration ${registration.id} succeeded`);
+          succeeded++;
+        } else {
+          console.log(`[PROCESS-REGISTRATIONS-CRON] Registration ${registration.id} status: ${result?.status}`);
+          if (result?.status === 'failed') {
+            failed++;
+          }
+        }
+
+        processed++;
+        results.push({
+          registration_id: registration.id,
+          status: result?.status || 'error',
+          message: result?.message || registrationError?.message,
+          success: result?.success || false
+        });
+
+        // Small delay between registrations to avoid overwhelming providers
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+      } catch (error) {
+        console.error(`[PROCESS-REGISTRATIONS-CRON] Unexpected error processing registration ${registration.id}:`, error);
+        failed++;
+        results.push({
+          registration_id: registration.id,
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          success: false
+        });
+      }
+    }
+
+    console.log(`[PROCESS-REGISTRATIONS-CRON] Completed: ${processed} processed, ${succeeded} succeeded, ${failed} failed`);
+
+    return new Response(JSON.stringify({ 
+      ok: true, 
+      processed,
+      succeeded,
+      failed,
+      results 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
