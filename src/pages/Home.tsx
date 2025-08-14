@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle } from "lucide-react"
+import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
 
@@ -29,15 +29,19 @@ const HomePage = () => {
         {/* Hero content with solid dark card */}
         <div className="relative z-10 mx-auto max-w-4xl">
           <div 
-            className="rounded-2xl p-8 shadow-[0_8px_25px_rgba(0,0,0,0.3)]"
+            className="rounded-2xl shadow-[0_8px_25px_rgba(0,0,0,0.3)]"
             style={{ 
-              backgroundColor: 'rgba(17,24,39,0.85)',
+              backgroundColor: '#1F2937',
+              paddingTop: '40px',
+              paddingBottom: '40px', 
+              paddingLeft: '32px',
+              paddingRight: '32px'
             }}
           >
             <h1 
-              className="text-white mb-4 font-black tracking-[-0.02em] leading-[1.2] max-w-2xl mx-auto text-center"
+              className="text-white mb-4 font-bold tracking-[-0.02em] leading-[1.2] max-w-2xl mx-auto text-center"
               style={{ 
-                fontSize: 'clamp(32px, 8vw, 48px)',
+                fontSize: 'clamp(36px, 4vw, 44px)',
                 textWrap: 'balance'
               }}
             >
@@ -47,8 +51,11 @@ const HomePage = () => {
             <div className="w-16 h-1 bg-primary mx-auto mb-6 rounded"></div>
             
             <p 
-              className="text-[#E5E7EB] font-normal max-w-[600px] mx-auto leading-[1.5] mb-8 text-center"
-              style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}
+              className="text-[#E5E7EB] font-normal max-w-[600px] mx-auto leading-[1.5] text-center"
+              style={{ 
+                fontSize: 'clamp(16px, 4vw, 20px)',
+                marginBottom: '24px'
+              }}
             >
               We submit the millisecond it opens, you complete the human steps.
             </p>
@@ -57,6 +64,7 @@ const HomePage = () => {
             <div className="flex justify-center">
               <button 
                 className="bg-primary hover:bg-[#1D4ED8] text-white font-bold px-10 py-5 rounded-lg transition-all duration-200 ease-out min-h-[56px] w-full md:w-auto md:max-w-sm text-lg"
+                style={{ marginTop: '16px', marginBottom: '16px' }}
               >
                 Get My Speed Advantage
               </button>
@@ -255,54 +263,65 @@ const HomePage = () => {
       {/* Partnership Messaging Strip */}
       <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto text-center" style={{ maxWidth: '1200px' }}>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8" style={{ fontWeight: '700' }}>
             We give you the best chance at securing your spot
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">We handle</h3>
-              <p className="text-gray-600">Monitoring, instant submission, speed advantage.</p>
+            <div className="text-center bg-[#F9FAFB] rounded-lg p-6 border shadow-sm">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
+                <Clock className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-[18px] font-bold text-gray-900 mb-2" style={{ fontWeight: '700' }}>We handle</h3>
+              <p className="text-[16px] text-[#4B5563] text-center">Monitoring, instant submission, speed advantage.</p>
             </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">You handle</h3>
-              <p className="text-gray-600">Captchas, account setup, final verification steps.</p>
+            <div className="text-center bg-[#F9FAFB] rounded-lg p-6 border shadow-sm">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
+                <User className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-[18px] font-bold text-gray-900 mb-2" style={{ fontWeight: '700' }}>You handle</h3>
+              <p className="text-[16px] text-[#4B5563] text-center">Captchas, account setup, final verification steps.</p>
             </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Together</h3>
-              <p className="text-gray-600">You get the best chance at securing spots.</p>
+            <div className="text-center bg-[#F9FAFB] rounded-lg p-6 border shadow-sm">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
+                <Handshake className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-[18px] font-bold text-gray-900 mb-2" style={{ fontWeight: '700' }}>Together</h3>
+              <p className="text-[16px] text-[#4B5563] text-center">You get the best chance at securing spots.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="px-4 bg-alt-light" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
+      <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto" style={{ maxWidth: '1200px' }}>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center" style={{ fontWeight: '700' }}>
             Frequently Asked Questions
           </h2>
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-start mb-3">
-                <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Do you complete the entire registration for me?
-                </h3>
+          <div className="bg-[#F9FAFB] rounded-xl p-8">
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-start mb-3">
+                  <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
+                  <h3 className="text-[18px] font-bold text-gray-900" style={{ fontWeight: '700' }}>
+                    Do you complete the entire registration for me?
+                  </h3>
+                </div>
+                <p className="text-[#4B5563] ml-8" style={{ lineHeight: '1.6' }}>
+                  We handle the speed-critical parts — monitoring when registration opens and submitting your application instantly. You handle the human verification steps like captchas and account confirmations that we can't automate.
+                </p>
               </div>
-              <p className="text-gray-600 ml-8">
-                We handle the speed-critical parts — monitoring when registration opens and submitting your application instantly. You handle the human verification steps like captchas and account confirmations that we can't automate.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-start mb-3">
-                <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                <h3 className="text-lg font-semibold text-gray-900">
-                  What if there are captchas or other verification steps?
-                </h3>
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-start mb-3">
+                  <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
+                  <h3 className="text-[18px] font-bold text-gray-900" style={{ fontWeight: '700' }}>
+                    What if there are captchas or other verification steps?
+                  </h3>
+                </div>
+                <p className="text-[#4B5563] ml-8" style={{ lineHeight: '1.6' }}>
+                  We prepare everything in advance and send you immediate notifications with step-by-step guidance. You'll have all the prep work done and just need to complete the human verification steps.
+                </p>
               </div>
-              <p className="text-gray-600 ml-8">
-                We prepare everything in advance and send you immediate notifications with step-by-step guidance. You'll have all the prep work done and just need to complete the human verification steps.
-              </p>
             </div>
           </div>
         </div>
