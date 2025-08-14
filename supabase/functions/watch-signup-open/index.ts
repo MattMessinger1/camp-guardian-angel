@@ -40,7 +40,7 @@ serve(async (req) => {
       .from('registration_plans')
       .select('*')
       .in('open_strategy', ['published', 'auto'])
-      .eq('status', 'active')
+      .eq('status', 'monitoring')
       .not('detect_url', 'is', null);
 
     if (plansError) {
@@ -284,10 +284,14 @@ async function performPollingCheck(
     if (registrationOpen) {
       console.log(`[WATCH-SIGNUP-OPEN] 🎯 REGISTRATION OPEN detected for plan ${plan.id}!`);
       
-      // Trigger immediate registration processing
-      await supabase.functions.invoke('process-registrations-cron', {
-        body: { trigger: 'open_detected', plan_id: plan.id }
-      });
+      // Create immediate registrations for this plan
+      await createImmediateRegistrations(supabase, plan);
+      
+      // Update plan status to indicate it's been activated
+      await supabase
+        .from('registration_plans')
+        .update({ status: 'active' })
+        .eq('id', plan.id);
     }
 
   } catch (error) {
@@ -314,13 +318,20 @@ function detectRegistrationOpen(content: string, response: Response): boolean {
   // Positive signals for registration being open
   const openSignals = [
     'register now',
+    'register today',
     'registration open',
     'sign up now',
     'enroll now',
+    'enroll today',
     'registration is open',
     'click here to register',
     'registration form',
-    'submit registration'
+    'submit registration',
+    'apply now',
+    'book now',
+    'reserve now',
+    'register for',
+    'sign up for'
   ];
 
   // Negative signals for registration being closed
@@ -331,7 +342,13 @@ function detectRegistrationOpen(content: string, response: Response): boolean {
     'registration full',
     'waitlist only',
     'sold out',
-    'no longer accepting'
+    'no longer accepting',
+    'opens on',
+    'opens at',
+    'registration begins',
+    'registration starts',
+    'coming soon',
+    'stay tuned'
   ];
 
   // Check for positive signals
@@ -340,6 +357,120 @@ function detectRegistrationOpen(content: string, response: Response): boolean {
   // Check for negative signals
   const hasClosedSignal = closedSignals.some(signal => lowerContent.includes(signal));
 
-  // If we have positive signals and no negative signals, consider it open
-  return hasOpenSignal && !hasClosedSignal;
+  // Look for form elements that suggest active registration
+  const hasRegistrationForm = lowerContent.includes('<form') && 
+    (lowerContent.includes('registration') || lowerContent.includes('enroll') || lowerContent.includes('signup'));
+
+  // Look for button text that suggests registration is available
+  const registrationButtons = [
+    'register', 'enroll', 'sign up', 'apply', 'book', 'reserve'
+  ];
+  const hasRegistrationButton = registrationButtons.some(button => {
+    const buttonPattern = new RegExp(`<button[^>]*>.*${button}.*</button>|<input[^>]*value="[^"]*${button}[^"]*"|<a[^>]*>.*${button}.*</a>`, 'i');
+    return buttonPattern.test(content);
+  });
+
+  // If we have positive signals (text or forms/buttons) and no strong negative signals, consider it open
+  return (hasOpenSignal || hasRegistrationForm || hasRegistrationButton) && !hasClosedSignal;
+}
+
+// Create immediate registrations when opening is detected
+async function createImmediateRegistrations(supabase: any, plan: RegistrationPlan): Promise<void> {
+  try {
+    console.log(`[WATCH-SIGNUP-OPEN] Creating immediate registrations for plan ${plan.id}`);
+
+    // Get all child mappings for this plan
+    const { data: childMappings, error: mappingError } = await supabase
+      .from('plan_children_map')
+      .select('*')
+      .eq('plan_id', plan.id)
+      .order('priority');
+
+    if (mappingError) {
+      throw new Error(`Failed to fetch child mappings: ${mappingError.message}`);
+    }
+
+    if (!childMappings || childMappings.length === 0) {
+      console.log(`[WATCH-SIGNUP-OPEN] No child mappings found for plan ${plan.id}`);
+      return;
+    }
+
+    const registrations = [];
+    const now = new Date().toISOString();
+
+    // Create registrations for each child-session combination
+    for (const mapping of childMappings) {
+      for (const sessionId of mapping.session_ids) {
+        // Check if registration already exists
+        const { data: existingReg } = await supabase
+          .from('registrations')
+          .select('id')
+          .eq('child_id', mapping.child_id)
+          .eq('session_id', sessionId)
+          .eq('user_id', plan.user_id)
+          .maybeSingle();
+
+        if (existingReg) {
+          console.log(`[WATCH-SIGNUP-OPEN] Registration already exists for child ${mapping.child_id}, session ${sessionId}`);
+          continue;
+        }
+
+        const registration = {
+          user_id: plan.user_id,
+          plan_id: plan.id,
+          child_id: mapping.child_id,
+          session_id: sessionId,
+          scheduled_time: now, // Immediate registration
+          status: 'pending',
+          priority_opt_in: mapping.priority === 0,
+          retry_attempts: 3,
+          retry_delay_ms: 500,
+          fallback_strategy: 'alert_parent',
+          error_recovery: 'restart'
+        };
+
+        registrations.push(registration);
+      }
+    }
+
+    if (registrations.length === 0) {
+      console.log(`[WATCH-SIGNUP-OPEN] No new registrations to create for plan ${plan.id}`);
+      return;
+    }
+
+    // Insert the registrations
+    const { data: inserted, error: insertError } = await supabase
+      .from('registrations')
+      .insert(registrations)
+      .select();
+
+    if (insertError) {
+      throw new Error(`Failed to create registrations: ${insertError.message}`);
+    }
+
+    console.log(`[WATCH-SIGNUP-OPEN] Created ${inserted.length} immediate registrations for plan ${plan.id}`);
+
+    // Log this success in detection logs
+    await supabase
+      .from('open_detection_logs')
+      .insert({
+        plan_id: plan.id,
+        seen_at: now,
+        signal: 'registrations_created',
+        note: `Created ${inserted.length} immediate registrations`
+      });
+
+  } catch (error) {
+    console.error(`[WATCH-SIGNUP-OPEN] Error creating immediate registrations for plan ${plan.id}:`, error);
+    
+    // Log the error
+    await supabase
+      .from('open_detection_logs')
+      .insert({
+        plan_id: plan.id,
+        seen_at: new Date().toISOString(),
+        signal: 'creation_error',
+        note: `Failed to create registrations: ${error.message}`
+      });
+  }
 }
