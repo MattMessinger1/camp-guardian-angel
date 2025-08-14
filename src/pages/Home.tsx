@@ -33,7 +33,7 @@ const HomePage = () => {
             <h1 className="hero-title">Beat the registration&nbsp;rush</h1>
             <div className="hero-accent" aria-hidden="true"></div>
             <p className="hero-sub">
-              You pre-load your info, we submit the millisecond it opens, and if needed we help you complete any human steps (e.g. Captcha) real time
+              You pre-load your info, we submit the millisecond registration opens, we help you complete any human steps (e.g. Captcha) via text
             </p>
             <button className="btn-primary">Get My Speed Advantage</button>
           </div>
