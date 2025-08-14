@@ -113,9 +113,9 @@ const HomePage = () => {
                  }
               ].map((item, index) => (
                 <div key={index} className="text-center">
-                  <h3 className="text-[20px] font-semibold mb-[6px] text-[#111827]">
-                    {item.title}
-                  </h3>
+            <h3 className="text-[20px] font-semibold mb-[6px] text-[#111827]">
+              {item.title.replace(/\s+(\S+)$/, '\u00A0$1')}
+            </h3>
                   <p className="text-[16px] leading-[1.4] text-[#4B5563]">
                     {item.description}
                   </p>
@@ -162,7 +162,7 @@ const HomePage = () => {
                     {/* Content */}
                     <div className="ml-6 flex-1">
                       <h3 className="text-[20px] font-semibold mb-[6px] text-[#111827]">
-                        {item.title}
+                        {item.title.replace(/\s+(\S+)$/, '\u00A0$1')}
                       </h3>
                       <p className="text-[16px] leading-[1.4] text-[#4B5563]">
                         {item.description}
@@ -177,78 +177,73 @@ const HomePage = () => {
       </section>
 
 
-      {/* Trust/Security Section */}
-      <section className="px-4" style={{ backgroundColor: '#F3F4F6', paddingTop: '64px', paddingBottom: '64px' }}>
+      {/* How We Work Section */}
+      <section className="px-4" style={{ backgroundColor: '#EFF6FF', paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto" style={{ maxWidth: '1200px' }}>
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-8">
-            {[
-               {
-                 icon: Clock,
-                 title: "Lightning-fast submission",
-                 description: "We submit within milliseconds of registration opening.",
-                 accent: "stopwatch"
-               },
-               {
-                 icon: User,
-                 title: "Human oversight when needed", 
-                 description: "You handle captchas and verification steps we can't automate.",
-                 accent: "person"
-               },
-               {
-                 icon: DollarSign,
-                 title: "Success-based pricing",
-                 description: "Only pay if we successfully get you through the initial submission.",
-                 accent: "success"
-               }
-            ].map((item, index) => {
-              const Icon = item.icon
-              return (
-                <div key={index} className="text-center w-full bg-white rounded-xl p-6 shadow-sm border-t-4 border-primary">
-                  <div className="inline-flex h-[56px] w-[56px] items-center justify-center rounded-full bg-primary mb-4">
-                    <Icon className="h-[28px] w-[28px] text-white" />
-                  </div>
-                  
-                  <h3 className="text-[18px] font-semibold mb-2 text-[#111827]">
-                    {item.title}
-                  </h3>
-                  <p className="text-[16px] leading-[1.4] text-[#4B5563] max-w-xs mx-auto">
-                    {item.description}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Partnership Messaging Strip */}
-      <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
-        <div className="mx-auto text-center" style={{ maxWidth: '1200px' }}>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8" style={{ fontWeight: '700' }}>
-            We give you the best chance at securing your spot
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-12 text-center" style={{ fontWeight: '700' }}>
+            How We&nbsp;Work
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center bg-[#F9FAFB] rounded-lg p-6 border shadow-sm">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
-                <Clock className="h-6 w-6 text-white" />
+          
+          {/* Two Column Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-8">
+            {/* We Handle Column */}
+            <div className="bg-white rounded-xl p-8 shadow-sm border">
+              <div className="flex items-center mb-6">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mr-4">
+                  <Clock className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-[20px] font-bold text-gray-900" style={{ fontWeight: '700' }}>We&nbsp;handle</h3>
               </div>
-              <h3 className="text-[18px] font-bold text-gray-900 mb-2" style={{ fontWeight: '700' }}>We handle</h3>
-              <p className="text-[16px] text-[#4B5563] text-center">Monitoring, instant submission, speed advantage.</p>
+              <ul className="space-y-3 text-[16px] text-[#4B5563]">
+                <li className="flex items-start">
+                  <span className="text-primary mr-3 mt-1.5">•</span>
+                  Monitoring registration opening times
+                </li>
+                <li className="flex items-start">
+                  <span className="text-primary mr-3 mt-1.5">•</span>
+                  Instant submission when registration opens
+                </li>
+                <li className="flex items-start">
+                  <span className="text-primary mr-3 mt-1.5">•</span>
+                  Speed advantage over manual registration
+                </li>
+              </ul>
             </div>
-            <div className="text-center bg-[#F9FAFB] rounded-lg p-6 border shadow-sm">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
-                <User className="h-6 w-6 text-white" />
+
+            {/* You Handle Column */}
+            <div className="bg-white rounded-xl p-8 shadow-sm border">
+              <div className="flex items-center mb-6">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mr-4">
+                  <User className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-[20px] font-bold text-gray-900" style={{ fontWeight: '700' }}>You&nbsp;handle</h3>
               </div>
-              <h3 className="text-[18px] font-bold text-gray-900 mb-2" style={{ fontWeight: '700' }}>You handle</h3>
-              <p className="text-[16px] text-[#4B5563] text-center">Captchas, account setup, final verification steps.</p>
+              <ul className="space-y-3 text-[16px] text-[#4B5563]">
+                <li className="flex items-start">
+                  <span className="text-primary mr-3 mt-1.5">•</span>
+                  Captchas and human verification
+                </li>
+                <li className="flex items-start">
+                  <span className="text-primary mr-3 mt-1.5">•</span>
+                  Account setup and login steps
+                </li>
+                <li className="flex items-start">
+                  <span className="text-primary mr-3 mt-1.5">•</span>
+                  Final verification and confirmation
+                </li>
+              </ul>
             </div>
-            <div className="text-center bg-[#F9FAFB] rounded-lg p-6 border shadow-sm">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
+          </div>
+
+          {/* Together Strip */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border text-center">
+            <div className="flex items-center justify-center mb-3">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mr-4">
                 <Handshake className="h-6 w-6 text-white" />
               </div>
-              <h3 className="text-[18px] font-bold text-gray-900 mb-2" style={{ fontWeight: '700' }}>Together</h3>
-              <p className="text-[16px] text-[#4B5563] text-center">You get the best chance at securing spots.</p>
+              <h3 className="text-[20px] font-bold text-gray-900" style={{ fontWeight: '700' }}>Together</h3>
             </div>
+            <p className="text-[16px] text-[#4B5563]">You get the best chance at securing spots</p>
           </div>
         </div>
       </section>
@@ -257,7 +252,7 @@ const HomePage = () => {
       <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto" style={{ maxWidth: '1200px' }}>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center" style={{ fontWeight: '700' }}>
-            Frequently Asked Questions
+            Frequently Asked&nbsp;Questions
           </h2>
           <div className="bg-[#F9FAFB] rounded-xl p-8">
             <div className="space-y-6">
@@ -265,7 +260,7 @@ const HomePage = () => {
                 <div className="flex items-start mb-3">
                   <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
                   <h3 className="text-[18px] font-bold text-gray-900" style={{ fontWeight: '700' }}>
-                    Do you complete the entire registration for me?
+                    Do you complete the entire registration for&nbsp;me?
                   </h3>
                 </div>
                 <p className="text-[#4B5563] ml-8" style={{ lineHeight: '1.6' }}>
@@ -276,7 +271,7 @@ const HomePage = () => {
                 <div className="flex items-start mb-3">
                   <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
                   <h3 className="text-[18px] font-bold text-gray-900" style={{ fontWeight: '700' }}>
-                    What if there are captchas or other verification steps?
+                    What if there are captchas or other verification&nbsp;steps?
                   </h3>
                 </div>
                 <p className="text-[#4B5563] ml-8" style={{ lineHeight: '1.6' }}>
