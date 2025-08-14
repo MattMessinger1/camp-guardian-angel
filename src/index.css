@@ -194,6 +194,8 @@ All colors MUST be HSL. */
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    position: relative;
+    z-index: 1;
   }
 
   @media (min-width: 768px) {
@@ -329,6 +331,8 @@ All colors MUST be HSL. */
 .search-wrap {
   margin-top: -48px;        /* overlap hero */
   padding: 0 16px;
+  position: relative;
+  z-index: 10;
 }
 
 .search-card {
@@ -345,6 +349,8 @@ All colors MUST be HSL. */
   height: 64px !important;
   overflow: hidden !important;
   transition: border-color 0.2s ease !important;
+  position: relative !important;
+  z-index: 20 !important;
 }
 
 .search-input {
