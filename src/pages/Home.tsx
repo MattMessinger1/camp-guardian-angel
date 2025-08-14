@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Globe, Lock, DollarSign, Clock, User } from "lucide-react"
+import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
 
@@ -26,22 +26,12 @@ const HomePage = () => {
         className="hero-section relative px-4 overflow-hidden min-h-[70vh] flex items-center justify-center"
         style={{ paddingTop: '64px', paddingBottom: '64px' }}
       >
-        {/* Dark gradient overlay */}
-        <div 
-          className="absolute inset-0 z-[1]"
-          style={{
-            background: 'linear-gradient(to top, rgba(17,24,39,0.8) 0%, transparent 60%)'
-          }}
-        ></div>
-        
-        {/* Hero content with glassmorphic panel */}
+        {/* Hero content with solid dark card */}
         <div className="relative z-10 mx-auto max-w-4xl">
           <div 
-            className="backdrop-blur-sm rounded-2xl border shadow-[0_2px_16px_rgba(0,0,0,0.2)]"
+            className="rounded-2xl p-8 shadow-[0_8px_25px_rgba(0,0,0,0.3)]"
             style={{ 
-              backgroundColor: 'rgba(255,255,255,0.25)',
-              borderColor: 'rgba(255,255,255,0.1)',
-              padding: '32px'
+              backgroundColor: 'rgba(17,24,39,0.85)',
             }}
           >
             <h1 
@@ -63,17 +53,10 @@ const HomePage = () => {
               We submit the millisecond it opens, you complete the human steps.
             </p>
             
-            {/* Single CTA Button */}
+            {/* CTA Button */}
             <div className="flex justify-center">
               <button 
-                className="text-white font-semibold px-8 py-4 rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs"
-                style={{ 
-                  backgroundColor: '#2563EB',
-                  fontSize: '18px',
-                  fontWeight: '600'
-                }}
-                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#1D4ED8'}
-                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#2563EB'}
+                className="bg-primary hover:bg-[#1D4ED8] text-white font-bold px-10 py-5 rounded-lg transition-all duration-200 ease-out min-h-[56px] w-full md:w-auto md:max-w-sm text-lg"
               >
                 Get My Speed Advantage
               </button>
@@ -83,11 +66,11 @@ const HomePage = () => {
       </section>
 
       {/* Search Bar Section - Overlapping Hero */}
-      <section className="px-4 -mt-6 relative z-20 mb-12">
+      <section className="px-4 -mt-8 relative z-20 mb-16">
         <div className="mx-auto max-w-3xl">
-          <div className="bg-white rounded-2xl p-6 shadow-[0_8px_25px_rgba(0,0,0,0.1)]">
+          <div className="bg-white rounded-2xl p-5 shadow-[0_8px_25px_rgba(0,0,0,0.1)] border border-gray-100">
             <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
-              <div className="flex items-center space-x-3 flex-1 border border-[#E5E7EB] rounded-lg px-4 py-3 focus-within:ring-2 focus-within:ring-primary focus-within:border-primary">
+              <div className="flex items-center space-x-3 flex-1 border border-[#E5E7EB] rounded-lg px-4 py-4 focus-within:ring-2 focus-within:ring-primary focus-within:border-primary h-[60px]">
                 <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
                 <input 
                   type="text"
@@ -95,7 +78,7 @@ const HomePage = () => {
                   className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-[16px]"
                 />
               </div>
-              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold text-[16px] px-6 py-4 rounded-lg transition-all duration-200 ease-out h-[56px] w-full md:w-auto">
+              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold text-[16px] px-8 py-4 rounded-lg transition-all duration-200 ease-out h-[60px] w-full md:w-auto">
                 Secure My Spot
               </button>
             </div>
@@ -104,8 +87,8 @@ const HomePage = () => {
       </section>
 
       {/* How It Works - Stepper Rail Section */}
-      <section className="px-4 pt-16 pb-16 bg-white">
-        <div className="mx-auto max-w-5xl">
+      <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
+        <div className="mx-auto max-w-5xl" style={{ maxWidth: '1200px' }}>
           {/* Desktop Layout (≥1024px) */}
           <div className="hidden lg:block">
             {/* Horizontal Rail */}
@@ -226,8 +209,8 @@ const HomePage = () => {
 
 
       {/* Trust/Security Section */}
-      <section className="px-4 py-16" style={{ backgroundColor: '#F3F4F6' }}>
-        <div className="mx-auto max-w-5xl">
+      <section className="px-4" style={{ backgroundColor: '#F3F4F6', paddingTop: '64px', paddingBottom: '64px' }}>
+        <div className="mx-auto" style={{ maxWidth: '1200px' }}>
           <div className="flex flex-col md:grid md:grid-cols-3 gap-8">
             {[
                {
@@ -251,7 +234,7 @@ const HomePage = () => {
             ].map((item, index) => {
               const Icon = item.icon
               return (
-                <div key={index} className="text-center w-full bg-white rounded-xl p-6 shadow-sm border-l-4 border-primary">
+                <div key={index} className="text-center w-full bg-white rounded-xl p-6 shadow-sm border-t-4 border-primary">
                   <div className="inline-flex h-[56px] w-[56px] items-center justify-center rounded-full bg-primary mb-4">
                     <Icon className="h-[28px] w-[28px] text-white" />
                   </div>
@@ -270,8 +253,8 @@ const HomePage = () => {
       </section>
 
       {/* Partnership Messaging Strip */}
-      <section className="px-4 py-16 bg-white">
-        <div className="mx-auto max-w-5xl text-center">
+      <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
+        <div className="mx-auto text-center" style={{ maxWidth: '1200px' }}>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">
             We give you the best chance at securing your spot
           </h2>
@@ -293,25 +276,31 @@ const HomePage = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="px-4 py-16 bg-alt-light">
-        <div className="mx-auto max-w-4xl">
+      <section className="px-4 bg-alt-light" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
+        <div className="mx-auto" style={{ maxWidth: '1200px' }}>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center">
             Frequently Asked Questions
           </h2>
           <div className="space-y-6">
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                Do you complete the entire registration for me?
-              </h3>
-              <p className="text-gray-600">
+              <div className="flex items-start mb-3">
+                <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Do you complete the entire registration for me?
+                </h3>
+              </div>
+              <p className="text-gray-600 ml-8">
                 We handle the speed-critical parts — monitoring when registration opens and submitting your application instantly. You handle the human verification steps like captchas and account confirmations that we can't automate.
               </p>
             </div>
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                What if there are captchas or other verification steps?
-              </h3>
-              <p className="text-gray-600">
+              <div className="flex items-start mb-3">
+                <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  What if there are captchas or other verification steps?
+                </h3>
+              </div>
+              <p className="text-gray-600 ml-8">
                 We prepare everything in advance and send you immediate notifications with step-by-step guidance. You'll have all the prep work done and just need to complete the human verification steps.
               </p>
             </div>
