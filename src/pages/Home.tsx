@@ -145,12 +145,10 @@ const HomePage = () => {
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
               {[
-                "We monitor registration openings and submit your application instantly when spots become available.",
-                "You handle human verification steps like captchas and account confirmations that require manual completion.",
-                "All your registration information is encrypted and securely stored for use in current and future sign-ups.",
-                "We send immediate text notifications with step-by-step guidance when your action is needed.",
                 "You only pay our service fee if you successfully secure the session you chose.",
-                "We prepare everything in advance so you're ready when verification steps appear."
+                "We monitor registration openings and submit your application instantly when spots become available.",
+                "All your registration information is encrypted and securely stored for use in current and future sign-ups.",
+                "You handle captchas and account verification when needed - we prepare everything in advance and send instant alerts with step-by-step guidance."
               ].map((statement, index) => (
                 <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
                   <div 
