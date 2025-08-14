@@ -148,5 +148,63 @@ All colors MUST be HSL. */
 
   .hero-gradient {
     background: var(--gradient-primary);
+}
+
+/* Custom animations for hero section */
+@keyframes float-slow {
+  0%, 100% { 
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+    opacity: 0.1;
+  }
+  33% { 
+    transform: translateY(-10px) translateX(5px) rotate(2deg);
+    opacity: 0.15;
+  }
+  66% { 
+    transform: translateY(5px) translateX(-3px) rotate(-1deg);
+    opacity: 0.12;
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% { 
+    transform: translateY(0px) translateX(0px) rotate(45deg) scale(1);
+    opacity: 0.15;
+  }
+  50% { 
+    transform: translateY(-8px) translateX(4px) rotate(47deg) scale(1.05);
+    opacity: 0.18;
+  }
+}
+
+@keyframes float-fast {
+  0%, 100% { 
+    transform: translateY(0px) scale(1);
+    opacity: 0.2;
+  }
+  50% { 
+    transform: translateY(-6px) scale(1.1);
+    opacity: 0.25;
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 6s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 10s ease-in-out infinite;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-float-medium,
+  .animate-float-fast {
+    animation: none;
   }
 }
