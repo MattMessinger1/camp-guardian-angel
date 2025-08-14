@@ -23,33 +23,33 @@ const HomePage = () => {
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        className="hero-section relative px-4 py-12 md:py-24 text-center overflow-hidden min-h-[520px] md:min-h-[70vh] flex items-center justify-center"
+        className="hero-section relative px-4 py-12 md:py-24 pb-20 md:pb-20 text-center overflow-hidden min-h-[520px] md:min-h-[70vh] flex items-center justify-center"
       >
         {/* Hero content with dark overlay */}
         <div className="relative z-10 mx-auto max-w-4xl">
           <div className="inline-block p-4 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(17,24,39,0.6)' }}>
-            <h1 className="text-white mb-4 text-[32px] md:text-[48px] font-extrabold tracking-tight leading-tight">
+            <h1 className="text-white mb-3 font-black tracking-[-0.02em] leading-[1.1]" style={{ fontSize: 'clamp(32px, 8vw, 56px)' }}>
               Beat the registration rush
             </h1>
             
             <div className="w-16 h-1 bg-primary mx-auto mb-3 rounded"></div>
             
-            <p className="text-white text-base md:text-[20px] font-normal max-w-2xl mx-auto leading-relaxed mb-6">
+            <p className="text-[#E5E7EB] font-normal max-w-[600px] mx-auto leading-[1.6] mb-6" style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}>
               We submit the millisecond it opens, you complete the human steps.
             </p>
             
             {/* CTA Buttons */}
             <div className="flex flex-col gap-3 md:gap-4 justify-center items-center">
-              <button className="bg-primary hover:bg-primary/90 text-white font-bold px-8 py-3 rounded-lg transition-colors min-h-[44px] w-full md:w-auto md:max-w-xs">
+              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold px-8 py-[14px] rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs">
                 Get My Speed Advantage
               </button>
               
               {/* Tagline under primary CTA */}
-              <p className="text-white text-sm md:text-base font-normal text-center mt-2">
+              <p className="text-[#E5E7EB] text-sm md:text-base font-normal text-center mt-2">
                 Technology for speed, humans for verification.
               </p>
               
-              <button className="bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold px-8 py-3 rounded-lg transition-colors min-h-[44px] w-full md:w-auto md:max-w-xs">
+              <button className="bg-white/10 border border-white/20 hover:bg-white/20 text-white font-semibold px-8 py-[14px] rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs">
                 Learn How It Works
               </button>
             </div>
@@ -58,7 +58,7 @@ const HomePage = () => {
       </section>
 
       {/* How It Works - Stepper Rail Section */}
-      <section className="px-4 py-8 md:py-12 bg-white">
+      <section className="px-4 pt-16 md:pt-16 pb-16 md:pb-16 bg-white" style={{ marginTop: '64px' }}>
         <div className="mx-auto max-w-6xl">
           {/* Desktop Layout (≥1024px) */}
           <div className="hidden lg:block">
@@ -86,11 +86,11 @@ const HomePage = () => {
                    }
                 ].map((item, index) => (
                   <div key={index} className="flex flex-col items-center" style={{ width: 'calc(100% / 3)' }}>
-                    <div className="h-16 w-16 bg-primary rounded-full flex items-center justify-center mb-4">
+                    <div className="h-[72px] w-[72px] bg-primary rounded-full flex items-center justify-center mb-5">
                       <img 
                         src={item.iconUrl} 
                         alt={item.title}
-                        className="h-6 w-6 filter brightness-0 invert"
+                        className="h-8 w-8 filter brightness-0 invert"
                       />
                     </div>
                   </div>
@@ -115,10 +115,10 @@ const HomePage = () => {
                  }
               ].map((item, index) => (
                 <div key={index} className="text-center">
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900">
+                  <h3 className="text-[20px] font-semibold mb-[6px] text-[#111827]">
                     {item.title}
                   </h3>
-                  <p className="text-base text-gray-600">
+                  <p className="text-[16px] leading-[1.4] text-[#4B5563]">
                     {item.description}
                   </p>
                 </div>
@@ -153,20 +153,20 @@ const HomePage = () => {
                 ].map((item, index) => (
                   <div key={index} className="flex items-start">
                     {/* Icon Circle */}
-                    <div className="relative z-10 h-12 w-12 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="relative z-10 h-[56px] w-[56px] bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                       <img 
                         src={item.iconUrl} 
                         alt={item.title}
-                        className="h-5 w-5 filter brightness-0 invert"
+                        className="h-6 w-6 filter brightness-0 invert"
                       />
                     </div>
                     
                     {/* Content */}
                     <div className="ml-6 flex-1">
-                      <h3 className="text-lg font-semibold mb-2 text-gray-900">
+                      <h3 className="text-[20px] font-semibold mb-[6px] text-[#111827]">
                         {item.title}
                       </h3>
-                      <p className="text-base text-gray-600">
+                      <p className="text-[16px] leading-[1.4] text-[#4B5563]">
                         {item.description}
                       </p>
                     </div>
@@ -178,10 +178,9 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Search Bar Section */}
-      <section className="px-4 py-8 md:py-24" style={{ backgroundColor: '#F9FAFB' }}>
+      <section className="px-4 py-10 md:py-20" style={{ backgroundColor: '#F9FAFB', marginTop: '64px' }}>
         <div className="mx-auto max-w-2xl">
-          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 w-full md:max-w-2xl">
+          <div className="bg-white rounded-lg p-4 md:p-6 w-full md:max-w-2xl" style={{ boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }}>
             {/* Mobile: Stack vertically */}
             <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-3">
               <div className="flex items-center space-x-3 flex-1">
@@ -189,10 +188,10 @@ const HomePage = () => {
                 <input 
                   type="text"
                   placeholder={isMobile ? "Event name, location…" : "Event name, city/state, session dates…"}
-                  className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-base min-h-[44px] py-2"
+                  className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-[16px] h-[56px] px-4 py-[14px]"
                 />
               </div>
-              <button className="bg-primary hover:bg-primary/90 text-white font-bold px-6 py-3 rounded-lg transition-colors min-h-[44px] w-full md:w-auto">
+              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold text-[16px] px-6 py-[14px] rounded-lg transition-all duration-200 ease-out h-[56px] w-full md:w-auto">
                 Secure My Spot
               </button>
             </div>
@@ -201,7 +200,7 @@ const HomePage = () => {
       </section>
 
       {/* Trust/Security Section */}
-      <section className="px-4 py-8 md:py-24" style={{ backgroundColor: '#F3F4F6' }}>
+      <section className="px-4 py-16 md:py-16" style={{ backgroundColor: '#F3F4F6', marginTop: '80px' }}>
         <div className="mx-auto max-w-5xl">
           <div className="flex flex-col md:grid md:grid-cols-3 gap-5 md:gap-8">
             {[
@@ -224,14 +223,14 @@ const HomePage = () => {
               const Icon = item.icon
               return (
                 <div key={index} className="text-center w-full">
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
-                    <Icon className="h-6 w-6 text-white" />
+                  <div className="inline-flex h-[56px] w-[56px] items-center justify-center rounded-full bg-primary mb-4">
+                    <Icon className="h-[28px] w-[28px] text-white" />
                   </div>
                   
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900">
+                  <h3 className="text-[18px] font-semibold mb-2 text-[#111827]">
                     {item.title}
                   </h3>
-                  <p className="text-sm text-gray-600 leading-relaxed max-w-xs mx-auto">
+                  <p className="text-[16px] leading-[1.4] text-[#4B5563] max-w-xs mx-auto">
                     {item.description}
                   </p>
                 </div>
