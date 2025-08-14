@@ -66,21 +66,21 @@ const HomePage = () => {
               
               {/* Icon Circles on Rail */}
               <div className="absolute top-0 w-full flex justify-between" style={{ transform: 'translateY(-50%)' }}>
-                {[
+                 {[
                    {
                      iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
-                     title: "Step 1 — Tell Us What You Want",
+                     title: "Step 1 — Tell us what you&nbsp;want",
                      description: "Event name, location, dates, and your info.",
                    },
                    {
                      iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
-                     title: "Step 2 — We Monitor & Submit Instantly",
+                     title: "Step 2 — We monitor & submit&nbsp;instantly",
                      description: "We watch for registration to open and submit the millisecond it's available.",
                    },
                    {
                      iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
-                     title: "Step 3 — You Complete the Human Steps",
-                     description: "Handle captchas, account verification, and any final details we can't automate.",
+                     title: "Step 3 — You complete&nbsp;verification",
+                     description: "Handle captchas, account setup, and final verification.",
                    }
                 ].map((item, index) => (
                   <div key={index} className="flex flex-col items-center" style={{ width: 'calc(100% / 3)' }}>
@@ -99,24 +99,23 @@ const HomePage = () => {
             {/* Content Below Rail */}
             <div className="grid grid-cols-3 gap-20">
               {[
-                 {
-                   title: "Step 1 — Tell Us What You Want",
-                   description: "Event name, location, dates, and your info.",
-                 },
-                 {
-                   title: "Step 2 — We Monitor & Submit Instantly",
-                   description: "We watch for registration to open and submit the millisecond it's available.",
-                 },
-                 {
-                   title: "Step 3 — You Complete the Human Steps",
-                   description: "Handle captchas, account verification, and any final details we can't automate.",
-                 }
+                  {
+                    title: "Step 1 — Tell us what you&nbsp;want",
+                    description: "Event name, location, dates, and your info.",
+                  },
+                  {
+                    title: "Step 2 — We monitor & submit&nbsp;instantly",
+                    description: "We watch for registration to open and submit the millisecond it's available.",
+                  },
+                  {
+                    title: "Step 3 — You complete&nbsp;verification",
+                    description: "Handle captchas, account setup, and final verification.",
+                  }
               ].map((item, index) => (
                 <div key={index} className="text-center">
-            <h3 className="text-[20px] font-semibold mb-[6px] text-[#111827]">
-              {item.title.replace(/\s+(\S+)$/, '\u00A0$1')}
+            <h3 className="text-[20px] font-bold mb-[6px] text-[#111827] max-w-[26ch] mx-auto" style={{ fontWeight: '700', textWrap: 'balance' }} dangerouslySetInnerHTML={{ __html: item.title }}>
             </h3>
-                  <p className="text-[16px] leading-[1.4] text-[#4B5563]">
+                  <p className="text-[16px] leading-[1.4] text-[#4B5563] max-w-[36ch] mx-auto" style={{ textWrap: 'balance' }}>
                     {item.description}
                   </p>
                 </div>
@@ -134,20 +133,20 @@ const HomePage = () => {
               <div className="space-y-5">
                 {[
                    {
-                     iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
-                     title: "Step 1 — Tell Us What You Want",
-                     description: "Event name, location, dates, and your info.",
-                   },
-                   {
-                     iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
-                     title: "Step 2 — We Monitor & Submit Instantly",
-                     description: "We watch for registration to open and submit the millisecond it's available.",
-                   },
-                   {
-                     iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
-                     title: "Step 3 — You Complete the Human Steps",
-                     description: "Handle captchas, account verification, and any final details we can't automate.",
-                   }
+                      iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
+                      title: "Step 1 — Tell us what you&nbsp;want",
+                      description: "Event name, location, dates, and your info.",
+                    },
+                    {
+                      iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
+                      title: "Step 2 — We monitor & submit&nbsp;instantly",
+                      description: "We watch for registration to open and submit the millisecond it's available.",
+                    },
+                    {
+                      iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
+                      title: "Step 3 — You complete&nbsp;verification",
+                      description: "Handle captchas, account setup, and final verification.",
+                    }
                 ].map((item, index) => (
                   <div key={index} className="flex items-start">
                     {/* Icon Circle */}
@@ -161,10 +160,9 @@ const HomePage = () => {
                     
                     {/* Content */}
                     <div className="ml-6 flex-1">
-                      <h3 className="text-[20px] font-semibold mb-[6px] text-[#111827]">
-                        {item.title.replace(/\s+(\S+)$/, '\u00A0$1')}
+                      <h3 className="text-[20px] font-bold mb-[6px] text-[#111827] max-w-[26ch]" style={{ fontWeight: '700', textWrap: 'balance' }} dangerouslySetInnerHTML={{ __html: item.title }}>
                       </h3>
-                      <p className="text-[16px] leading-[1.4] text-[#4B5563]">
+                      <p className="text-[16px] leading-[1.4] text-[#4B5563] max-w-[36ch]" style={{ textWrap: 'balance' }}>
                         {item.description}
                       </p>
                     </div>
@@ -180,7 +178,7 @@ const HomePage = () => {
       {/* How We Work Section */}
       <section className="px-4" style={{ backgroundColor: '#EFF6FF', paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto" style={{ maxWidth: '1200px' }}>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-12 text-center" style={{ fontWeight: '700' }}>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-12 text-center max-w-[28ch] mx-auto" style={{ fontWeight: '700', textWrap: 'balance' }}>
             How We&nbsp;Work
           </h2>
           
@@ -251,33 +249,39 @@ const HomePage = () => {
       {/* FAQ Section */}
       <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto" style={{ maxWidth: '1200px' }}>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center" style={{ fontWeight: '700' }}>
-            Frequently Asked&nbsp;Questions
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-12 text-center max-w-[28ch] mx-auto" style={{ fontWeight: '700', textWrap: 'balance' }}>
+            FAQs
           </h2>
-          <div className="bg-[#F9FAFB] rounded-xl p-8">
-            <div className="space-y-6">
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <div className="flex items-start mb-3">
-                  <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                  <h3 className="text-[18px] font-bold text-gray-900" style={{ fontWeight: '700' }}>
-                    Do you complete the entire registration for&nbsp;me?
-                  </h3>
-                </div>
-                <p className="text-[#4B5563] ml-8" style={{ lineHeight: '1.6' }}>
-                  We handle the speed-critical parts — monitoring when registration opens and submitting your application instantly. You handle the human verification steps like captchas and account confirmations that we can't automate.
-                </p>
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl p-6 border shadow-sm" style={{ borderColor: '#E5E7EB', borderRadius: '14px' }}>
+              <div className="flex items-start mb-3">
+                <img 
+                  src="/lovable-uploads/5fd2573c-5da6-4ede-bb5a-a5171c65594f.png" 
+                  alt="Help icon"
+                  className="h-8 w-8 mr-3 mt-0.5 flex-shrink-0"
+                />
+                <h3 className="text-[18px] font-bold text-gray-900 max-w-[28ch]" style={{ fontWeight: '700', textWrap: 'balance' }}>
+                  Do you complete the entire registration for&nbsp;me?
+                </h3>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <div className="flex items-start mb-3">
-                  <HelpCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                  <h3 className="text-[18px] font-bold text-gray-900" style={{ fontWeight: '700' }}>
-                    What if there are captchas or other verification&nbsp;steps?
-                  </h3>
-                </div>
-                <p className="text-[#4B5563] ml-8" style={{ lineHeight: '1.6' }}>
-                  We prepare everything in advance and send you immediate notifications with step-by-step guidance. You'll have all the prep work done and just need to complete the human verification steps.
-                </p>
+              <p className="text-[16px] text-[#4B5563] ml-11" style={{ lineHeight: '1.6' }}>
+                We handle the speed-critical parts — monitoring when registration opens and submitting your application instantly. You handle the human verification steps like captchas and account confirmations that we can't automate.
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-6 border shadow-sm" style={{ borderColor: '#E5E7EB', borderRadius: '14px' }}>
+              <div className="flex items-start mb-3">
+                <img 
+                  src="/lovable-uploads/5fd2573c-5da6-4ede-bb5a-a5171c65594f.png" 
+                  alt="Help icon"
+                  className="h-8 w-8 mr-3 mt-0.5 flex-shrink-0"
+                />
+                <h3 className="text-[18px] font-bold text-gray-900 max-w-[28ch]" style={{ fontWeight: '700', textWrap: 'balance' }}>
+                  What if there are captchas or other verification&nbsp;steps?
+                </h3>
               </div>
+              <p className="text-[16px] text-[#4B5563] ml-11" style={{ lineHeight: '1.6' }}>
+                We prepare everything in advance and send you immediate notifications with step-by-step guidance. You'll have all the prep work done and just need to complete the human verification steps.
+              </p>
             </div>
           </div>
         </div>
