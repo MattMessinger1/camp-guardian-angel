@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { securityMiddleware, RATE_LIMITS, scrubSensitiveData } from '../_shared/securityGuards.ts';
+import { logSecurityEvent, getSecureCorsHeaders } from '../_shared/security.ts';
 
 interface NotifyParentRequest {
   user_id: string;
@@ -52,18 +49,37 @@ const MESSAGE_TEMPLATES: Record<string, MessageTemplate> = {
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  // Security middleware check
+  const securityCheck = await securityMiddleware(req, 'notify-parent', RATE_LIMITS.SMS_SEND);
+  
+  if (!securityCheck.allowed) {
+    return securityCheck.response!;
   }
+  
+  const { clientInfo } = securityCheck;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { user_id, template_id, variables = {}, token_payload, token_type }: NotifyParentRequest = await req.json();
+    const requestBody = await req.json();
+    const { user_id, template_id, variables = {}, token_payload, token_type }: NotifyParentRequest = requestBody;
 
     console.log(`[NOTIFY-PARENT] Sending ${template_id} notification to user ${user_id}`);
+    
+    // Log security event with scrubbed data
+    await logSecurityEvent(
+      'notify_parent_request',
+      user_id,
+      clientInfo.ip,
+      clientInfo.userAgent,
+      { 
+        template_id, 
+        variables: scrubSensitiveData(variables),
+        has_token: !!token_payload
+      }
+    );
 
     // Get user's phone number
     const { data: userProfile, error: profileError } = await supabase
@@ -157,16 +173,26 @@ serve(async (req) => {
         token_url: tokenUrl || undefined,
         message_preview: messageText.substring(0, 100) + (messageText.length > 100 ? '...' : '')
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getSecureCorsHeaders(), 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('[NOTIFY-PARENT] Error:', error);
+    
+    // Log security event for error
+    await logSecurityEvent(
+      'notify_parent_error',
+      undefined,
+      clientInfo.ip,
+      clientInfo.userAgent,
+      { error: error.message }
+    );
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...getSecureCorsHeaders(), 'Content-Type': 'application/json' } 
       }
     );
   }

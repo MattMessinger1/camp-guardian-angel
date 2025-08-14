@@ -1,0 +1,98 @@
+# OWASP ZAP Security Scan
+name: "OWASP ZAP Security Scan"
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Run weekly on Mondays at 6 AM UTC
+  workflow_dispatch:     # Allow manual triggering
+    inputs:
+      target_url:
+        description: 'Target URL to scan'
+        required: true
+        default: 'https://your-app.lovable.app'
+
+jobs:
+  zap-scan:
+    runs-on: ubuntu-latest
+    name: OWASP ZAP Security Scan
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: ${{ github.event.inputs.target_url || 'https://your-app.lovable.app' }}
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: Create ZAP rules file
+        run: |
+          mkdir -p .zap
+          cat > .zap/rules.tsv << 'EOF'
+          # ZAP Scanning Rules
+          # Format: RULE_ID	THRESHOLD	[COMMENT]
+          
+          # Ignore common false positives
+          10020	OFF	# X-Frame-Options header (may be handled by CDN)
+          10021	OFF	# X-Content-Type-Options header (may be handled by CDN)
+          
+          # Security headers we care about
+          10016	HIGH	# Web Browser XSS Protection Not Enabled
+          10017	HIGH	# Cross-Domain JavaScript Source File Inclusion
+          10019	HIGH	# Content-Type Header Missing
+          
+          # Authentication and session management
+          10023	HIGH	# Information Disclosure - Debug Error Messages
+          10024	HIGH	# Information Disclosure - Sensitive Information in URL
+          10025	HIGH	# Information Disclosure - Sensitive Information in HTTP Referrer Header
+          
+          # Injection vulnerabilities
+          40012	HIGH	# Cross Site Scripting (Reflected)
+          40014	HIGH	# Cross Site Scripting (Persistent)
+          40016	HIGH	# Cross Site Scripting (Persistent) - Prime
+          40017	HIGH	# Cross Site Scripting (Persistent) - Spider
+          40018	HIGH	# SQL Injection
+          EOF
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-report
+          path: report_html.html
+
+      - name: Create Issue for Security Findings
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '🚨 Security Scan Failed - OWASP ZAP Found Issues';
+            const body = `
+            ## Security Scan Results
+            
+            The OWASP ZAP security scan has detected potential security issues.
+            
+            **Scan Details:**
+            - Target: ${{ github.event.inputs.target_url || 'https://your-app.lovable.app' }}
+            - Scan Date: ${new Date().toISOString()}
+            - Workflow Run: ${{ github.run_id }}
+            
+            **Next Steps:**
+            1. Download the ZAP report from the workflow artifacts
+            2. Review each finding carefully
+            3. Fix critical and high-priority issues
+            4. Re-run the scan to verify fixes
+            
+            **Report:** Check the workflow artifacts for the detailed HTML report.
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'bug', 'priority-high']
+            });

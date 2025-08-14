@@ -1,18 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { securityMiddleware, RATE_LIMITS, scrubSensitiveData } from '../_shared/securityGuards.ts';
+import { logSecurityEvent, getSecureCorsHeaders } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-interface PlanChildMap {
+interface PlanItem {
   id: string;
   plan_id: string;
+  session_id: string;
   child_id: string;
-  session_ids: string[];
   priority: number;
-  conflict_resolution: 'skip' | 'next_available' | 'waitlist';
+  is_backup: boolean;
 }
 
 interface RegistrationPlan {
@@ -29,9 +26,14 @@ interface ScheduleRequest {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  // Security middleware check
+  const securityCheck = await securityMiddleware(req, 'schedule-from-readiness', RATE_LIMITS.API_STRICT);
+  
+  if (!securityCheck.allowed) {
+    return securityCheck.response!;
   }
+  
+  const { clientInfo } = securityCheck;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

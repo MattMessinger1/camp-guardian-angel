@@ -1,0 +1,134 @@
+# Security scanning workflow for CodeQL analysis and dependency scanning
+name: "Security Scanning"
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master", "develop" ]
+  schedule:
+    - cron: '30 2 * * 1'  # Run weekly on Mondays at 2:30 AM UTC
+
+jobs:
+  codeql:
+    name: "CodeQL Analysis"
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript', 'typescript' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+
+  dependency-scan:
+    name: "Dependency Vulnerability Scan"
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run npm audit
+      run: npm audit --audit-level=critical
+
+    - name: Run dependency check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'CampRush'
+        path: '.'
+        format: 'SARIF'
+        args: >
+          --enableRetired
+          --enableExperimental
+          --nodeAuditSkipDevDependencies
+
+    - name: Upload SARIF results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: reports/dependency-check-report.sarif
+
+  security-headers:
+    name: "Security Headers Check"
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check for HTTP URLs in codebase
+      run: |
+        echo "Checking for insecure HTTP URLs..."
+        if grep -r "http://" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" .; then
+          echo "❌ Found insecure HTTP URLs in codebase"
+          exit 1
+        else
+          echo "✅ No insecure HTTP URLs found"
+        fi
+
+    - name: Check for hardcoded secrets
+      run: |
+        echo "Checking for potential hardcoded secrets..."
+        if grep -r -E "(sk_|pk_|api_key|secret|password).*[=:]\s*['\"][a-zA-Z0-9]{10,}" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" .; then
+          echo "❌ Potential hardcoded secrets found"
+          exit 1
+        else
+          echo "✅ No obvious hardcoded secrets found"
+        fi
+
+  supabase-security:
+    name: "Supabase Security Check"
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check Supabase Configuration
+      run: |
+        echo "Checking Supabase configuration security..."
+        
+        # Check for public functions without JWT verification
+        if grep -r "verify_jwt.*false" supabase/config.toml; then
+          echo "⚠️ Found public functions (verify_jwt = false). Ensure these are intentional."
+        fi
+        
+        # Check for proper RLS policies (basic check)
+        if find supabase/migrations -name "*.sql" -exec grep -l "CREATE POLICY" {} \; | wc -l | awk '{if($1==0) exit 1}'; then
+          echo "✅ RLS policies found in migrations"
+        else
+          echo "⚠️ No RLS policies found. Ensure Row Level Security is properly configured."
+        fi
+        
+        echo "✅ Supabase security check completed"
