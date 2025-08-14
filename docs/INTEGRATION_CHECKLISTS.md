@@ -34,7 +34,18 @@ Quick setup guides for external services. Copy/paste friendly format.
 
 ## 🔒 VGS (Credential Security)
 
-**Required for secure credential handling**
+**Required for production credential handling**
+
+### 🧪 Development Testing (VGS Bypass)
+
+**For immediate testing without VGS setup:**
+
+1. **Set bypass mode:** `VGS_BYPASS_MODE=true` in Supabase secrets
+2. **Skip VGS configuration** - system will use test credentials
+3. **Test registration flow** with any camp provider
+4. **⚠️ WARNING:** Never use bypass mode in production!
+
+### 🔐 Production Setup (Required Later)
 
 1. **Inbound Route:** 
    - Method: `POST /post`
@@ -49,6 +60,8 @@ Quick setup guides for external services. Copy/paste friendly format.
    - `VGS_VAULT_ID`
    - `VGS_ENV` (sandbox/live)
    - `VGS_COLLECT_PUBLIC_KEY`
+   - `VGS_INBOUND_HOST`
+   - `VGS_OUTBOUND_HOST`
 
 4. **Test:** Collect dummy credentials → Verify DB has aliases, not raw data
 

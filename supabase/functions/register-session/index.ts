@@ -424,8 +424,31 @@ async function applyGuardrails(supabase: any, plan: any, session: any, registrat
   return { approved: true };
 }
 
-// Retrieve credentials via VGS outbound proxy
+// Retrieve credentials via VGS outbound proxy or use test credentials in bypass mode
 async function retrieveVGSCredentials(providerCreds: any) {
+  const bypassMode = Deno.env.get('VGS_BYPASS_MODE') === 'true';
+  
+  // VGS BYPASS MODE for development testing
+  if (bypassMode) {
+    console.warn('🚨 [REGISTER-SESSION] VGS_BYPASS_MODE is ACTIVE - Using test credentials');
+    console.warn('⚠️  [REGISTER-SESSION] SECURITY WARNING: This mode should NEVER be used in production!');
+    
+    // Return mock credentials for testing
+    return {
+      username: 'test_user@example.com',
+      password: 'test_password_123',
+      payment: {
+        card_number: '4111111111111111', // Test Visa card
+        card_exp: '12/25',
+        card_cvc: '123',
+        card_holder: 'Test Parent'
+      },
+      payment_type: providerCreds?.payment_type || 'credit_card',
+      amount_strategy: providerCreds?.amount_strategy || 'full_amount'
+    };
+  }
+
+  // Normal VGS flow
   if (!providerCreds || !providerCreds.vgs_username_alias) {
     return null;
   }

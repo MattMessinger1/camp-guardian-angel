@@ -27,6 +27,7 @@ export interface EnvironmentConfig {
   
   // Feature Flags
   FEATURE_PROVIDER_AUTOMATION_SIMULATE: boolean;
+  VGS_BYPASS_MODE: boolean;
 }
 
 export interface EnvironmentVariable {
@@ -84,13 +85,13 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
   },
   {
     key: 'VGS_VAULT_ID',
-    required: true,
+    required: false, // Made optional for bypass mode
     description: 'VGS Vault ID for tokenizing sensitive child data',
     sensitive: false,
   },
   {
     key: 'VGS_ENV',
-    required: true,
+    required: false, // Made optional for bypass mode
     description: 'VGS environment (sandbox or live)',
     sensitive: false,
     defaultValue: 'sandbox',
@@ -98,19 +99,19 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
   },
   {
     key: 'VGS_COLLECT_PUBLIC_KEY',
-    required: true,
+    required: false, // Made optional for bypass mode
     description: 'VGS Collect public key for frontend tokenization',
     sensitive: false,
   },
   {
     key: 'VGS_INBOUND_HOST',
-    required: true,
+    required: false, // Made optional for bypass mode
     description: 'VGS inbound proxy host for secure data collection',
     sensitive: false,
   },
   {
     key: 'VGS_OUTBOUND_HOST',
-    required: true,
+    required: false, // Made optional for bypass mode
     description: 'VGS outbound proxy host for secure data transmission',
     sensitive: true,
   },
@@ -126,6 +127,13 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     description: 'Enable simulation mode for provider automation',
     sensitive: false,
     defaultValue: true,
+  },
+  {
+    key: 'VGS_BYPASS_MODE',
+    required: false,
+    description: 'Enable VGS bypass mode for development testing (SECURITY WARNING: DO NOT USE IN PRODUCTION)',
+    sensitive: false,
+    defaultValue: false,
   },
 ];
 
@@ -158,7 +166,7 @@ export function validateEnvironment(): EnvironmentConfig {
     }
     
     // Type conversion and validation
-    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE') {
+    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'VGS_BYPASS_MODE') {
       (config as any)[envVar.key] = value.toLowerCase() === 'true';
     } else if (envVar.validValues && !envVar.validValues.includes(value)) {
       errors.push(`Invalid value for ${envVar.key}. Expected one of: ${envVar.validValues.join(', ')}`);
