@@ -29,21 +29,27 @@ const HomePage = () => {
         <div className="relative z-10 mx-auto max-w-4xl">
           <div className="inline-block p-4 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(17,24,39,0.6)' }}>
             <h1 className="text-white mb-4 text-[32px] md:text-[48px] font-extrabold tracking-tight leading-tight">
-              Give yourself the best chance at registering for the activity you want
+              Beat the registration rush
             </h1>
             
             <div className="w-16 h-1 bg-primary mx-auto mb-3 rounded"></div>
             
             <p className="text-white text-base md:text-[20px] font-normal max-w-2xl mx-auto leading-relaxed mb-6">
-              We monitor when registration opens and submit your application instantly — then hand it over to you for the human verification steps.
+              We submit the millisecond it opens, you complete the human steps.
             </p>
             
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button className="bg-primary hover:bg-primary/90 text-white font-bold px-8 py-3 rounded-lg transition-colors min-h-[44px] w-full sm:w-auto">
-                Maximize My Chance
+            <div className="flex flex-col gap-3 md:gap-4 justify-center items-center">
+              <button className="bg-primary hover:bg-primary/90 text-white font-bold px-8 py-3 rounded-lg transition-colors min-h-[44px] w-full md:w-auto md:max-w-xs">
+                Get My Speed Advantage
               </button>
-              <button className="bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold px-8 py-3 rounded-lg transition-colors min-h-[44px] w-full sm:w-auto">
+              
+              {/* Tagline under primary CTA */}
+              <p className="text-white text-sm md:text-base font-normal text-center mt-2">
+                Technology for speed, humans for verification.
+              </p>
+              
+              <button className="bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold px-8 py-3 rounded-lg transition-colors min-h-[44px] w-full md:w-auto md:max-w-xs">
                 Learn How It Works
               </button>
             </div>
