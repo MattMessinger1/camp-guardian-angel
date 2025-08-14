@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import HomePage from "./pages/Home";
+import ConfirmCamp from "./pages/ConfirmCamp";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -43,7 +45,9 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<HomePage />} />
+              <Route path="/confirm-camp" element={<ConfirmCamp />} />
+              <Route path="/index" element={<Index />} />
               <Route path="/find" element={<FindCamps />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
