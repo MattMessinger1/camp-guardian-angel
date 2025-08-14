@@ -40,23 +40,8 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* SEARCH CARD (directly below hero, overlapping by -48px) */}
-      <section className="search-wrap">
-        <div className="search-card">
-          <div className="search-input">
-            <span className="search-icon" aria-hidden="true">🔎</span>
-            <input
-              type="text"
-              placeholder={isMobile ? "Activity name, location…" : "Activity name, city/state, session dates…"}
-              aria-label="Search activities by name, location, and dates"
-            />
-          </div>
-          <button className="btn-primary btn-search">Secure My Spot</button>
-        </div>
-      </section>
-
       {/* How It Works Section */}
-      <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
+      <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '32px' }}>
         <div className="mx-auto max-w-5xl" style={{ maxWidth: '1200px' }}>
           
           {/* Three Steps Layout */}
@@ -125,6 +110,21 @@ const HomePage = () => {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      {/* SEARCH CARD */}
+      <section className="search-wrap" style={{ paddingBottom: '64px' }}>
+        <div className="search-card">
+          <div className="search-input">
+            <span className="search-icon" aria-hidden="true">🔎</span>
+            <input
+              type="text"
+              placeholder={isMobile ? "Activity name, location…" : "Activity name, city/state, session dates…"}
+              aria-label="Search activities by name, location, and dates"
+            />
+          </div>
+          <button className="btn-primary btn-search">Secure My Spot</button>
         </div>
       </section>
 
