@@ -332,58 +332,60 @@ All colors MUST be HSL. */
 }
 
 .search-card {
-  max-width: 960px;
-  margin: 0 auto 24px;
-  background: hsl(var(--background));
-  border-radius: 16px;
-  padding: 0;
-  border: 2px solid hsl(var(--border));
-  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.08);
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between;
-  height: 64px;
-  overflow: hidden;
-  transition: border-color 0.2s ease;
+  max-width: 960px !important;
+  margin: 0 auto 24px !important;
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  padding: 0 !important;
+  border: 2px solid #E5E7EB !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+  display: flex !important; 
+  align-items: center !important; 
+  justify-content: space-between !important;
+  height: 64px !important;
+  overflow: hidden !important;
+  transition: border-color 0.2s ease !important;
 }
 
 .search-input {
-  display: flex; 
-  align-items: center;
-  gap: 12px; 
-  flex: 1;
-  background: transparent;
-  border: none;
-  padding: 0 16px; 
-  height: 100%;
+  display: flex !important; 
+  align-items: center !important;
+  gap: 12px !important; 
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 16px !important; 
+  height: 100% !important;
 }
 
 .search-input input {
   border: none !important; 
   outline: none !important; 
-  width: 100%;
-  font-size: 16px;
-  color: hsl(var(--foreground));
+  width: 100% !important;
+  font-size: 16px !important;
+  color: #111827 !important;
   background: transparent !important;
+  box-shadow: none !important;
 }
 
 .search-input input::placeholder { 
-  color: hsl(var(--muted-foreground)); 
+  color: #9CA3AF !important; 
 }
 
 .search-card:focus-within {
-  border-color: hsl(var(--primary)) !important;
-  box-shadow: 0 4px 16px hsl(var(--primary) / 0.15) !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.15) !important;
 }
 
 .btn-search {
-  height: 100%; 
-  padding: 0 22px; 
-  border-radius: 0 14px 14px 0;
-  white-space: nowrap; 
+  height: 100% !important; 
+  padding: 0 22px !important; 
+  border-radius: 0 14px 14px 0 !important;
+  white-space: nowrap !important; 
   border: none !important;
-  background: hsl(var(--primary)) !important;
-  color: hsl(var(--primary-foreground)) !important;
+  background: #2563EB !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
 }
 
 /* RESPONSIVE */
