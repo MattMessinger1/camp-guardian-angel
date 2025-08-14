@@ -54,8 +54,8 @@ const HomePage = () => {
               },
               {
                 icon: Zap,
-                title: "Step 2 — Enter your registration info ahead of time",
-                description: "It's all encrypted and we'll use it for this and future registrations.",
+                title: "Step 2 — Enter your info ahead of time",
+                description: "It's all encrypted and we'll use it for future registrations too",
               },
               {
                 icon: Trophy,
