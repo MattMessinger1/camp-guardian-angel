@@ -147,8 +147,8 @@ const HomePage = () => {
               {[
                 "You only pay our service fee if you successfully secure the session you chose.",
                 "We monitor registration openings and submit your application instantly when spots become available.",
-                "All your registration information is encrypted and securely stored for use in current and future sign-ups.",
-                "You handle captchas and account verification when needed - we prepare everything in advance and send instant alerts with step-by-step guidance."
+                "You handle captchas and account verification when needed - we prepare everything in advance and send instant alerts with step-by-step guidance.",
+                "All your registration information is encrypted and securely stored for use in current and future sign-ups."
               ].map((statement, index) => (
                 <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
                   <div 
