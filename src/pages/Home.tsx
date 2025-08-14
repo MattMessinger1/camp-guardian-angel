@@ -69,23 +69,18 @@ const HomePage = () => {
                   <div className="flex md:flex-col items-start md:items-center">
                     {/* Icon */}
                     <div className="flex-shrink-0 md:mb-4">
-                      {/* Desktop retina icon */}
                       <img 
-                        src={`/step${step.stepNum}_${
-                          step.stepNum === 1 ? 'pin' :
-                          step.stepNum === 2 ? 'form' : 'stopwatch'
-                        }_192.png`}
+                        src={
+                          step.stepNum === 1 ? (isMobile ? '/step1_pin_96.png' : '/step1_pin_192.png') :
+                          step.stepNum === 2 ? (isMobile ? '/step2_form_96.png' : '/step2_form_192.png') :
+                          (isMobile ? '/step3_stopwatch_96.png' : '/step3_stopwatch_192.png')
+                        }
                         alt=""
-                        className="step-ico desktop"
-                      />
-                      {/* Mobile retina icon */}
-                      <img 
-                        src={`/step${step.stepNum}_${
-                          step.stepNum === 1 ? 'pin' :
-                          step.stepNum === 2 ? 'form' : 'stopwatch'
-                        }_96.png`}
-                        alt=""
-                        className="step-ico mobile"
+                        className={isMobile ? "w-12 h-12 mr-4" : "w-24 h-24"}
+                        style={{
+                          width: isMobile ? '48px' : '96px',
+                          height: isMobile ? '48px' : '96px'
+                        }}
                       />
                     </div>
                     
