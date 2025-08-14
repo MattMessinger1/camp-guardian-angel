@@ -51,12 +51,32 @@ const HomePage = () => {
             <div className="relative mb-16">
               <div className="h-1 bg-gray-200 w-full"></div>
               
-              {/* Numbered Circles on Rail */}
+              {/* Icon Circles on Rail */}
               <div className="absolute top-0 w-full flex justify-between" style={{ transform: 'translateY(-50%)' }}>
-                {[1, 2, 3].map((number, index) => (
-                  <div key={number} className="flex flex-col items-center" style={{ width: 'calc(100% / 3)' }}>
-                    <div className="h-[72px] w-[72px] bg-primary rounded-full flex items-center justify-center text-white font-semibold text-xl">
-                      {number}
+                {[
+                  {
+                    iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
+                    title: "Step 1 — Tell Us What You Want",
+                    description: "Name, location, and dates.",
+                  },
+                  {
+                    iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
+                    title: "Step 2 — We're On It",
+                    description: "We prep your signup and watch for opening.",
+                  },
+                  {
+                    iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
+                    title: "Step 3 — Get Your Spot",
+                    description: "Instant sign-up when it opens. You only pay if you get in.",
+                  }
+                ].map((item, index) => (
+                  <div key={index} className="flex flex-col items-center" style={{ width: 'calc(100% / 3)' }}>
+                    <div className="h-16 w-16 bg-primary rounded-full flex items-center justify-center mb-4">
+                      <img 
+                        src={item.iconUrl} 
+                        alt={item.title}
+                        className="h-6 w-6 filter brightness-0 invert"
+                      />
                     </div>
                   </div>
                 ))}
@@ -67,32 +87,19 @@ const HomePage = () => {
             <div className="grid grid-cols-3 gap-20">
               {[
                 {
-                  iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
-                  title: "Tell Us What You Want",
+                  title: "Step 1 — Tell Us What You Want",
                   description: "Name, location, and dates.",
                 },
                 {
-                  iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
-                  title: "We're On It",
+                  title: "Step 2 — We're On It",
                   description: "We prep your signup and watch for opening.",
                 },
                 {
-                  iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
-                  title: "Get Your Spot",
+                  title: "Step 3 — Get Your Spot",
                   description: "Instant sign-up when it opens. You only pay if you get in.",
                 }
               ].map((item, index) => (
                 <div key={index} className="text-center">
-                  {/* Icon Circle */}
-                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary mb-2">
-                    <img 
-                      src={item.iconUrl} 
-                      alt={item.title}
-                      className="h-6 w-6 filter brightness-0 invert"
-                    />
-                  </div>
-                  
-                  {/* Content */}
                   <h3 className="text-lg font-semibold mb-2 text-gray-900">
                     {item.title}
                   </h3>
@@ -108,47 +115,39 @@ const HomePage = () => {
           <div className="lg:hidden">
             <div className="relative">
               {/* Vertical Rail */}
-              <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
               
               {/* Steps */}
-              <div className="space-y-12">
+              <div className="space-y-4">
                 {[
                   {
-                    number: 1,
                     iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
-                    title: "Tell Us What You Want",
+                    title: "Step 1 — Tell Us What You Want",
                     description: "Name, location, and dates.",
                   },
                   {
-                    number: 2,
                     iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
-                    title: "We're On It",
+                    title: "Step 2 — We're On It",
                     description: "We prep your signup and watch for opening.",
                   },
                   {
-                    number: 3,
                     iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
-                    title: "Get Your Spot",
+                    title: "Step 3 — Get Your Spot",
                     description: "Instant sign-up when it opens. You only pay if you get in.",
                   }
                 ].map((item, index) => (
                   <div key={index} className="flex items-start">
-                    {/* Numbered Circle */}
-                    <div className="relative z-10 h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                      {item.number}
+                    {/* Icon Circle */}
+                    <div className="relative z-10 h-12 w-12 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                      <img 
+                        src={item.iconUrl} 
+                        alt={item.title}
+                        className="h-5 w-5 filter brightness-0 invert"
+                      />
                     </div>
                     
                     {/* Content */}
                     <div className="ml-6 flex-1">
-                      {/* Icon Circle */}
-                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-3">
-                        <img 
-                          src={item.iconUrl} 
-                          alt={item.title}
-                          className="h-5 w-5 filter brightness-0 invert"
-                        />
-                      </div>
-                      
                       <h3 className="text-lg font-semibold mb-2 text-gray-900">
                         {item.title}
                       </h3>
