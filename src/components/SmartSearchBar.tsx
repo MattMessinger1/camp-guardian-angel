@@ -62,24 +62,24 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
   }
 
   return (
-    <div className={cn("w-full max-w-2xl mx-auto", className)}>
-      <form onSubmit={handleSubmit} className="flex gap-2">
+    <div className={cn("w-full", className)}>
+      <form onSubmit={handleSubmit} className="flex rounded-lg overflow-hidden border border-border bg-background shadow-sm">
         <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Camp name, city/state, and desired session..."
+            placeholder="Event name, city/state, session dates..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={isLoading}
-            className="pl-10 pr-4 py-3 text-base"
+            className="pl-10 pr-4 h-12 text-base border-0 focus:ring-0 focus:border-0 bg-transparent"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
         
         <Button 
           type="submit" 
           disabled={!query.trim() || isLoading}
-          className="px-6 py-3"
+          className="h-12 px-8 rounded-none font-semibold"
         >
           {isLoading ? (
             <>
@@ -87,10 +87,7 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
               Searching...
             </>
           ) : (
-            <>
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </>
+            "Search"
           )}
         </Button>
       </form>
