@@ -59,7 +59,7 @@ const HomePage = () => {
               },
               {
                 icon: Trophy,
-                title: "Step 3 — We register you within milliseconds of registration opening",
+                title: "Step 3 — We submit the millisecond registration opens",
                 description: "You pay us only if you get the session you chose",
               }
             ].map((step, index) => {
