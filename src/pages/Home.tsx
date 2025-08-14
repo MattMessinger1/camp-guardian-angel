@@ -2,14 +2,14 @@ import React from 'react'
 import { SmartSearchBar } from "@/components/SmartSearchBar"
 import { Search, Rocket, CheckCircle, Globe, Lock, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
-import heroImage from "@/assets/hero-camp.jpg"
+import heroImage from "@/assets/hero-activities.jpg"
 
 const HomePage = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <section 
-        className="relative px-4 py-24 md:py-32 text-center overflow-hidden"
+        className="relative px-4 py-20 md:py-28 text-center overflow-hidden"
         style={{
           backgroundImage: `linear-gradient(135deg, rgba(31, 41, 55, 0.8), rgba(31, 41, 55, 0.6)), url(${heroImage})`,
           backgroundSize: 'cover',
@@ -35,19 +35,8 @@ const HomePage = () => {
       {/* 1-2-3 Process Section */}
       <section className="px-4 py-16 bg-background">
         <div className="mx-auto max-w-6xl">
-          <div className="relative">
-            {/* Connector Lines - Desktop Only */}
-            <div className="hidden md:block absolute top-8 left-1/2 transform -translate-x-1/2 w-full max-w-4xl">
-              <div className="flex justify-between items-center h-16">
-                <div className="w-1/3"></div>
-                <div className="w-1/3 border-t-2 border-gray-200"></div>
-                <div className="w-1/3"></div>
-                <div className="w-1/3 border-t-2 border-gray-200"></div>
-                <div className="w-1/3"></div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
+          <div className="relative flex items-center justify-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16 relative z-10 w-full max-w-4xl">
               {[
                 {
                   icon: Search,
@@ -69,8 +58,27 @@ const HomePage = () => {
                 }
               ].map((item, index) => {
                 const Icon = item.icon
+                const isLast = index === 2
+                
                 return (
-                  <div key={index} className="text-center">
+                  <div key={index} className="relative text-center">
+                    {/* Arrow - Only show between steps on desktop */}
+                    {!isLast && (
+                      <div className="hidden md:block absolute top-8 -right-8 z-20">
+                        <svg 
+                          className="w-6 h-6 text-primary transform rotate-0" 
+                          fill="currentColor" 
+                          viewBox="0 0 20 20"
+                        >
+                          <path 
+                            fillRule="evenodd" 
+                            d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" 
+                            clipRule="evenodd" 
+                          />
+                        </svg>
+                      </div>
+                    )}
+                    
                     {/* Icon Circle */}
                     <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary mb-6">
                       <Icon className="h-8 w-8 text-white" />
