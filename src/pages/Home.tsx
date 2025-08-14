@@ -60,7 +60,7 @@ const HomePage = () => {
               {
                 icon: Trophy,
                 title: "Step 3 — We sign you up the millisecond registration opens",
-                description: "You only pay if you get the session you chose",
+                description: "You only pay if you get the session you&nbsp;chose",
               }
             ].map((step, index) => {
               const IconComponent = step.icon;
