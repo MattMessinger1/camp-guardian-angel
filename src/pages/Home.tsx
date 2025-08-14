@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake } from "lucide-react"
+import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake, Clipboard, Zap, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
 
@@ -55,121 +55,75 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* How It Works - Stepper Rail Section */}
+      {/* How It Works Section */}
       <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto max-w-5xl" style={{ maxWidth: '1200px' }}>
-          {/* Desktop Layout (≥1024px) */}
-          <div className="hidden lg:block">
-            {/* Horizontal Rail */}
-            <div className="relative mb-16">
-              <div className="h-1 bg-gray-200 w-full"></div>
-              
-              {/* Icon Circles on Rail */}
-              <div className="absolute top-0 w-full flex justify-between" style={{ transform: 'translateY(-50%)' }}>
-                 {[
-                   {
-                     iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
-                     title: "Step 1 — Tell us what you&nbsp;want",
-                     description: "Event name, location, dates, and your info.",
-                   },
-                   {
-                     iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
-                     title: "Step 2 — We monitor & submit&nbsp;instantly",
-                     description: "We watch for registration to open and submit the millisecond it's available.",
-                   },
-                   {
-                     iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
-                     title: "Step 3 — You complete&nbsp;verification",
-                     description: "Handle captchas, account setup, and final verification.",
-                   }
-                ].map((item, index) => (
-                  <div key={index} className="flex flex-col items-center" style={{ width: 'calc(100% / 3)' }}>
-                    <div className="h-[72px] w-[72px] bg-primary rounded-full flex items-center justify-center mb-5">
-                      <img 
-                        src={item.iconUrl} 
-                        alt={item.title}
-                        className="h-8 w-8 filter brightness-0 invert"
-                      />
-                    </div>
+          
+          {/* Three Steps Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Clipboard,
+                title: "Step 1 — Tell us what you want",
+                description: "Event name, location, dates, and your info.",
+              },
+              {
+                icon: Zap,
+                title: "Step 2 — We monitor & submit instantly",
+                description: "We watch for registration to open and submit the millisecond it's available.",
+              },
+              {
+                icon: Trophy,
+                title: "Step 3 — You complete verification",
+                description: "Handle captchas, account setup, and final verification.",
+              }
+            ].map((step, index) => {
+              const IconComponent = step.icon;
+              return (
+                <div key={index} className="flex flex-col items-center text-center">
+                  {/* Icon Circle */}
+                  <div 
+                    className="rounded-full flex items-center justify-center"
+                    style={{ 
+                      width: '80px', 
+                      height: '80px', 
+                      backgroundColor: '#2563EB',
+                      marginBottom: '20px'
+                    }}
+                  >
+                    <IconComponent size={40} color="white" strokeWidth={2} />
                   </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Content Below Rail */}
-            <div className="grid grid-cols-3 gap-20">
-              {[
-                  {
-                    title: "Step 1 — Tell us what you&nbsp;want",
-                    description: "Event name, location, dates, and your info.",
-                  },
-                  {
-                    title: "Step 2 — We monitor & submit&nbsp;instantly",
-                    description: "We watch for registration to open and submit the millisecond it's available.",
-                  },
-                  {
-                    title: "Step 3 — You complete&nbsp;verification",
-                    description: "Handle captchas, account setup, and final verification.",
-                  }
-              ].map((item, index) => (
-                <div key={index} className="text-center">
-            <h3 className="text-[20px] font-bold mb-[6px] text-[#111827] max-w-[26ch] mx-auto" style={{ fontWeight: '700', textWrap: 'balance' }} dangerouslySetInnerHTML={{ __html: item.title }}>
-            </h3>
-                  <p className="text-[16px] leading-[1.4] text-[#4B5563] max-w-[36ch] mx-auto" style={{ textWrap: 'balance' }}>
-                    {item.description}
+                  
+                  {/* Title */}
+                  <h3 
+                    className="mb-3"
+                    style={{ 
+                      fontSize: '20px', 
+                      fontWeight: '700', 
+                      color: '#111827',
+                      textAlign: 'center',
+                      maxWidth: '28ch',
+                      lineHeight: '1.3'
+                    }}
+                  >
+                    {step.title}
+                  </h3>
+                  
+                  {/* Description */}
+                  <p 
+                    style={{ 
+                      fontSize: '16px', 
+                      color: '#4B5563',
+                      textAlign: 'center',
+                      maxWidth: '32ch',
+                      lineHeight: '1.5'
+                    }}
+                  >
+                    {step.description}
                   </p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Mobile Layout (<1024px) */}
-          <div className="lg:hidden">
-            <div className="relative">
-              {/* Vertical Rail */}
-              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-              
-              {/* Steps */}
-              <div className="space-y-5">
-                {[
-                   {
-                      iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
-                      title: "Step 1 — Tell us what you&nbsp;want",
-                      description: "Event name, location, dates, and your info.",
-                    },
-                    {
-                      iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
-                      title: "Step 2 — We monitor & submit&nbsp;instantly",
-                      description: "We watch for registration to open and submit the millisecond it's available.",
-                    },
-                    {
-                      iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
-                      title: "Step 3 — You complete&nbsp;verification",
-                      description: "Handle captchas, account setup, and final verification.",
-                    }
-                ].map((item, index) => (
-                  <div key={index} className="flex items-start">
-                    {/* Icon Circle */}
-                    <div className="relative z-10 h-[56px] w-[56px] bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                      <img 
-                        src={item.iconUrl} 
-                        alt={item.title}
-                        className="h-6 w-6 filter brightness-0 invert"
-                      />
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="ml-6 flex-1">
-                      <h3 className="text-[20px] font-bold mb-[6px] text-[#111827] max-w-[26ch]" style={{ fontWeight: '700', textWrap: 'balance' }} dangerouslySetInnerHTML={{ __html: item.title }}>
-                      </h3>
-                      <p className="text-[16px] leading-[1.4] text-[#4B5563] max-w-[36ch]" style={{ textWrap: 'balance' }}>
-                        {item.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
