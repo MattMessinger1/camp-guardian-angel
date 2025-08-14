@@ -50,7 +50,7 @@ const HomePage = () => {
               {
                 icon: Clipboard,
                 title: "Step 1 — Find your chosen activity",
-                description: "Camps, Lessons, Leagues and more!",
+                description: "Camps, Lessons, Leagues and more.",
               },
               {
                 icon: Zap,
