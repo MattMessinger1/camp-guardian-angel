@@ -49,7 +49,7 @@ const HomePage = () => {
             {[
               {
                 icon: Clipboard,
-                title: "Step 1 — Find your Activity or Camp",
+                title: "Step 1 — Find your activity or camp",
                 description: "Choose the specific session(s) you'd like",
               },
               {
