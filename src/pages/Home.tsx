@@ -28,69 +28,30 @@ const HomePage = () => {
       >
         {/* Hero content with solid dark card */}
         <div className="relative z-10 mx-auto max-w-4xl">
-          <div 
-            className="rounded-2xl shadow-[0_8px_25px_rgba(0,0,0,0.3)]"
-            style={{ 
-              backgroundColor: '#1F2937',
-              paddingTop: '40px',
-              paddingBottom: '40px', 
-              paddingLeft: '32px',
-              paddingRight: '32px'
-            }}
-          >
-            <h1 
-              className="text-white mb-4 font-bold tracking-[-0.02em] leading-[1.2] max-w-2xl mx-auto text-center"
-              style={{ 
-                fontSize: 'clamp(36px, 4vw, 44px)',
-                textWrap: 'balance'
-              }}
-            >
-              Beat the registration rush
-            </h1>
-            
-            <div className="w-16 h-1 bg-primary mx-auto mb-6 rounded"></div>
-            
-            <p 
-              className="text-[#E5E7EB] font-normal max-w-[600px] mx-auto leading-[1.5] text-center"
-              style={{ 
-                fontSize: 'clamp(16px, 4vw, 20px)',
-                marginBottom: '24px'
-              }}
-            >
+          {/* HERO TEXT BLOCK */}
+          <div className="hero-card">
+            <h1 className="hero-title">Beat the registration&nbsp;rush</h1>
+            <div className="hero-accent" aria-hidden="true"></div>
+            <p className="hero-sub">
               We submit the millisecond it opens, you complete the human steps.
             </p>
-            
-            {/* CTA Button */}
-            <div className="flex justify-center">
-              <button 
-                className="bg-primary hover:bg-[#1D4ED8] text-white font-bold px-10 py-5 rounded-lg transition-all duration-200 ease-out min-h-[56px] w-full md:w-auto md:max-w-sm text-lg"
-                style={{ marginTop: '16px', marginBottom: '16px' }}
-              >
-                Get My Speed Advantage
-              </button>
-            </div>
+            <button className="btn-primary">Get My Speed Advantage</button>
           </div>
         </div>
       </section>
 
-      {/* Search Bar Section - Overlapping Hero */}
-      <section className="px-4 -mt-8 relative z-20 mb-16">
-        <div className="mx-auto max-w-3xl">
-          <div className="bg-white rounded-2xl p-5 shadow-[0_8px_25px_rgba(0,0,0,0.1)] border border-gray-100">
-            <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
-              <div className="flex items-center space-x-3 flex-1 border border-[#E5E7EB] rounded-lg px-4 py-4 focus-within:ring-2 focus-within:ring-primary focus-within:border-primary h-[60px]">
-                <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                <input 
-                  type="text"
-                  placeholder={isMobile ? "Event name, location…" : "Event name, city/state, session dates…"}
-                  className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-[16px]"
-                />
-              </div>
-              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold text-[16px] px-8 py-4 rounded-lg transition-all duration-200 ease-out h-[60px] w-full md:w-auto">
-                Secure My Spot
-              </button>
-            </div>
+      {/* SEARCH CARD (directly below hero, overlapping by -48px) */}
+      <section className="search-wrap">
+        <div className="search-card">
+          <div className="search-input">
+            <span className="search-icon" aria-hidden="true">🔎</span>
+            <input
+              type="text"
+              placeholder={isMobile ? "Activity name, location…" : "Activity name, city/state, session dates…"}
+              aria-label="Search activities by name, location, and dates"
+            />
           </div>
+          <button className="btn-primary btn-search">Secure My Spot</button>
         </div>
       </section>
 
