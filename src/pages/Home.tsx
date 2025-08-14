@@ -1,6 +1,6 @@
 import React from 'react'
 import { SmartSearchBar } from "@/components/SmartSearchBar"
-import { Search, Rocket, CheckCircle, Globe, Lock, DollarSign } from "lucide-react"
+import { Search, Globe, Lock, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
 
@@ -15,23 +15,24 @@ const HomePage = () => {
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        className={cn(
-          "relative px-4 py-12 md:py-24 text-center overflow-hidden min-h-[520px] md:min-h-[70vh] flex items-center justify-center hero-bg"
-        )}
+        className="relative px-4 py-12 md:py-24 text-center overflow-hidden min-h-[520px] md:min-h-[70vh] flex items-center justify-center"
+        style={{
+          backgroundImage: `url('/lovable-uploads/34b306e2-bf20-410d-ba29-c46390e5f193.png')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
       >
-        {/* Dot pattern overlay in top-right */}
-        <div className="absolute top-0 right-0 w-64 h-64 hero-dot-pattern opacity-100"></div>
-        
         {/* Hero content with dark overlay */}
         <div className="relative z-10 mx-auto max-w-4xl">
-          <div className="text-overlay-dark inline-block">
-            <h1 className="text-white mb-3">
+          <div className="inline-block p-4 rounded-xl" style={{ backgroundColor: 'rgba(17,24,39,0.6)' }}>
+            <h1 className="text-white mb-3 text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
               Get the spot you want, without the stress.
             </h1>
             
-            <div className="accent-bar mx-auto mb-4"></div>
+            <div className="w-16 h-1 bg-primary mx-auto mb-3 rounded"></div>
             
-            <p className="subheadline text-white max-w-2xl mx-auto">
+            <p className="text-white text-base md:text-xl font-normal max-w-2xl mx-auto leading-relaxed">
               Tell us your event, we'll be ready to sign you up the moment registration opens. 
               You handle any final steps.
             </p>
@@ -45,42 +46,50 @@ const HomePage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 relative">
             {[
               {
-                icon: Search,
+                iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
                 title: "Tell Us What You Want",
                 description: "Name, location, and dates.",
               },
               {
-                icon: Rocket,
+                iconUrl: "/lovable-uploads/508fe445-4ff2-49e3-b456-b7b0be67c788.png",
                 title: "We're On It",
                 description: "We prep and monitor for opening.",
               },
               {
-                icon: CheckCircle,
+                iconUrl: "/lovable-uploads/0b78337f-9565-4df0-91be-a194a4dcb675.png",
                 title: "Get Your Spot",
                 description: "Instant sign-up when it opens.",
               }
             ].map((item, index) => {
-              const Icon = item.icon
               const isLast = index === 2
               
               return (
                 <div key={index} className="relative text-center">
-                  {/* Connector Line - Only show between steps on desktop */}
+                  {/* Arrow Image - Only show between steps on desktop */}
                   {!isLast && (
-                    <div className="hidden md:block absolute top-8 left-full w-16 h-px bg-border z-10" style={{ transform: 'translateX(-50%)' }}>
+                    <div className="hidden md:block absolute top-8 left-full w-16 h-8 z-10 flex items-center justify-center" style={{ transform: 'translateX(-50%)' }}>
+                      <img 
+                        src="/lovable-uploads/f769a64d-f631-401a-a0e3-e4d01b931ae4.png" 
+                        alt="Arrow" 
+                        className="h-4 w-8 object-contain"
+                      />
                     </div>
                   )}
                   
                   {/* Icon Circle */}
-                  <div className="inline-flex h-12 w-12 md:h-16 md:w-16 items-center justify-center rounded-full bg-primary mb-6">
-                    <Icon className="h-6 w-6 md:h-8 md:w-8 text-primary-foreground" />
+                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary mb-6">
+                    <img 
+                      src={item.iconUrl} 
+                      alt={item.title}
+                      className="h-8 w-8 filter brightness-0 invert"
+                    />
                   </div>
                   
                   {/* Content */}
-                  <h3 className="text-lg md:text-xl font-semibold mb-3 text-foreground">
+                  <h3 className="text-lg md:text-xl font-semibold mb-3 text-gray-900">
                     {item.title}
                   </h3>
-                  <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                  <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-xs mx-auto">
                     {item.description}
                   </p>
                 </div>
@@ -91,46 +100,56 @@ const HomePage = () => {
       </section>
 
       {/* Search Bar Section */}
-      <section className="px-4 py-8 bg-background">
+      <section className="px-4 py-12 md:py-24" style={{ backgroundColor: '#F9FAFB' }}>
         <div className="mx-auto max-w-2xl">
-          <div className="surface-card p-6">
-            <SmartSearchBar />
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center space-x-3">
+              <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              <input 
+                type="text"
+                placeholder="Event name, city/state, session dates…"
+                className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-base"
+              />
+              <button className="bg-primary hover:bg-primary/90 text-white font-bold px-6 py-3 rounded-lg transition-colors">
+                Search
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Trust/Security Section */}
-      <section className="px-4 py-12 md:py-24 bg-muted">
+      <section className="px-4 py-12 md:py-24" style={{ backgroundColor: '#F3F4F6' }}>
         <div className="mx-auto max-w-5xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
                 icon: Globe,
-                title: "Works broadly",
+                title: "Works Broadly",
                 description: "Compatible with most registration sites."
               },
               {
                 icon: Lock,
-                title: "Data protected",
+                title: "Data Protected",
                 description: "Encrypted in transit and at rest."
               },
               {
                 icon: DollarSign,
-                title: "Only pay if you get in",
+                title: "Only Pay If You Get In",
                 description: "No success, no fee."
               }
             ].map((item, index) => {
               const Icon = item.icon
               return (
                 <div key={index} className="text-center">
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
-                    <Icon className="h-6 w-6 text-primary" />
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
+                    <Icon className="h-6 w-6 text-white" />
                   </div>
                   
-                  <h3 className="text-lg font-semibold mb-2 text-foreground">
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900">
                     {item.title}
                   </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                  <p className="text-sm text-gray-600 leading-relaxed max-w-xs mx-auto">
                     {item.description}
                   </p>
                 </div>
