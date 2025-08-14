@@ -1,5 +1,4 @@
 import React from 'react'
-import { SmartSearchBar } from "@/components/SmartSearchBar"
 import { Search, Globe, Lock, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
@@ -108,7 +107,7 @@ const HomePage = () => {
               <input 
                 type="text"
                 placeholder="Event name, city/state, session dates…"
-                className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-base"
+                className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-base md:placeholder:text-base placeholder:text-sm"
               />
               <button className="bg-primary hover:bg-primary/90 text-white font-bold px-6 py-3 rounded-lg transition-colors">
                 Search
