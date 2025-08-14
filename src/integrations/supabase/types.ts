@@ -510,34 +510,34 @@ export type Database = {
           amount_strategy: string | null
           camp_id: string | null
           id: string
-          password_cipher: string
-          payment_method_cipher: string | null
           payment_type: string | null
           updated_at: string | null
           user_id: string
-          username: string
+          vgs_password_alias: string
+          vgs_payment_alias: string | null
+          vgs_username_alias: string
         }
         Insert: {
           amount_strategy?: string | null
           camp_id?: string | null
           id?: string
-          password_cipher: string
-          payment_method_cipher?: string | null
           payment_type?: string | null
           updated_at?: string | null
           user_id: string
-          username: string
+          vgs_password_alias?: string
+          vgs_payment_alias?: string | null
+          vgs_username_alias?: string
         }
         Update: {
           amount_strategy?: string | null
           camp_id?: string | null
           id?: string
-          password_cipher?: string
-          payment_method_cipher?: string | null
           payment_type?: string | null
           updated_at?: string | null
           user_id?: string
-          username?: string
+          vgs_password_alias?: string
+          vgs_payment_alias?: string | null
+          vgs_username_alias?: string
         }
         Relationships: [
           {
