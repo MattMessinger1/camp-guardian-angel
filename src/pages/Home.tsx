@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Globe, Lock, DollarSign } from "lucide-react"
+import { Search, Globe, Lock, DollarSign, Clock, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
 
@@ -23,33 +23,36 @@ const HomePage = () => {
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        className="hero-section relative px-4 py-12 md:py-24 pb-20 md:pb-20 text-center overflow-hidden min-h-[520px] md:min-h-[70vh] flex items-center justify-center"
+        className="hero-section relative px-4 pt-16 pb-8 text-center overflow-hidden min-h-[70vh] flex items-center justify-center"
       >
-        {/* Hero content with dark overlay */}
+        {/* Hero content with glass-effect card */}
         <div className="relative z-10 mx-auto max-w-4xl">
-          <div className="inline-block p-4 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(17,24,39,0.6)' }}>
-            <h1 className="text-white mb-3 font-black tracking-[-0.02em] leading-[1.1]" style={{ fontSize: 'clamp(32px, 8vw, 56px)' }}>
-              Beat the registration rush
+          <div 
+            className="backdrop-blur-xl rounded-2xl p-8 shadow-[0_2px_16px_rgba(0,0,0,0.2)]"
+            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+          >
+            <h1 className="text-white mb-4 font-black tracking-[-0.02em] leading-[1.2] max-w-2xl mx-auto" style={{ fontSize: 'clamp(32px, 8vw, 56px)', textWrap: 'balance' }}>
+              Beat the registration rush and secure your spot
             </h1>
             
-            <div className="w-16 h-1 bg-primary mx-auto mb-3 rounded"></div>
+            <div className="w-16 h-1 bg-primary mx-auto mb-4 rounded"></div>
             
-            <p className="text-[#E5E7EB] font-normal max-w-[600px] mx-auto leading-[1.6] mb-6" style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}>
+            <p className="text-[#E5E7EB] font-normal max-w-[600px] mx-auto leading-[1.5] mb-8" style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}>
               We submit the millisecond it opens, you complete the human steps.
             </p>
             
             {/* CTA Buttons */}
-            <div className="flex flex-col gap-3 md:gap-4 justify-center items-center">
-              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold px-8 py-[14px] rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs">
-                Get My Speed Advantage
+            <div className="flex flex-col gap-4 justify-center items-center">
+              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold px-8 py-4 rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs">
+                Maximize My Chance
               </button>
               
               {/* Tagline under primary CTA */}
-              <p className="text-[#E5E7EB] text-sm md:text-base font-normal text-center mt-2">
+              <p className="text-[#E5E7EB] text-sm md:text-base font-normal text-center">
                 Technology for speed, humans for verification.
               </p>
               
-              <button className="bg-white/10 border border-white/20 hover:bg-white/20 text-white font-semibold px-8 py-[14px] rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs">
+              <button className="bg-white/10 border border-white/20 hover:bg-white/20 text-white font-semibold px-8 py-4 rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs">
                 Learn How It Works
               </button>
             </div>
@@ -57,9 +60,30 @@ const HomePage = () => {
         </div>
       </section>
 
+      {/* Search Bar Section - Overlapping Hero */}
+      <section className="px-4 -mt-6 relative z-20 mb-12">
+        <div className="mx-auto max-w-3xl">
+          <div className="bg-white rounded-2xl p-6 shadow-[0_8px_25px_rgba(0,0,0,0.1)]">
+            <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
+              <div className="flex items-center space-x-3 flex-1 border border-[#E5E7EB] rounded-lg px-4 py-3 focus-within:ring-2 focus-within:ring-primary focus-within:border-primary">
+                <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <input 
+                  type="text"
+                  placeholder={isMobile ? "Event name, location…" : "Event name, city/state, session dates…"}
+                  className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-[16px]"
+                />
+              </div>
+              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold text-[16px] px-6 py-4 rounded-lg transition-all duration-200 ease-out h-[56px] w-full md:w-auto">
+                Secure My Spot
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works - Stepper Rail Section */}
-      <section className="px-4 pt-16 md:pt-16 pb-16 md:pb-16 bg-white" style={{ marginTop: '64px' }}>
-        <div className="mx-auto max-w-6xl">
+      <section className="px-4 pt-16 pb-16 bg-white">
+        <div className="mx-auto max-w-5xl">
           {/* Desktop Layout (≥1024px) */}
           <div className="hidden lg:block">
             {/* Horizontal Rail */}
@@ -178,51 +202,34 @@ const HomePage = () => {
         </div>
       </section>
 
-      <section className="px-4 py-10 md:py-20" style={{ backgroundColor: '#F9FAFB', marginTop: '64px' }}>
-        <div className="mx-auto max-w-2xl">
-          <div className="bg-white rounded-lg p-4 md:p-6 w-full md:max-w-2xl" style={{ boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }}>
-            {/* Mobile: Stack vertically */}
-            <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-3">
-              <div className="flex items-center space-x-3 flex-1">
-                <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                <input 
-                  type="text"
-                  placeholder={isMobile ? "Event name, location…" : "Event name, city/state, session dates…"}
-                  className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-[16px] h-[56px] px-4 py-[14px]"
-                />
-              </div>
-              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold text-[16px] px-6 py-[14px] rounded-lg transition-all duration-200 ease-out h-[56px] w-full md:w-auto">
-                Secure My Spot
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Trust/Security Section */}
-      <section className="px-4 py-16 md:py-16" style={{ backgroundColor: '#F3F4F6', marginTop: '80px' }}>
+      <section className="px-4 py-16" style={{ backgroundColor: '#F3F4F6' }}>
         <div className="mx-auto max-w-5xl">
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-5 md:gap-8">
+          <div className="flex flex-col md:grid md:grid-cols-3 gap-8">
             {[
                {
-                 icon: Globe,
+                 icon: Clock,
                  title: "Lightning-fast submission",
-                 description: "We submit within milliseconds of registration opening."
+                 description: "We submit within milliseconds of registration opening.",
+                 accent: "stopwatch"
                },
                {
-                 icon: Lock,
-                 title: "Human oversight when needed",
-                 description: "You handle captchas and verification steps we can't automate."
+                 icon: User,
+                 title: "Human oversight when needed", 
+                 description: "You handle captchas and verification steps we can't automate.",
+                 accent: "person"
                },
                {
                  icon: DollarSign,
                  title: "Success-based pricing",
-                 description: "Only pay if we successfully get you through the initial submission."
+                 description: "Only pay if we successfully get you through the initial submission.",
+                 accent: "success"
                }
             ].map((item, index) => {
               const Icon = item.icon
               return (
-                <div key={index} className="text-center w-full">
+                <div key={index} className="text-center w-full bg-white rounded-xl p-6 shadow-sm border-l-4 border-primary">
                   <div className="inline-flex h-[56px] w-[56px] items-center justify-center rounded-full bg-primary mb-4">
                     <Icon className="h-[28px] w-[28px] text-white" />
                   </div>
@@ -241,8 +248,8 @@ const HomePage = () => {
       </section>
 
       {/* Partnership Messaging Strip */}
-      <section className="px-4 py-12 md:py-16 bg-white">
-        <div className="mx-auto max-w-4xl text-center">
+      <section className="px-4 py-16 bg-white">
+        <div className="mx-auto max-w-5xl text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">
             We give you the best chance at securing your spot
           </h2>
@@ -264,8 +271,8 @@ const HomePage = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="px-4 py-12 md:py-16 bg-alt-light">
-        <div className="mx-auto max-w-3xl">
+      <section className="px-4 py-16 bg-alt-light">
+        <div className="mx-auto max-w-4xl">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 text-center">
             Frequently Asked Questions
           </h2>
@@ -292,7 +299,7 @@ const HomePage = () => {
 
       {/* Footer */}
       <footer className="bg-[hsl(var(--dark-neutral))] text-white py-12">
-        <div className="mx-auto max-w-5xl px-4">
+        <div className="mx-auto max-w-6xl px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
             {/* Logo/Brand */}
             <div className="text-center md:text-left">
