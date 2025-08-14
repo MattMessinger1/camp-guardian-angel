@@ -325,27 +325,19 @@ All colors MUST be HSL. */
   filter: brightness(0.95); 
 }
 
-/* SEARCH – PROMINENCE & OVERLAP */
-.search-wrap {
-  margin-top: -48px;        /* overlap hero */
-  padding: 0 16px;
+/* SEARCH CONTAINER - Fixed Layout */
+.search-container {
+  background: #ffffff !important;
+  border: 2px solid #E5E7EB !important;
+  border-radius: 16px !important;
+  padding: 12px !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.10) !important;
+  max-width: 960px !important;
+  margin: 0 auto !important;
+  display: block !important;
 }
 
-.search-card {
-  max-width: 960px !important;
-  margin: 0 auto 24px !important;
-  background: #ffffff !important;
-  border-radius: 14px !important;
-  padding: 0 16px !important;
-  border: 2px solid #E5E7EB !important;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.10) !important;
-  display: flex !important; 
-  align-items: center !important; 
-  justify-content: space-between !important;
-  height: 64px !important;
-  overflow: hidden !important;
-  transition: border-color 0.2s ease !important;
-}
+/* LEGACY SEARCH - REMOVE */
 
 .search-input {
   display: flex !important; 
