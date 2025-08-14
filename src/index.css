@@ -325,19 +325,11 @@ All colors MUST be HSL. */
   filter: brightness(0.95); 
 }
 
-/* SEARCH CONTAINER - Fixed Layout */
-.search-container {
-  background: #ffffff !important;
-  border: 2px solid #E5E7EB !important;
-  border-radius: 16px !important;
-  padding: 12px !important;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.10) !important;
-  max-width: 960px !important;
-  margin: 0 auto !important;
-  display: block !important;
+/* SEARCH – PROMINENCE & OVERLAP */
+.search-wrap {
+  margin-top: -48px;        /* overlap hero */
+  padding: 0 16px;
 }
-
-/* LEGACY SEARCH - REMOVE */
 
 .search-input {
   display: flex !important; 
