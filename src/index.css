@@ -148,6 +148,7 @@ All colors MUST be HSL. */
 
   .hero-gradient {
     background: var(--gradient-primary);
+  }
 }
 
 /* Custom animations for hero section */
