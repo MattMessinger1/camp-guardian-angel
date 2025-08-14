@@ -49,17 +49,17 @@ const HomePage = () => {
             {[
               {
                 icon: Clipboard,
-                title: "Step 1 — Find your activity or camp",
+                title: "#1 — Find your activity or camp",
                 description: "Choose the specific session(s) you'd like",
               },
               {
                 icon: Zap,
-                title: "Step 2 — Load your signup info ahead of time",
+                title: "#2 — Load your signup info ahead of time",
                 description: "It's all encrypted and we'll use it for future registrations too",
               },
               {
                 icon: Trophy,
-                title: "Step 3 — We submit the millisecond registration opens",
+                title: "#3 — We submit the millisecond registration opens",
                 description: "You pay us only if you get the session you chose in Step 1",
               }
             ].map((step, index) => {
