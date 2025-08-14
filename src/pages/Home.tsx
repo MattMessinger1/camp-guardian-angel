@@ -54,8 +54,8 @@ const HomePage = () => {
               },
               {
                 icon: Zap,
-                title: "Step 2 — We monitor & submit instantly",
-                description: "We watch for registration to open and submit the millisecond it's available.",
+                title: "Step 2 — We tell you info we'll need",
+                description: "You complete it and we'll prompt you if we need your help at registration",
               },
               {
                 icon: Trophy,
