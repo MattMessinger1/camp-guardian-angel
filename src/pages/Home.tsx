@@ -33,7 +33,7 @@ const HomePage = () => {
             <h1 className="hero-title">Beat the registration&nbsp;rush</h1>
             <div className="hero-accent" aria-hidden="true"></div>
             <p className="hero-sub">
-              You pre-load your info, we submit the millisecond registration opens, and we help you complete any human steps (Captcha) via text message
+              You pre-load your info, we submit the millisecond registration opens, and we help you complete any human steps (captcha) via text message
             </p>
             <button className="btn-primary">Manage My SignUp Stress</button>
           </div>
