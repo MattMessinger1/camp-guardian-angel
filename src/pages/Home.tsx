@@ -35,7 +35,7 @@ const HomePage = () => {
             <p className="hero-sub">
               You pre-load your info, we submit the millisecond registration opens, and we help you complete any human steps (Captcha) via text message
             </p>
-            <button className="btn-primary">Get My Speed Advantage</button>
+            <button className="btn-primary">Manage My SignUp Stress</button>
           </div>
         </div>
       </section>
