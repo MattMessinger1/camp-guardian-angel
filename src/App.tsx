@@ -28,6 +28,9 @@ import CaptchaAssist from "./pages/CaptchaAssist";
 import FindCamps from "./pages/FindCamps";
 import Readiness from "./pages/Readiness";
 import PlanDetail from "./pages/PlanDetail";
+import OTPPage from "./pages/OTPPage";
+import CaptchaPage from "./pages/CaptchaPage";
+import ApprovePage from "./pages/ApprovePage";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +107,10 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              {/* Public token-based pages */}
+              <Route path="/otp/:token" element={<OTPPage />} />
+              <Route path="/captcha/:token" element={<CaptchaPage />} />
+              <Route path="/approve/:token" element={<ApprovePage />} />
               <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>

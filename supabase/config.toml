@@ -63,3 +63,15 @@ verify_jwt = false
 [functions.schedule-from-readiness]
 verify_jwt = true
 
+[functions.notify-parent]
+verify_jwt = false
+
+[functions.otp-submit]
+verify_jwt = false
+
+[functions.captcha-complete]
+verify_jwt = false
+
+[functions.approval-submit]
+verify_jwt = false
+
