@@ -27,12 +27,12 @@ const HomePage = () => {
       >
         {/* Hero content with dark overlay */}
         <div className="relative z-10 mx-auto max-w-4xl">
-          <div className="inline-block p-4 rounded-xl" style={{ backgroundColor: 'rgba(17,24,39,0.6)' }}>
-            <h1 className="text-white mb-3 text-[32px] md:text-[48px] font-extrabold tracking-tight leading-tight">
+          <div className="inline-block p-4 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(17,24,39,0.6)' }}>
+            <h1 className="text-white mb-4 text-[32px] md:text-[48px] font-extrabold tracking-tight leading-tight">
               Get the spot you want, without the stress.
             </h1>
             
-            <div className="w-16 h-1 bg-primary mx-auto mb-3 rounded"></div>
+            <div className="w-16 h-1 bg-primary mx-auto mb-4 rounded"></div>
             
             <p className="text-white text-base md:text-[20px] font-normal max-w-2xl mx-auto leading-relaxed">
               Tell us your event, we'll be ready to sign you up the moment registration opens. 
@@ -43,7 +43,7 @@ const HomePage = () => {
       </section>
 
       {/* How It Works - Stepper Rail Section */}
-      <section className="px-4 py-12 lg:py-12 bg-white">
+      <section className="px-4 py-8 md:py-12 bg-white">
         <div className="mx-auto max-w-6xl">
           {/* Desktop Layout (≥1024px) */}
           <div className="hidden lg:block">
@@ -118,7 +118,7 @@ const HomePage = () => {
               <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
               
               {/* Steps */}
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {[
                   {
                     iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
@@ -164,17 +164,20 @@ const HomePage = () => {
       </section>
 
       {/* Search Bar Section */}
-      <section className="px-4 py-12 md:py-24" style={{ backgroundColor: '#F9FAFB' }}>
+      <section className="px-4 py-8 md:py-24" style={{ backgroundColor: '#F9FAFB' }}>
         <div className="mx-auto max-w-2xl">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center space-x-3">
-              <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
-              <input 
-                type="text"
-                placeholder={isMobile ? "Event name, location…" : "Event name, city/state, session dates…"}
-                className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-base"
-              />
-              <button className="bg-primary hover:bg-primary/90 text-white font-bold px-6 py-3 rounded-lg transition-colors">
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 w-full md:max-w-2xl">
+            {/* Mobile: Stack vertically */}
+            <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-3">
+              <div className="flex items-center space-x-3 flex-1">
+                <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <input 
+                  type="text"
+                  placeholder={isMobile ? "Event name, location…" : "Event name, city/state, session dates…"}
+                  className="flex-1 border-0 outline-none text-gray-900 placeholder-gray-400 text-base min-h-[44px] py-2"
+                />
+              </div>
+              <button className="bg-primary hover:bg-primary/90 text-white font-bold px-6 py-3 rounded-lg transition-colors min-h-[44px] w-full md:w-auto">
                 Search
               </button>
             </div>
@@ -183,9 +186,9 @@ const HomePage = () => {
       </section>
 
       {/* Trust/Security Section */}
-      <section className="px-4 py-12 md:py-24" style={{ backgroundColor: '#F3F4F6' }}>
+      <section className="px-4 py-8 md:py-24" style={{ backgroundColor: '#F3F4F6' }}>
         <div className="mx-auto max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="flex flex-col md:grid md:grid-cols-3 gap-5 md:gap-8">
             {[
               {
                 icon: Globe,
@@ -205,7 +208,7 @@ const HomePage = () => {
             ].map((item, index) => {
               const Icon = item.icon
               return (
-                <div key={index} className="text-center">
+                <div key={index} className="text-center w-full">
                   <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary mb-4">
                     <Icon className="h-6 w-6 text-white" />
                   </div>
