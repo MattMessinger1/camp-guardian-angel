@@ -156,8 +156,8 @@ const HomePage = () => {
                 "You handle captchas and account verification when needed - we prepare everything in advance and send instant alerts with step-by-step guidance.",
                 "All your registration information is encrypted and securely stored for use in current and future sign-ups."
               ].map((statement, index) => (
-                <div key={index} className={`flex items-start space-x-4 p-4 rounded-lg ${index === 0 ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                  <div 
+                <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                  <div
                     className="flex-shrink-0 w-2 h-2 rounded-full mt-2"
                     style={{ backgroundColor: '#2563EB' }}
                   ></div>
