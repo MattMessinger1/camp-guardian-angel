@@ -23,37 +23,59 @@ const HomePage = () => {
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        className="hero-section relative px-4 pt-16 pb-8 text-center overflow-hidden min-h-[70vh] flex items-center justify-center"
+        className="hero-section relative px-4 overflow-hidden min-h-[70vh] flex items-center justify-center"
+        style={{ paddingTop: '64px', paddingBottom: '64px' }}
       >
-        {/* Hero content with glass-effect card */}
+        {/* Dark gradient overlay */}
+        <div 
+          className="absolute inset-0 z-[1]"
+          style={{
+            background: 'linear-gradient(to top, rgba(17,24,39,0.8) 0%, transparent 60%)'
+          }}
+        ></div>
+        
+        {/* Hero content with glassmorphic panel */}
         <div className="relative z-10 mx-auto max-w-4xl">
           <div 
-            className="backdrop-blur-xl rounded-2xl p-8 shadow-[0_2px_16px_rgba(0,0,0,0.2)]"
-            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+            className="backdrop-blur-sm rounded-2xl border shadow-[0_2px_16px_rgba(0,0,0,0.2)]"
+            style={{ 
+              backgroundColor: 'rgba(255,255,255,0.25)',
+              borderColor: 'rgba(255,255,255,0.1)',
+              padding: '32px'
+            }}
           >
-            <h1 className="text-white mb-4 font-black tracking-[-0.02em] leading-[1.2] max-w-2xl mx-auto" style={{ fontSize: 'clamp(32px, 8vw, 56px)', textWrap: 'balance' }}>
-              Beat the registration rush and secure your spot
+            <h1 
+              className="text-white mb-4 font-black tracking-[-0.02em] leading-[1.2] max-w-2xl mx-auto text-center"
+              style={{ 
+                fontSize: 'clamp(32px, 8vw, 48px)',
+                textWrap: 'balance'
+              }}
+            >
+              Beat the registration rush
             </h1>
             
-            <div className="w-16 h-1 bg-primary mx-auto mb-4 rounded"></div>
+            <div className="w-16 h-1 bg-primary mx-auto mb-6 rounded"></div>
             
-            <p className="text-[#E5E7EB] font-normal max-w-[600px] mx-auto leading-[1.5] mb-8" style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}>
+            <p 
+              className="text-[#E5E7EB] font-normal max-w-[600px] mx-auto leading-[1.5] mb-8 text-center"
+              style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}
+            >
               We submit the millisecond it opens, you complete the human steps.
             </p>
             
-            {/* CTA Buttons */}
-            <div className="flex flex-col gap-4 justify-center items-center">
-              <button className="bg-primary hover:bg-[#1D4ED8] text-white font-semibold px-8 py-4 rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs">
-                Maximize My Chance
-              </button>
-              
-              {/* Tagline under primary CTA */}
-              <p className="text-[#E5E7EB] text-sm md:text-base font-normal text-center">
-                Technology for speed, humans for verification.
-              </p>
-              
-              <button className="bg-white/10 border border-white/20 hover:bg-white/20 text-white font-semibold px-8 py-4 rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs">
-                Learn How It Works
+            {/* Single CTA Button */}
+            <div className="flex justify-center">
+              <button 
+                className="text-white font-semibold px-8 py-4 rounded-lg transition-all duration-200 ease-out min-h-[44px] w-full md:w-auto md:max-w-xs"
+                style={{ 
+                  backgroundColor: '#2563EB',
+                  fontSize: '18px',
+                  fontWeight: '600'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#1D4ED8'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#2563EB'}
+              >
+                Get My Speed Advantage
               </button>
             </div>
           </div>
