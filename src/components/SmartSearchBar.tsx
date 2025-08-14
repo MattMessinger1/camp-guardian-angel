@@ -64,13 +64,15 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
   return (
     <div className={cn("w-full", className)}>
       <div 
-        className="bg-white rounded-2xl p-3"
+        className="bg-white rounded-2xl p-3 relative z-10"
         style={{ 
           backgroundColor: '#ffffff !important',
           border: '2px solid #E5E7EB !important',
           borderRadius: '16px !important',
           padding: '12px !important',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1) !important'
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1) !important',
+          position: 'relative',
+          zIndex: 10
         }}
       >
         <form onSubmit={handleSubmit} className="flex h-16">
