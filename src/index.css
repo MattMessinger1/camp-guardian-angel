@@ -277,6 +277,46 @@ All colors MUST be HSL. */
   }
 }
 
+/* Step icons - retina responsive sizing */
+.step-ico.desktop {
+  width: 96px;
+  height: 96px;
+  display: block;
+}
+
+.step-ico.mobile {
+  width: 48px;
+  height: 48px;
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .step-ico.desktop {
+    display: none;
+  }
+  .step-ico.mobile {
+    display: block;
+  }
+}
+
+/* Step text styling */
+.steps h3 {
+  font-weight: 700;
+  font-size: 20px;
+  color: #111827;
+  text-wrap: balance;
+  max-width: 26ch;
+  margin: 12px auto 6px;
+}
+
+.steps p {
+  color: #4B5563;
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 36ch;
+  margin: 0 auto;
+}
+
 /* HERO CARD STYLES */
 .hero-card {
   background: #1F2937; /* dark slate for guaranteed contrast */

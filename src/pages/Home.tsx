@@ -69,14 +69,23 @@ const HomePage = () => {
                   <div className="flex md:flex-col items-start md:items-center">
                     {/* Icon */}
                     <div className="flex-shrink-0 md:mb-4">
+                      {/* Desktop retina icon */}
                       <img 
-                        src={
-                          step.stepNum === 1 ? (isMobile ? '/lovable-uploads/e88a85a6-c75e-43fd-b4ac-581c77a45aa5.png' : '/lovable-uploads/e0afe2db-46c2-4c34-8241-53332b2530d1.png') :
-                          step.stepNum === 2 ? (isMobile ? '/lovable-uploads/3211fcb9-4f08-461f-afb1-4c5501001176.png' : '/lovable-uploads/6478d05d-f016-4d01-bdc4-c9a6ac488780.png') :
-                          (isMobile ? '/lovable-uploads/72c3ff73-9fa9-4a10-b2f9-21dc24a08117.png' : '/lovable-uploads/7e12dd73-da89-4c10-b41e-cf1ec587f858.png')
-                        }
+                        src={`/step${step.stepNum}_${
+                          step.stepNum === 1 ? 'pin' :
+                          step.stepNum === 2 ? 'form' : 'stopwatch'
+                        }_192.png`}
                         alt=""
-                        className={isMobile ? "w-12 h-12 mr-4" : "w-24 h-24"}
+                        className="step-ico desktop"
+                      />
+                      {/* Mobile retina icon */}
+                      <img 
+                        src={`/step${step.stepNum}_${
+                          step.stepNum === 1 ? 'pin' :
+                          step.stepNum === 2 ? 'form' : 'stopwatch'
+                        }_96.png`}
+                        alt=""
+                        className="step-ico mobile"
                       />
                     </div>
                     
