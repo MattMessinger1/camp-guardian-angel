@@ -59,8 +59,8 @@ const HomePage = () => {
               },
               {
                 icon: Trophy,
-                title: "Step 3 — You complete verification",
-                description: "Handle captchas, account setup, and final verification.",
+                title: "Step 3 — We register the millisecond it's available",
+                description: "We'll prompt you via text to verify a captcha if needed. You only pay if you get the session you chose.",
               }
             ].map((step, index) => {
               const IconComponent = step.icon;
