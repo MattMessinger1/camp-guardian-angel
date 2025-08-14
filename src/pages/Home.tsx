@@ -43,9 +43,9 @@ const HomePage = () => {
       </section>
 
       {/* 1-2-3 Process Section */}
-      <section className="px-4 py-12 md:py-24 bg-white">
+      <section className="px-4 py-12 md:py-12 bg-white">
         <div className="mx-auto max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 relative">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-20 relative">
             {[
               {
                 iconUrl: "/lovable-uploads/10cb3bee-0365-4578-97fb-fba558a34666.png",
@@ -69,29 +69,30 @@ const HomePage = () => {
                 <div key={index} className="relative text-center">
                   {/* Arrow Image - Only show between steps on desktop */}
                   {!isLast && (
-                    <div className="hidden md:block absolute top-8 left-full w-16 h-8 z-10 flex items-center justify-center" style={{ transform: 'translateX(-50%)' }}>
+                    <div className="hidden md:flex absolute top-9 left-full items-center justify-center z-10" style={{ transform: 'translateX(-50%)', width: '192px', height: '32px' }}>
                       <img 
-                        src="/lovable-uploads/f769a64d-f631-401a-a0e3-e4d01b931ae4.png" 
+                        src="/lovable-uploads/arrow_right_bold_192x32.png" 
                         alt="Arrow" 
-                        className="h-4 w-8 object-contain"
+                        className="w-48 h-8"
+                        style={{ width: '192px', height: '32px' }}
                       />
                     </div>
                   )}
                   
                   {/* Icon Circle */}
-                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary mb-6">
+                  <div className="inline-flex h-[72px] w-[72px] items-center justify-center rounded-full bg-primary mb-3">
                     <img 
                       src={item.iconUrl} 
                       alt={item.title}
-                      className="h-8 w-8 filter brightness-0 invert"
+                      className="h-6 w-6 filter brightness-0 invert"
                     />
                   </div>
                   
                   {/* Content */}
-                  <h3 className="text-lg md:text-xl font-semibold mb-3 text-gray-900">
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900">
                     {item.title}
                   </h3>
-                  <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-xs mx-auto">
+                  <p className="text-base text-gray-600 leading-relaxed max-w-xs mx-auto" style={{ color: '#4B5563' }}>
                     {item.description}
                   </p>
                 </div>
