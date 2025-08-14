@@ -467,6 +467,61 @@ export type Database = {
           },
         ]
       }
+      plan_items: {
+        Row: {
+          child_id: string
+          created_at: string | null
+          id: string
+          is_backup: boolean | null
+          plan_id: string
+          priority: number | null
+          session_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          child_id: string
+          created_at?: string | null
+          id?: string
+          is_backup?: boolean | null
+          plan_id: string
+          priority?: number | null
+          session_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          child_id?: string
+          created_at?: string | null
+          id?: string
+          is_backup?: boolean | null
+          plan_id?: string
+          priority?: number | null
+          session_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_plan_items_child_id"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_plan_items_plan_id"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "registration_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_plan_items_session_id"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prewarm_jobs: {
         Row: {
           created_at: string

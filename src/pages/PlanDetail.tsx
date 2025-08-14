@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Loader2, Calendar, Clock, MapPin, Settings, RotateCcw, Save, Users, Play } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { VisualTimeline } from "@/components/VisualTimeline";
-import { MultiChildSummary } from "@/components/MultiChildSummary";
+import { MultiSessionPlanner } from "@/components/MultiSessionPlanner";
 
 interface RegistrationPlan {
   id: string;
@@ -318,7 +318,7 @@ export default function PlanDetail() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <MultiChildSummary planId={plan.id} />
+              <MultiSessionPlanner planId={plan.id} onUpdate={loadPlan} />
             </CardContent>
           </Card>
 
