@@ -151,61 +151,48 @@ All colors MUST be HSL. */
   }
 }
 
-/* Custom animations for hero section */
-@keyframes float-slow {
-  0%, 100% { 
-    transform: translateY(0px) translateX(0px) rotate(0deg);
-    opacity: 0.1;
-  }
-  33% { 
-    transform: translateY(-10px) translateX(5px) rotate(2deg);
-    opacity: 0.15;
-  }
-  66% { 
-    transform: translateY(5px) translateX(-3px) rotate(-1deg);
-    opacity: 0.12;
-  }
+/* Hero section geometric shapes and animations */
+.hero-dot-grid {
+  background-image: radial-gradient(circle, #D1D5DB 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
-@keyframes float-medium {
-  0%, 100% { 
-    transform: translateY(0px) translateX(0px) rotate(45deg) scale(1);
-    opacity: 0.15;
-  }
-  50% { 
-    transform: translateY(-8px) translateX(4px) rotate(47deg) scale(1.05);
-    opacity: 0.18;
-  }
+.hero-shape-circle {
+  transition: transform 0.3s ease-out;
 }
 
-@keyframes float-fast {
+.hero-shape-triangle {
+  transition: transform 0.3s ease-out;
+}
+
+/* Subtle animations with IntersectionObserver support */
+@keyframes hero-float {
   0%, 100% { 
     transform: translateY(0px) scale(1);
-    opacity: 0.2;
   }
   50% { 
-    transform: translateY(-6px) scale(1.1);
-    opacity: 0.25;
+    transform: translateY(-8px) scale(1.02);
   }
 }
 
-.animate-float-slow {
-  animation: float-slow 8s ease-in-out infinite;
+/* Animation classes - will be applied via IntersectionObserver */
+.hero-animate .hero-shape-circle {
+  animation: hero-float 8s ease-in-out infinite;
 }
 
-.animate-float-medium {
-  animation: float-medium 6s ease-in-out infinite;
-}
-
-.animate-float-fast {
-  animation: float-fast 10s ease-in-out infinite;
+.hero-animate .hero-shape-triangle {
+  animation: hero-float 8s ease-in-out infinite 2s;
 }
 
 /* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  .animate-float-slow,
-  .animate-float-medium,
-  .animate-float-fast {
+  .hero-animate .hero-shape-circle,
+  .hero-animate .hero-shape-triangle {
     animation: none;
+  }
+  
+  .hero-shape-circle,
+  .hero-shape-triangle {
+    transition: none;
   }
 }

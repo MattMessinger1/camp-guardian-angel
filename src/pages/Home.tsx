@@ -1,48 +1,58 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { SmartSearchBar } from "@/components/SmartSearchBar"
 import { Search, Rocket, CheckCircle, Globe, Lock, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
 
 const HomePage = () => {
+  const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
+    threshold: 0.3,
+    freezeOnceVisible: true
+  })
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative px-4 py-12 md:py-24 text-center overflow-hidden min-h-[520px] max-h-[520px] md:max-h-none flex items-center">
-        {/* Abstract Geometric Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100">
-          {/* Animated geometric shapes */}
-          <div className="absolute inset-0">
-            {/* Large primary circle */}
-            <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-[#2563EB] rounded-full opacity-10 animate-float-slow"></div>
-            
-            {/* Medium blue blob */}
-            <div className="absolute bottom-1/3 left-1/6 w-72 h-72 bg-[#2563EB] opacity-15 rounded-full animate-float-medium transform rotate-45"></div>
-            
-            {/* Small accent shapes */}
-            <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-gray-300 opacity-20 rounded-full animate-float-fast"></div>
-            
-            {/* Triangular shapes */}
-            <div className="absolute top-1/6 left-1/4 w-32 h-32 bg-[#2563EB] opacity-8 transform rotate-12 animate-float-slow" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
-            
-            {/* Rectangle */}
-            <div className="absolute bottom-1/4 right-1/3 w-40 h-24 bg-gray-400 opacity-12 transform rotate-45 animate-float-medium rounded-lg"></div>
-          </div>
+      <section 
+        ref={heroRef}
+        className={cn(
+          "relative px-4 py-12 md:py-24 text-center overflow-hidden min-h-[520px] max-h-[520px] md:max-h-none flex items-center bg-[#F9FAFB]",
+          isIntersecting && "hero-animate"
+        )}
+      >
+        {/* Abstract Geometric Background Shapes */}
+        <div className="absolute inset-0">
+          {/* Large circle in top-left */}
+          <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#2563EB] opacity-20 rounded-full hero-shape-circle"></div>
+          
+          {/* Right-angled triangle in bottom-right */}
+          <div 
+            className="absolute -bottom-24 -right-24 w-80 h-80 bg-[#059669] opacity-15 hero-shape-triangle"
+            style={{
+              clipPath: 'polygon(100% 0%, 0% 100%, 100% 100%)'
+            }}
+          ></div>
+          
+          {/* Dot grid pattern in top-right */}
+          <div className="absolute top-0 right-0 w-64 h-64 opacity-25 hero-dot-grid"></div>
         </div>
         
-        {/* Text Overlay with Dark Panel */}
+        {/* Text Content with Dark Overlay */}
         <div className="relative z-10 mx-auto max-w-4xl">
-          {/* Dark semi-transparent panel behind text */}
-          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/35 to-transparent rounded-3xl"></div>
-          
-          <div className="relative z-20 px-6 py-8">
-            <h1 className="text-[1.75rem] md:text-[2.25rem] font-extrabold tracking-tight mb-2 text-white leading-tight">
-              Get the spot you want, without the stress.
-            </h1>
+          {/* Dark overlay rectangle behind text */}
+          <div className="relative inline-block">
+            <div className="absolute inset-0 bg-gray-900/60 rounded-2xl transform -mx-4 -my-4"></div>
             
-            <p className="text-lg md:text-xl text-gray-100 mt-2 max-w-2xl mx-auto leading-relaxed">
-              Tell us your event, we'll be ready to sign you up the moment registration opens. 
-              You handle any final steps.
-            </p>
+            <div className="relative z-20 px-4 py-4">
+              <h1 className="text-[1.75rem] md:text-[2.5rem] font-extrabold tracking-tight mb-3 text-white leading-tight">
+                Get the spot you want, without the stress.
+              </h1>
+              
+              <p className="text-lg md:text-xl text-white mt-3 max-w-2xl mx-auto leading-relaxed">
+                Tell us your event, we'll be ready to sign you up the moment registration opens. 
+                You handle any final steps.
+              </p>
+            </div>
           </div>
         </div>
       </section>
