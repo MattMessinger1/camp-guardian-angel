@@ -335,6 +335,44 @@ export type Database = {
       }
       children: {
         Row: {
+          created_at: string | null
+          dob: string
+          id: string
+          name: string
+          notes: string | null
+          parent_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dob: string
+          id?: string
+          name: string
+          notes?: string | null
+          parent_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dob?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          parent_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "children_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      children_old: {
+        Row: {
           created_at: string
           id: string
           info_token: string
@@ -446,6 +484,36 @@ export type Database = {
         }
         Relationships: []
       }
+      parents: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -527,7 +595,7 @@ export type Database = {
             foreignKeyName: "plan_children_map_child_id_fkey"
             columns: ["child_id"]
             isOneToOne: false
-            referencedRelation: "children"
+            referencedRelation: "children_old"
             referencedColumns: ["id"]
           },
           {
@@ -575,7 +643,7 @@ export type Database = {
             foreignKeyName: "fk_plan_items_child_id"
             columns: ["child_id"]
             isOneToOne: false
-            referencedRelation: "children"
+            referencedRelation: "children_old"
             referencedColumns: ["id"]
           },
           {
@@ -799,7 +867,7 @@ export type Database = {
             foreignKeyName: "registration_attempts_child_id_fkey"
             columns: ["child_id"]
             isOneToOne: false
-            referencedRelation: "children"
+            referencedRelation: "children_old"
             referencedColumns: ["id"]
           },
           {
@@ -896,7 +964,7 @@ export type Database = {
             foreignKeyName: "registration_plans_child_id_fkey"
             columns: ["child_id"]
             isOneToOne: false
-            referencedRelation: "children"
+            referencedRelation: "children_old"
             referencedColumns: ["id"]
           },
           {
@@ -983,7 +1051,7 @@ export type Database = {
             foreignKeyName: "registrations_child_id_fkey"
             columns: ["child_id"]
             isOneToOne: false
-            referencedRelation: "children"
+            referencedRelation: "children_old"
             referencedColumns: ["id"]
           },
           {
@@ -1114,6 +1182,79 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "reservation_holds_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservations: {
+        Row: {
+          automation_job_id: string | null
+          child_id: string
+          created_at: string | null
+          id: string
+          parent_id: string
+          price_fee_cents: number
+          provider_platform: string | null
+          provider_response: Json | null
+          provider_session_key: string | null
+          requires_captcha: boolean | null
+          session_id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          automation_job_id?: string | null
+          child_id: string
+          created_at?: string | null
+          id?: string
+          parent_id: string
+          price_fee_cents?: number
+          provider_platform?: string | null
+          provider_response?: Json | null
+          provider_session_key?: string | null
+          requires_captcha?: boolean | null
+          session_id: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          automation_job_id?: string | null
+          child_id?: string
+          created_at?: string | null
+          id?: string
+          parent_id?: string
+          price_fee_cents?: number
+          provider_platform?: string | null
+          provider_response?: Json | null
+          provider_session_key?: string | null
+          requires_captcha?: boolean | null
+          session_id?: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
@@ -1387,6 +1528,44 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_verifications: {
+        Row: {
+          code_hash: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          phone: string
+          reservation_id: string
+          used_at: string | null
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          phone: string
+          reservation_id: string
+          used_at?: string | null
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          phone?: string
+          reservation_id?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_verifications_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           assisted_signup_consent_at: string | null
@@ -1644,6 +1823,11 @@ export type Database = {
         | "daysmart_recreation"
         | "shopify_product"
         | "playmetrics"
+      reservation_status:
+        | "pending"
+        | "needs_user_action"
+        | "confirmed"
+        | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1785,6 +1969,12 @@ export const Constants = {
         "daysmart_recreation",
         "shopify_product",
         "playmetrics",
+      ],
+      reservation_status: [
+        "pending",
+        "needs_user_action",
+        "confirmed",
+        "failed",
       ],
     },
   },
