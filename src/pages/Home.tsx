@@ -71,7 +71,7 @@ const HomePage = () => {
               {
                 stepNum: 3,
                 title: "#3 — You give yourself the best chance to get the spot you&nbsp;want",
-                description: "We submit the millisecond registration opens",
+                description: "We submit the pre-loaded info the millisecond registration opens",
               }
             ].map((step, index) => {
               return (
