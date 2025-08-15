@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ActivityResult, SessionItem } from './types';
 import { format } from 'date-fns';
+import { AddSessionModal } from './AddSessionModal';
 
 function SessionRow({ s }: { s: SessionItem }) {
   const start = s.start ? format(new Date(s.start), "MMM d, p") : '';
@@ -38,6 +39,8 @@ export default function Results({ items, loading, error }:{
   loading: boolean;
   error: string | null;
 }) {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   if (loading) return <div className="py-12 text-center text-foreground">Searching…</div>;
   if (error) return <div className="py-12 text-center text-destructive">{error}</div>;
   if (!items?.length) {
@@ -45,7 +48,17 @@ export default function Results({ items, loading, error }:{
       <div className="py-8 text-center">
         <div className="font-medium mb-2 text-foreground">No results found</div>
         <p className="text-sm text-muted-foreground">Try broadening your dates or city. Or click "Add a session" to send us a link and we'll try to reserve it for you.</p>
-        <button className="mt-3 px-4 py-2 rounded-lg border border-border bg-background text-foreground hover:bg-accent">Add a session</button>
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="mt-3 px-4 py-2 rounded-lg border border-border bg-background text-foreground hover:bg-accent"
+        >
+          Add a session
+        </button>
+        
+        <AddSessionModal 
+          open={isAddModalOpen} 
+          onOpenChange={setIsAddModalOpen} 
+        />
       </div>
     );
   }
