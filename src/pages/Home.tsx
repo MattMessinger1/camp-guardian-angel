@@ -5,6 +5,7 @@ import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
 import SearchBar from '@/components/search/SearchBar'
 import Results from '@/components/search/Results'
 import { useSearch } from '@/components/search/useSearch'
+import { EmbeddingsBackfill } from '@/components/EmbeddingsBackfill'
 
 const HomePage = () => {
   const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
@@ -145,6 +146,14 @@ const HomePage = () => {
       />
 
       <main className="max-w-5xl mx-auto px-4 py-6">
+        {/* Dev Tools Section */}
+        <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="text-lg font-semibold mb-4 text-yellow-800">🛠️ Development Tools</h3>
+          <div className="flex gap-4">
+            <EmbeddingsBackfill />
+          </div>
+        </div>
+        
         <Results items={search.items} loading={search.loading} error={search.error} />
       </main>
 
