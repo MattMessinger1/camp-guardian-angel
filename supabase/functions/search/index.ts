@@ -80,18 +80,29 @@ serve(async (req) => {
       throw error;
     }
 
+    // Apply relevance filtering - only return results with score > 0.1
+    const filteredData = data?.filter((item: any) => {
+      // If no query provided, return all results  
+      if (!q || !q.trim()) return true;
+      
+      // Filter by relevance score - adjust threshold as needed
+      return item.score > 0.1;
+    }) || [];
+
     const elapsed = Math.round(performance.now() - started);
     
     // Observability logging
     console.log(JSON.stringify({
       type: 'search_result',
-      q, city, start, end, platform, page, limit, count: (data?.length || 0),
+      q, city, start, end, platform, page, limit, 
+      count: filteredData.length,
+      total_unfiltered: data?.length || 0,
       ms: elapsed
     }));
 
-    console.log(`Search completed successfully, found ${data?.length || 0} results in ${elapsed}ms`);
+    console.log(`Search completed successfully, found ${filteredData.length} relevant results (${data?.length || 0} total) in ${elapsed}ms`);
 
-    return new Response(JSON.stringify({ items: data || [] }), {
+    return new Response(JSON.stringify({ items: filteredData }), {
       headers: {
         ...corsHeaders,
         // cache: short TTL + allow CDN/edge cache
