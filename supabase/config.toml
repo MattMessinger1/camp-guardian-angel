@@ -75,3 +75,6 @@ verify_jwt = false
 [functions.approval-submit]
 verify_jwt = false
 
+[functions.get-payment-summary]
+verify_jwt = true
+
