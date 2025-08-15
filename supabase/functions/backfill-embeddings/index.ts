@@ -39,8 +39,13 @@ async function embed(text: string): Promise<number[]> {
 }
 
 serve(async (req) => {
+  console.log('=== BACKFILL EMBEDDINGS FUNCTION STARTED ===');
+  console.log('Request method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -158,12 +163,25 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Backfill error:', error);
+    console.error('=== BACKFILL ERROR ===');
+    console.error('Error type:', typeof error);
+    console.error('Error constructor:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error object:', error);
+    
+    // Log environment check one more time in error case
+    console.error('Environment check in error handler:');
+    console.error('- SUPABASE_URL exists:', !!Deno.env.get('SUPABASE_URL'));
+    console.error('- SUPABASE_SERVICE_ROLE_KEY exists:', !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    console.error('- OPENAI_API_KEY exists:', !!Deno.env.get('OPENAI_API_KEY'));
     
     return new Response(
       JSON.stringify({ 
         error: 'Embeddings backfill failed', 
-        details: error.message 
+        details: error.message,
+        type: error.constructor.name,
+        timestamp: new Date().toISOString()
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
