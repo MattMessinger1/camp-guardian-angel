@@ -13,7 +13,10 @@ interface PlanChildMap {
 
 interface Child {
   id: string;
-  info_token: string;
+  name?: string;
+  dob?: string;
+  notes?: string;
+  info_token?: string; // For backward compatibility
 }
 
 interface MultiChildSummaryProps {
@@ -38,10 +41,21 @@ export function MultiChildSummary({ planId }: MultiChildSummaryProps) {
         .eq('plan_id', planId)
         .order('priority');
 
-      // Load children info
-      const { data: childrenData } = await supabase
-        .from('children')
-        .select('*');
+      // Load children info (try new schema first, fallback to old)
+      let childrenData;
+      try {
+        const { data } = await supabase
+          .from('children')
+          .select('id, name, dob, notes');
+        childrenData = data;
+      } catch (error) {
+        // Fallback to old schema
+        const { data } = await supabase
+          .from('children_old')
+          .select('id, info_token')
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+        childrenData = data;
+      }
 
       setMappings((mappingsData as PlanChildMap[]) || []);
       setChildren(childrenData || []);
@@ -54,7 +68,7 @@ export function MultiChildSummary({ planId }: MultiChildSummaryProps) {
 
   const getChildName = (childId: string) => {
     const child = children.find(c => c.id === childId);
-    return child ? `Child ${child.info_token.slice(0, 8)}` : 'Unknown';
+    return child ? (child.name || (child.info_token ? `Child ${child.info_token.slice(0, 8)}` : 'Unknown Child')) : 'Unknown';
   };
 
   if (loading) {

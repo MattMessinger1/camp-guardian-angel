@@ -36,7 +36,10 @@ interface Session {
 
 interface Child {
   id: string;
-  info_token: string;
+  name?: string;
+  dob?: string;
+  notes?: string;
+  info_token?: string; // For backward compatibility
 }
 
 interface PlanItem {
@@ -194,7 +197,7 @@ export function MultiSessionPlanner({ planId, campId, onUpdate }: MultiSessionPl
 
       // Load children
       const { data: childrenData, error: childrenError } = await supabase
-        .from('children')
+        .from('children_old')
         .select('id, info_token')
         .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
       if (childrenError) throw childrenError;
@@ -408,7 +411,7 @@ export function MultiSessionPlanner({ planId, campId, onUpdate }: MultiSessionPl
             <SelectContent>
               {children.map((child) => (
                 <SelectItem key={child.id} value={child.id}>
-                  {child.info_token}
+                  {(child as any).info_token || child.name}
                 </SelectItem>
               ))}
             </SelectContent>
