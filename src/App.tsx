@@ -33,6 +33,7 @@ import PlanDetail from "./pages/PlanDetail";
 import OTPPage from "./pages/OTPPage";
 import CaptchaPage from "./pages/CaptchaPage";
 import ApprovePage from "./pages/ApprovePage";
+import Verify from "./pages/Verify";
 
 const queryClient = new QueryClient();
 
@@ -112,6 +113,7 @@ const App = () => (
                 }
               />
               {/* Public token-based pages */}
+              <Route path="/verify" element={<Verify />} />
               <Route path="/otp/:token" element={<OTPPage />} />
               <Route path="/captcha/:token" element={<CaptchaPage />} />
               <Route path="/approve/:token" element={<ApprovePage />} />
