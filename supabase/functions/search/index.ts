@@ -54,6 +54,8 @@ serve(async (req) => {
   console.log(`Search request: q="${q}", city="${city}", page=${page}, limit=${limit}`);
 
   try {
+    const started = performance.now();
+    
     const qEmbedding = await embed(q);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
       auth: { persistSession: false }
@@ -78,7 +80,16 @@ serve(async (req) => {
       throw error;
     }
 
-    console.log(`Search completed successfully, found ${data?.length || 0} results`);
+    const elapsed = Math.round(performance.now() - started);
+    
+    // Observability logging
+    console.log(JSON.stringify({
+      type: 'search_result',
+      q, city, start, end, platform, page, limit, count: (data?.length || 0),
+      ms: elapsed
+    }));
+
+    console.log(`Search completed successfully, found ${data?.length || 0} results in ${elapsed}ms`);
 
     return new Response(JSON.stringify({ items: data || [] }), {
       headers: {
