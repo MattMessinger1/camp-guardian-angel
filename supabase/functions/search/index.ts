@@ -80,8 +80,14 @@ serve(async (req) => {
       throw error;
     }
 
-    // Debug: Return all results regardless of score to see what we get
-    const filteredData = data || [];
+    // Apply very low relevance filtering - scores seem to be very low
+    const filteredData = data?.filter((item: any) => {
+      // If no query provided, return all results  
+      if (!q || !q.trim()) return true;
+      
+      // Filter by relevance score - very low threshold since scores are near 0
+      return item.score > 0.001;
+    }) || [];
 
     const elapsed = Math.round(performance.now() - started);
     
