@@ -6,8 +6,13 @@ import SearchBar from '@/components/search/SearchBar'
 import Results from '@/components/search/Results'
 import { useSearch } from '@/components/search/useSearch'
 import { EmbeddingsBackfill } from '@/components/EmbeddingsBackfill'
+import { useAuth } from '@/contexts/AuthContext'
+import { Button } from '@/components/ui/button'
+import { Link } from 'react-router-dom'
+import { supabase } from '@/integrations/supabase/client'
 
 const HomePage = () => {
+  const { user, loading } = useAuth()
   const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
     threshold: 0.3,
     freezeOnceVisible: true
@@ -23,8 +28,43 @@ const HomePage = () => {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-foreground">Loading...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
+      {/* Auth banner */}
+      {!user && (
+        <div className="bg-primary text-primary-foreground px-4 py-3 text-center">
+          <span className="text-sm">
+            You'll need to sign in to search and reserve spots. {' '}
+            <Link to="/login" className="underline font-medium">
+              Sign in here
+            </Link>
+          </span>
+        </div>
+      )}
+      
+      {/* User menu for authenticated users */}
+      {user && (
+        <div className="bg-muted px-4 py-2 flex justify-between items-center">
+          <span className="text-sm text-muted-foreground">
+            Welcome, {user.email}
+          </span>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            Sign Out
+          </Button>
+        </div>
+      )}
       {/* Hero Section */}
       <section 
         ref={heroRef}
@@ -135,27 +175,50 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Search Components */}
-      <SearchBar
-        q={search.q} setQ={search.setQ}
-        city={search.city} setCity={search.setCity}
-        start={search.start} setStart={search.setStart}
-        end={search.end} setEnd={search.setEnd}
-        platform={search.platform} setPlatform={search.setPlatform}
-        onSearch={search.run}
-      />
+      {/* Search Components - Only show if authenticated */}
+      {user ? (
+        <>
+          <SearchBar
+            q={search.q} setQ={search.setQ}
+            city={search.city} setCity={search.setCity}
+            start={search.start} setStart={search.setStart}
+            end={search.end} setEnd={search.setEnd}
+            platform={search.platform} setPlatform={search.setPlatform}
+            onSearch={search.run}
+          />
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
-        {/* Dev Tools Section */}
-        <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h3 className="text-lg font-semibold mb-4 text-yellow-800">🛠️ Development Tools</h3>
-          <div className="flex gap-4">
-            <EmbeddingsBackfill />
-          </div>
+          <main className="max-w-5xl mx-auto px-4 py-6">
+            {/* Dev Tools Section */}
+            <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4 text-yellow-800">🛠️ Development Tools</h3>
+              <div className="flex gap-4">
+                <EmbeddingsBackfill />
+              </div>
+            </div>
+            
+            <Results items={search.items} loading={search.loading} error={search.error} />
+          </main>
+        </>
+      ) : (
+        <div className="max-w-5xl mx-auto px-4 py-12 text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-4">
+            Ready to beat the registration rush?
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            Sign in to search for activities and reserve your spots automatically.
+          </p>
+          <Link to="/login">
+            <Button size="lg" className="mr-4">
+              Sign In
+            </Button>
+          </Link>
+          <Link to="/signup">
+            <Button variant="outline" size="lg">
+              Sign Up
+            </Button>
+          </Link>
         </div>
-        
-        <Results items={search.items} loading={search.loading} error={search.error} />
-      </main>
+      )}
 
 
 
