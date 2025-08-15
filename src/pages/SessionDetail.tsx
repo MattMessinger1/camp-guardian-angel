@@ -90,7 +90,7 @@ export default function SessionDetail() {
     queryKey: ["children"],
     queryFn: async (): Promise<ChildRow[]> => {
       const { data, error } = await supabase
-        .from("children")
+        .from("children_old")
         .select("id, info_token")
         .order("created_at", { ascending: false });
       if (error) throw error;

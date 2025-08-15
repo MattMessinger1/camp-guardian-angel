@@ -22,7 +22,7 @@ const SanityCheck = () => {
         return;
       }
       const { error } = await supabase
-        .from('children')
+        .from('children_old')
         .insert({
           id: testChildId,
           user_id: userId as string,
@@ -85,7 +85,7 @@ const SanityCheck = () => {
       }
       const normalChildId = crypto.randomUUID();
       // Create another child for the current user
-      const { error: childError } = await supabase.from('children').insert({
+      const { error: childError } = await supabase.from('children_old').insert({
         id: normalChildId,
         user_id: userId as string,
         info_token: `test-token-${normalChildId.substring(0, 8)}`

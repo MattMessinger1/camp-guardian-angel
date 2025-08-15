@@ -40,7 +40,7 @@ export default function DevLimits() {
   useEffect(() => {
     const load = async () => {
       if (!user) return;
-      const { data: kids } = await supabase.from('children').select('id, info_token');
+      const { data: kids } = await supabase.from('children_old').select('id, info_token').eq('user_id', user.id);
       setChildren(kids || []);
       const { data: cfgRow } = await supabase.from('app_config').select('value').eq('key','weekly_child_exec_limit').maybeSingle();
       const val = (cfgRow?.value as any) || {};

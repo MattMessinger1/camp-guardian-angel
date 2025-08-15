@@ -22,7 +22,7 @@ interface Registration {
   result_message?: string;
   child_id: string;
   session_id: string;
-  children: {
+  children_old: {
     info_token: string;
   };
   sessions: {
@@ -111,7 +111,7 @@ export default function Dashboard() {
         .from('registrations')
         .select(`
           id, status, requested_at, processed_at, completed_at, result_message, child_id, session_id,
-          children!inner(info_token),
+          children_old!inner(info_token),
           sessions!inner(
             title, start_at,
             camps(name)
@@ -131,7 +131,7 @@ export default function Dashboard() {
         .from('registrations')
         .select(`
           id, status, requested_at, processed_at, completed_at, result_message, child_id, session_id,
-          children!inner(info_token),
+          children_old!inner(info_token),
           sessions!inner(
             title, start_at,
             camps(name)
@@ -149,7 +149,7 @@ export default function Dashboard() {
 
       // Load children for filtering
       const { data: childrenData, error: childrenError } = await supabase
-        .from('children')
+        .from('children_old')
         .select('id, info_token')
         .eq('user_id', user.id);
 
@@ -358,7 +358,7 @@ export default function Dashboard() {
                 {filterRegistrations(upcomingRegistrations).map((registration) => (
                   <TableRow key={registration.id}>
                     <TableCell className="font-medium">
-                      {registration.children?.info_token}
+                      {registration.children_old?.info_token}
                     </TableCell>
                     <TableCell>
                       {registration.sessions?.title || 'Unknown Session'}
@@ -420,7 +420,7 @@ export default function Dashboard() {
                 {filterRegistrations(recentRegistrations).map((registration) => (
                   <TableRow key={registration.id}>
                     <TableCell className="font-medium">
-                      {registration.children?.info_token}
+                      {registration.children_old?.info_token}
                     </TableCell>
                     <TableCell>
                       {registration.sessions?.title || 'Unknown Session'}
@@ -468,8 +468,8 @@ export default function Dashboard() {
             <DialogDescription>
               {selectedRegistration && (
                 <>
-                  Child: {selectedRegistration.children?.info_token} | 
-                  Session: {selectedRegistration.sessions?.title} | 
+                  Child: {selectedRegistration.children_old?.info_token} | 
+                  Session: {selectedRegistration.sessions?.title} |
                   Status: {selectedRegistration.status}
                 </>
               )}

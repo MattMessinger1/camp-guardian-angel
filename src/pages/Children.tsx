@@ -107,7 +107,7 @@ export default function Children() {
 
   const fetchRows = async () => {
     const { data, error } = await supabase
-      .from("children")
+      .from("children_old")
       .select("id, info_token, created_at")
       .order("created_at", { ascending: false });
     if (error) {
@@ -176,10 +176,10 @@ export default function Children() {
             return;
           }
 
-          const { error } = await supabase.from("children").insert({
-            user_id: user.id,
-            info_token: tokenPayload,
-          } as any);
+        const { error } = await supabase.from("children_old").insert({
+          user_id: user.id,
+          info_token: tokenPayload,
+        } as any);
 
           setLoading(false);
           if (error) {
