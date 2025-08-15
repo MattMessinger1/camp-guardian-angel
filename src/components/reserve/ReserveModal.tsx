@@ -38,8 +38,16 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
         body: { session_id: sessionId, parent, child }
       });
       
-      if (res.error) throw new Error(res.error.message || 'init_failed');
-      if (!res.data) throw new Error('No response data');
+      console.log('Reserve init response:', res);
+      
+      if (res.error) {
+        console.error('Reserve init error:', res.error);
+        throw new Error(res.error.message || 'init_failed');
+      }
+      if (!res.data) {
+        console.error('No response data:', res);
+        throw new Error('No response data');
+      }
       
       setReservationId(res.data.reservation_id);
       setClientSecret(res.data.payment_intent_client_secret);
