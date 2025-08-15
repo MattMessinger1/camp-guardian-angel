@@ -220,12 +220,12 @@ const HomePage = () => {
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
               {[
-                "You pay our Signup Fee ($20 per spot reserved) only if you successfully sign up for the camp and session you selected.",
+                "You pay our Signup Fee ($20 per spot reserved) only if we successfully secure your spot in the camp and session you selected.",
                 "We monitor registration openings and submit your application the instant spots become available.",
-                "You handle captchas and account verification when needed - we prepare everything in advance and send instant text alerts.",
-                "All your registration information is encrypted and securely stored for current and future use.",
-                "We help you reserve your spot before there are none left. You finish the rest of the camp registration (e.g. uploading health forms) on the provider's site. Once your spot is reserved you'll receive an email with next steps.",
-                "The other fee we charge, in addition to the Spot Registration Fee, is a small Annual Registration Fee of $12. This Registration Fee is small because we want to align our incentives with yours. You get the spot you wanted, then we get paid."
+                "When captchas or account verification are required, you'll handle those quickly—we prepare everything else in advance and send instant text alerts so you're ready.",
+                "All your registration information is encrypted and securely stored for current and future signups.",
+                "We help you reserve your spot before camps sell out. Once secured, you'll complete the remaining registration steps (like uploading health forms) directly on the camp's website. You'll receive a confirmation email with clear next steps.",
+                "In addition to the Spot Registration Fee, we charge a small Annual Membership Fee of $12. We keep this fee minimal because we want to align our incentives with yours: you get the spot you want, then we get paid."
               ].map((statement, index) => (
                 <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
                   <div
