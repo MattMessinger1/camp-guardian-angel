@@ -71,7 +71,7 @@ const HomePage = () => {
               {
                 stepNum: 3,
                 title: "#3 — We submit the millisecond registration&nbsp;opens",
-                description: "You pay us only if you get the session you chose in Step 1",
+                description: "You pay us only if you get a spot in the session you chose in Step 1",
               }
             ].map((step, index) => {
               return (
