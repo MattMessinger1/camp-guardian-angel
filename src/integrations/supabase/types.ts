@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          canonical_url: string | null
+          city: string | null
+          created_at: string | null
+          description: string | null
+          embedding: string | null
+          id: string
+          kind: string | null
+          name: string
+          provider_id: string | null
+          state: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          canonical_url?: string | null
+          city?: string | null
+          created_at?: string | null
+          description?: string | null
+          embedding?: string | null
+          id?: string
+          kind?: string | null
+          name: string
+          provider_id?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          canonical_url?: string | null
+          city?: string | null
+          created_at?: string | null
+          description?: string | null
+          embedding?: string | null
+          id?: string
+          kind?: string | null
+          name?: string
+          provider_id?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string
@@ -1162,51 +1204,79 @@ export type Database = {
       }
       sessions: {
         Row: {
+          activity_id: string | null
           camp_location_id: string | null
           capacity: number | null
           created_at: string
           end_at: string | null
+          end_date: string | null
           high_demand: boolean
           id: string
           location: string | null
           open_time_exact: boolean
+          platform: string | null
+          price_min: number | null
           provider_id: string | null
+          provider_session_key: string | null
           registration_open_at: string | null
+          spots_available: number | null
           start_at: string | null
+          start_date: string | null
           title: string | null
           upfront_fee_cents: number | null
         }
         Insert: {
+          activity_id?: string | null
           camp_location_id?: string | null
           capacity?: number | null
           created_at?: string
           end_at?: string | null
+          end_date?: string | null
           high_demand?: boolean
           id?: string
           location?: string | null
           open_time_exact?: boolean
+          platform?: string | null
+          price_min?: number | null
           provider_id?: string | null
+          provider_session_key?: string | null
           registration_open_at?: string | null
+          spots_available?: number | null
           start_at?: string | null
+          start_date?: string | null
           title?: string | null
           upfront_fee_cents?: number | null
         }
         Update: {
+          activity_id?: string | null
           camp_location_id?: string | null
           capacity?: number | null
           created_at?: string
           end_at?: string | null
+          end_date?: string | null
           high_demand?: boolean
           id?: string
           location?: string | null
           open_time_exact?: boolean
+          platform?: string | null
+          price_min?: number | null
           provider_id?: string | null
+          provider_session_key?: string | null
           registration_open_at?: string | null
+          spots_available?: number | null
           start_at?: string | null
+          start_date?: string | null
           title?: string | null
           upfront_fee_cents?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sessions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sessions_camp_location_id_fkey"
             columns: ["camp_location_id"]
@@ -1382,6 +1452,26 @@ export type Database = {
         Args: { p_child_id: string; p_tz?: string }
         Returns: number
       }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       halfvec_avg: {
         Args: { "": number[] }
         Returns: unknown
@@ -1447,6 +1537,18 @@ export type Database = {
           similarity: number
           text: string
         }[]
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
       }
       sparsevec_out: {
         Args: { "": unknown }
