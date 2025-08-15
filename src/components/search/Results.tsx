@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import type { ActivityResult, SessionItem } from './types';
 import { format } from 'date-fns';
 import { AddSessionModal } from './AddSessionModal';
+import ReserveModal from '../reserve/ReserveModal';
 
-function SessionRow({ s }: { s: SessionItem }) {
+function SessionRow({ s, onReserve }: { s: SessionItem; onReserve: (sessionId: string) => void }) {
   const start = s.start ? format(new Date(s.start), "MMM d, p") : '';
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border border-border rounded-xl p-3 bg-card">
@@ -14,12 +15,17 @@ function SessionRow({ s }: { s: SessionItem }) {
       <div className="text-sm text-foreground">Avail: {s.availability ?? '—'}</div>
       <div className="text-sm text-foreground">${s.price_min ?? '—'}</div>
       <span className="text-xs rounded-full border border-border px-2 py-1 text-muted-foreground">{s.platform ?? '—'}</span>
-      <button className="px-3 py-1 rounded-lg border border-border bg-background text-foreground hover:bg-accent">Reserve</button>
+      <button 
+        className="px-3 py-1 rounded-lg border border-border bg-background text-foreground hover:bg-accent"
+        onClick={() => onReserve(s.id)}
+      >
+        Reserve
+      </button>
     </div>
   );
 }
 
-function ActivityCard({ a }: { a: ActivityResult }) {
+function ActivityCard({ a, onReserve }: { a: ActivityResult; onReserve: (sessionId: string) => void }) {
   return (
     <div className="rounded-2xl border border-border p-4 shadow-sm bg-card">
       <div className="flex items-baseline justify-between gap-2">
@@ -27,7 +33,7 @@ function ActivityCard({ a }: { a: ActivityResult }) {
         <div className="text-sm text-muted-foreground">{a.city}{a.state ? `, ${a.state}` : ''}</div>
       </div>
       <div className="mt-3 grid gap-2">
-        {a.sessions.slice(0,3).map(s => <SessionRow key={s.id} s={s} />)}
+        {a.sessions.slice(0,3).map(s => <SessionRow key={s.id} s={s} onReserve={onReserve} />)}
         {a.sessions.length > 3 && <div className="text-sm text-muted-foreground">+ {a.sessions.length-3} more upcoming dates</div>}
       </div>
     </div>
@@ -40,6 +46,13 @@ export default function Results({ items, loading, error }:{
   error: string | null;
 }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [reserveModalOpen, setReserveModalOpen] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+
+  const handleReserve = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setReserveModalOpen(true);
+  };
 
   if (loading) return <div className="py-12 text-center text-foreground">Searching…</div>;
   if (error) return <div className="py-12 text-center text-destructive">{error}</div>;
@@ -64,7 +77,13 @@ export default function Results({ items, loading, error }:{
   }
   return (
     <div className="grid gap-4">
-      {items.map(a => <ActivityCard key={a.activity_id} a={a} />)}
+      {items.map(a => <ActivityCard key={a.activity_id} a={a} onReserve={handleReserve} />)}
+      
+      <ReserveModal
+        open={reserveModalOpen}
+        onClose={() => setReserveModalOpen(false)}
+        sessionId={selectedSessionId}
+      />
     </div>
   );
 }
