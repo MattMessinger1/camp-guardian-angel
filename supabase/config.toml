@@ -78,3 +78,6 @@ verify_jwt = false
 [functions.get-payment-summary]
 verify_jwt = true
 
+[functions.search]
+verify_jwt = false
+
