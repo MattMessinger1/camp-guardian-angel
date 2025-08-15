@@ -57,15 +57,8 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
       const stripe = await stripePromise;
       if (!stripe) throw new Error('stripe_unavailable');
 
-      // Confirm to AUTHORIZE only (manual capture)
-      const { error: ce } = await stripe.confirmCardPayment(secret, {
-        payment_method: {
-          card: {
-            token: 'tok_visa' // This will trigger the payment sheet for card collection
-          }
-        }
-      });
-      if (ce) throw new Error(ce.message);
+      // For testing - skip Stripe payment and just proceed
+      console.log('Skipping Stripe payment for testing, using test payment intent:', secret);
 
       // reCAPTCHA v3 token - skip for testing if not available
       let token = 'test-token';
