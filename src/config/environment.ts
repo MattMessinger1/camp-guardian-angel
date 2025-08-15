@@ -5,11 +5,14 @@ export interface EnvironmentConfig {
   // Supabase Configuration
   NEXT_PUBLIC_SUPABASE_URL: string;
   NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
   
   // Stripe Configuration  
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
   STRIPE_CONNECT: boolean;
+  VITE_STRIPE_PUBLISHABLE_KEY: string;
   
   // SendGrid Configuration
   SENDGRID_API_KEY: string;
@@ -21,9 +24,22 @@ export interface EnvironmentConfig {
   VGS_COLLECT_PUBLIC_KEY: string;
   VGS_INBOUND_HOST: string;
   VGS_OUTBOUND_HOST: string;
+  VGS_PROXY_ENABLED: boolean;
+  VGS_PROXY_HOST: string;
+  VGS_PROXY_USERNAME: string;
+  VGS_PROXY_PASSWORD: string;
+  
+  // Provider Configuration
+  PROVIDER_MODE: 'mock' | 'live';
+  PROVIDER_BASE_URL: string;
   
   // Application Configuration
   APP_BASE_URL: string;
+  
+  // Encryption Configuration
+  CRYPTO_KEY_V1: string;
+  CRYPTO_KEY_VERSION: number;
+  CRYPTO_ALG: string;
   
   // Feature Flags
   FEATURE_PROVIDER_AUTOMATION_SIMULATE: boolean;
@@ -35,7 +51,7 @@ export interface EnvironmentVariable {
   required: boolean;
   description: string;
   sensitive: boolean;
-  defaultValue?: string | boolean;
+  defaultValue?: string | boolean | number;
   validValues?: string[];
 }
 
@@ -51,6 +67,24 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     required: true,
     description: 'Supabase anonymous key',
     sensitive: true,
+  },
+  {
+    key: 'SUPABASE_URL',
+    required: true,
+    description: 'Supabase project URL (server-side)',
+    sensitive: false,
+  },
+  {
+    key: 'SUPABASE_ANON_KEY',
+    required: true,
+    description: 'Supabase anonymous key (server-side)',
+    sensitive: true,
+  },
+  {
+    key: 'VITE_STRIPE_PUBLISHABLE_KEY',
+    required: false,
+    description: 'Stripe publishable key for frontend payment elements',
+    sensitive: false,
   },
   {
     key: 'STRIPE_SECRET_KEY',
@@ -116,6 +150,65 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     sensitive: true,
   },
   {
+    key: 'VGS_PROXY_ENABLED',
+    required: false,
+    description: 'Enable VGS proxy for secure data transmission',
+    sensitive: false,
+    defaultValue: false,
+  },
+  {
+    key: 'VGS_PROXY_HOST',
+    required: false,
+    description: 'VGS proxy host URL',
+    sensitive: false,
+  },
+  {
+    key: 'VGS_PROXY_USERNAME',
+    required: false,
+    description: 'VGS proxy authentication username',
+    sensitive: true,
+  },
+  {
+    key: 'VGS_PROXY_PASSWORD',
+    required: false,
+    description: 'VGS proxy authentication password',
+    sensitive: true,
+  },
+  {
+    key: 'PROVIDER_MODE',
+    required: false,
+    description: 'Provider integration mode (mock for development, live for production)',
+    sensitive: false,
+    defaultValue: 'mock',
+    validValues: ['mock', 'live'],
+  },
+  {
+    key: 'PROVIDER_BASE_URL',
+    required: false,
+    description: 'Base URL for provider API integration',
+    sensitive: false,
+  },
+  {
+    key: 'CRYPTO_KEY_V1',
+    required: true,
+    description: 'AES-256-GCM encryption key for PII data (32-byte base64)',
+    sensitive: true,
+  },
+  {
+    key: 'CRYPTO_KEY_VERSION',
+    required: false,
+    description: 'Current encryption key version',
+    sensitive: false,
+    defaultValue: 1,
+  },
+  {
+    key: 'CRYPTO_ALG',
+    required: false,
+    description: 'Encryption algorithm identifier',
+    sensitive: false,
+    defaultValue: 'AES-GCM',
+  },
+  {
     key: 'APP_BASE_URL',
     required: true,
     description: 'Base URL of the application (for redirects and webhooks)',
@@ -166,8 +259,10 @@ export function validateEnvironment(): EnvironmentConfig {
     }
     
     // Type conversion and validation
-    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'VGS_BYPASS_MODE') {
+    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'VGS_BYPASS_MODE' || envVar.key === 'VGS_PROXY_ENABLED') {
       (config as any)[envVar.key] = value.toLowerCase() === 'true';
+    } else if (envVar.key === 'CRYPTO_KEY_VERSION') {
+      (config as any)[envVar.key] = parseInt(value, 10);
     } else if (envVar.validValues && !envVar.validValues.includes(value)) {
       errors.push(`Invalid value for ${envVar.key}. Expected one of: ${envVar.validValues.join(', ')}`);
     } else {
