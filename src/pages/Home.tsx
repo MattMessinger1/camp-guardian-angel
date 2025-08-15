@@ -220,7 +220,7 @@ const HomePage = () => {
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
               {[
-                "You pay our Spot Registration Fee ($20 flat fee per spot reserved) only if you successfully reserve a spot.",
+                "You pay our Signup Fee ($20 per spot reserved) only if you successfully sign up for the camp and session you selected.",
                 "We monitor registration openings and submit your application the instant spots become available.",
                 "You handle captchas and account verification when needed - we prepare everything in advance and send instant text alerts.",
                 "All your registration information is encrypted and securely stored for current and future use.",
