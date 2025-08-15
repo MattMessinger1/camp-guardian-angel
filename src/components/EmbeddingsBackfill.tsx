@@ -15,11 +15,18 @@ export const EmbeddingsBackfill: React.FC = () => {
     setResult(null)
 
     try {
+      console.log('🚀 Starting backfill request...')
+      
       const { data, error } = await supabase.functions.invoke('backfill-embeddings', {
         body: {}
       })
 
-      if (error) throw error
+      console.log('📊 Function response:', { data, error })
+
+      if (error) {
+        console.error('❌ Supabase function error:', error)
+        throw error
+      }
 
       setResult(data)
       toast({
@@ -28,7 +35,14 @@ export const EmbeddingsBackfill: React.FC = () => {
       })
 
     } catch (error) {
-      console.error('Backfill failed:', error)
+      console.error('💥 Backfill failed:', error)
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        cause: error.cause
+      })
+      
       toast({
         title: "Backfill Failed",
         description: error.message || "An unexpected error occurred",
