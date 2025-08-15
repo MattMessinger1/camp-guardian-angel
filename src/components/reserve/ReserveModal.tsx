@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
+import { STRIPE_PUBLISHABLE_KEY } from '@/config/stripe';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
 type Props = {
   open: boolean;
