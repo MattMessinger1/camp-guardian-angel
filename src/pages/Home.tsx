@@ -104,7 +104,7 @@ const HomePage = () => {
               {
                 stepNum: 3,
                 title: "#3 — Give yourself the best chance to get your&nbsp;spot",
-                description: "We'll let you know if we need your\u00A0help",
+                description: "We'll text you if we need your help with\u00A0captcha",
               }
             ].map((step, index) => {
               return (
