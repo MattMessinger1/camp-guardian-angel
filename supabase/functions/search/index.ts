@@ -80,14 +80,16 @@ serve(async (req) => {
       throw error;
     }
 
-    // Apply relevance filtering - only return results with score > 0.05
-    const filteredData = data?.filter((item: any) => {
-      // If no query provided, return all results  
-      if (!q || !q.trim()) return true;
-      
-      // Filter by relevance score - lowered threshold for better results
-      return item.score > 0.05;
-    }) || [];
+    // Debug: Log actual scores to see what we're getting
+    if (data && data.length > 0) {
+      console.log('Raw search results with scores:', data.map((item: any) => ({ 
+        name: item.name, 
+        score: item.score 
+      })));
+    }
+
+    // Apply relevance filtering - temporarily disabled for debugging
+    const filteredData = data || [];
 
     const elapsed = Math.round(performance.now() - started);
     
