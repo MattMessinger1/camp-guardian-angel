@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { securityGuards } from '../_shared/securityGuards.ts'
+import { decryptPII } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,6 +64,9 @@ serve(async (req) => {
         child_initials,
         parent_email,
         parent_phone_e164,
+        parent_name_enc,
+        child_name_enc,
+        address_enc,
         timezone,
         hold_expires_at,
         created_at,
@@ -137,8 +141,25 @@ serve(async (req) => {
       })
     }
 
+    // Decrypt PII fields for the authenticated user (owner)
+    const decryptedHolds = await Promise.all((holds || []).map(async (hold: any) => {
+      const decrypted = {
+        ...hold,
+        parent_name: hold.parent_name_enc ? await decryptPII(JSON.parse(hold.parent_name_enc)).catch(() => null) : null,
+        child_name: hold.child_name_enc ? await decryptPII(JSON.parse(hold.child_name_enc)).catch(() => null) : null,
+        address: hold.address_enc ? await decryptPII(JSON.parse(hold.address_enc)).catch(() => null) : null,
+      };
+      
+      // Remove encrypted fields from response
+      delete decrypted.parent_name_enc;
+      delete decrypted.child_name_enc;
+      delete decrypted.address_enc;
+      
+      return decrypted;
+    }));
+
     // Calculate time remaining for active holds
-    const enrichedHolds = holds?.map(hold => ({
+    const enrichedHolds = decryptedHolds.map(hold => ({
       ...hold,
       time_remaining_ms: hold.status === 'active' 
         ? Math.max(0, new Date(hold.hold_expires_at).getTime() - now.getTime())
