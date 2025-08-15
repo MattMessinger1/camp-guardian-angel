@@ -196,6 +196,7 @@ const ReservationHoldsPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">Session ID *</label>
                 <Input
+                  data-testid="reserve-session-id"
                   value={createForm.session_id}
                   onChange={(e) => setCreateForm(prev => ({ ...prev, session_id: e.target.value }))}
                   placeholder="Enter session UUID"
@@ -206,6 +207,7 @@ const ReservationHoldsPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">Child Age Bracket</label>
                 <Select
+                  data-testid="reserve-age"
                   value={createForm.child_age_bracket}
                   onValueChange={(value) => setCreateForm(prev => ({ ...prev, child_age_bracket: value }))}
                 >
@@ -238,6 +240,7 @@ const ReservationHoldsPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">Parent Email</label>
                 <Input
+                  data-testid="reserve-email"
                   type="email"
                   value={createForm.parent_email}
                   onChange={(e) => setCreateForm(prev => ({ ...prev, parent_email: e.target.value }))}
@@ -260,7 +263,7 @@ const ReservationHoldsPage: React.FC = () => {
               </div>
             </div>
             
-            <Button type="submit" className="w-full">
+            <Button data-testid="reserve-submit" type="submit" className="w-full">
               Create Reservation Hold
             </Button>
           </form>
