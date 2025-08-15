@@ -51,7 +51,10 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
       
       setReservationId(res.data.reservation_id);
       setClientSecret(res.data.payment_intent_client_secret);
-      return res.data.payment_intent_client_secret as string;
+      return {
+        reservation_id: res.data.reservation_id,
+        client_secret: res.data.payment_intent_client_secret
+      };
     } catch (e:any) {
       setError(e.message); throw e;
     } finally {
@@ -61,12 +64,25 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
 
   async function authorizeAndExecute() {
     try {
-      const secret = clientSecret ?? await initPI();
+      let currentReservationId = reservationId;
+      
+      // If we don't have a reservation ID or client secret, initialize
+      if (!clientSecret || !currentReservationId) {
+        const initResult = await initPI();
+        // Use the reservation ID directly from the initialization result
+        currentReservationId = initResult.reservation_id;
+        
+        // If still null, there's an issue with the initialization
+        if (!currentReservationId) {
+          throw new Error('Failed to get reservation ID');
+        }
+      }
+      
       const stripe = await stripePromise;
       if (!stripe) throw new Error('stripe_unavailable');
 
       // For testing - skip Stripe payment and just proceed
-      console.log('Skipping Stripe payment for testing, using test payment intent:', secret);
+      console.log('Skipping Stripe payment for testing, using reservation ID:', currentReservationId);
 
       // reCAPTCHA v3 token - skip for testing if not available
       let token = 'test-token';
@@ -82,7 +98,7 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
 
       const { supabase } = await import('@/integrations/supabase/client');
       const res2 = await supabase.functions.invoke('reserve-execute', {
-        body: { reservation_id: reservationId, recaptcha_token: token }
+        body: { reservation_id: currentReservationId, recaptcha_token: token }
       });
       
       console.log('Reserve execute response:', res2);
@@ -102,7 +118,7 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
         try {
           const { supabase } = await import('@/integrations/supabase/client');
           await supabase.functions.invoke('sms-send', {
-            body: { reservation_id: reservationId }
+            body: { reservation_id: currentReservationId }
           });
           alert('Quick verification sent via SMS. Tap the link or enter the code to finish.');
         } catch (smsError) {
