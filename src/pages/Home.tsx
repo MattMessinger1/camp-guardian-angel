@@ -82,9 +82,9 @@ const HomePage = () => {
                     <div className="flex-shrink-0 md:mb-4">
                       <img 
                         src={
-                          step.stepNum === 1 ? (isMobile ? '/lovable-uploads/6210bebc-9c12-4bd9-8f2d-349330268e8b.png' : '/lovable-uploads/103b80e6-36a5-4ad7-8445-cb90b43f2645.png') :
+                          step.stepNum === 1 ? (isMobile ? '/lovable-uploads/1e4c3eef-7722-4b2b-ba6a-a0bed50edb82.png' : '/lovable-uploads/b6798b9a-8c60-43d8-a73f-263b2a614dd3.png') :
                           step.stepNum === 2 ? (isMobile ? '/lovable-uploads/2c6de7f6-c6a9-4ab0-8b66-d6d777cfd0a0.png' : '/lovable-uploads/103d7239-d5ea-415a-ab4e-afcbe109e547.png') :
-                          (isMobile ? '/lovable-uploads/1e4c3eef-7722-4b2b-ba6a-a0bed50edb82.png' : '/lovable-uploads/b6798b9a-8c60-43d8-a73f-263b2a614dd3.png')
+                          (isMobile ? '/lovable-uploads/6210bebc-9c12-4bd9-8f2d-349330268e8b.png' : '/lovable-uploads/103b80e6-36a5-4ad7-8445-cb90b43f2645.png')
                         }
                         alt=""
                         className={isMobile ? "w-12 h-12 mr-4" : "w-24 h-24"}
