@@ -1278,6 +1278,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sessions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activity_sessions_mv"
+            referencedColumns: ["activity_id"]
+          },
+          {
             foreignKeyName: "sessions_camp_location_id_fkey"
             columns: ["camp_location_id"]
             isOneToOne: false
@@ -1415,7 +1422,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      activity_sessions_mv: {
+        Row: {
+          activity_id: string | null
+          city: string | null
+          embedding: string | null
+          kind: string | null
+          name: string | null
+          search_tsv: unknown | null
+          sessions_json: Json | null
+          state: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       allocate_registrations: {
@@ -1537,6 +1556,10 @@ export type Database = {
           similarity: number
           text: string
         }[]
+      }
+      refresh_activity_sessions_mv: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       set_limit: {
         Args: { "": number }
