@@ -84,7 +84,13 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
       const res2 = await supabase.functions.invoke('reserve-execute', {
         body: { reservation_id: reservationId, recaptcha_token: token }
       });
-      if (res2.error) throw new Error(res2.error.message || 'execute_failed');
+      
+      console.log('Reserve execute response:', res2);
+      
+      if (res2.error) {
+        console.error('Reserve execute error:', res2.error);
+        throw new Error(res2.error.message || 'execute_failed');
+      }
 
       // Handle response: confirmed instantly, or pending/SMS
       const json2 = res2.data;
