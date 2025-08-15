@@ -68,30 +68,18 @@ const HomePage = () => {
       {/* Hero Section */}
       <section 
         ref={heroRef}
-        className="hero-section relative px-4 overflow-hidden min-h-[70vh] flex items-center justify-center"
-        style={{ paddingTop: '64px', paddingBottom: '64px' }}
+        className="hero-section relative px-4 overflow-hidden min-h-[50vh] flex items-center justify-center"
+        style={{ paddingTop: '48px', paddingBottom: '48px' }}
       >
         {/* Hero content with solid dark card */}
         <div className="relative z-10 mx-auto max-w-4xl">
           {/* HERO TEXT BLOCK */}
           <div className="hero-card">
-            <h1 className="hero-title">Beat the registration&nbsp;rush</h1>
+            <h1 className="hero-title">Manage the signup&nbsp;stress</h1>
             <div className="hero-accent" aria-hidden="true"></div>
             <p className="hero-sub">
               You pre-load your info, we submit the millisecond registration opens, then we help you complete any human steps (captcha) via text message
             </p>
-            <button 
-              className="btn-primary"
-              onClick={() => {
-                const searchInput = document.querySelector('.search-input input') as HTMLInputElement;
-                if (searchInput) {
-                  searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  setTimeout(() => searchInput.focus(), 500);
-                }
-              }}
-            >
-              Manage my signup stress
-            </button>
           </div>
         </div>
       </section>
