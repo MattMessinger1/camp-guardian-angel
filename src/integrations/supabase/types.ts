@@ -998,17 +998,20 @@ export type Database = {
       }
       reservation_holds: {
         Row: {
+          address_enc: string | null
           child_age_bracket:
             | Database["public"]["Enums"]["child_age_bracket"]
             | null
           child_birth_year: number | null
           child_initials: string | null
+          child_name_enc: string | null
           created_at: string
           delete_after: string
           hold_expires_at: string
           hold_token: string | null
           id: string
           parent_email: string | null
+          parent_name_enc: string | null
           parent_phone_e164: string | null
           priority_rank: number | null
           provider_session_key: string | null
@@ -1019,17 +1022,20 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address_enc?: string | null
           child_age_bracket?:
             | Database["public"]["Enums"]["child_age_bracket"]
             | null
           child_birth_year?: number | null
           child_initials?: string | null
+          child_name_enc?: string | null
           created_at?: string
           delete_after?: string
           hold_expires_at: string
           hold_token?: string | null
           id?: string
           parent_email?: string | null
+          parent_name_enc?: string | null
           parent_phone_e164?: string | null
           priority_rank?: number | null
           provider_session_key?: string | null
@@ -1040,17 +1046,20 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address_enc?: string | null
           child_age_bracket?:
             | Database["public"]["Enums"]["child_age_bracket"]
             | null
           child_birth_year?: number | null
           child_initials?: string | null
+          child_name_enc?: string | null
           created_at?: string
           delete_after?: string
           hold_expires_at?: string
           hold_token?: string | null
           id?: string
           parent_email?: string | null
+          parent_name_enc?: string | null
           parent_phone_e164?: string | null
           priority_rank?: number | null
           provider_session_key?: string | null
