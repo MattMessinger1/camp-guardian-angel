@@ -214,7 +214,7 @@ const HomePage = () => {
       <section className="px-4 bg-white" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
         <div className="mx-auto" style={{ maxWidth: '1200px' }}>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-12 text-center max-w-[28ch] mx-auto" style={{ fontWeight: '700', textWrap: 'balance' }}>
-            Reduce your sign-up stress
+            Reduce your signup stress
           </h2>
           
           <div className="max-w-4xl mx-auto">
