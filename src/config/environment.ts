@@ -243,6 +243,7 @@ export function validateEnvironment(context: 'browser' | 'server' = 'browser'): 
 
   // Define which variables are needed in browser vs server
   const serverOnlyVars = [
+    'SUPABASE_URL', 'SUPABASE_ANON_KEY', // Use NEXT_PUBLIC_ versions in browser
     'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'SENDGRID_API_KEY', 'SENDGRID_FROM_EMAIL',
     'VGS_VAULT_ID', 'VGS_INBOUND_HOST', 'VGS_OUTBOUND_HOST', 'VGS_PROXY_HOST', 
     'VGS_PROXY_USERNAME', 'VGS_PROXY_PASSWORD', 'CRYPTO_KEY_V1', 'APP_BASE_URL'
