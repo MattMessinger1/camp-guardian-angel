@@ -1561,6 +1561,26 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      search_unified: {
+        Args: {
+          p_city: string
+          p_end: string
+          p_limit: number
+          p_offset: number
+          p_platform: string
+          p_start: string
+          q: string
+          q_embedding: string
+        }
+        Returns: {
+          activity_id: string
+          city: string
+          name: string
+          score: number
+          sessions: Json
+          state: string
+        }[]
+      }
       set_limit: {
         Args: { "": number }
         Returns: number
