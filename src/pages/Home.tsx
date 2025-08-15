@@ -145,7 +145,7 @@ const HomePage = () => {
                 aria-label="Search activities by name, location, and dates"
               />
             </div>
-            <button className="btn-primary btn-search">Prep My SignUp</button>
+            <button className="btn-primary btn-search">Reserve my spot</button>
           </div>
         </div>
       </div>
