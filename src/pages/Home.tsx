@@ -70,7 +70,7 @@ const HomePage = () => {
               },
               {
                 stepNum: 3,
-                title: "#3 — We submit the millisecond registration&nbsp;opens",
+                title: "#3 — You give yourself the best chance to get the spot you&nbsp;want",
                 description: "You pay us only if you get a spot in the session you chose in Step 1",
               }
             ].map((step, index) => {
