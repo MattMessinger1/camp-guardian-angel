@@ -29,7 +29,10 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
     try {
       const res = await fetch('/functions/v1/reserve-init', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await import('@/integrations/supabase/client')).supabase.auth.getSession().then(s => s.data.session?.access_token)}`
+        },
         body: JSON.stringify({ session_id: sessionId, parent, child })
       });
       const json = await res.json();
@@ -108,7 +111,10 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
           <input className="border rounded p-2" placeholder="Email" value={parent.email} onChange={e=>setParent({...parent, email:e.target.value})}/>
           <input className="border rounded p-2" placeholder="Phone" value={parent.phone} onChange={e=>setParent({...parent, phone:e.target.value})}/>
           <input className="border rounded p-2" placeholder="Child Name" value={child.name} onChange={e=>setChild({...child, name:e.target.value})}/>
-          <input className="border rounded p-2" type="date" value={child.dob} onChange={e=>setChild({...child, dob:e.target.value})}/>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Child's Birth Date</label>
+            <input className="border rounded p-2" type="date" value={child.dob} onChange={e=>setChild({...child, dob:e.target.value})}/>
+          </div>
         </div>
         {error && <div className="text-red-600 mt-2">{error}</div>}
         <div className="mt-4 flex gap-2 justify-end">
