@@ -162,10 +162,10 @@ const HomePage = () => {
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
               {[
-                "You pay our flat Spot Registration Fee ($20) only if you successfully reserve a spot in your chosen session.",
-                "We monitor registration openings and submit your application instantly when spots open up.",
-                "You handle captchas and account verification when needed - we prepare everything in advance and send instant alerts with step-by-step instructions.",
-                "All your registration information is encrypted and securely stored for use in current and future registrations.",
+                "You pay our flat Spot Registration Fee ($20) only if you successfully reserve a spot.",
+                "We monitor registration openings and submit your application the instant spots become available.",
+                "You handle captchas and account verification when needed - we prepare everything in advance and send instant text alerts.",
+                "All your registration information is encrypted and securely stored for current and future use.",
                 "We help you reserve your spot before they're none left. You finish the rest of the camp registration (e.g. uploading health forms) on the provider's site. Once your spot is reserved you'll receive an email with next steps."
               ].map((statement, index) => (
                 <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
