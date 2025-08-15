@@ -46,8 +46,19 @@ serve(async (req) => {
 
   try {
     console.log('Starting embeddings backfill...');
+    
+    // Check environment variables
+    console.log('Checking environment variables...');
+    console.log('SUPABASE_URL exists:', !!supabaseUrl);
+    console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!supabaseServiceKey);
+    console.log('OPENAI_API_KEY exists:', !!openaiApiKey);
+    
+    if (!supabaseUrl) throw new Error('Missing SUPABASE_URL');
+    if (!supabaseServiceKey) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
+    if (!openaiApiKey) throw new Error('Missing OPENAI_API_KEY');
 
     // Select activities where embedding is null
+    console.log('Querying activities...');
     const { data: activities, error: selectError } = await supabase
       .from('activities')
       .select('id, name, kind, city, state, description')
