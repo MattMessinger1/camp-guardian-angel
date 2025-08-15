@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -309,6 +309,36 @@ export type Database = {
           id?: string
           info_token?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      idempotency_keys: {
+        Row: {
+          created_at: string
+          delete_after: string
+          endpoint: string
+          key: string
+          request_hash: string
+          response_data: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          delete_after?: string
+          endpoint: string
+          key: string
+          request_hash: string
+          response_data?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          delete_after?: string
+          endpoint?: string
+          key?: string
+          request_hash?: string
+          response_data?: Json | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -664,6 +694,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          created_at: string
+          delete_after: string
+          endpoint: string
+          id: string
+          ip_address: unknown | null
+          request_count: number
+          user_id: string | null
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          delete_after?: string
+          endpoint: string
+          id?: string
+          ip_address?: unknown | null
+          request_count?: number
+          user_id?: string | null
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          delete_after?: string
+          endpoint?: string
+          id?: string
+          ip_address?: unknown | null
+          request_count?: number
+          user_id?: string | null
+          window_start?: string
+        }
+        Relationships: []
+      }
       registration_attempts: {
         Row: {
           attempted_at: string
@@ -890,6 +953,116 @@ export type Database = {
           },
           {
             foreignKeyName: "registrations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservation_audit: {
+        Row: {
+          action: string
+          created_at: string
+          delete_after: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          delete_after?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          delete_after?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      reservation_holds: {
+        Row: {
+          child_age_bracket:
+            | Database["public"]["Enums"]["child_age_bracket"]
+            | null
+          child_birth_year: number | null
+          child_initials: string | null
+          created_at: string
+          delete_after: string
+          hold_expires_at: string
+          hold_token: string | null
+          id: string
+          parent_email: string | null
+          parent_phone_e164: string | null
+          priority_rank: number | null
+          provider_session_key: string | null
+          session_id: string | null
+          status: Database["public"]["Enums"]["hold_status"]
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          child_age_bracket?:
+            | Database["public"]["Enums"]["child_age_bracket"]
+            | null
+          child_birth_year?: number | null
+          child_initials?: string | null
+          created_at?: string
+          delete_after?: string
+          hold_expires_at: string
+          hold_token?: string | null
+          id?: string
+          parent_email?: string | null
+          parent_phone_e164?: string | null
+          priority_rank?: number | null
+          provider_session_key?: string | null
+          session_id?: string | null
+          status?: Database["public"]["Enums"]["hold_status"]
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          child_age_bracket?:
+            | Database["public"]["Enums"]["child_age_bracket"]
+            | null
+          child_birth_year?: number | null
+          child_initials?: string | null
+          created_at?: string
+          delete_after?: string
+          hold_expires_at?: string
+          hold_token?: string | null
+          id?: string
+          parent_email?: string | null
+          parent_phone_e164?: string | null
+          priority_rank?: number | null
+          provider_session_key?: string | null
+          session_id?: string | null
+          status?: Database["public"]["Enums"]["hold_status"]
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_holds_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
@@ -1169,9 +1342,9 @@ export type Database = {
       allocate_registrations: {
         Args: { p_max_sessions?: number }
         Returns: {
-          session_id: string
           accepted: string[]
           rejected: string[]
+          session_id: string
         }[]
       }
       binary_quantize: {
@@ -1185,8 +1358,12 @@ export type Database = {
         }[]
       }
       child_session_overlap_exists: {
-        Args: { p_child_id: string; p_start: string; p_end: string }
+        Args: { p_child_id: string; p_end: string; p_start: string }
         Returns: boolean
+      }
+      cleanup_expired_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       cleanup_expired_locks: {
         Args: Record<PropertyKey, never>
@@ -1250,16 +1427,16 @@ export type Database = {
       }
       match_embeddings: {
         Args: {
-          query_embedding: string
-          match_threshold?: number
           match_count?: number
+          match_threshold?: number
+          query_embedding: string
         }
         Returns: {
           id: string
           kind: string
           ref_id: string
-          text: string
           similarity: number
+          text: string
         }[]
       }
       sparsevec_out: {
@@ -1300,6 +1477,13 @@ export type Database = {
       }
     }
     Enums: {
+      child_age_bracket:
+        | "under_5"
+        | "5_to_8"
+        | "9_to_12"
+        | "13_to_17"
+        | "18_plus"
+      hold_status: "active" | "expired" | "converted" | "cancelled"
       provider_login_type: "none" | "email_password" | "account_required"
       provider_platform:
         | "jackrabbit_class"
@@ -1433,6 +1617,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      child_age_bracket: [
+        "under_5",
+        "5_to_8",
+        "9_to_12",
+        "13_to_17",
+        "18_plus",
+      ],
+      hold_status: ["active", "expired", "converted", "cancelled"],
       provider_login_type: ["none", "email_password", "account_required"],
       provider_platform: [
         "jackrabbit_class",
