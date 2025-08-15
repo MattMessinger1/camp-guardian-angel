@@ -166,7 +166,7 @@ const HomePage = () => {
                 "We monitor registration openings and submit your application instantly when spots become available.",
                 "You handle captchas and account verification when needed - we prepare everything in advance and send instant alerts with step-by-step guidance.",
                 "All your registration information is encrypted and securely stored for use in current and future sign-ups.",
-                "We help you reserve your spot before they fill up. You finish the rest of the camp registration (e.g. uploading health forms) on the provider's site. Once your spot is reserved you'll receive an email with next steps."
+                "We help you reserve your spot before they're none left. You finish the rest of the camp registration (e.g. uploading health forms) on the provider's site. Once your spot is reserved you'll receive an email with next steps."
               ].map((statement, index) => (
                 <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
                   <div
