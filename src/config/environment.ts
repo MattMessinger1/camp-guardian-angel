@@ -237,11 +237,23 @@ export class EnvironmentError extends Error {
   }
 }
 
-export function validateEnvironment(): EnvironmentConfig {
+export function validateEnvironment(context: 'browser' | 'server' = 'browser'): EnvironmentConfig {
   const errors: string[] = [];
   const config = {} as EnvironmentConfig;
 
+  // Define which variables are needed in browser vs server
+  const serverOnlyVars = [
+    'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'SENDGRID_API_KEY', 'SENDGRID_FROM_EMAIL',
+    'VGS_VAULT_ID', 'VGS_INBOUND_HOST', 'VGS_OUTBOUND_HOST', 'VGS_PROXY_HOST', 
+    'VGS_PROXY_USERNAME', 'VGS_PROXY_PASSWORD', 'CRYPTO_KEY_V1', 'APP_BASE_URL'
+  ];
+
   for (const envVar of ENVIRONMENT_VARIABLES) {
+    // Skip server-only variables when in browser context
+    if (context === 'browser' && serverOnlyVars.includes(envVar.key)) {
+      continue;
+    }
+
     const value = getEnvironmentVariable(envVar.key);
     
     if (!value && envVar.required) {
