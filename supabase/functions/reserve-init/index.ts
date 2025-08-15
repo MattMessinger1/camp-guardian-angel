@@ -26,8 +26,25 @@ serve(async (req) => {
     });
   }
 
+  // Get the authenticated user
+  const authHeader = req.headers.get('Authorization')!;
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: "Missing authorization header" }), { 
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+
+  // Create client with service role for database operations
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { 
     auth: { persistSession: false } 
+  });
+
+  // Create user client to verify authentication
+  const userSupabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: {
+      headers: { Authorization: authHeader }
+    }
   });
 
   const stripe = new Stripe(STRIPE_SECRET_KEY, {
@@ -35,6 +52,15 @@ serve(async (req) => {
   });
 
   try {
+    // Verify user authentication
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Authentication required" }), { 
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     const { session_id, parent, child } = await req.json();
     
     if (!session_id || !parent?.email || !parent?.phone || !child?.name || !child?.dob) {
@@ -44,7 +70,7 @@ serve(async (req) => {
       });
     }
 
-    console.log("reserve-init: processing reservation", { session_id, parent_email: parent.email });
+    console.log("reserve-init: processing reservation", { session_id, parent_email: parent.email, user_id: user.id });
 
     // Lookup session for platform and provider key snapshot
     const { data: sessionRow, error: sErr } = await supabase
@@ -58,10 +84,11 @@ serve(async (req) => {
       throw sErr ?? new Error("session_not_found");
     }
 
-    // Upsert parent (handle potential duplicates)
+    // Upsert parent (handle potential duplicates) - using service role to bypass RLS
     const { data: pIns, error: pErr } = await supabase
       .from("parents")
       .insert({
+        user_id: user.id, // Link to authenticated user
         name: parent.name ?? null, 
         email: parent.email, 
         phone: parent.phone

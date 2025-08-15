@@ -27,19 +27,23 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
   async function initPI() {
     setLoading(true); setError(null);
     try {
-      const res = await fetch('/functions/v1/reserve-init', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await import('@/integrations/supabase/client')).supabase.auth.getSession().then(s => s.data.session?.access_token)}`
-        },
-        body: JSON.stringify({ session_id: sessionId, parent, child })
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('Please log in to make a reservation');
+      }
+
+      const res = await supabase.functions.invoke('reserve-init', {
+        body: { session_id: sessionId, parent, child }
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? 'init_failed');
-      setReservationId(json.reservation_id);
-      setClientSecret(json.payment_intent_client_secret);
-      return json.payment_intent_client_secret as string;
+      
+      if (res.error) throw new Error(res.error.message || 'init_failed');
+      if (!res.data) throw new Error('No response data');
+      
+      setReservationId(res.data.reservation_id);
+      setClientSecret(res.data.payment_intent_client_secret);
+      return res.data.payment_intent_client_secret as string;
     } catch (e:any) {
       setError(e.message); throw e;
     } finally {
@@ -67,25 +71,23 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
       // @ts-ignore
       const token = await grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'reserve' });
 
-      const res2 = await fetch('/functions/v1/reserve-execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reservation_id: reservationId, recaptcha_token: token })
+      const { supabase } = await import('@/integrations/supabase/client');
+      const res2 = await supabase.functions.invoke('reserve-execute', {
+        body: { reservation_id: reservationId, recaptcha_token: token }
       });
-      const json2 = await res2.json();
-      if (!res2.ok) throw new Error(json2?.error ?? 'execute_failed');
+      if (res2.error) throw new Error(res2.error.message || 'execute_failed');
 
       // Handle response: confirmed instantly, or pending/SMS
+      const json2 = res2.data;
       if (json2.status === 'confirmed') {
         alert('Success! Your spot is reserved.'); 
         onClose();
       } else if (json2.status === 'needs_user_action') {
         // Automatically send SMS for verification
         try {
-          await fetch('/functions/v1/sms-send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reservation_id: reservationId })
+          const { supabase } = await import('@/integrations/supabase/client');
+          await supabase.functions.invoke('sms-send', {
+            body: { reservation_id: reservationId }
           });
           alert('Quick verification sent via SMS. Tap the link or enter the code to finish.');
         } catch (smsError) {
