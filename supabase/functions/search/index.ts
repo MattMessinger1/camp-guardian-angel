@@ -80,15 +80,7 @@ serve(async (req) => {
       throw error;
     }
 
-    // Debug: Log actual scores to see what we're getting
-    if (data && data.length > 0) {
-      console.log('Raw search results with scores:', data.map((item: any) => ({ 
-        name: item.name, 
-        score: item.score 
-      })));
-    }
-
-    // Apply relevance filtering - temporarily disabled for debugging
+    // Debug: Return all results regardless of score to see what we get
     const filteredData = data || [];
 
     const elapsed = Math.round(performance.now() - started);
