@@ -74,11 +74,25 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
 
       // Handle response: confirmed instantly, or pending/SMS
       if (json2.status === 'confirmed') {
-        alert('Success! Your spot is reserved.'); onClose();
+        alert('Success! Your spot is reserved.'); 
+        onClose();
       } else if (json2.status === 'needs_user_action') {
-        alert('Quick verification sent via SMS. Tap the link or enter the code to finish.'); onClose();
+        // Automatically send SMS for verification
+        try {
+          await fetch('/functions/v1/sms-send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservation_id: reservationId })
+          });
+          alert('Quick verification sent via SMS. Tap the link or enter the code to finish.');
+        } catch (smsError) {
+          console.error('Failed to send SMS:', smsError);
+          alert('Verification required. Please check your messages or contact support.');
+        }
+        onClose();
       } else {
-        alert('We are working on your reservation. You will be notified.'); onClose();
+        alert('We are working on your reservation. You will be notified.'); 
+        onClose();
       }
     } catch (e:any) {
       setError(e.message);
