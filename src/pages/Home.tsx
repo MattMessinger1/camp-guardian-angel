@@ -167,7 +167,7 @@ const HomePage = () => {
                 "You handle captchas and account verification when needed - we prepare everything in advance and send instant text alerts.",
                 "All your registration information is encrypted and securely stored for current and future use.",
                 "We help you reserve your spot before there are none left. You finish the rest of the camp registration (e.g. uploading health forms) on the provider's site. Once your spot is reserved you'll receive an email with next steps.",
-                "The other fee we charge -- in addition to the Spot Registration Fee -- is the Annual Registration Fee of $12 (This $12.00 is due once per year, and you can cancel anytime to receive a pro-rata refund.) We you succeed in getting your spot, we succeed in getting paid."
+                "The other fee we charge, in addition to the Spot Registration Fee, is a small Annual Registration Fee of $12. This Registration Fee is small because we want to align our incentives with yours. You get the spot you wanted, then we get paid."
               ].map((statement, index) => (
                 <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
                   <div
