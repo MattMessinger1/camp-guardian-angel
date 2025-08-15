@@ -1,4 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
+// TODO: Add alert for PI nearing auth timeout (7 days)
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
@@ -129,10 +130,17 @@ serve(async (req) => {
       throw rErr;
     }
 
-    console.log("reserve-init: success", { 
+    // Enhanced logging for observability
+    console.log(JSON.stringify({ 
+      type: 'reserve_init', 
+      session_id: sessionRow.id,
+      parent_email: parent.email,
       reservation_id: rIns.id, 
-      payment_intent_id: paymentIntent.id 
-    });
+      pi: paymentIntent.id,
+      platform: sessionRow.platform,
+      amount_cents: amountCents,
+      timestamp: new Date().toISOString()
+    }));
 
     return new Response(JSON.stringify({
       reservation_id: rIns.id,

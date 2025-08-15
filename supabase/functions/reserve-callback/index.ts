@@ -1,4 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
+// TODO: Add alerts for repeated automation failures per platform
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -35,9 +36,17 @@ serve(async (req) => {
   try {
     const { reservation_id, success, provider_response } = await req.json();
     
+    // Enhanced logging for observability
+    console.log(JSON.stringify({
+      type: 'reserve_callback',
+      reservation_id,
+      success,
+      timestamp: new Date().toISOString()
+    }));
+    
     const { data: r, error: rErr } = await supabase
       .from("reservations")
-      .select("id, stripe_payment_intent_id, status")
+      .select("id, stripe_payment_intent_id, status, provider_platform")
       .eq("id", reservation_id)
       .single();
       

@@ -14,6 +14,13 @@ serve(async (req) => {
   try {
     const { reservation_id, code } = await req.json();
     
+    console.log(JSON.stringify({
+      type: 'sms_verify_attempt',
+      reservation_id,
+      code_length: code?.length || 0,
+      timestamp: new Date().toISOString()
+    }));
+    
     if (!reservation_id || !code) {
       return new Response(
         JSON.stringify({ error: "missing_fields" }), 
@@ -59,13 +66,26 @@ serve(async (req) => {
       .update({ used_at: new Date().toISOString() })
       .eq("id", row.id);
 
+    // Enhanced logging for successful verification
+    console.log(JSON.stringify({
+      type: 'sms_verify_success',
+      reservation_id,
+      timestamp: new Date().toISOString()
+    }));
+
     // Let frontend proceed: it can re-trigger /reserve-execute or hit a dedicated endpoint
     return new Response(
       JSON.stringify({ ok: true }), 
       { headers: { "Content-Type": "application/json" }}
     );
   } catch (e: any) {
-    console.error("SMS verify error:", e);
+    console.log(JSON.stringify({
+      type: 'sms_verify_error',
+      reservation_id: req.json?.()?.reservation_id || 'unknown',
+      error: e?.message || 'unknown_error',
+      timestamp: new Date().toISOString()
+    }));
+    
     return new Response(
       JSON.stringify({ error: e?.message ?? "sms_verify_error" }), 
       { status: 400, headers: { "Content-Type": "application/json" } }

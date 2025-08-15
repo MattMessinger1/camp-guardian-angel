@@ -49,6 +49,12 @@ serve(async (req) => {
   try {
     const { reservation_id } = await req.json();
     
+    console.log(JSON.stringify({
+      type: 'sms_send_start',
+      reservation_id,
+      timestamp: new Date().toISOString()
+    }));
+    
     const { data: r, error: rErr } = await supabase
       .from("reservations")
       .select("id, parent_id, status")
@@ -78,14 +84,29 @@ serve(async (req) => {
     });
 
     const link = `${new URL(req.url).origin}/verify?rid=${r.id}`;
-    await sendSMS(phone, `CGA verification code: ${code}. Or tap ${link}`);
+    const smsResult = await sendSMS(phone, `CGA verification code: ${code}. Or tap ${link}`);
+    
+    // Enhanced logging for SMS send outcome
+    console.log(JSON.stringify({
+      type: 'sms_send_success',
+      reservation_id: r.id,
+      phone_masked: phone.slice(0, 3) + "***" + phone.slice(-2),
+      message_sid: smsResult.sid,
+      timestamp: new Date().toISOString()
+    }));
     
     return new Response(
       JSON.stringify({ ok: true }), 
       { headers: { "Content-Type": "application/json" }}
     );
   } catch (e: any) {
-    console.error("SMS send error:", e);
+    console.log(JSON.stringify({
+      type: 'sms_send_error',
+      reservation_id: req.json?.()?.reservation_id || 'unknown',
+      error: e?.message || 'unknown_error',
+      timestamp: new Date().toISOString()
+    }));
+    
     return new Response(
       JSON.stringify({ error: e?.message ?? "sms_send_error" }), 
       { status: 400, headers: { "Content-Type": "application/json" } }
