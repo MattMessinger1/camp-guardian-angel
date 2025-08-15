@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
+import SearchBar from '@/components/search/SearchBar'
+import Results from '@/components/search/Results'
+import { useSearch } from '@/components/search/useSearch'
 
 const HomePage = () => {
   const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
@@ -10,6 +13,7 @@ const HomePage = () => {
   })
 
   const [isMobile, setIsMobile] = useState(false)
+  const search = useSearch()
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
@@ -130,25 +134,19 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* STICKY SEARCH CARD */}
-      <div 
-        className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200/50"
-        style={{ paddingTop: '8px', paddingBottom: '8px' }}
-      >
-        <div className="search-wrap" style={{ marginTop: '0', paddingBottom: '0' }}>
-          <div className="search-card" style={{ margin: '0 auto' }}>
-            <div className="search-input">
-              <span className="search-icon" aria-hidden="true">🔎</span>
-              <input
-                type="text"
-                placeholder={isMobile ? "Activity name, location…" : "Activity name, city/state, session dates…"}
-                aria-label="Search activities by name, location, and dates"
-              />
-            </div>
-            <button className="btn-primary btn-search">Reserve my spot</button>
-          </div>
-        </div>
-      </div>
+      {/* Search Components */}
+      <SearchBar
+        q={search.q} setQ={search.setQ}
+        city={search.city} setCity={search.setCity}
+        start={search.start} setStart={search.setStart}
+        end={search.end} setEnd={search.setEnd}
+        platform={search.platform} setPlatform={search.setPlatform}
+        onSearch={search.run}
+      />
+
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        <Results items={search.items} loading={search.loading} error={search.error} />
+      </main>
 
 
 
