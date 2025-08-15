@@ -1,5 +1,58 @@
+// supabase/functions/_shared/crypto.ts
+const te = new TextEncoder();
+const td = new TextDecoder();
+
+const b64 = {
+  encode(buf: ArrayBuffer | Uint8Array) {
+    const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    let s = ""; for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+    return btoa(s);
+  },
+  decode(s: string) {
+    const a = atob(s); const u8 = new Uint8Array(a.length);
+    for (let i = 0; i < a.length; i++) u8[i] = a.charCodeAt(i);
+    return u8;
+  },
+};
+
+async function importKey() {
+  const keyB64 = Deno.env.get("CRYPTO_KEY_V1");
+  if (!keyB64) throw new Error("CRYPTO_KEY_V1 missing");
+  const raw = b64.decode(keyB64);
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+export async function encryptPII(plaintext: string) {
+  const key = await importKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, te.encode(plaintext));
+  return { v: Number(Deno.env.get("CRYPTO_KEY_VERSION") ?? 1), alg: Deno.env.get("CRYPTO_ALG") ?? "AES-GCM", iv: b64.encode(iv), ct: b64.encode(ct) };
+}
+
+export async function decryptPII(payload: { v: number; alg: string; iv: string; ct: string }) {
+  if (!payload?.iv || !payload?.ct) throw new Error("Bad ciphertext");
+  const key = await importKey();
+  const iv = b64.decode(payload.iv);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, b64.decode(payload.ct));
+  return td.decode(pt);
+}
+
+/** Hash for DEV "tokens" (so plaintext is never stored during dev) */
+export async function devHashToken(input: string) {
+  const buf = await crypto.subtle.digest("SHA-256", te.encode(input));
+  return "devtok_" + Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+/** Redact for logs */
+export function redactPII<T extends Record<string, any>>(obj: T, fields: string[] = ["email","phone","name","address"]) {
+  const copy: any = { ...obj };
+  for (const f of fields) if (copy[f]) copy[f] = "[redacted]";
+  return copy as T;
+}
+
 /**
- * Cryptographic utilities for secure password storage using AES-256-GCM
+ * Legacy functions for backward compatibility
+ * @deprecated Use encryptPII/decryptPII instead
  */
 
 /**
