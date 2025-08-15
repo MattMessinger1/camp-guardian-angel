@@ -103,7 +103,7 @@ const HomePage = () => {
               },
               {
                 stepNum: 3,
-                title: "#3 — You give yourself the best chance to get the spot you&nbsp;want",
+                title: "#3 — Give yourself the best chance to get your&nbsp;spot",
                 description: "We submit your pre-loaded info the millisecond registration opens",
               }
             ].map((step, index) => {
