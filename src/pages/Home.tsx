@@ -66,7 +66,7 @@ const HomePage = () => {
               {
                 stepNum: 2,
                 title: "#2 — Load your signup info ahead of&nbsp;time",
-                description: "It's all encrypted and we'll use it for future registrations too",
+                description: "We encrypt it and we'll use it for future registrations too",
               },
               {
                 stepNum: 3,
