@@ -204,7 +204,7 @@ class WebCrawler {
       .from('sources')
       .insert({
         base_url: baseUrl,
-        type: 'web_crawl',
+        type: 'sitemap',
         status: 'active'
       })
       .select('id')
