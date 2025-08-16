@@ -204,7 +204,41 @@ const Index = () => {
 
         {/* Session Extraction Test */}
         <section id="test-extraction" className="container mx-auto py-8">
-          <SessionExtractionTest />
+          <Card>
+            <CardHeader>
+              <CardTitle>🔬 Test Session Extraction</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Quick test of the extract-session function</p>
+              <Button 
+                onClick={async () => {
+                  try {
+                    console.log('Testing extract-session function...');
+                    const { data, error } = await supabase.functions.invoke('extract-session', {
+                      body: {
+                        html_content: '<!DOCTYPE html><html><head><title>Summer Camp</title></head><body><div>Summer Camp 2024</div><div>Ages 5-12</div><div>$250 per week</div><div>Madison, WI</div></body></html>',
+                        source_url: 'https://test.com'
+                      }
+                    });
+                    
+                    if (error) {
+                      console.error('Function error:', error);
+                      alert('Error: ' + JSON.stringify(error, null, 2));
+                    } else {
+                      console.log('Extraction result:', data);
+                      alert('Success: ' + JSON.stringify(data, null, 2));
+                    }
+                  } catch (err) {
+                    console.error('Test failed:', err);
+                    alert('Test failed: ' + err);
+                  }
+                }}
+                className="mt-4"
+              >
+                Test Extract Function
+              </Button>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Prefill form (UI only) */}
