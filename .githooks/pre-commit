@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Repository hygiene guardrails
+echo "🔍 Running pre-commit duplicate detection..."
+
+# Run the duplicate checker
+npm run precommit
+
+if [ $? -ne 0 ]; then
+    echo "❌ Pre-commit checks failed. Please fix the issues above before committing."
+    exit 1
+fi
+
+echo "✅ Pre-commit checks passed!"
+exit 0

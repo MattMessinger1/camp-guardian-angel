@@ -9,10 +9,13 @@ import {
   type ConfidenceScore 
 } from '../_shared/sessionSchema.ts';
 import { extractWithRules, calculateRuleConfidence } from '../_shared/providerRules.ts';
+import { getConfig, buildSecurityHeaders } from '../_shared/env.ts';
+import { logExtractionAttempt, type ExtractionLogEntry } from '../_shared/logging.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  ...buildSecurityHeaders(),
 };
 
 // Initialize clients
@@ -263,32 +266,7 @@ function fallbackExtraction(htmlContent: string, sourceUrl: string): Partial<Ses
   return fallbackData;
 }
 
-async function logExtractionAttempt(
-  url: string,
-  model: string,
-  tokensIn: number,
-  tokensOut: number,
-  schemaOk: boolean,
-  retryCount: number,
-  trapHit: string[],
-  rawOutput: string
-) {
-  try {
-    const redactedOutput = redactPII(rawOutput);
-    await supabase.from('ai_extract_logs').insert({
-      url,
-      model,
-      tokens_in: tokensIn,
-      tokens_out: tokensOut,
-      schema_ok: schemaOk,
-      retry_count: retryCount,
-      trap_hit: trapHit,
-      raw_output: redactedOutput
-    });
-  } catch (error) {
-    console.error('Failed to log extraction attempt:', error);
-  }
-}
+// logExtractionAttempt is now imported from _shared/logging.ts
 
 async function extractSessionData(
   htmlContent: string, 
@@ -352,16 +330,16 @@ async function extractSessionData(
     const schemaValid = validation.success;
     
     // Log extraction attempt
-    await logExtractionAttempt(
-      sourceUrl,
-      'gpt-4.1-2025-04-14',
-      Math.ceil(htmlContent.length / 4), // Rough token estimate
-      Math.ceil(rawOutput.length / 4),
-      schemaValid,
-      retryCount,
-      trapHit,
-      rawOutput
-    );
+    await logExtractionAttempt({
+      url: sourceUrl,
+      model: 'gpt-4.1-2025-04-14',
+      tokens_in: Math.ceil(htmlContent.length / 4), // Rough token estimate
+      tokens_out: Math.ceil(rawOutput.length / 4),
+      schema_ok: schemaValid,
+      retry_count: retryCount,
+      trap_hit: trapHit,
+      raw_output: redactPII(rawOutput)
+    });
 
     if (validation.success && trapHit.length === 0) {
       console.log('Primary extraction successful');
@@ -389,16 +367,16 @@ async function extractSessionData(
     errors.push(`OpenAI extraction error: ${error.message}`);
     
     // Log failed attempt
-    await logExtractionAttempt(
-      sourceUrl,
-      'gpt-4.1-2025-04-14',
-      Math.ceil(htmlContent.length / 4),
-      0,
-      false,
-      retryCount,
-      ['extraction_error'],
-      error.message
-    );
+    await logExtractionAttempt({
+      url: sourceUrl,
+      model: 'gpt-4.1-2025-04-14',
+      tokens_in: Math.ceil(htmlContent.length / 4),
+      tokens_out: 0,
+      schema_ok: false,
+      retry_count: retryCount,
+      trap_hit: ['extraction_error'],
+      raw_output: redactPII(error.message)
+    });
   }
 
   // Retry with error-aware prompt if we have validation errors
@@ -419,16 +397,16 @@ async function extractSessionData(
       const schemaValid = validation.success;
       
       // Log retry attempt
-      await logExtractionAttempt(
-        sourceUrl,
-        'gpt-4.1-2025-04-14',
-        Math.ceil(htmlContent.length / 4),
-        Math.ceil(rawOutput.length / 4),
-        schemaValid,
-        retryCount,
-        trapHit,
-        rawOutput
-      );
+      await logExtractionAttempt({
+        url: sourceUrl,
+        model: 'gpt-4.1-2025-04-14',
+        tokens_in: Math.ceil(htmlContent.length / 4),
+        tokens_out: Math.ceil(rawOutput.length / 4),
+        schema_ok: schemaValid,
+        retry_count: retryCount,
+        trap_hit: trapHit,
+        raw_output: redactPII(rawOutput)
+      });
 
       if (validation.success && trapHit.length === 0) {
         console.log('Retry extraction successful');
