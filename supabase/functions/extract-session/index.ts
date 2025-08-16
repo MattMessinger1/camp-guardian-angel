@@ -493,6 +493,7 @@ serve(async (req) => {
       const finalSourceId = source_id || crypto.randomUUID();
 
     console.log(`Extracting session data from: ${source_url}`);
+    console.log(`Using source_id: ${finalSourceId}`);
     const result = await extractSessionData(html_content, source_url);
 
     if (result.success && result.data) {
@@ -514,8 +515,13 @@ serve(async (req) => {
 
       if (insertError) {
         console.error('Error inserting candidate:', insertError);
+        console.error('Candidate data:', JSON.stringify(candidateData, null, 2));
         return new Response(
-          JSON.stringify({ error: 'Failed to store extraction result' }),
+          JSON.stringify({ 
+            error: 'Failed to store extraction result',
+            details: insertError.message,
+            candidateData: candidateData 
+          }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
