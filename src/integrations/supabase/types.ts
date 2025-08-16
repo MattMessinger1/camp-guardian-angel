@@ -1668,6 +1668,7 @@ export type Database = {
           embedding: string | null
           end_at: string | null
           end_date: string | null
+          evidence_snippet: string | null
           high_demand: boolean
           id: string
           last_verified_at: string | null
@@ -1705,6 +1706,7 @@ export type Database = {
           embedding?: string | null
           end_at?: string | null
           end_date?: string | null
+          evidence_snippet?: string | null
           high_demand?: boolean
           id?: string
           last_verified_at?: string | null
@@ -1742,6 +1744,7 @@ export type Database = {
           embedding?: string | null
           end_at?: string | null
           end_date?: string | null
+          evidence_snippet?: string | null
           high_demand?: boolean
           id?: string
           last_verified_at?: string | null
