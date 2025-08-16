@@ -328,6 +328,13 @@ export type Database = {
             foreignKeyName: "fk_captcha_events_session"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "fk_captcha_events_session"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
@@ -708,6 +715,13 @@ export type Database = {
             foreignKeyName: "fk_plan_items_session_id"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "fk_plan_items_session_id"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
@@ -742,6 +756,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "prewarm_jobs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
           {
             foreignKeyName: "prewarm_jobs_session_id_fkey"
             columns: ["session_id"]
@@ -1078,6 +1099,13 @@ export type Database = {
             foreignKeyName: "registration_plans_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "registration_plans_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
@@ -1167,6 +1195,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "registration_plans"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registrations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
           },
           {
             foreignKeyName: "registrations_session_id_fkey"
@@ -1291,6 +1326,13 @@ export type Database = {
             foreignKeyName: "reservation_holds_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "reservation_holds_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
@@ -1359,6 +1401,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
           },
           {
             foreignKeyName: "reservations_session_id_fkey"
@@ -2028,6 +2077,58 @@ export type Database = {
         }
         Relationships: []
       }
+      mv_sessions_search: {
+        Row: {
+          activity_id: string | null
+          activity_name: string | null
+          age_max: number | null
+          age_min: number | null
+          availability_status: string | null
+          capacity: number | null
+          city: string | null
+          embedding: string | null
+          end_date: string | null
+          last_verified_at: string | null
+          location_name: string | null
+          name: string | null
+          platform: string | null
+          price_max: number | null
+          price_min: number | null
+          provider_id: string | null
+          session_end_date: string | null
+          session_id: string | null
+          session_start_date: string | null
+          signup_url: string | null
+          spots_available: number | null
+          start_date: string | null
+          state: string | null
+          title: string | null
+          tsv: unknown | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activity_sessions_mv"
+            referencedColumns: ["activity_id"]
+          },
+          {
+            foreignKeyName: "sessions_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       allocate_registrations: {
@@ -2172,6 +2273,10 @@ export type Database = {
       }
       refresh_activity_sessions_mv: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      refresh_mv_sessions_search: {
+        Args: { concurrent?: boolean }
         Returns: undefined
       }
       search_hybrid: {
