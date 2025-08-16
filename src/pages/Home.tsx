@@ -169,9 +169,13 @@ const HomePage = () => {
           <SearchBar
             q={search.q} setQ={search.setQ}
             city={search.city} setCity={search.setCity}
-            start={search.start} setStart={search.setStart}
-            end={search.end} setEnd={search.setEnd}
-            platform={search.platform} setPlatform={search.setPlatform}
+            state={search.state} setState={search.setState}
+            ageMin={search.ageMin} setAgeMin={search.setAgeMin}
+            ageMax={search.ageMax} setAgeMax={search.setAgeMax}
+            dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
+            dateTo={search.dateTo} setDateTo={search.setDateTo}
+            priceMax={search.priceMax} setPriceMax={search.setPriceMax}
+            availability={search.availability} setAvailability={search.setAvailability}
             onSearch={search.run}
           />
 
@@ -185,6 +189,14 @@ const HomePage = () => {
             </div>
             
             <Results items={search.items} loading={search.loading} error={search.error} />
+            
+            {/* Search performance indicator */}
+            {search.meta.elapsed && (
+              <div className="text-xs text-muted-foreground text-center mt-4">
+                Search completed in {search.meta.elapsed}ms
+                {search.meta.cached && ' (cached)'}
+              </div>
+            )}
           </main>
         </>
       ) : (

@@ -1318,6 +1318,33 @@ export type Database = {
           },
         ]
       }
+      search_cache: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          query_hash: string
+          query_params: Json
+          results: Json
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          query_hash: string
+          query_params: Json
+          results: Json
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          query_hash?: string
+          query_params?: Json
+          results?: Json
+        }
+        Relationships: []
+      }
       search_embeddings: {
         Row: {
           created_at: string | null
@@ -1834,6 +1861,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_search_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_attempts_count_week: {
         Args: { p_child_id: string; p_tz?: string }
         Returns: number
@@ -1928,24 +1959,31 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      search_unified: {
+      search_hybrid: {
         Args: {
+          p_age_max: number
+          p_age_min: number
+          p_availability: string
           p_city: string
-          p_end: string
+          p_date_from: string
+          p_date_to: string
           p_limit: number
           p_offset: number
-          p_platform: string
-          p_start: string
+          p_price_max: number
+          p_state: string
           q: string
           q_embedding: string
         }
         Returns: {
           activity_id: string
           city: string
+          freshness_score: number
+          keyword_score: number
           name: string
           score: number
           sessions: Json
           state: string
+          vector_score: number
         }[]
       }
       set_limit: {

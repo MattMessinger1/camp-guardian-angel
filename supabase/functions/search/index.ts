@@ -1,5 +1,4 @@
 // deno-lint-ignore-file no-explicit-any
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
@@ -11,6 +10,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Content-Type': 'application/json'
 };
+
+// Generate cache key for query parameters
+function generateCacheKey(params: Record<string, any>): string {
+  const sortedParams = Object.keys(params).sort().reduce((result, key) => {
+    if (params[key] !== null && params[key] !== undefined) {
+      result[key] = params[key];
+    }
+    return result;
+  }, {} as Record<string, any>);
+  return btoa(JSON.stringify(sortedParams)).slice(0, 32);
+}
 
 async function embed(q: string | null) {
   if (!q || !q.trim()) return null;
@@ -36,7 +46,7 @@ async function embed(q: string | null) {
   return json.data[0].embedding;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -45,32 +55,64 @@ serve(async (req) => {
   const url = new URL(req.url);
   const q = url.searchParams.get("q");
   const city = url.searchParams.get("city");
-  const start = url.searchParams.get("start"); // YYYY-MM-DD
-  const end = url.searchParams.get("end");
-  const platform = url.searchParams.get("platform");
+  const state = url.searchParams.get("state");
+  const ageMin = url.searchParams.get("age_min") ? parseInt(url.searchParams.get("age_min")!) : null;
+  const ageMax = url.searchParams.get("age_max") ? parseInt(url.searchParams.get("age_max")!) : null;
+  const dateFrom = url.searchParams.get("date_from"); // YYYY-MM-DD
+  const dateTo = url.searchParams.get("date_to"); // YYYY-MM-DD
+  const priceMax = url.searchParams.get("price_max") ? parseFloat(url.searchParams.get("price_max")!) : null;
+  const availability = url.searchParams.get("availability");
   const page = parseInt(url.searchParams.get("page") ?? "0");
   const limit = parseInt(url.searchParams.get("limit") ?? "20");
 
-  console.log(`Search request: q="${q}", city="${city}", page=${page}, limit=${limit}`);
+  const searchParams = { q, city, state, ageMin, ageMax, dateFrom, dateTo, priceMax, availability, page, limit };
+  console.log(`Search request:`, searchParams);
 
   try {
     const started = performance.now();
     
-    const qEmbedding = await embed(q);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
       auth: { persistSession: false }
     });
 
-    console.log('Calling search_unified RPC...');
+    // Check cache first for hot queries
+    const cacheKey = generateCacheKey(searchParams);
+    const { data: cachedResult } = await supabase
+      .from('search_cache')
+      .select('results')
+      .eq('query_hash', cacheKey)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (cachedResult) {
+      console.log('Cache hit for query:', cacheKey);
+      const elapsed = Math.round(performance.now() - started);
+      
+      return new Response(JSON.stringify(cachedResult.results), {
+        headers: {
+          ...corsHeaders,
+          "Cache-Control": "public, max-age=60, s-maxage=300",
+          "X-Cache": "HIT",
+          "X-Response-Time": `${elapsed}ms`
+        }
+      });
+    }
+
+    const qEmbedding = await embed(q);
+    console.log('Calling search_hybrid RPC...');
     
-    // Call RPC
-    const { data, error } = await supabase.rpc("search_unified", {
+    // Call enhanced RPC
+    const { data, error } = await supabase.rpc("search_hybrid", {
       q,
       q_embedding: qEmbedding,
       p_city: city,
-      p_start: start ? new Date(start) : null,
-      p_end: end ? new Date(end) : null,
-      p_platform: platform,
+      p_state: state,
+      p_age_min: ageMin,
+      p_age_max: ageMax,
+      p_date_from: dateFrom ? new Date(dateFrom) : null,
+      p_date_to: dateTo ? new Date(dateTo) : null,
+      p_price_max: priceMax,
+      p_availability: availability,
       p_limit: limit,
       p_offset: page * limit
     });
@@ -80,41 +122,49 @@ serve(async (req) => {
       throw error;
     }
 
-    // Apply very low relevance filtering - scores seem to be very low
-    const filteredData = data?.filter((item: any) => {
-      // If no query provided, return all results  
-      if (!q || !q.trim()) return true;
-      
-      // Filter by relevance score - very low threshold since scores are near 0
-      return item.score > 0.001;
-    }) || [];
-
     const elapsed = Math.round(performance.now() - started);
+    const results = { items: data || [], meta: { elapsed, cached: false } };
     
-    // Observability logging
+    // Cache hot queries (with score threshold for relevance)
+    if (data && data.length > 0 && elapsed < 100) {
+      await supabase.from('search_cache').insert({
+        query_hash: cacheKey,
+        query_params: searchParams,
+        results,
+        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 min TTL
+      });
+    }
+
+    // Enhanced observability logging
     console.log(JSON.stringify({
       type: 'search_result',
-      q, city, start, end, platform, page, limit, 
-      count: filteredData.length,
-      total_unfiltered: data?.length || 0,
-      ms: elapsed
+      ...searchParams,
+      count: data?.length || 0,
+      avg_score: data?.length ? (data.reduce((sum: number, item: any) => sum + item.score, 0) / data.length).toFixed(3) : 0,
+      ms: elapsed,
+      cache_miss: true
     }));
 
-    console.log(`Search completed successfully, found ${filteredData.length} relevant results (${data?.length || 0} total) in ${elapsed}ms`);
+    console.log(`Search completed: ${data?.length || 0} results in ${elapsed}ms`);
 
-    return new Response(JSON.stringify({ items: filteredData }), {
+    return new Response(JSON.stringify(results), {
       headers: {
         ...corsHeaders,
-        // cache: short TTL + allow CDN/edge cache
-        "Cache-Control": "public, max-age=0, s-maxage=30, stale-while-revalidate=60",
-        "Vary": "q, city, start, end, platform, page, limit"
+        "Cache-Control": "public, max-age=30, s-maxage=300, stale-while-revalidate=600",
+        "X-Cache": "MISS",
+        "X-Response-Time": `${elapsed}ms`,
+        "Vary": "q, city, state, age_min, age_max, date_from, date_to, price_max, availability, page, limit"
       }
     });
   } catch (e: any) {
     console.error('Search error:', e);
-    const status = e?.status ?? 500;
-    return new Response(JSON.stringify({ error: e?.message ?? "search_error" }), {
-      status,
+    const elapsed = Math.round(performance.now() - performance.now());
+    
+    return new Response(JSON.stringify({ 
+      error: e?.message ?? "search_error",
+      meta: { elapsed, cached: false }
+    }), {
+      status: e?.status ?? 500,
       headers: corsHeaders
     });
   }
