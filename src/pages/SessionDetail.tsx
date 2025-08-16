@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SecurityBadge } from "@/components/ui/security-badge";
+import { TrustStrip } from "@/components/ui/trust-strip";
+import { ExternalLink, Copy, Calendar, MapPin, DollarSign, Users, Clock } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -33,52 +33,42 @@ function useSEO(title: string, description: string, canonicalPath: string) {
 interface SessionRow {
   id: string;
   title: string | null;
+  name: string | null;
   start_at: string | null;
   end_at: string | null;
+  start_date: string | null;
+  end_date: string | null;
   capacity: number | null;
-  upfront_fee_cents: number | null;
+  price_min: number | null;
+  price_max: number | null;
+  age_min: number | null;
+  age_max: number | null;
+  location: string | null;
+  location_city: string | null;
+  location_state: string | null;
+  source_url: string | null;
+  signup_url: string | null;
+  last_verified_at: string | null;
+  platform: string | null;
+  availability_status: string | null;
   provider: { name: string | null } | null;
 }
-
-interface ChildRow { id: string; info_token: string; }
 
 export default function SessionDetail() {
   const params = useParams();
   const sessionId = params.id!;
-  useSEO("Session Details | CampRush", "View session details and register.", `/sessions/${sessionId}`);
-
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [childId, setChildId] = useState<string>("");
-  const [priority, setPriority] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [timeDelta, setTimeDelta] = useState<number | null>(null);
-  const [attemptsUsed, setAttemptsUsed] = useState<number>(0);
-  const [limitCfg, setLimitCfg] = useState<{ count: number; week_tz: string }>({ count: 5, week_tz: 'America/Chicago' });
-  const [overlapDetected, setOverlapDetected] = useState(false);
-  const [allowOverlaps, setAllowOverlaps] = useState(false);
-
-  const fp = useMemo(() => {
-    try {
-      const parts = [
-        navigator.userAgent,
-        navigator.language,
-        `${screen.width}x${screen.height}`,
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
-        (navigator as any).platform || "",
-      ];
-      return btoa(parts.join("|"));
-    } catch {
-      return "";
-    }
-  }, []);
 
   const { data: sessionData, isLoading } = useQuery({
     queryKey: ["session", sessionId],
     queryFn: async (): Promise<SessionRow | null> => {
       const { data, error } = await supabase
         .from("sessions")
-        .select("id,title,start_at,end_at,capacity,upfront_fee_cents,provider:provider_id(name)")
+        .select(`
+          id, title, name, start_at, end_at, start_date, end_date, capacity,
+          price_min, price_max, age_min, age_max, location, location_city, location_state,
+          source_url, signup_url, last_verified_at, platform, availability_status,
+          provider:provider_id(name)
+        `)
         .eq("id", sessionId)
         .maybeSingle();
       if (error) throw error;
@@ -86,237 +76,273 @@ export default function SessionDetail() {
     },
   });
 
-  const { data: children } = useQuery({
-    queryKey: ["children"],
-    queryFn: async (): Promise<ChildRow[]> => {
-      const { data, error } = await supabase
-        .from("children_old")
-        .select("id, info_token")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: Boolean(user),
-  });
+  useSEO(
+    sessionData?.title || sessionData?.name || "Session Details",
+    `View details for ${sessionData?.title || sessionData?.name || "this session"} and go to signup.`,
+    `/sessions/${sessionId}`
+  );
 
-  // Time diagnostics query
-  const { data: timeData } = useQuery({
-    queryKey: ["time-diagnostics"],
-    queryFn: async () => {
-      const clientTime = Date.now();
-      const { data, error } = await supabase.functions.invoke("time-diagnostics", {
-        body: { client_time_ms: clientTime }
+  const handleGoToSignup = () => {
+    if (sessionData?.signup_url) {
+      window.open(sessionData.signup_url, "_blank");
+    } else {
+      toast({ 
+        title: "No signup URL", 
+        description: "This session doesn't have a direct signup link available." 
       });
-      if (error) throw error;
-      return data;
-    },
-    refetchInterval: 30000, // Refresh every 30 seconds
-  });
-
-  // Update time delta when timeData changes
-  useEffect(() => {
-    if (timeData?.skew_ms !== undefined) {
-      setTimeDelta(timeData.skew_ms);
-    }
-  }, [timeData]);
-
-  // Attempts metering: fetch current week attempts for selected child
-  useEffect(() => {
-    const run = async () => {
-      if (!user || !childId) { setAttemptsUsed(0); return; }
-      try {
-        const { data: cfgRow } = await supabase
-          .from('app_config')
-          .select('value')
-          .eq('key', 'weekly_child_exec_limit')
-          .maybeSingle();
-        const val = (cfgRow?.value as any) || {};
-        const count = Number(val?.count) || 5;
-        const tz = typeof val?.week_tz === 'string' ? val.week_tz : 'America/Chicago';
-        setLimitCfg({ count, week_tz: tz });
-        const { data } = await supabase.rpc('get_attempts_count_week', { p_child_id: childId, p_tz: tz });
-        setAttemptsUsed(Number(data || 0));
-      } catch {
-        setAttemptsUsed(0);
-      }
-    };
-    run();
-  }, [user, childId]);
-
-  // Overlap detection: non-blocking warning and toggle
-  useEffect(() => {
-    const run = async () => {
-      if (!user || !childId || !sessionData?.start_at || !sessionData?.end_at) {
-        setOverlapDetected(false);
-        return;
-      }
-      try {
-        const { data } = await supabase.rpc('child_session_overlap_exists', {
-          p_child_id: childId,
-          p_start: sessionData.start_at,
-          p_end: sessionData.end_at,
-        });
-        setOverlapDetected(Boolean(data));
-      } catch {
-        setOverlapDetected(false);
-      }
-    };
-    run();
-  }, [user, childId, sessionData?.start_at, sessionData?.end_at]);
-
-  const handleRegister = async () => {
-    if (!user) {
-      navigate("/login", { state: { from: `/sessions/${sessionId}` } });
-      return;
-    }
-    if (!childId) {
-      toast({ title: "Choose a child", description: "Select a child to register." });
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("register-session", {
-        body: {
-          child_id: childId,
-          session_id: sessionId,
-          priority_opt_in: priority,
-          device_fingerprint: fp,
-          allow_overlaps: allowOverlaps,
-        },
-      });
-      setSubmitting(false);
-      if (error) {
-        toast({ title: "Registration failed", description: error.message });
-        return;
-      }
-      if (data?.blocked) {
-        toast({ title: "Request received", description: "Thanks!" });
-        return;
-      }
-      if (data?.error) {
-        toast({ title: "Registration failed", description: data.error });
-        return;
-      }
-      if (data?.review) {
-        toast({ title: "Registration submitted", description: "Your request is under review due to duplicate-detection signals." });
-        return;
-      }
-      if (data?.skipped_overlap) {
-        toast({ title: "Overlapping session", description: "This session overlaps a confirmed one for this child. You can enable 'Allow overlaps' to proceed." });
-        return;
-      }
-      toast({ title: "Registration submitted", description: "Status: pending" });
-    } catch (e: any) {
-      setSubmitting(false);
-      toast({ title: "Error", description: e.message });
     }
   };
 
-  const handleSaveCard = async () => {
+  const handleCopyChildInfo = () => {
+    // Placeholder for D.2 feature - copy child info to clipboard
+    const childInfo = "Sample child info (to be implemented in D.2)";
+    navigator.clipboard?.writeText(childInfo).then(() => {
+      toast({ 
+        title: "Child info copied", 
+        description: "Paste this into external registration forms to speed up signup." 
+      });
+    }).catch(() => {
+      toast({ 
+        title: "Copy failed", 
+        description: "Unable to copy to clipboard." 
+      });
+    });
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString();
+  };
+
+  const formatDateTime = (dateStr: string | null) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleString();
+  };
+
+  const formatPrice = (min: number | null, max: number | null) => {
+    if (min === null && max === null) return "—";
+    if (min === max) return `$${min}`;
+    if (min === null) return `Up to $${max}`;
+    if (max === null) return `From $${min}`;
+    return `$${min} - $${max}`;
+  };
+
+  const formatAge = (min: number | null, max: number | null) => {
+    if (min === null && max === null) return "All ages";
+    if (min === max) return `Age ${min}`;
+    if (min === null) return `Up to ${max} years`;
+    if (max === null) return `${min}+ years`;
+    return `Ages ${min}-${max}`;
+  };
+
+  const getHostFromUrl = (url: string | null) => {
+    if (!url) return "Unknown";
     try {
-      const { data, error } = await supabase.functions.invoke("create-setup-session", { body: {} });
-      if (error) {
-        toast({ title: "Setup failed", description: error.message });
-        return;
-      }
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      } else {
-        toast({ title: "Setup error", description: "No URL returned" });
-      }
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message });
+      return new URL(url).hostname.replace('www.', '');
+    } catch {
+      return "Unknown";
     }
   };
 
   return (
-    <main className="container mx-auto py-10">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <Link to="/sessions" className="text-sm underline underline-offset-4">← Back to sessions</Link>
-        {isLoading && <div className="text-muted-foreground">Loading…</div>}
-        {!isLoading && !sessionData && (
-          <div className="text-muted-foreground">Session not found.</div>
-        )}
-        {sessionData && (
-          <Card className="surface-card">
-            <CardHeader>
-              <CardTitle className="text-2xl">{sessionData.title || "Untitled"}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div>Provider: {sessionData.provider?.name || "—"}</div>
-              <div>
-                {sessionData.start_at ? new Date(sessionData.start_at).toLocaleString() : ""}
-                {sessionData.end_at ? ` – ${new Date(sessionData.end_at).toLocaleString()}` : ""}
-              </div>
-              <div>Capacity: {sessionData.capacity ?? "—"}</div>
-              <div>Upfront fee: {typeof sessionData.upfront_fee_cents === 'number' ? `$${(sessionData.upfront_fee_cents/100).toFixed(2)}` : "—"}</div>
-              {timeDelta !== null && (
-                <div className="flex items-center gap-2">
-                  <span>Server time vs your device:</span>
-                  <span className={`font-mono ${Math.abs(timeDelta) > 500 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    Δ = {timeDelta > 0 ? '+' : ''}{timeDelta}ms
-                  </span>
-                  {Math.abs(timeDelta) > 500 && (
-                    <span className="text-xs text-destructive">(High skew detected)</span>
-                  )}
-                </div>
-              )}
+    <main className="container mx-auto py-6 px-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          ← Back to search
+        </Link>
+
+        {isLoading && (
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Loading session details...</div>
             </CardContent>
           </Card>
         )}
 
-        <Card className="surface-card">
-          <CardHeader>
-            <CardTitle>Register</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!user && (
-              <div className="text-sm text-muted-foreground">
-                Please <Link to="/login" className="underline underline-offset-4">log in</Link> to register.
-              </div>
-            )}
-            <div className="grid gap-2">
-              <Label>Select child</Label>
-              <Select value={childId} onValueChange={setChildId} disabled={!user || !children?.length}>
-                <SelectTrigger>
-                  <SelectValue placeholder={!user ? "Login required" : (!children?.length ? "No children yet (add one)" : "Choose child")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {children?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>Token {c.info_token.slice(0, 12)}…</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {user && (!children || children.length === 0) && (
-                <div className="text-xs text-muted-foreground">No children yet. Add one on the <Link className="underline" to="/children">Children</Link> page.</div>
-              )}
-              {user && childId && (
-                <div className="text-xs text-muted-foreground">This Mon–Sun: {attemptsUsed} of {limitCfg.count} attempts used.</div>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <input id="priority" type="checkbox" className="h-4 w-4" checked={priority} onChange={(e) => setPriority(e.target.checked)} />
-              <label htmlFor="priority" className="text-sm">Add $20 priority (optional)</label>
-            </div>
-            {overlapDetected && (
-              <div className="space-y-1">
-                <div className="text-sm text-destructive">Warning: This session overlaps a confirmed one for this child.</div>
-                <div className="flex items-center gap-3">
-                  <input id="allowOverlaps" type="checkbox" className="h-4 w-4" checked={allowOverlaps} onChange={(e) => setAllowOverlaps(e.target.checked)} />
-                  <label htmlFor="allowOverlaps" className="text-sm">Allow overlaps</label>
+        {!isLoading && !sessionData && (
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Session not found.</div>
+            </CardContent>
+          </Card>
+        )}
+
+        {sessionData && (
+          <>
+            {/* Main session details */}
+            <Card>
+              <CardHeader>
+                <div className="space-y-2">
+                  <CardTitle className="text-2xl lg:text-3xl">
+                    {sessionData.title || sessionData.name || "Untitled Session"}
+                  </CardTitle>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SecurityBadge variant="small" />
+                    {sessionData.platform && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
+                        {sessionData.platform}
+                      </span>
+                    )}
+                    {sessionData.availability_status && (
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                        sessionData.availability_status === 'open' 
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                          : sessionData.availability_status === 'full'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {sessionData.availability_status}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={handleRegister} variant="hero" disabled={submitting || !user}>
-                {submitting ? "Submitting…" : "Submit registration"}
-              </Button>
-              <Button onClick={handleSaveCard} variant="secondary" disabled={!user}>
-                Save a card for future charges
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Key details grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="font-medium">Dates</div>
+                      <div className="text-sm text-muted-foreground">
+                        {sessionData.start_date && sessionData.end_date 
+                          ? `${formatDate(sessionData.start_date)} - ${formatDate(sessionData.end_date)}`
+                          : sessionData.start_at
+                          ? formatDateTime(sessionData.start_at)
+                          : "—"
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="font-medium">Schedule</div>
+                      <div className="text-sm text-muted-foreground">
+                        {sessionData.start_at && sessionData.end_at 
+                          ? `${new Date(sessionData.start_at).toLocaleTimeString()} - ${new Date(sessionData.end_at).toLocaleTimeString()}`
+                          : "See details on signup page"
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="font-medium">Location</div>
+                      <div className="text-sm text-muted-foreground">
+                        {sessionData.location || 
+                         (sessionData.location_city && sessionData.location_state 
+                           ? `${sessionData.location_city}, ${sessionData.location_state}`
+                           : "—"
+                         )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <DollarSign className="w-5 h-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="font-medium">Price</div>
+                      <div className="text-sm text-muted-foreground">
+                        {formatPrice(sessionData.price_min, sessionData.price_max)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Users className="w-5 h-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="font-medium">Age Range</div>
+                      <div className="text-sm text-muted-foreground">
+                        {formatAge(sessionData.age_min, sessionData.age_max)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {sessionData.capacity && (
+                    <div className="flex items-start gap-3">
+                      <Users className="w-5 h-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <div className="font-medium">Capacity</div>
+                        <div className="text-sm text-muted-foreground">
+                          {sessionData.capacity} spots
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <Button 
+                    onClick={handleGoToSignup}
+                    className="flex-1 sm:flex-none"
+                    size="lg"
+                    disabled={!sessionData.signup_url}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Go to signup
+                  </Button>
+                  <Button 
+                    onClick={handleCopyChildInfo}
+                    variant="outline"
+                    size="lg"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy my child info
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Provenance and trust info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Data Source</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="font-medium">Spotted on:</span>{" "}
+                    <span className="text-muted-foreground">
+                      {getHostFromUrl(sessionData.source_url)}
+                    </span>
+                    {sessionData.source_url && (
+                      <a 
+                        href={sessionData.source_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="ml-2 text-primary hover:underline"
+                      >
+                        <ExternalLink className="w-3 h-3 inline" />
+                      </a>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <span className="font-medium">Last verified:</span>{" "}
+                    <span className="text-muted-foreground">
+                      {sessionData.last_verified_at 
+                        ? formatDateTime(sessionData.last_verified_at)
+                        : "Not verified"
+                      }
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="font-medium">Data type:</span>{" "}
+                    <span className="text-muted-foreground">Public data</span>
+                  </div>
+                </div>
+
+                <TrustStrip />
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </main>
   );
