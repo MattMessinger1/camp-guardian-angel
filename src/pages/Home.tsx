@@ -179,7 +179,7 @@ const HomePage = () => {
             onSearch={search.run}
           />
 
-          <main className="max-w-5xl mx-auto px-4 py-6">
+          <div className="max-w-6xl mx-auto px-4 py-8">
             {/* Dev Tools Section */}
             <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <h3 className="text-lg font-semibold mb-4 text-yellow-800">🛠️ Development Tools</h3>
@@ -192,12 +192,12 @@ const HomePage = () => {
             
             {/* Search performance indicator */}
             {search.meta.elapsed && (
-              <div className="text-xs text-muted-foreground text-center mt-4">
+              <div className="text-xs text-muted-foreground text-center mt-6 p-2 bg-muted/30 rounded">
                 Search completed in {search.meta.elapsed}ms
                 {search.meta.cached && ' (cached)'}
               </div>
             )}
-          </main>
+          </div>
         </>
       ) : (
         <div className="max-w-5xl mx-auto px-4 py-12 text-center">

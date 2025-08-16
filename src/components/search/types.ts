@@ -3,6 +3,7 @@ export type SessionItem = {
   start: string;
   end: string | null;
   availability: number | null;
+  availability_status?: string;
   price_min: number | null;
   platform: string | null;
 };
