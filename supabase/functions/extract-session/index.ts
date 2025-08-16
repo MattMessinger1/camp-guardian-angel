@@ -489,8 +489,42 @@ serve(async (req) => {
         );
       }
 
-      // Generate a source_id if not provided
-      const finalSourceId = source_id || crypto.randomUUID();
+      // Get or create a source_id that exists in the sources table
+      let finalSourceId = source_id;
+      
+      if (!finalSourceId) {
+        // Use the existing source or create a new one
+        const { data: existingSource, error: sourceError } = await supabase
+          .from('sources')
+          .select('id')
+          .eq('base_url', source_url)
+          .single();
+        
+        if (existingSource) {
+          finalSourceId = existingSource.id;
+        } else {
+          // Create a new source entry
+          const { data: newSource, error: createError } = await supabase
+            .from('sources')
+            .insert({
+              base_url: source_url,
+              type: 'html_page',
+              status: 'active'
+            })
+            .select('id')
+            .single();
+          
+          if (createError) {
+            console.error('Failed to create source:', createError);
+            return new Response(
+              JSON.stringify({ error: 'Failed to create source entry' }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          finalSourceId = newSource.id;
+        }
+      }
 
     console.log(`Extracting session data from: ${source_url}`);
     console.log(`Using source_id: ${finalSourceId}`);
