@@ -450,6 +450,30 @@ export type Database = {
         }
         Relationships: []
       }
+      geocode_cache: {
+        Row: {
+          created_at: string
+          lat: number | null
+          lng: number | null
+          query: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          lat?: number | null
+          lng?: number | null
+          query: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          lat?: number | null
+          lng?: number | null
+          query?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       idempotency_keys: {
         Row: {
           created_at: string
