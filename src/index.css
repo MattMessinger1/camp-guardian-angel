@@ -336,9 +336,8 @@ All colors MUST be HSL. */
   line-height: 1.2;
   letter-spacing: -0.01em;
   margin: 0 0 12px 0;
-  max-width: 22ch;        /* balances lines */
   margin-inline: auto;
-  text-wrap: balance;     /* modern browsers */
+  white-space: nowrap;
 }
 
 .hero-accent {
