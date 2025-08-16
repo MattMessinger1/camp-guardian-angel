@@ -479,15 +479,18 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const { html_content, source_url, source_id } = await req.json();
+    try {
+      const { html_content, source_url, source_id } = await req.json();
 
-    if (!html_content || !source_url) {
-      return new Response(
-        JSON.stringify({ error: 'html_content and source_url are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      if (!html_content || !source_url) {
+        return new Response(
+          JSON.stringify({ error: 'html_content and source_url are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Generate a source_id if not provided
+      const finalSourceId = source_id || crypto.randomUUID();
 
     console.log(`Extracting session data from: ${source_url}`);
     const result = await extractSessionData(html_content, source_url);
@@ -495,7 +498,7 @@ serve(async (req) => {
     if (result.success && result.data) {
       // Store in session_candidates table
       const candidateData = {
-        source_id: source_id || null,
+        source_id: finalSourceId,
         url: source_url,
         extracted_json: result.data,
         confidence: result.confidence.overall,
