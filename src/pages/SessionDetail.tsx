@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,8 @@ import { TrustStrip } from "@/components/ui/trust-strip";
 import { ExternalLink, Copy, Calendar, MapPin, DollarSign, Users, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { CopyChildInfo } from "@/components/CopyChildInfo";
+import { useGeocoding } from "@/hooks/useGeocoding";
+import { LazyCoordinates } from "@/components/LazyCoordinates";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -47,6 +49,8 @@ interface SessionRow {
   location: string | null;
   location_city: string | null;
   location_state: string | null;
+  lat: number | null;
+  lng: number | null;
   source_url: string | null;
   signup_url: string | null;
   last_verified_at: string | null;
@@ -67,7 +71,7 @@ export default function SessionDetail() {
         .select(`
           id, title, name, start_at, end_at, start_date, end_date, capacity,
           price_min, price_max, age_min, age_max, location, location_city, location_state,
-          source_url, signup_url, last_verified_at, platform, availability_status,
+          lat, lng, source_url, signup_url, last_verified_at, platform, availability_status,
           provider:provider_id(name)
         `)
         .eq("id", sessionId)
@@ -233,6 +237,12 @@ export default function SessionDetail() {
                            : "—"
                          )}
                       </div>
+                      <LazyCoordinates 
+                        city={sessionData.location_city}
+                        state={sessionData.location_state}
+                        existingLat={sessionData.lat}
+                        existingLng={sessionData.lng}
+                      />
                     </div>
                   </div>
 
