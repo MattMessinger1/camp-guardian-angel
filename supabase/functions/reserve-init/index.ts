@@ -52,6 +52,20 @@ serve(async (req) => {
   });
 
   try {
+    // Check if we're in public mode and block private operations
+    const publicDataMode = (Deno.env.get('PUBLIC_DATA_MODE') ?? 'true') === 'true';
+    if (publicDataMode) {
+      console.log('🚫 PUBLIC_DATA_MODE: Blocking private reserve-init operation');
+      return new Response(JSON.stringify({ 
+        error: "This feature is not available in public mode. Please visit the provider's website directly to make a reservation.",
+        publicMode: true,
+        redirectToProvider: true
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     // Verify user authentication
     const { data: { user }, error: authError } = await userSupabase.auth.getUser();
     if (authError || !user) {

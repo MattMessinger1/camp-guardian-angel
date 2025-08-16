@@ -41,6 +41,20 @@ serve(async (req) => {
   });
 
   try {
+    // Check if we're in public mode and block private operations
+    const publicDataMode = (Deno.env.get('PUBLIC_DATA_MODE') ?? 'true') === 'true';
+    if (publicDataMode) {
+      console.log('🚫 PUBLIC_DATA_MODE: Blocking private reserve-execute operation');
+      return new Response(JSON.stringify({ 
+        error: "This feature is not available in public mode. Please visit the provider's website directly to complete your reservation.",
+        publicMode: true,
+        redirectToProvider: true
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     const { reservation_id, recaptcha_token } = await req.json();
     
     if (!reservation_id) {

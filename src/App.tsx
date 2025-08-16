@@ -39,6 +39,8 @@ import ConfirmSignup from "./pages/ConfirmSignup";
 import EmailForwardingSetup from "./pages/EmailForwardingSetup";
 import SystemDashboard from "./pages/SystemDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import HealthCheck from "./pages/HealthCheck";
+import GuardrailsTest from "./pages/GuardrailsTest";
 
 const queryClient = new QueryClient();
 
@@ -133,11 +135,13 @@ const App = () => (
                   <SystemDashboard />
                 </ProtectedRoute>
                } />
-              <Route path="/admin" element={
-                <ProtectedRoute>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
+               <Route path="/admin" element={
+                 <ProtectedRoute>
+                   <AdminDashboard />
+                 </ProtectedRoute>
+               } />
+               <Route path="/health-check" element={<HealthCheck />} />
+               <Route path="/guardrails-test" element={<GuardrailsTest />} />
               
               <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<Navigate to="/404" replace />} />
