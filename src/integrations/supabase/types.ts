@@ -392,6 +392,57 @@ export type Database = {
         }
         Relationships: []
       }
+      fetch_audit: {
+        Row: {
+          content_length: number | null
+          created_at: string
+          delete_after: string
+          fetch_duration_ms: number | null
+          host: string
+          id: string
+          ip_address: unknown | null
+          rate_limited: boolean | null
+          reason: string | null
+          response_code: number | null
+          robots_allowed: boolean | null
+          status: string
+          url: string
+          user_agent: string | null
+        }
+        Insert: {
+          content_length?: number | null
+          created_at?: string
+          delete_after?: string
+          fetch_duration_ms?: number | null
+          host: string
+          id?: string
+          ip_address?: unknown | null
+          rate_limited?: boolean | null
+          reason?: string | null
+          response_code?: number | null
+          robots_allowed?: boolean | null
+          status: string
+          url: string
+          user_agent?: string | null
+        }
+        Update: {
+          content_length?: number | null
+          created_at?: string
+          delete_after?: string
+          fetch_duration_ms?: number | null
+          host?: string
+          id?: string
+          ip_address?: unknown | null
+          rate_limited?: boolean | null
+          reason?: string | null
+          response_code?: number | null
+          robots_allowed?: boolean | null
+          status?: string
+          url?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       idempotency_keys: {
         Row: {
           created_at: string
@@ -1430,10 +1481,14 @@ export type Database = {
         Row: {
           confidence: number | null
           created_at: string
+          duplicate_of: string | null
+          embedding: string | null
           extracted_json: Json
           id: string
+          is_duplicate: boolean | null
           notes: string | null
           processed_at: string | null
+          similarity_score: number | null
           source_id: string
           status: string
           updated_at: string
@@ -1442,10 +1497,14 @@ export type Database = {
         Insert: {
           confidence?: number | null
           created_at?: string
+          duplicate_of?: string | null
+          embedding?: string | null
           extracted_json: Json
           id?: string
+          is_duplicate?: boolean | null
           notes?: string | null
           processed_at?: string | null
+          similarity_score?: number | null
           source_id: string
           status?: string
           updated_at?: string
@@ -1454,16 +1513,27 @@ export type Database = {
         Update: {
           confidence?: number | null
           created_at?: string
+          duplicate_of?: string | null
+          embedding?: string | null
           extracted_json?: Json
           id?: string
+          is_duplicate?: boolean | null
           notes?: string | null
           processed_at?: string | null
+          similarity_score?: number | null
           source_id?: string
           status?: string
           updated_at?: string
           url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "session_candidates_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "session_candidates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "session_candidates_source_id_fkey"
             columns: ["source_id"]
@@ -1880,6 +1950,36 @@ export type Database = {
         }
         Relationships: []
       }
+      system_metrics: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          metric_name: string
+          metric_type: string
+          recorded_at: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          metric_name: string
+          metric_type: string
+          recorded_at?: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          metric_name?: string
+          metric_type?: string
+          recorded_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           assisted_signup_consent_at: string | null
@@ -1960,9 +2060,25 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_fetch_audit: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_search_cache: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      detect_session_duplicates: {
+        Args: {
+          p_candidate_id: string
+          p_embedding: string
+          p_threshold?: number
+        }
+        Returns: {
+          duplicate_id: string
+          reason: string
+          similarity: number
+        }[]
       }
       get_attempts_count_week: {
         Args: { p_child_id: string; p_tz?: string }
