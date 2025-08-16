@@ -30,13 +30,52 @@ class PublicDataFetcher {
   private readonly defaultTimeout = 10000; // 10 seconds
   private readonly userAgent = 'CampScheduleBot/1.0 (+https://yoursite.com/robots)';
 
+  async canFetch(url: string): Promise<{ allowed: boolean; reason?: string }> {
+    // Centralized compliance check
+    if (isPublicMode()) {
+      logPublicDataInfo('Checking fetch permissions', url);
+    }
+
+    try {
+      // Check robots.txt compliance
+      const robotsCheck = await robotsChecker.isAllowed(url);
+      if (!robotsCheck.allowed) {
+        console.warn(`🤖 Robots.txt disallows fetching ${url}: ${robotsCheck.reason}`);
+        return { 
+          allowed: false, 
+          reason: robotsCheck.reason || 'Disallowed by robots.txt'
+        };
+      }
+
+      // Check rate limiting
+      const rateLimitCheck = await rateLimiter.checkLimit(url);
+      if (!rateLimitCheck.allowed) {
+        return { 
+          allowed: false, 
+          reason: `Rate limited. Wait ${rateLimitCheck.waitTime}ms`
+        };
+      }
+
+      return { allowed: true };
+    } catch (error) {
+      console.error('Error checking fetch permissions:', error);
+      return { allowed: false, reason: 'Error checking fetch permissions' };
+    }
+  }
+
   async fetch<T = any>(
     url: string, 
     options: FetchOptions = {}
   ): Promise<FetchResult<T>> {
-    // Log public data usage when in public mode
-    if (isPublicMode()) {
-      logPublicDataInfo('Fetching public data', url);
+    // Use centralized canFetch check
+    const canFetchResult = await this.canFetch(url);
+    if (!canFetchResult.allowed) {
+      return {
+        success: false,
+        error: canFetchResult.reason,
+        robotsAllowed: false,
+        rateLimited: canFetchResult.reason?.includes('Rate limited')
+      };
     }
 
     const {

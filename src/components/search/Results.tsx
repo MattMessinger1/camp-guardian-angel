@@ -214,6 +214,13 @@ export default function Results({ items, loading, error }:{
 
   return (
     <div className="space-y-6">
+      {/* Legal compliance banner */}
+      <div className="bg-muted/50 border border-border rounded-lg p-3">
+        <p className="text-xs text-muted-foreground">
+          Listings gathered from public sources. Click-out goes to official provider sites.
+        </p>
+      </div>
+      
       {/* Results count */}
       <div className="text-sm text-muted-foreground">
         Found {items.length} camp{items.length !== 1 ? 's' : ''} with available sessions
