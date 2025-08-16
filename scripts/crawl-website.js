@@ -7,8 +7,10 @@
  * Usage: node scripts/crawl-website.js --base=https://example.com --max-pages=100
  */
 
-const https = require('https');
-const http = require('http');
+import https from 'https';
+import http from 'http';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 const SUPABASE_URL = 'https://ezvwyfqtyanwnoyymhav.supabase.co';
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/crawl-website`;
@@ -199,12 +201,16 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
+// ES module equivalent of require.main === module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // Run the script
-if (require.main === module) {
+if (process.argv[1] === __filename) {
   main().catch(error => {
     console.error('❌ Script error:', error);
     process.exit(1);
   });
 }
 
-module.exports = { main, parseArguments, validateUrl };
+export { main, parseArguments, validateUrl };
