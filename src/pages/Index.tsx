@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SessionExtractionTest } from "@/components/SessionExtractionTest";
 
 import { CheckCircle2, Shield, Zap, CalendarClock } from "lucide-react";
 
@@ -199,6 +200,11 @@ const Index = () => {
               )}
             </CardContent>
           </Card>
+        </section>
+
+        {/* Session Extraction Test */}
+        <section id="test-extraction" className="container mx-auto py-8">
+          <SessionExtractionTest />
         </section>
 
         {/* Prefill form (UI only) */}
