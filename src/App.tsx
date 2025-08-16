@@ -38,6 +38,7 @@ import SignupRedirect from "./pages/SignupRedirect";
 import ConfirmSignup from "./pages/ConfirmSignup";
 import EmailForwardingSetup from "./pages/EmailForwardingSetup";
 import SystemDashboard from "./pages/SystemDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -130,6 +131,11 @@ const App = () => (
               <Route path="/system-dashboard" element={
                 <ProtectedRoute>
                   <SystemDashboard />
+                </ProtectedRoute>
+               } />
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <AdminDashboard />
                 </ProtectedRoute>
               } />
               
