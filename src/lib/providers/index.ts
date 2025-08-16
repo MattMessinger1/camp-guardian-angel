@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { blockCampProviderAPI, logCampProviderWarning } from '@/lib/config/publicMode';
+import { logPublicDataInfo } from '@/lib/config/publicMode';
 import type {
   ProviderAdapter,
   ProviderContext,
@@ -80,26 +80,15 @@ export async function run(
   ctx: ProviderContext,
   intent?: ProviderIntent
 ): Promise<FinalizeResult & { profile?: ProviderProfile; candidate?: ProviderSessionCandidate | null }> {
-  // Check if camp provider APIs are blocked
-  const blocked = blockCampProviderAPI(
-    'Camp provider automation',
-    { success: false, error: 'Camp provider APIs disabled in public data mode - only public camp data available' },
-    `URL: ${ctx.canonical_url}`
-  );
-  
-  if (blocked) {
-    return blocked;
-  }
-
   const profile = await detectPlatform(ctx.canonical_url);
   if (!profile) {
     return { success: false, error: 'Platform not recognized for URL' };
   }
 
+  // Log that we're using public data sources for camp operations
+  logPublicDataInfo('Camp provider operation', `Platform: ${profile.platform}, URL: ${ctx.canonical_url}`);
+
   const adapter = loadAdapter(profile.platform);
-  
-  // Log that we're attempting camp provider operations
-  logCampProviderWarning('Camp provider operation attempted', `Platform: ${profile.platform}`);
   
   await adapter.precheck(ctx);
 

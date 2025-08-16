@@ -3,50 +3,30 @@ import { env } from '@/config/environment';
 /**
  * Public Data Mode Configuration
  * 
- * When enabled, this mode:
- * - Blocks only camp provider API calls (Jackrabbit, DaySmart, etc.)
- * - Keeps other private APIs working (Supabase, Stripe, etc.)
- * - Uses only public camp data sources
- * - Implements strict rate limiting for camp data fetching
- * - Shows development warnings for camp provider operations
+ * When enabled, this mode indicates:
+ * - We're using public data sources for camp information
+ * - No private API connectors will be built for camp providers
+ * - Camp provider automation uses public scraping with proper rate limiting
+ * - Robots.txt compliance is enforced for public data fetching
  */
 
 export function isPublicMode(): boolean {
   return env.PUBLIC_DATA_MODE ?? true;
 }
 
-export function logCampProviderWarning(operation: string, context?: string) {
-  const message = `🏕️ PUBLIC DATA MODE: Camp provider ${operation} blocked`;
+export function logPublicDataInfo(operation: string, context?: string) {
+  const message = `🏕️ PUBLIC DATA MODE: ${operation} using public sources`;
   const details = context ? ` - ${context}` : '';
   
-  console.warn(`${message}${details}`);
+  console.info(`${message}${details}`);
   
-  // In development, also show more visible warnings
+  // In development, show informational logs
   if (import.meta.env.DEV) {
-    console.groupCollapsed(`%c${message}`, 'color: orange; font-weight: bold');
-    console.warn('Camp provider API call was blocked due to Public Data Mode being enabled');
+    console.groupCollapsed(`%c${message}`, 'color: blue; font-weight: bold');
+    console.info('Using public data sources for camp information');
     if (context) console.info('Context:', context);
-    console.warn('This only affects camp provider APIs (Jackrabbit, DaySmart, etc.)');
-    console.info('Other APIs (Supabase, Stripe, etc.) continue to work normally');
-    console.warn('To enable camp provider APIs, set PUBLIC_DATA_MODE=false in your environment');
+    console.info('No private API connectors are implemented in this mode');
+    console.info('All scraping respects robots.txt and implements rate limiting');
     console.groupEnd();
   }
-}
-
-export function requirePublicMode(operation: string): void {
-  if (!isPublicMode()) {
-    throw new Error(`${operation} is only available in Public Data Mode`);
-  }
-}
-
-export function blockCampProviderAPI(
-  operationName: string, 
-  fallbackValue?: any,
-  context?: string
-) {
-  if (isPublicMode()) {
-    logCampProviderWarning(`API call: ${operationName}`, context);
-    return fallbackValue;
-  }
-  return null; // Proceed with actual API call
 }

@@ -9,7 +9,7 @@
 
 import { robotsChecker } from './robotsChecker';
 import { rateLimiter } from './rateLimiter';
-import { isPublicMode, logCampProviderWarning } from '@/lib/config/publicMode';
+import { isPublicMode, logPublicDataInfo } from '@/lib/config/publicMode';
 
 interface FetchOptions {
   headers?: Record<string, string>;
@@ -34,10 +34,9 @@ class PublicDataFetcher {
     url: string, 
     options: FetchOptions = {}
   ): Promise<FetchResult<T>> {
-    // Ensure we're in public mode
-    if (!isPublicMode()) {
-      logCampProviderWarning('Public data fetcher called outside public mode', url);
-      return { success: false, error: 'Not in public data mode' };
+    // Log public data usage when in public mode
+    if (isPublicMode()) {
+      logPublicDataInfo('Fetching public data', url);
     }
 
     const {

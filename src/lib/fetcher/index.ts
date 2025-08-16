@@ -1,16 +1,15 @@
 /**
  * Fetcher Module - Public Data Mode
  * 
- * Unified interface for fetching camp data with:
- * - Public mode enforcement for camp providers only
- * - Robots.txt compliance for camp sites
- * - Rate limiting for camp data fetching
- * - Exponential backoff for camp sites
+ * Provides tools for respectful public data fetching:
+ * - Robots.txt compliance checking
+ * - Rate limiting with exponential backoff  
+ * - Public camp data source handling
  * 
- * Note: Other APIs (Supabase, Stripe, etc.) work normally
+ * Note: No private API connectors are implemented in public data mode
  */
 
 export { publicDataFetcher } from './publicDataFetcher';
 export { robotsChecker } from './robotsChecker';
 export { rateLimiter } from './rateLimiter';
-export { isPublicMode, logCampProviderWarning, blockCampProviderAPI } from '@/lib/config/publicMode';
+export { isPublicMode, logPublicDataInfo } from '@/lib/config/publicMode';

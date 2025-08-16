@@ -232,7 +232,7 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
   {
     key: 'PUBLIC_DATA_MODE',
     required: false,
-    description: 'Enable public data mode - blocks camp provider APIs (Jackrabbit, DaySmart, etc.) but keeps other APIs working',
+    description: 'Use public data sources for camp information - no private API connectors implemented',
     sensitive: false,
     defaultValue: true,
   },
