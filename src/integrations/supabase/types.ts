@@ -783,22 +783,31 @@ export type Database = {
       providers: {
         Row: {
           created_at: string
+          homepage: string | null
           id: string
+          logo_url: string | null
           name: string | null
+          platform_hint: string | null
           site_url: string | null
           stripe_connect_id: string | null
         }
         Insert: {
           created_at?: string
+          homepage?: string | null
           id?: string
+          logo_url?: string | null
           name?: string | null
+          platform_hint?: string | null
           site_url?: string | null
           stripe_connect_id?: string | null
         }
         Update: {
           created_at?: string
+          homepage?: string | null
           id?: string
+          logo_url?: string | null
           name?: string | null
+          platform_hint?: string | null
           site_url?: string | null
           stripe_connect_id?: string | null
         }
@@ -836,6 +845,53 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      raw_pages: {
+        Row: {
+          content_length: number | null
+          content_type: string | null
+          created_at: string
+          fetched_at: string
+          hash: string | null
+          html: string | null
+          http_status: number | null
+          id: string
+          source_id: string
+          url: string
+        }
+        Insert: {
+          content_length?: number | null
+          content_type?: string | null
+          created_at?: string
+          fetched_at?: string
+          hash?: string | null
+          html?: string | null
+          http_status?: number | null
+          id?: string
+          source_id: string
+          url: string
+        }
+        Update: {
+          content_length?: number | null
+          content_type?: string | null
+          created_at?: string
+          fetched_at?: string
+          hash?: string | null
+          html?: string | null
+          http_status?: number | null
+          id?: string
+          source_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raw_pages_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       registration_attempts: {
         Row: {
@@ -1343,23 +1399,85 @@ export type Database = {
         }
         Relationships: []
       }
+      session_candidates: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          extracted_json: Json
+          id: string
+          notes: string | null
+          processed_at: string | null
+          source_id: string
+          status: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          extracted_json: Json
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          source_id: string
+          status?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          extracted_json?: Json
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          source_id?: string
+          status?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_candidates_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           activity_id: string | null
+          age_max: number | null
+          age_min: number | null
+          availability_status: string | null
           camp_location_id: string | null
           capacity: number | null
           created_at: string
+          days_of_week: string[] | null
+          embedding: string | null
           end_at: string | null
           end_date: string | null
           high_demand: boolean
           id: string
+          last_verified_at: string | null
+          lat: number | null
+          lng: number | null
           location: string | null
+          location_city: string | null
+          location_state: string | null
+          name: string | null
           open_time_exact: boolean
           platform: string | null
+          price_max: number | null
           price_min: number | null
           provider_id: string | null
           provider_session_key: string | null
           registration_open_at: string | null
+          signup_url: string | null
+          source_id: string | null
+          source_url: string | null
           spots_available: number | null
           start_at: string | null
           start_date: string | null
@@ -1368,20 +1486,35 @@ export type Database = {
         }
         Insert: {
           activity_id?: string | null
+          age_max?: number | null
+          age_min?: number | null
+          availability_status?: string | null
           camp_location_id?: string | null
           capacity?: number | null
           created_at?: string
+          days_of_week?: string[] | null
+          embedding?: string | null
           end_at?: string | null
           end_date?: string | null
           high_demand?: boolean
           id?: string
+          last_verified_at?: string | null
+          lat?: number | null
+          lng?: number | null
           location?: string | null
+          location_city?: string | null
+          location_state?: string | null
+          name?: string | null
           open_time_exact?: boolean
           platform?: string | null
+          price_max?: number | null
           price_min?: number | null
           provider_id?: string | null
           provider_session_key?: string | null
           registration_open_at?: string | null
+          signup_url?: string | null
+          source_id?: string | null
+          source_url?: string | null
           spots_available?: number | null
           start_at?: string | null
           start_date?: string | null
@@ -1390,20 +1523,35 @@ export type Database = {
         }
         Update: {
           activity_id?: string | null
+          age_max?: number | null
+          age_min?: number | null
+          availability_status?: string | null
           camp_location_id?: string | null
           capacity?: number | null
           created_at?: string
+          days_of_week?: string[] | null
+          embedding?: string | null
           end_at?: string | null
           end_date?: string | null
           high_demand?: boolean
           id?: string
+          last_verified_at?: string | null
+          lat?: number | null
+          lng?: number | null
           location?: string | null
+          location_city?: string | null
+          location_state?: string | null
+          name?: string | null
           open_time_exact?: boolean
           platform?: string | null
+          price_max?: number | null
           price_min?: number | null
           provider_id?: string | null
           provider_session_key?: string | null
           registration_open_at?: string | null
+          signup_url?: string | null
+          source_id?: string | null
+          source_url?: string | null
           spots_available?: number | null
           start_at?: string | null
           start_date?: string | null
@@ -1437,6 +1585,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
             referencedColumns: ["id"]
           },
         ]
@@ -1565,6 +1720,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sources: {
+        Row: {
+          base_url: string
+          created_at: string
+          id: string
+          last_crawled_at: string | null
+          notes: string | null
+          status: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          base_url: string
+          created_at?: string
+          id?: string
+          last_crawled_at?: string | null
+          notes?: string | null
+          status?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string
+          created_at?: string
+          id?: string
+          last_crawled_at?: string | null
+          notes?: string | null
+          status?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_profiles: {
         Row: {
