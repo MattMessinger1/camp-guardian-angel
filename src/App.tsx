@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { PublicModeWarning } from "@/components/PublicModeWarning";
 import HomePage from "./pages/Home";
 import ConfirmCamp from "./pages/ConfirmCamp";
 import Index from "./pages/Index";
@@ -45,6 +46,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <div className="min-h-screen">
+              <PublicModeWarning />
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/confirm-camp" element={<ConfirmCamp />} />
@@ -120,6 +123,7 @@ const App = () => (
               <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>
+            </div>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

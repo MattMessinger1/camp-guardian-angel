@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { blockPrivateAPI, logPublicModeWarning } from '@/lib/config/publicMode';
 import type {
   ProviderAdapter,
   ProviderContext,
@@ -79,12 +80,27 @@ export async function run(
   ctx: ProviderContext,
   intent?: ProviderIntent
 ): Promise<FinalizeResult & { profile?: ProviderProfile; candidate?: ProviderSessionCandidate | null }> {
+  // Check if private provider APIs are blocked
+  const blocked = blockPrivateAPI(
+    'Provider automation',
+    { success: false, error: 'Private provider APIs disabled in public data mode' },
+    `URL: ${ctx.canonical_url}`
+  );
+  
+  if (blocked) {
+    return blocked;
+  }
+
   const profile = await detectPlatform(ctx.canonical_url);
   if (!profile) {
     return { success: false, error: 'Platform not recognized for URL' };
   }
 
   const adapter = loadAdapter(profile.platform);
+  
+  // Log that we're attempting private API operations
+  logPublicModeWarning('Private provider operation attempted', `Platform: ${profile.platform}`);
+  
   await adapter.precheck(ctx);
 
   const candidates = await adapter.findSessions(ctx, intent);

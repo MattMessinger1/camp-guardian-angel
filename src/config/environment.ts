@@ -44,6 +44,7 @@ export interface EnvironmentConfig {
   // Feature Flags
   FEATURE_PROVIDER_AUTOMATION_SIMULATE: boolean;
   VGS_BYPASS_MODE: boolean;
+  PUBLIC_DATA_MODE: boolean;
 }
 
 export interface EnvironmentVariable {
@@ -228,6 +229,13 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     sensitive: false,
     defaultValue: false,
   },
+  {
+    key: 'PUBLIC_DATA_MODE',
+    required: false,
+    description: 'Enable public data mode - blocks private provider APIs and uses only public data sources',
+    sensitive: false,
+    defaultValue: true,
+  },
 ];
 
 export class EnvironmentError extends Error {
@@ -272,7 +280,7 @@ export function validateEnvironment(context: 'browser' | 'server' = 'browser'): 
     }
     
     // Type conversion and validation
-    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'VGS_BYPASS_MODE' || envVar.key === 'VGS_PROXY_ENABLED') {
+    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'VGS_BYPASS_MODE' || envVar.key === 'VGS_PROXY_ENABLED' || envVar.key === 'PUBLIC_DATA_MODE') {
       (config as any)[envVar.key] = value.toLowerCase() === 'true';
     } else if (envVar.key === 'CRYPTO_KEY_VERSION') {
       (config as any)[envVar.key] = parseInt(value, 10);
