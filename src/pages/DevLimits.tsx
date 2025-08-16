@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SessionExtractionTest } from "@/components/SessionExtractionTest";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -101,6 +102,8 @@ export default function DevLimits() {
             )}
           </CardContent>
         </Card>
+
+        <SessionExtractionTest />
       </div>
     </main>
   );

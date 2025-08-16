@@ -96,3 +96,9 @@ verify_jwt = false
 [functions.reserve-init]
 verify_jwt = false
 
+[functions.geocode]
+verify_jwt = false
+
+[functions.extract-session]
+verify_jwt = false
+
