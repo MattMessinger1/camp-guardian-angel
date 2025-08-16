@@ -120,7 +120,7 @@ export default function SearchBar(p: Props) {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input 
               className="w-full pl-12 pr-4 py-4 text-lg border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm" 
-              placeholder="Soccer camp in Austin, TX for July 2024..."
+              placeholder="Activity / Camp name, city, dates..."
               value={p.q} 
               onChange={e=>p.setQ(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -140,27 +140,6 @@ export default function SearchBar(p: Props) {
               'Search'
             )}
           </button>
-        </div>
-        
-        {/* Example queries */}
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground mb-3">Try examples:</p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {[
-              "Soccer camp in Austin, TX for July 2024",
-              "Basketball camp near Seattle summer session", 
-              "Art camp in Los Angeles for ages 8-12"
-            ].map((example, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => p.setQ(example)}
-                className="text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {example}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
       
