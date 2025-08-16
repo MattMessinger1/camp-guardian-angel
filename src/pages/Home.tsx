@@ -75,7 +75,7 @@ const HomePage = () => {
         <div className="relative z-10 mx-auto max-w-4xl">
           {/* HERO TEXT BLOCK */}
           <div className="hero-card">
-            <h1 className="hero-title">Get the spot — skip the&nbsp;scramble</h1>
+            <h1 className="hero-title">Get the spot — skip the scramble</h1>
             <div className="hero-accent" aria-hidden="true"></div>
             <p className="hero-sub">
               You pre-load your info, we submit the millisecond registration opens, then we help you complete any human steps (captcha) via text message
