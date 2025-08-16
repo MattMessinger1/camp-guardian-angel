@@ -8,6 +8,7 @@ import {
   type SessionCandidate,
   type ConfidenceScore 
 } from '../_shared/sessionSchema.ts';
+import { extractWithRules, calculateRuleConfidence } from '../_shared/providerRules.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -301,7 +302,41 @@ async function extractSessionData(
   let rawOutput = '';
   let trapHit: string[] = [];
 
-  // First attempt with OpenAI
+  // STEP 1: Try provider rules first (cheap wins)
+  console.log('Attempting provider rules extraction...');
+  const rulesData = extractWithRules(htmlContent, sourceUrl);
+  
+  if (rulesData) {
+    const ruleConfidence = calculateRuleConfidence(rulesData);
+    console.log(`Rules extracted data with confidence: ${ruleConfidence}`);
+    
+    // If rules produce complete candidate above threshold, skip LLM
+    if (ruleConfidence >= 0.75) {
+      console.log('Rules extraction succeeded, skipping LLM');
+      
+      const validation = SessionCandidateSchema.safeParse(rulesData);
+      if (validation.success) {
+        const confidence = calculateConfidence(ruleConfidence, true, false, 0);
+        return {
+          success: true,
+          data: validation.data,
+          confidence,
+          errors: [],
+          fallbackUsed: false,
+          retryCount: 0
+        };
+      } else {
+        console.log('Rules data failed validation, proceeding to LLM');
+        errors.push('Rules extraction failed validation');
+      }
+    } else {
+      console.log('Rules confidence too low, proceeding to LLM with rules as context');
+    }
+  } else {
+    console.log('No matching provider rules, proceeding to LLM');
+  }
+
+  // STEP 2: First attempt with OpenAI
   try {
     console.log('Attempting primary extraction with OpenAI...');
     const result = await callOpenAI(htmlContent, sourceUrl);
