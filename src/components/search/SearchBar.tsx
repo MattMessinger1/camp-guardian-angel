@@ -1,6 +1,7 @@
-import React from 'react';
-import { Search } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Loader2 } from 'lucide-react';
 import FacetChips from './FacetChips';
+import { parseSearchQuery } from '@/lib/ai/parseSearchQuery';
 
 type Props = {
   q: string; setQ: (v:string)=>void;
@@ -16,6 +17,8 @@ type Props = {
 };
 
 export default function SearchBar(p: Props) {
+  const [isLoading, setIsLoading] = useState(false);
+
   // Generate facet chips from active filters
   const facetChips = [
     ...(p.ageMin !== null || p.ageMax !== null ? [{
@@ -66,103 +69,98 @@ export default function SearchBar(p: Props) {
     p.setState('');
   };
 
+  const handleSearch = async () => {
+    if (!p.q.trim()) {
+      p.onSearch();
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Try to parse natural language query
+      const parsed = await parseSearchQuery(p.q);
+      
+      // Auto-populate filters from parsed query
+      if (parsed.location) {
+        const locationParts = parsed.location.split(',');
+        if (locationParts.length >= 2) {
+          p.setCity(locationParts[0].trim());
+          p.setState(locationParts[1].trim());
+        } else {
+          p.setCity(parsed.location);
+        }
+      }
+      
+      if (parsed.ageGroup) {
+        const ageMatch = parsed.ageGroup.match(/(\d+)(?:-(\d+))?/);
+        if (ageMatch) {
+          p.setAgeMin(parseInt(ageMatch[1]));
+          if (ageMatch[2]) {
+            p.setAgeMax(parseInt(ageMatch[2]));
+          }
+        }
+      }
+      
+      // Keep the original query in the search field for broader search
+      p.onSearch();
+    } catch (error) {
+      // If parsing fails, just search with the original query
+      p.onSearch();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border">
-      <div className="max-w-6xl mx-auto px-4 py-3 space-y-3">
-        {/* Primary search row - mobile first */}
-        <div className="flex gap-2">
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
+        {/* Simplified single search bar */}
+        <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input 
-              className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-              placeholder="Search camps, sports, activities..."
+              className="w-full pl-12 pr-4 py-4 text-lg border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm" 
+              placeholder="Soccer camp in Austin, TX for July 2024..."
               value={p.q} 
               onChange={e=>p.setQ(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && p.onSearch()}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
             />
           </div>
           <button 
-            onClick={p.onSearch} 
-            className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium shadow-sm"
+            onClick={handleSearch}
+            disabled={isLoading}
+            className="px-8 py-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-semibold shadow-sm disabled:opacity-50"
           >
-            Search
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Searching...
+              </>
+            ) : (
+              'Search'
+            )}
           </button>
         </div>
         
-        {/* Filters row - mobile responsive */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          <div className="flex gap-1">
-            <input 
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20" 
-              placeholder="Min age"
-              type="number"
-              min="3"
-              max="18"
-              value={p.ageMin ?? ''} 
-              onChange={e=>p.setAgeMin(e.target.value ? parseInt(e.target.value) : null)} 
-            />
-            <input 
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20" 
-              placeholder="Max age"
-              type="number"
-              min="3"
-              max="18"
-              value={p.ageMax ?? ''} 
-              onChange={e=>p.setAgeMax(e.target.value ? parseInt(e.target.value) : null)} 
-            />
+        {/* Example queries */}
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground mb-3">Try examples:</p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {[
+              "Soccer camp in Austin, TX for July 2024",
+              "Basketball camp near Seattle summer session", 
+              "Art camp in Los Angeles for ages 8-12"
+            ].map((example, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => p.setQ(example)}
+                className="text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {example}
+              </button>
+            ))}
           </div>
-          
-          <input 
-            className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" 
-            type="date" 
-            title="Start date"
-            value={p.dateFrom} 
-            onChange={e=>p.setDateFrom(e.target.value)} 
-          />
-          <input 
-            className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" 
-            type="date" 
-            title="End date"
-            value={p.dateTo} 
-            onChange={e=>p.setDateTo(e.target.value)} 
-          />
-          
-          <input 
-            className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20" 
-            placeholder="Max price ($)"
-            type="number"
-            min="0"
-            step="50"
-            value={p.priceMax ?? ''} 
-            onChange={e=>p.setPriceMax(e.target.value ? parseFloat(e.target.value) : null)} 
-          />
-          
-          <div className="flex gap-2 col-span-2 sm:col-span-3 lg:col-span-1">
-            <input 
-              className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20" 
-              placeholder="City"
-              value={p.city} 
-              onChange={e=>p.setCity(e.target.value)} 
-            />
-            <input 
-              className="w-20 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20" 
-              placeholder="State"
-              maxLength={2}
-              value={p.state} 
-              onChange={e=>p.setState(e.target.value.toUpperCase())} 
-            />
-          </div>
-          
-          <select 
-            className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 col-span-2 sm:col-span-3 lg:col-span-1" 
-            value={p.availability} 
-            onChange={e=>p.setAvailability(e.target.value)}
-          >
-            <option value="">Any availability</option>
-            <option value="open">Open spots</option>
-            <option value="limited">Limited spots</option>
-            <option value="waitlist">Waitlist only</option>
-          </select>
         </div>
       </div>
       
