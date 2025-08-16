@@ -503,10 +503,11 @@ serve(async (req) => {
         url: source_url,
         extracted_json: result.data,
         confidence: result.confidence.overall,
-        status: 'pending',
+        status: 'pending', // Valid status values: pending, approved, rejected, duplicate
         notes: result.fallbackUsed ? 'Used fallback extraction' : null
       };
 
+      console.log('Inserting candidate data:', candidateData);
       const { data: inserted, error: insertError } = await supabase
         .from('session_candidates')
         .insert(candidateData)
