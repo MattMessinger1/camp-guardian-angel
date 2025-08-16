@@ -503,7 +503,7 @@ serve(async (req) => {
         url: source_url,
         extracted_json: result.data,
         confidence: result.confidence.overall,
-        status: 'extracted',
+        status: 'pending',
         notes: result.fallbackUsed ? 'Used fallback extraction' : null
       };
 
