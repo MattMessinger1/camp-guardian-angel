@@ -130,16 +130,22 @@ class WebCrawler {
       console.log(`Starting crawl of ${baseUrl}`);
       
       // Create or get source record
+      console.log('Creating/getting source record...');
       const sourceId = await this.ensureSource(supabase, baseUrl);
       result.sourceId = sourceId;
+      console.log(`Source ID: ${sourceId}`);
       
       // Check robots.txt for base domain
+      console.log('Checking robots.txt...');
       const robotsAllowed = await this.robotsChecker.isAllowed(baseUrl);
       if (!robotsAllowed) {
-        throw new Error(`Robots.txt disallows crawling ${baseUrl}`);
+        result.errors.push(`Robots.txt disallows crawling ${baseUrl}`);
+        return result;
       }
+      console.log('Robots.txt allows crawling');
       
       // Get sitemap URLs
+      console.log('Getting sitemap URLs...');
       const sitemapUrls = await this.getSitemapUrls(baseUrl);
       console.log(`Found ${sitemapUrls.length} URLs in sitemap`);
       
@@ -147,24 +153,33 @@ class WebCrawler {
       const relevantUrls = this.filterRelevantUrls(sitemapUrls, maxPages);
       console.log(`${relevantUrls.length} URLs match camp keywords`);
       
-      // Crawl pages with concurrency control
-      const crawlPromises = relevantUrls.map(url => 
-        this.crawlPage(supabase, url, sourceId)
-      );
+      if (relevantUrls.length === 0) {
+        result.success = true;
+        result.errors.push('No relevant URLs found matching camp keywords');
+        return result;
+      }
       
-      const results = await this.processConcurrently(crawlPromises, this.concurrency);
+      // Crawl first few pages as a test
+      const testUrls = relevantUrls.slice(0, Math.min(3, relevantUrls.length));
+      console.log(`Testing crawl of ${testUrls.length} URLs`);
       
-      // Count successes and failures
-      for (const crawlResult of results) {
-        if (crawlResult.success) {
-          result.crawled++;
-        } else {
-          result.errors.push(crawlResult.error);
+      for (const url of testUrls) {
+        try {
+          console.log(`Crawling: ${url}`);
+          const crawlResult = await this.crawlPage(supabase, url, sourceId);
+          if (crawlResult.success) {
+            result.crawled++;
+          } else {
+            result.errors.push(crawlResult.error || `Failed to crawl ${url}`);
+          }
+        } catch (error) {
+          console.error(`Error crawling ${url}:`, error);
+          result.errors.push(`Error crawling ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
       
       result.success = true;
-      result.queued = result.crawled; // All crawled pages are queued for parsing
+      result.queued = result.crawled;
       
     } catch (error) {
       console.error('Crawl failed:', error);
