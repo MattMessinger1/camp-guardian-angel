@@ -78,7 +78,7 @@ const HomePage = () => {
             <h1 className="hero-title">Get the spot — reduce the stress</h1>
             <div className="hero-accent" aria-hidden="true"></div>
             <p className="hero-sub">
-              You pre-load your info, we submit the millisecond registration opens, then we help you complete any human steps (captcha) via text message
+              Signing up for kids' activities is competitive. Set it up now; we submit the instant registration opens.
             </p>
           </div>
         </div>
