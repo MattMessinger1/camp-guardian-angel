@@ -337,8 +337,6 @@ All colors MUST be HSL. */
   letter-spacing: -0.01em;
   margin: 0 0 12px 0;
   margin-inline: auto;
-  text-align: center;
-  white-space: nowrap;
 }
 
 .hero-accent {
