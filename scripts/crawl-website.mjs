@@ -4,7 +4,7 @@
  * Website Crawler CLI
  * 
  * Usage: npm run crawl --base=https://example.com
- * Usage: node scripts/crawl-website.js --base=https://example.com --max-pages=100
+ * Usage: node scripts/crawl-website.mjs --base=https://example.com --max-pages=100
  */
 
 import https from 'https';
@@ -90,7 +90,7 @@ Website Crawler CLI
 
 Usage:
   npm run crawl --base=https://example.com [--max-pages=50]
-  node scripts/crawl-website.js --base=https://example.com [--max-pages=50]
+  node scripts/crawl-website.mjs --base=https://example.com [--max-pages=50]
 
 Options:
   --base          Base URL to crawl (required)
@@ -98,8 +98,8 @@ Options:
   --help, -h      Show this help message
 
 Examples:
-  npm run crawl --base=https://madisonparks.org --max-pages=100
-  npm run crawl --base=https://ymca.org
+  node scripts/crawl-website.mjs --base=https://madisonparks.org --max-pages=100
+  node scripts/crawl-website.mjs --base=https://ymca.org
     `);
     return;
   }
@@ -107,7 +107,7 @@ Examples:
   // Validate required arguments
   if (!args.base) {
     console.error('❌ Error: --base URL is required');
-    console.error('Usage: npm run crawl --base=https://example.com');
+    console.error('Usage: node scripts/crawl-website.mjs --base=https://example.com');
     process.exit(1);
   }
   
@@ -203,7 +203,6 @@ process.on('uncaughtException', (error) => {
 
 // ES module equivalent of require.main === module
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Run the script
 if (process.argv[1] === __filename) {
