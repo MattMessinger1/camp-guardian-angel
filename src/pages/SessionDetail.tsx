@@ -8,6 +8,7 @@ import { SecurityBadge } from "@/components/ui/security-badge";
 import { TrustStrip } from "@/components/ui/trust-strip";
 import { ExternalLink, Copy, Calendar, MapPin, DollarSign, Users, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { CopyChildInfo } from "@/components/CopyChildInfo";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -95,18 +96,10 @@ export default function SessionDetail() {
   };
 
   const handleCopyChildInfo = () => {
-    // Placeholder for D.2 feature - copy child info to clipboard
-    const childInfo = "Sample child info (to be implemented in D.2)";
-    navigator.clipboard?.writeText(childInfo).then(() => {
-      toast({ 
-        title: "Child info copied", 
-        description: "Paste this into external registration forms to speed up signup." 
-      });
-    }).catch(() => {
-      toast({ 
-        title: "Copy failed", 
-        description: "Unable to copy to clipboard." 
-      });
+    // This is now handled by the CopyChildInfo component
+    toast({ 
+      title: "Copy feature moved", 
+      description: "Use the 'Copy my child info' button below for enhanced copying." 
     });
   };
 
@@ -287,14 +280,10 @@ export default function SessionDetail() {
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Go to signup
                   </Button>
-                  <Button 
-                    onClick={handleCopyChildInfo}
-                    variant="outline"
-                    size="lg"
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy my child info
-                  </Button>
+                  <CopyChildInfo 
+                    sessionId={sessionId}
+                    className="flex-1 sm:flex-none"
+                  />
                 </div>
               </CardContent>
             </Card>

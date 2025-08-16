@@ -37,6 +37,7 @@ import ApprovePage from "./pages/ApprovePage";
 import Verify from "./pages/Verify";
 import SignupRedirect from "./pages/SignupRedirect";
 import ConfirmSignup from "./pages/ConfirmSignup";
+import EmailForwardingSetup from "./pages/EmailForwardingSetup";
 
 const queryClient = new QueryClient();
 
@@ -126,6 +127,7 @@ const App = () => (
               {/* Signup tracking routes */}
               <Route path="/r/:sessionId" element={<SignupRedirect />} />
               <Route path="/confirm-signup" element={<ConfirmSignup />} />
+              <Route path="/email-tracking-setup" element={<EmailForwardingSetup />} />
               
               <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<Navigate to="/404" replace />} />
