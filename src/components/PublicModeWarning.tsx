@@ -21,7 +21,7 @@ export function PublicModeWarning() {
             Public Data Mode ON
           </span>
           <span className="text-orange-700 dark:text-orange-300">
-            Private provider APIs are disabled. Only public data sources will be used.
+            Camp provider APIs disabled. Using public camp data only. Other APIs work normally.
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -30,11 +30,12 @@ export function PublicModeWarning() {
             size="sm"
             onClick={() => {
               console.group('%cPublic Data Mode Information', 'color: orange; font-weight: bold');
-              console.info('Current mode: Public Data Only');
-              console.info('Private APIs: Blocked');
-              console.info('Rate limiting: Enabled');
-              console.info('Robots.txt compliance: Enabled');
-              console.info('To disable: Set PUBLIC_DATA_MODE=false in environment');
+              console.info('Current mode: Public Camp Data Only');
+              console.info('Camp provider APIs: Blocked (Jackrabbit, DaySmart, etc.)');
+              console.info('Other APIs: Working normally (Supabase, Stripe, etc.)');
+              console.info('Rate limiting: Enabled for camp data fetching');
+              console.info('Robots.txt compliance: Enabled for camp sites');
+              console.info('To enable camp provider APIs: Set PUBLIC_DATA_MODE=false');
               console.groupEnd();
             }}
             className="text-orange-600 hover:text-orange-800"

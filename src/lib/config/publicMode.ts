@@ -4,18 +4,19 @@ import { env } from '@/config/environment';
  * Public Data Mode Configuration
  * 
  * When enabled, this mode:
- * - Blocks all private provider API calls
- * - Uses only public data sources
- * - Implements strict rate limiting
- * - Shows development warnings
+ * - Blocks only camp provider API calls (Jackrabbit, DaySmart, etc.)
+ * - Keeps other private APIs working (Supabase, Stripe, etc.)
+ * - Uses only public camp data sources
+ * - Implements strict rate limiting for camp data fetching
+ * - Shows development warnings for camp provider operations
  */
 
 export function isPublicMode(): boolean {
   return env.PUBLIC_DATA_MODE ?? true;
 }
 
-export function logPublicModeWarning(operation: string, context?: string) {
-  const message = `🔒 PUBLIC DATA MODE: ${operation} blocked`;
+export function logCampProviderWarning(operation: string, context?: string) {
+  const message = `🏕️ PUBLIC DATA MODE: Camp provider ${operation} blocked`;
   const details = context ? ` - ${context}` : '';
   
   console.warn(`${message}${details}`);
@@ -23,9 +24,11 @@ export function logPublicModeWarning(operation: string, context?: string) {
   // In development, also show more visible warnings
   if (import.meta.env.DEV) {
     console.groupCollapsed(`%c${message}`, 'color: orange; font-weight: bold');
-    console.warn('Private provider API call was blocked due to Public Data Mode being enabled');
+    console.warn('Camp provider API call was blocked due to Public Data Mode being enabled');
     if (context) console.info('Context:', context);
-    console.warn('To enable private APIs, set PUBLIC_DATA_MODE=false in your environment');
+    console.warn('This only affects camp provider APIs (Jackrabbit, DaySmart, etc.)');
+    console.info('Other APIs (Supabase, Stripe, etc.) continue to work normally');
+    console.warn('To enable camp provider APIs, set PUBLIC_DATA_MODE=false in your environment');
     console.groupEnd();
   }
 }
@@ -36,13 +39,13 @@ export function requirePublicMode(operation: string): void {
   }
 }
 
-export function blockPrivateAPI(
+export function blockCampProviderAPI(
   operationName: string, 
   fallbackValue?: any,
   context?: string
 ) {
   if (isPublicMode()) {
-    logPublicModeWarning(`Private API call: ${operationName}`, context);
+    logCampProviderWarning(`API call: ${operationName}`, context);
     return fallbackValue;
   }
   return null; // Proceed with actual API call
