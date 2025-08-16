@@ -1623,6 +1623,69 @@ export type Database = {
           },
         ]
       }
+      signup_clicks: {
+        Row: {
+          clicked_at: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          referrer: string | null
+          session_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          clicked_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          referrer?: string | null
+          session_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          clicked_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          referrer?: string | null
+          session_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      signup_reminders: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          reminder_type: string
+          sent_at: string
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          reminder_type?: string
+          sent_at?: string
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          reminder_type?: string
+          sent_at?: string
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       sms_opt_ins: {
         Row: {
           carrier_metadata: Json | null
@@ -1778,6 +1841,42 @@ export type Database = {
           status?: string | null
           type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      successful_signups: {
+        Row: {
+          amount_cents: number | null
+          confirmed_at: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          notes: string | null
+          session_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          confirmed_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          notes?: string | null
+          session_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          confirmed_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          notes?: string | null
+          session_id?: string
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

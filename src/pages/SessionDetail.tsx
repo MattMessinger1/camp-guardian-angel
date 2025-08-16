@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { SecurityBadge } from "@/components/ui/security-badge";
 import { TrustStrip } from "@/components/ui/trust-strip";
 import { ExternalLink, Copy, Calendar, MapPin, DollarSign, Users, Clock } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -84,7 +84,8 @@ export default function SessionDetail() {
 
   const handleGoToSignup = () => {
     if (sessionData?.signup_url) {
-      window.open(sessionData.signup_url, "_blank");
+      // Use our tracking redirect instead of direct external link
+      window.location.href = `/r/${sessionId}`;
     } else {
       toast({ 
         title: "No signup URL", 

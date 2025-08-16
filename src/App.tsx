@@ -35,6 +35,8 @@ import OTPPage from "./pages/OTPPage";
 import CaptchaPage from "./pages/CaptchaPage";
 import ApprovePage from "./pages/ApprovePage";
 import Verify from "./pages/Verify";
+import SignupRedirect from "./pages/SignupRedirect";
+import ConfirmSignup from "./pages/ConfirmSignup";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +122,11 @@ const App = () => (
               <Route path="/otp/:token" element={<OTPPage />} />
               <Route path="/captcha/:token" element={<CaptchaPage />} />
               <Route path="/approve/:token" element={<ApprovePage />} />
+              
+              {/* Signup tracking routes */}
+              <Route path="/r/:sessionId" element={<SignupRedirect />} />
+              <Route path="/confirm-signup" element={<ConfirmSignup />} />
+              
               <Route path="/404" element={<NotFound />} />
               <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>
