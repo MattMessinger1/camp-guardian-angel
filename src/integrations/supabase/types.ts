@@ -56,6 +56,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_extract_logs: {
+        Row: {
+          created_at: string
+          id: string
+          model: string
+          raw_output: string | null
+          retry_count: number
+          schema_ok: boolean
+          tokens_in: number | null
+          tokens_out: number | null
+          trap_hit: string[] | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          model: string
+          raw_output?: string | null
+          retry_count?: number
+          schema_ok?: boolean
+          tokens_in?: number | null
+          tokens_out?: number | null
+          trap_hit?: string[] | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model?: string
+          raw_output?: string | null
+          retry_count?: number
+          schema_ok?: boolean
+          tokens_in?: number | null
+          tokens_out?: number | null
+          trap_hit?: string[] | null
+          url?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string

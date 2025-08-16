@@ -20,6 +20,102 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// List of US/CA states for validation
+const VALID_STATES = new Set([
+  'Alabama', 'AL', 'Alaska', 'AK', 'Arizona', 'AZ', 'Arkansas', 'AR', 'California', 'CA',
+  'Colorado', 'CO', 'Connecticut', 'CT', 'Delaware', 'DE', 'Florida', 'FL', 'Georgia', 'GA',
+  'Hawaii', 'HI', 'Idaho', 'ID', 'Illinois', 'IL', 'Indiana', 'IN', 'Iowa', 'IA',
+  'Kansas', 'KS', 'Kentucky', 'KY', 'Louisiana', 'LA', 'Maine', 'ME', 'Maryland', 'MD',
+  'Massachusetts', 'MA', 'Michigan', 'MI', 'Minnesota', 'MN', 'Mississippi', 'MS',
+  'Missouri', 'MO', 'Montana', 'MT', 'Nebraska', 'NE', 'Nevada', 'NV', 'New Hampshire', 'NH',
+  'New Jersey', 'NJ', 'New Mexico', 'NM', 'New York', 'NY', 'North Carolina', 'NC',
+  'North Dakota', 'ND', 'Ohio', 'OH', 'Oklahoma', 'OK', 'Oregon', 'OR', 'Pennsylvania', 'PA',
+  'Rhode Island', 'RI', 'South Carolina', 'SC', 'South Dakota', 'SD', 'Tennessee', 'TN',
+  'Texas', 'TX', 'Utah', 'UT', 'Vermont', 'VT', 'Virginia', 'VA', 'Washington', 'WA',
+  'West Virginia', 'WV', 'Wisconsin', 'WI', 'Wyoming', 'WY',
+  // Canadian provinces
+  'Alberta', 'AB', 'British Columbia', 'BC', 'Manitoba', 'MB', 'New Brunswick', 'NB',
+  'Newfoundland and Labrador', 'NL', 'Northwest Territories', 'NT', 'Nova Scotia', 'NS',
+  'Nunavut', 'NU', 'Ontario', 'ON', 'Prince Edward Island', 'PE', 'Quebec', 'QC',
+  'Saskatchewan', 'SK', 'Yukon', 'YT'
+]);
+
+function redactPII(text: string): string {
+  // Redact emails
+  text = text.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL_REDACTED]');
+  // Redact phone numbers (various formats)
+  text = text.replace(/\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b/g, '[PHONE_REDACTED]');
+  return text;
+}
+
+function checkHallucinationTraps(rawOutput: string, extractedData: any): string[] {
+  const traps: string[] = [];
+  const now = new Date();
+  const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+  const oneYearFromNow = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+
+  // Check for non-JSON pre/post text
+  const trimmed = rawOutput.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    // Look for common AI boilerplate
+    if (/^(as an ai|i'm an ai|here is|here's|i'll|i will|based on)/i.test(trimmed)) {
+      traps.push('ai_boilerplate_prefix');
+    } else {
+      traps.push('non_json_wrapper');
+    }
+  }
+
+  // Check for AI boilerplate in the output
+  if (/as an ai|i'm an ai|i cannot|i'm sorry|i apologize/i.test(rawOutput)) {
+    traps.push('ai_boilerplate_text');
+  }
+
+  if (extractedData) {
+    // Check dates outside reasonable range
+    if (extractedData.start_date) {
+      try {
+        const startDate = new Date(extractedData.start_date);
+        if (startDate < oneYearAgo || startDate > oneYearFromNow) {
+          traps.push('date_out_of_range');
+        }
+      } catch (e) {
+        traps.push('invalid_date_format');
+      }
+    }
+
+    if (extractedData.end_date) {
+      try {
+        const endDate = new Date(extractedData.end_date);
+        if (endDate < oneYearAgo || endDate > oneYearFromNow) {
+          traps.push('date_out_of_range');
+        }
+      } catch (e) {
+        traps.push('invalid_date_format');
+      }
+    }
+
+    // Check for invalid price formatting (USD with commas but wrong decimals)
+    if (extractedData.price_min || extractedData.price_max) {
+      const prices = [extractedData.price_min, extractedData.price_max].filter(Boolean);
+      prices.forEach(price => {
+        if (typeof price === 'string' && price.includes(',')) {
+          // Check if it has comma but weird decimal structure
+          if (!/^\d{1,3}(,\d{3})*(\.\d{2})?$/.test(price.replace('$', ''))) {
+            traps.push('malformed_price');
+          }
+        }
+      });
+    }
+
+    // Check for cities/states not in US/CA
+    if (extractedData.state && !VALID_STATES.has(extractedData.state)) {
+      traps.push('invalid_location');
+    }
+  }
+
+  return traps;
+}
+
 interface ExtractionResult {
   success: boolean;
   data: SessionCandidate | null;
@@ -166,6 +262,33 @@ function fallbackExtraction(htmlContent: string, sourceUrl: string): Partial<Ses
   return fallbackData;
 }
 
+async function logExtractionAttempt(
+  url: string,
+  model: string,
+  tokensIn: number,
+  tokensOut: number,
+  schemaOk: boolean,
+  retryCount: number,
+  trapHit: string[],
+  rawOutput: string
+) {
+  try {
+    const redactedOutput = redactPII(rawOutput);
+    await supabase.from('ai_extract_logs').insert({
+      url,
+      model,
+      tokens_in: tokensIn,
+      tokens_out: tokensOut,
+      schema_ok: schemaOk,
+      retry_count: retryCount,
+      trap_hit: trapHit,
+      raw_output: redactedOutput
+    });
+  } catch (error) {
+    console.error('Failed to log extraction attempt:', error);
+  }
+}
+
 async function extractSessionData(
   htmlContent: string, 
   sourceUrl: string
@@ -175,6 +298,8 @@ async function extractSessionData(
   let fallbackUsed = false;
   let extractedData: any = null;
   let modelConfidence = 0;
+  let rawOutput = '';
+  let trapHit: string[] = [];
 
   // First attempt with OpenAI
   try {
@@ -182,10 +307,28 @@ async function extractSessionData(
     const result = await callOpenAI(htmlContent, sourceUrl);
     extractedData = result.data;
     modelConfidence = result.confidence;
+    rawOutput = JSON.stringify(extractedData);
+
+    // Check for hallucination traps
+    trapHit = checkHallucinationTraps(rawOutput, extractedData);
 
     // Validate with Zod schema
     const validation = SessionCandidateSchema.safeParse(extractedData);
-    if (validation.success) {
+    const schemaValid = validation.success;
+    
+    // Log extraction attempt
+    await logExtractionAttempt(
+      sourceUrl,
+      'gpt-4.1-2025-04-14',
+      Math.ceil(htmlContent.length / 4), // Rough token estimate
+      Math.ceil(rawOutput.length / 4),
+      schemaValid,
+      retryCount,
+      trapHit,
+      rawOutput
+    );
+
+    if (validation.success && trapHit.length === 0) {
       console.log('Primary extraction successful');
       const confidence = calculateConfidence(modelConfidence, true, false, 0);
       return {
@@ -197,12 +340,30 @@ async function extractSessionData(
         retryCount: 0
       };
     } else {
-      console.log('Primary extraction failed validation:', validation.error.issues);
-      errors.push(...validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`));
+      if (!validation.success) {
+        console.log('Primary extraction failed validation:', validation.error.issues);
+        errors.push(...validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`));
+      }
+      if (trapHit.length > 0) {
+        console.log('Hallucination traps triggered:', trapHit);
+        errors.push(`Hallucination traps: ${trapHit.join(', ')}`);
+      }
     }
   } catch (error) {
     console.error('Primary extraction failed:', error);
     errors.push(`OpenAI extraction error: ${error.message}`);
+    
+    // Log failed attempt
+    await logExtractionAttempt(
+      sourceUrl,
+      'gpt-4.1-2025-04-14',
+      Math.ceil(htmlContent.length / 4),
+      0,
+      false,
+      retryCount,
+      ['extraction_error'],
+      error.message
+    );
   }
 
   // Retry with error-aware prompt if we have validation errors
@@ -215,9 +376,26 @@ async function extractSessionData(
       extractedData = result.data;
       modelConfidence = result.confidence;
 
+      rawOutput = JSON.stringify(extractedData);
+      trapHit = checkHallucinationTraps(rawOutput, extractedData);
+
       // Validate retry attempt
       const validation = SessionCandidateSchema.safeParse(extractedData);
-      if (validation.success) {
+      const schemaValid = validation.success;
+      
+      // Log retry attempt
+      await logExtractionAttempt(
+        sourceUrl,
+        'gpt-4.1-2025-04-14',
+        Math.ceil(htmlContent.length / 4),
+        Math.ceil(rawOutput.length / 4),
+        schemaValid,
+        retryCount,
+        trapHit,
+        rawOutput
+      );
+
+      if (validation.success && trapHit.length === 0) {
         console.log('Retry extraction successful');
         const confidence = calculateConfidence(modelConfidence, true, false, 1);
         return {
@@ -229,8 +407,14 @@ async function extractSessionData(
           retryCount: 1
         };
       } else {
-        console.log('Retry extraction failed validation:', validation.error.issues);
-        errors.push(...validation.error.issues.map(i => `Retry ${i.path.join('.')}: ${i.message}`));
+        if (!validation.success) {
+          console.log('Retry extraction failed validation:', validation.error.issues);
+          errors.push(...validation.error.issues.map(i => `Retry ${i.path.join('.')}: ${i.message}`));
+        }
+        if (trapHit.length > 0) {
+          console.log('Retry hallucination traps triggered:', trapHit);
+          errors.push(`Retry traps: ${trapHit.join(', ')}`);
+        }
       }
     } catch (error) {
       console.error('Retry extraction failed:', error);
