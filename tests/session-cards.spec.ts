@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-// Simplest smoke test: homepage loads and shows some text
-test('homepage loads', async ({ page }) => {
+// Loosest possible check: session list page renders at all
+test('session cards page loads', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('body')).toBeVisible();
 });
