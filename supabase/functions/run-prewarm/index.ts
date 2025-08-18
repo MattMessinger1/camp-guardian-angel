@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
+import { REGISTRATION_STATES, PREWARM_STATES } from "../_shared/states.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -114,7 +115,7 @@ serve(async (req) => {
           billing_profiles!inner(stripe_customer_id, default_payment_method_id)
         `)
         .eq('session_id', sessionId)
-        .eq('status', 'pending')
+        .eq('status', REGISTRATION_STATES.PENDING)
         .order('priority_opt_in', { ascending: false })
         .order('requested_at', { ascending: true });
 
@@ -285,7 +286,7 @@ async function acquireSessionLock(admin: any, sessionId: string): Promise<boolea
         updated_at: new Date().toISOString()
       })
       .eq('session_id', sessionId)
-      .eq('status', 'scheduled');
+      .eq('status', PREWARM_STATES.SCHEDULED);
     
     return !error;
   } catch (e) {
@@ -460,11 +461,11 @@ async function executeRegistrationLoop(
           const { error } = await admin
             .from('registrations')
             .update({ 
-              status: 'accepted',
+              status: REGISTRATION_STATES.ACCEPTED,
               processed_at: new Date().toISOString()
             })
             .eq('id', registration.id)
-            .eq('status', 'pending'); // Only update if still pending
+            .eq('status', REGISTRATION_STATES.PENDING); // Only update if still pending
           
           if (!error) {
             successful.push(registration.id);
@@ -491,7 +492,7 @@ async function executeRegistrationLoop(
           await admin
             .from('registrations')
             .update({ 
-              status: 'failed',
+              status: REGISTRATION_STATES.FAILED,
               processed_at: new Date().toISOString()
             })
             .in('id', remainingIds)
@@ -615,7 +616,7 @@ async function executePollingRegistrationLoop(
           const { error } = await admin
             .from('registrations')
             .update({ 
-              status: 'accepted',
+              status: REGISTRATION_STATES.ACCEPTED,
               processed_at: new Date().toISOString()
             })
             .eq('id', registration.id)
@@ -645,7 +646,7 @@ async function executePollingRegistrationLoop(
           await admin
             .from('registrations')
             .update({ 
-              status: 'failed',
+              status: REGISTRATION_STATES.FAILED,
               processed_at: new Date().toISOString()
             })
             .in('id', remainingIds)

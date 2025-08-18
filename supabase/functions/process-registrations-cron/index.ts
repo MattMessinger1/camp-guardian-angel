@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
+import { REGISTRATION_STATES, ACTIVE_REGISTRATION_STATES } from "../_shared/states.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +55,7 @@ serve(async (req) => {
         fallback_strategy,
         error_recovery
       `)
-      .in('status', ['pending', 'scheduled'])
+      .in('status', [REGISTRATION_STATES.PENDING, REGISTRATION_STATES.SCHEDULED])
       .or(`scheduled_time.is.null,scheduled_time.lte.${now}`)
       .order('priority_opt_in', { ascending: false }) // Priority registrations first
       .order('requested_at', { ascending: true }) // Then by request time

@@ -2,6 +2,7 @@
 // TODO: Add alerts for repeated automation failures per platform
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { RESERVATION_STATES, validateReservationStatusUpdate } from "../_shared/states.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -114,10 +115,13 @@ serve(async (req) => {
     }));
 
     // Update reservation status
+    const newStatus = result === 'confirmed' ? RESERVATION_STATES.CONFIRMED : RESERVATION_STATES.PENDING;
+    validateReservationStatusUpdate(newStatus, null, reservation_id);
+    
     await supabase
       .from("reservations")
       .update({ 
-        status: result === 'confirmed' ? 'confirmed' : 'pending',
+        status: newStatus,
         provider_response: { mode: executionMode, result }
       })
       .eq("id", reservation_id);

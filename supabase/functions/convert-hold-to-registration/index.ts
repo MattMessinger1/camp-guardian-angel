@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { securityGuards } from '../_shared/securityGuards.ts'
+import { REGISTRATION_STATES, validateRegistrationStatusUpdate } from '../_shared/states.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -164,7 +165,7 @@ serve(async (req) => {
       user_id: user.id,
       session_id: hold.session_id,
       child_id: childId,
-      status: 'pending', // Will be processed by allocation system
+      status: REGISTRATION_STATES.PENDING, // Will be processed by allocation system
       requested_at: new Date().toISOString(),
       priority_opt_in: false // Converted holds don't get priority by default
     }

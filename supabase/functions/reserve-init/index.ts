@@ -3,6 +3,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
+import { RESERVATION_STATES, validateReservationStatusUpdate } from "../_shared/states.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -157,7 +158,7 @@ serve(async (req) => {
         session_id: sessionRow.id,
         parent_id: pIns.id,
         child_id: cIns.id,
-        status: "pending",
+        status: RESERVATION_STATES.PENDING,
         price_fee_cents: amountCents,
         stripe_payment_intent_id: paymentIntent.id,
         provider_platform: sessionRow.platform,
