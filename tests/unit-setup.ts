@@ -1,4 +1,12 @@
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
+import '@testing-library/jest-dom';
+
+// Extend vitest's expect with jest-dom matchers
+declare global {
+  namespace Vi {
+    interface Assertion<T = any> extends jest.Matchers<T> {}
+  }
+}
 
 // Mock Supabase client for unit tests
 vi.mock('@/integrations/supabase/client', () => ({
