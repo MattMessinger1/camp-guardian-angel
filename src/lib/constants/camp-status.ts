@@ -8,45 +8,57 @@ export const CAMP_STATUS = {
 
 export const PREPARATION_GUIDANCE = {
   GENERAL_CAMP_PREP: {
-    title: "General Camp Preparation",
-    description: "While we wait for official requirements, here's what you can prepare:",
+    title: "General Camp Preparation Checklist",
+    description: "Get ahead by preparing these essential items before camp-specific requirements are announced.",
     items: [
-      {
-        category: "Documents",
-        items: [
-          "Medical/health form (most camps require this)",
-          "Emergency contact information", 
-          "Insurance card copy",
-          "Photo release waiver",
-          "Pickup authorization forms"
-        ]
-      },
       {
         category: "Child Information",
         items: [
-          "Full legal name (as on birth certificate)",
-          "Date of birth",
-          "Grade level for upcoming school year",
-          "Allergies and medical conditions",
-          "Dietary restrictions",
-          "Medication information"
+          "Gather basic child information (name, age, grade)",
+          "Compile emergency contact details", 
+          "Note any allergies or dietary restrictions",
+          "Document any special needs or accommodations",
+          "Prepare backup emergency contacts"
         ]
       },
       {
-        category: "Parent Information", 
+        category: "Financial Setup",
         items: [
-          "Primary parent/guardian contact",
-          "Secondary emergency contact",
-          "Work phone numbers",
-          "Email addresses (check spam folders regularly)"
+          "Add payment method for $20 success fee authorization",
+          "Research camp fee structure and payment deadlines",
+          "Set up dedicated camp savings account",
+          "Plan for additional expenses (supplies, field trips)",
+          "Understand camp's refund and payment policies"
         ]
       },
       {
-        category: "Financial",
+        category: "Account Setup",
         items: [
-          "Payment method ready (most camps require immediate payment)",
-          "Budget confirmation (camps typically $200-$500/week)",
-          "Sibling discount information if applicable"
+          "Create camp registration account early",
+          "Verify account login credentials work",
+          "Complete basic profile information",
+          "Set up notification preferences",
+          "Test account access on registration device"
+        ]
+      },
+      {
+        category: "Registration Strategy",
+        items: [
+          "Plan registration day schedule and backup plan",
+          "Set up alerts for registration opening",
+          "Prepare registration device and internet backup",
+          "Research camp's specific registration process",
+          "Know exact registration opening time and timezone"
+        ]
+      },
+      {
+        category: "Information Gathering",
+        items: [
+          "Research camp's typical requirements",
+          "Connect with other families who've registered before",
+          "Follow camp social media for updates",
+          "Sign up for camp newsletter or notifications",
+          "Bookmark important camp pages and forms"
         ]
       }
     ]

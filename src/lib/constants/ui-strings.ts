@@ -47,9 +47,10 @@ export const UI_STRINGS = {
   // Research & Requirements
   RESEARCH_REQUIREMENTS_BTN: "Research Requirements",
   RESEARCH_MODAL_TITLE: "Research Session Requirements",
-  RESEARCH_SUBMIT_SUCCESS: "Research submitted successfully",
+  RESEARCH_SUBMIT_SUCCESS: "Research submitted successfully", 
   RESEARCH_CONFIDENCE_HIGH: "Very confident in requirements",
   RESEARCH_CONFIDENCE_LOW: "Could not find clear information",
+  RESEARCH_FOCUS_SIGNUP: "Focus on signup requirements only - no document uploads needed",
 
   // General Actions
   ACTION_ADD_CARD: "Add Card",
@@ -69,9 +70,10 @@ export const UI_STRINGS = {
   CAMP_WATCH_MONITORING: "We're now monitoring for registration information",
   CAMP_WATCH_NEXT_STEPS: "While you wait, start preparing with our general camp checklist",
   CAMP_WATCH_NOTIFICATION_SENT: "You'll be notified when camp details are announced",
-  CAMP_PREPARATION_COMPLETE: "Great job! You've completed all general preparation items",
-  CAMP_PREPARATION_UPDATE: (campName: string) => `Camp preparation update for ${campName}`,
+  CAMP_PREPARATION_COMPLETE: "Great job! You've completed all signup preparation items",
+  CAMP_PREPARATION_UPDATE: (campName: string) => `Camp signup preparation update for ${campName}`,
   CAMP_INFO_AVAILABLE: (campName: string) => `Registration details for ${campName} are now available`,
+  PREPARATION_NO_DOCUMENTS: "No document uploads required - we focus on signup readiness only",
 
 } as const;
 

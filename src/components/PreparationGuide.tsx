@@ -204,13 +204,13 @@ export function PreparationGuide({ campName, showAsCard = true }: PreparationGui
           </Accordion>
 
           {progressPercentage === 100 && (
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                <strong>Great job!</strong> You've completed all general preparation items. 
-                We'll notify you when specific camp requirements are available.
-              </AlertDescription>
-            </Alert>
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              <strong>Great job!</strong> You've completed all signup preparation items. 
+              You're ready to register when camp details are announced. No document uploads required.
+            </AlertDescription>
+          </Alert>
           )}
         </TabsContent>
 
@@ -230,7 +230,7 @@ export function PreparationGuide({ campName, showAsCard = true }: PreparationGui
                     <div>
                       <p className="font-medium">Start General Preparation</p>
                       <p className="text-sm text-muted-foreground">
-                        Gather documents, organize child information, prepare payment method
+                        Organize child information, set up payment authorization, prepare account
                       </p>
                     </div>
                   </div>
@@ -238,9 +238,9 @@ export function PreparationGuide({ campName, showAsCard = true }: PreparationGui
                   <div className="flex gap-3">
                     <Badge variant="outline">2-3 weeks before</Badge>
                     <div>
-                      <p className="font-medium">Research Specific Requirements</p>
+                      <p className="font-medium">Research Signup Requirements</p>
                       <p className="text-sm text-muted-foreground">
-                        Once announced, research exact requirements for your chosen camp
+                        Once announced, research signup info and payment deadlines (no documents needed)
                       </p>
                     </div>
                   </div>
@@ -250,7 +250,7 @@ export function PreparationGuide({ campName, showAsCard = true }: PreparationGui
                     <div>
                       <p className="font-medium">Final Verification</p>
                       <p className="text-sm text-muted-foreground">
-                        Confirm all requirements are ready, test payment method
+                        Test account access, verify payment authorization, confirm signup strategy
                       </p>
                     </div>
                   </div>
@@ -258,9 +258,9 @@ export function PreparationGuide({ campName, showAsCard = true }: PreparationGui
                   <div className="flex gap-3">
                     <Badge variant="default">Registration Day</Badge>
                     <div>
-                      <p className="font-medium">Execute Registration</p>
+                      <p className="font-medium">Execute Signup</p>
                       <p className="text-sm text-muted-foreground">
-                        We handle the submission when registration opens
+                        We handle the signup submission and payment authorization when registration opens
                       </p>
                     </div>
                   </div>

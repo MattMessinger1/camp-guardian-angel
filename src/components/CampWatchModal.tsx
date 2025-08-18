@@ -101,7 +101,7 @@ export function CampWatchModal({ isOpen, onClose }: CampWatchModalProps) {
             </div>
             
             <p className="text-muted-foreground mb-6">
-              Can't find the camp you're looking for? We'll monitor for when registration information becomes available and help you prepare in advance.
+              Can't find the camp you're looking for? We'll monitor for when registration information becomes available and help you prepare for signup (no document collection required).
             </p>
 
             <div className="space-y-4">
@@ -225,7 +225,7 @@ export function CampWatchModal({ isOpen, onClose }: CampWatchModalProps) {
             <Alert className="mt-6">
               <Clock className="h-4 w-4" />
               <AlertDescription>
-                While you wait, we'll provide general preparation guidance to help you get ready for when registration opens.
+                While you wait, we'll provide signup preparation guidance. Focus is on readiness, not document collection - we'll only need payment authorization.
               </AlertDescription>
             </Alert>
 
@@ -278,9 +278,10 @@ export function CampWatchModal({ isOpen, onClose }: CampWatchModalProps) {
                   <strong>What happens next?</strong>
                   <ul className="list-disc list-inside mt-2 space-y-1">
                     <li>We'll monitor for camp registration information</li>
-                    <li>You'll get preparation guidance while you wait</li>
+                    <li>You'll get signup preparation guidance while you wait</li>
                     <li>You'll be notified when registration details are available</li>
-                    <li>We'll help you research specific requirements when announced</li>
+                    <li>We'll help you research signup requirements (no document uploads needed)</li>
+                    <li>You'll authorize $20 success fee when ready to register</li>
                   </ul>
                 </AlertDescription>
               </Alert>
