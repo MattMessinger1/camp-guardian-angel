@@ -5,6 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { RESERVATION_STATES, validateReservationStatusUpdate } from "../_shared/states.ts";
 import { requirePaymentMethodOrThrow } from "../_shared/billing.ts";
+import { checkPerUserSessionCap, acquireUserSessionLock, releaseUserSessionLock } from "../_shared/quotas.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
