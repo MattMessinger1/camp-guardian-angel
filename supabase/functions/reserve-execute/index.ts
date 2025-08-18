@@ -56,6 +56,8 @@ serve(async (req) => {
       });
     }
 
+    // SECURITY: Only allow reserve-execute for reservations created via canonical flow
+    // Verify the reservation was created through reserve-init (has payment intent)
     const { reservation_id, recaptcha_token } = await req.json();
     
     if (!reservation_id) {
@@ -73,15 +75,42 @@ serve(async (req) => {
       });
     }
 
-    // Get reservation details
+    // Get reservation details and verify it came through canonical flow
     const { data: reservation, error: rErr } = await supabase
       .from("reservations")
-      .select("id, status, provider_platform, provider_session_key")
+      .select("id, status, provider_platform, provider_session_key, stripe_payment_intent_id, user_id")
       .eq("id", reservation_id)
       .single();
       
     if (rErr || !reservation) {
       throw rErr ?? new Error("reservation_not_found");
+    }
+
+    // CRITICAL SECURITY CHECK: Only allow execution for reservations with payment intent
+    // This ensures the reservation was created via the canonical reserve-init flow
+    if (!reservation.stripe_payment_intent_id) {
+      console.error(`[SECURITY] reserve-execute blocked: reservation ${reservation_id} has no payment intent - not created via canonical flow`);
+      await supabase
+        .from('compliance_audit')
+        .insert({
+          user_id: reservation.user_id,
+          event_type: 'LEGACY_EXECUTION_BLOCKED',
+          event_data: {
+            reservation_id,
+            reason: 'no_payment_intent',
+            blocked_at: new Date().toISOString()
+          },
+          payload_summary: 'Reserve-execute blocked for reservation without payment intent'
+        });
+      
+      return new Response(JSON.stringify({ 
+        error: "INVALID_RESERVATION_SOURCE",
+        message: "This reservation was not created through the canonical flow and cannot be executed.",
+        code: 403
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     // Simulate automation logic based on platform

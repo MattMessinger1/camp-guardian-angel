@@ -390,12 +390,12 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Recent Registrations */}
+      {/* Recent Registrations (Legacy Data) */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Registrations</CardTitle>
+          <CardTitle>Recent Registrations (Legacy)</CardTitle>
           <CardDescription>
-            Completed registrations from the last 30 days
+            Historical registrations from the legacy system. New reservations use the improved fairness queue system.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -2950,6 +2950,10 @@ export type Database = {
         Args: { concurrent?: boolean }
         Returns: undefined
       }
+      register_session_legacy: {
+        Args: { registration_id: string }
+        Returns: Json
+      }
       search_hybrid: {
         Args: {
           p_age_max: number
