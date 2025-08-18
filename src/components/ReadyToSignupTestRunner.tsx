@@ -19,53 +19,58 @@ interface TestCase {
 const testCases: TestCase[] = [
   {
     id: 'TC-001',
-    title: 'Public Session Browsing',
-    category: 'Session Discovery',
-    description: 'Verify users can browse sessions without authentication',
+    title: 'Public Search Access',
+    category: 'Search Discovery',
+    description: 'Verify users can search activities without authentication',
     instructions: [
-      'Navigate to /sessions page',
-      'Verify page loads without login',
-      'Check that session cards are displayed',
-      'Verify essential session information is visible'
+      'Navigate to home page or /search',
+      'Verify search interface loads without login',
+      'Test basic search functionality',
+      'Check that results display essential information'
     ],
     expectedResults: [
-      'Sessions page loads successfully',
-      'Session cards show provider, capacity, and fee information',
-      'No authentication required for browsing'
+      'Search page loads successfully without authentication',
+      'Search returns relevant activities and sessions',
+      'Results show provider, pricing, and availability info'
     ]
   },
   {
     id: 'TC-002',
-    title: 'Session Search Functionality',
-    category: 'Session Discovery',
-    description: 'Test search and filtering capabilities',
+    title: 'Advanced Search & Filtering',
+    category: 'Search Discovery',
+    description: 'Test comprehensive search and filtering capabilities',
     instructions: [
-      'Use search bar to find specific activities',
-      'Apply location filters',
+      'Enter specific activity keywords (swimming, coding, art)',
+      'Apply location filters (city, state, distance)',
       'Test age range filters',
-      'Verify search results accuracy'
+      'Apply date range filters',
+      'Test price range filters'
     ],
     expectedResults: [
-      'Search returns relevant results',
-      'Filters work correctly',
-      'Results update in real-time'
+      'Keyword search returns relevant activities',
+      'Location filters work accurately',
+      'Age and date filters reduce results appropriately',
+      'Price filters show camps within budget',
+      'Multiple filters can be combined effectively'
     ]
   },
   {
     id: 'TC-003',
-    title: 'Session Detail View',
-    category: 'Session Discovery',
-    description: 'Verify comprehensive session information display',
+    title: 'Activity & Session Detail View',
+    category: 'Search Discovery',
+    description: 'Verify comprehensive activity and session information display',
     instructions: [
-      'Click on a session card',
-      'Verify all session details are shown',
-      'Check for signup requirements',
-      'Verify registration timeline information'
+      'Click on an activity from search results',
+      'Verify activity details page loads',
+      'Check session listings within activity',
+      'Click on specific session to view details',
+      'Verify signup requirements and timeline info'
     ],
     expectedResults: [
-      'Detailed session information displayed',
-      'Signup requirements clearly listed',
-      'Registration dates and times accurate'
+      'Activity page shows comprehensive information',
+      'Sessions are grouped and clearly presented',
+      'Individual session details include requirements',
+      'Registration dates and signup instructions are clear'
     ]
   },
   {
@@ -279,7 +284,7 @@ export function ReadyToSignupTestRunner() {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      'Session Discovery': 'bg-blue-100 text-blue-800',
+      'Search Discovery': 'bg-blue-100 text-blue-800',
       'Information Gathering': 'bg-green-100 text-green-800',
       'Payment Pre-Authorization': 'bg-purple-100 text-purple-800',
       'Signup Day Preparation': 'bg-orange-100 text-orange-800',
