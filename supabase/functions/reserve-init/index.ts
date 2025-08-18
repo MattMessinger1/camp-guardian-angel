@@ -6,6 +6,7 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { RESERVATION_STATES, validateReservationStatusUpdate } from "../_shared/states.ts";
 import { requirePaymentMethodOrThrow } from "../_shared/billing.ts";
 import { checkPerUserSessionCap, acquireUserSessionLock, releaseUserSessionLock } from "../_shared/quotas.ts";
+import { isChildDuplicateError, getChildDuplicateErrorMessage } from "../_shared/childFingerprint.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -132,6 +133,18 @@ serve(async (req) => {
     
     if (cErr) {
       console.error("Child insert failed:", cErr);
+      
+      // Check if this is a duplicate child fingerprint error
+      if (isChildDuplicateError(cErr)) {
+        return new Response(JSON.stringify({ 
+          error: getChildDuplicateErrorMessage(),
+          code: "CHILD_DUPLICATE"
+        }), { 
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+      
       throw cErr;
     }
 

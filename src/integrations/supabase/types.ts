@@ -473,8 +473,11 @@ export type Database = {
       }
       children: {
         Row: {
+          admin_override_reason: string | null
           created_at: string | null
           dob: string
+          duplicate_of_child_id: string | null
+          fingerprint: string
           id: string
           name: string
           notes: string | null
@@ -482,8 +485,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          admin_override_reason?: string | null
           created_at?: string | null
           dob: string
+          duplicate_of_child_id?: string | null
+          fingerprint: string
           id?: string
           name: string
           notes?: string | null
@@ -491,8 +497,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          admin_override_reason?: string | null
           created_at?: string | null
           dob?: string
+          duplicate_of_child_id?: string | null
+          fingerprint?: string
           id?: string
           name?: string
           notes?: string | null
@@ -505,6 +514,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_children_duplicate_of"
+            columns: ["duplicate_of_child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
             referencedColumns: ["id"]
           },
         ]
@@ -2804,6 +2820,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      compute_child_fingerprint: {
+        Args: { p_dob: string; p_name: string }
+        Returns: string
+      }
       detect_session_duplicates: {
         Args: {
           p_candidate_id: string
@@ -2980,6 +3000,14 @@ export type Database = {
       sparsevec_typmod_in: {
         Args: { "": unknown[] }
         Returns: number
+      }
+      unaccent: {
+        Args: { "": string }
+        Returns: string
+      }
+      unaccent_init: {
+        Args: { "": unknown }
+        Returns: unknown
       }
       vector_avg: {
         Args: { "": number[] }
