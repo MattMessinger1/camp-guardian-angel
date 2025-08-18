@@ -1553,6 +1553,90 @@ export type Database = {
           },
         ]
       }
+      requirement_defaults: {
+        Row: {
+          camp_type: string | null
+          common_requirements: Json | null
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          provider_platform: string | null
+          typical_deposit_cents: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          camp_type?: string | null
+          common_requirements?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          provider_platform?: string | null
+          typical_deposit_cents?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          camp_type?: string | null
+          common_requirements?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          provider_platform?: string | null
+          typical_deposit_cents?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      research_reminders: {
+        Row: {
+          call_to_action: string | null
+          confidence_level: string | null
+          created_at: string | null
+          days_until_signup: number | null
+          dismissed_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          priority: number | null
+          reminder_type: string
+          sent_at: string | null
+          session_id: string
+          triggered_at: string | null
+          user_id: string
+        }
+        Insert: {
+          call_to_action?: string | null
+          confidence_level?: string | null
+          created_at?: string | null
+          days_until_signup?: number | null
+          dismissed_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority?: number | null
+          reminder_type: string
+          sent_at?: string | null
+          session_id: string
+          triggered_at?: string | null
+          user_id: string
+        }
+        Update: {
+          call_to_action?: string | null
+          confidence_level?: string | null
+          created_at?: string | null
+          days_until_signup?: number | null
+          dismissed_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: number | null
+          reminder_type?: string
+          sent_at?: string | null
+          session_id?: string
+          triggered_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       reservation_attempts: {
         Row: {
           attempt_no: number
@@ -2211,6 +2295,60 @@ export type Database = {
           },
         ]
       }
+      session_requirements: {
+        Row: {
+          confidence_level: string | null
+          created_at: string | null
+          custom_requirements: Json | null
+          deposit_amount_cents: number | null
+          discovery_method: string | null
+          last_verified_at: string | null
+          needs_verification: boolean | null
+          required_child_fields: Json | null
+          required_documents: Json | null
+          required_parent_fields: Json | null
+          research_notes: string | null
+          session_id: string
+          source_urls: string[] | null
+          updated_at: string | null
+          verified_by_user_id: string | null
+        }
+        Insert: {
+          confidence_level?: string | null
+          created_at?: string | null
+          custom_requirements?: Json | null
+          deposit_amount_cents?: number | null
+          discovery_method?: string | null
+          last_verified_at?: string | null
+          needs_verification?: boolean | null
+          required_child_fields?: Json | null
+          required_documents?: Json | null
+          required_parent_fields?: Json | null
+          research_notes?: string | null
+          session_id: string
+          source_urls?: string[] | null
+          updated_at?: string | null
+          verified_by_user_id?: string | null
+        }
+        Update: {
+          confidence_level?: string | null
+          created_at?: string | null
+          custom_requirements?: Json | null
+          deposit_amount_cents?: number | null
+          discovery_method?: string | null
+          last_verified_at?: string | null
+          needs_verification?: boolean | null
+          required_child_fields?: Json | null
+          required_documents?: Json | null
+          required_parent_fields?: Json | null
+          research_notes?: string | null
+          session_id?: string
+          source_urls?: string[] | null
+          updated_at?: string | null
+          verified_by_user_id?: string | null
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           activity_id: string | null
@@ -2411,6 +2549,69 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      signup_learnings: {
+        Row: {
+          accuracy_score: number | null
+          actual_deposit_cents: number | null
+          actual_requirements: Json | null
+          created_at: string | null
+          difficulty_rating: number | null
+          discovery_method: string | null
+          id: string
+          missing_predictions: Json | null
+          session_id: string | null
+          signup_success: boolean | null
+          unexpected_requirements: Json | null
+          user_feedback: string | null
+          user_id: string | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          actual_deposit_cents?: number | null
+          actual_requirements?: Json | null
+          created_at?: string | null
+          difficulty_rating?: number | null
+          discovery_method?: string | null
+          id?: string
+          missing_predictions?: Json | null
+          session_id?: string | null
+          signup_success?: boolean | null
+          unexpected_requirements?: Json | null
+          user_feedback?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          actual_deposit_cents?: number | null
+          actual_requirements?: Json | null
+          created_at?: string | null
+          difficulty_rating?: number | null
+          discovery_method?: string | null
+          id?: string
+          missing_predictions?: Json | null
+          session_id?: string | null
+          signup_success?: boolean | null
+          unexpected_requirements?: Json | null
+          user_feedback?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signup_learnings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "signup_learnings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signup_reminders: {
         Row: {
@@ -2698,6 +2899,141 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_requirement_research: {
+        Row: {
+          confidence_rating: number | null
+          created_at: string | null
+          deposit_amount_cents: number | null
+          found_requirements: Json | null
+          id: string
+          research_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          session_id: string | null
+          source_urls: string[] | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          confidence_rating?: number | null
+          created_at?: string | null
+          deposit_amount_cents?: number | null
+          found_requirements?: Json | null
+          id?: string
+          research_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          source_urls?: string[] | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          confidence_rating?: number | null
+          created_at?: string | null
+          deposit_amount_cents?: number | null
+          found_requirements?: Json | null
+          id?: string
+          research_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          source_urls?: string[] | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_requirement_research_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "user_requirement_research_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_session_readiness: {
+        Row: {
+          blocked_items: Json | null
+          collected_data: Json | null
+          completed_items: Json | null
+          completion_percentage: number | null
+          confidence_in_requirements: string | null
+          created_at: string | null
+          id: string
+          last_reminder_sent: string | null
+          ready_for_signup: boolean | null
+          reminder_count: number | null
+          required_items: Json | null
+          research_completed_at: string | null
+          research_requested_at: string | null
+          session_id: string
+          updated_at: string | null
+          user_id: string
+          user_researched: boolean | null
+        }
+        Insert: {
+          blocked_items?: Json | null
+          collected_data?: Json | null
+          completed_items?: Json | null
+          completion_percentage?: number | null
+          confidence_in_requirements?: string | null
+          created_at?: string | null
+          id?: string
+          last_reminder_sent?: string | null
+          ready_for_signup?: boolean | null
+          reminder_count?: number | null
+          required_items?: Json | null
+          research_completed_at?: string | null
+          research_requested_at?: string | null
+          session_id: string
+          updated_at?: string | null
+          user_id: string
+          user_researched?: boolean | null
+        }
+        Update: {
+          blocked_items?: Json | null
+          collected_data?: Json | null
+          completed_items?: Json | null
+          completion_percentage?: number | null
+          confidence_in_requirements?: string | null
+          created_at?: string | null
+          id?: string
+          last_reminder_sent?: string | null
+          ready_for_signup?: boolean | null
+          reminder_count?: number | null
+          required_items?: Json | null
+          research_completed_at?: string | null
+          research_requested_at?: string | null
+          session_id?: string
+          updated_at?: string | null
+          user_id?: string
+          user_researched?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_session_readiness_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "user_session_readiness_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
