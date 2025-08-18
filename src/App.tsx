@@ -35,6 +35,7 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/sessions" element={<Sessions />} />
+        <Route path="/sessions/new" element={<SessionForm />} />
         <Route path="/sessions/:id" element={<SessionDetail />} />
         <Route path="/sessions/:id/edit" element={<SessionForm />} />
         <Route path="/children" element={<Children />} />
