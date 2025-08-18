@@ -147,7 +147,7 @@ serve(async (req) => {
         requested_sessions: mapping.session_ids.length,
         registrations_created: 0,
         conflicts: [] as any[],
-        status: 'pending'
+        status: REGISTRATION_STATES.PENDING
       };
 
       // Process each session for this child
@@ -240,7 +240,7 @@ serve(async (req) => {
               plan_id: plan_id,
               child_id: mapping.child_id,
               session_id: sessionId,
-              status: 'pending',
+              status: REGISTRATION_STATES.PENDING,
               priority_opt_in: mapping.priority === 0,
               requested_at: new Date().toISOString()
             })
@@ -493,7 +493,7 @@ async function createScheduledRegistrations(
           child_id: mapping.child_id,
           session_id: sessionId,
           scheduled_time: plan.manual_open_at,
-          status: 'scheduled',
+          status: REGISTRATION_STATES.SCHEDULED,
           priority_opt_in: mapping.priority === 0,
           retry_attempts: 3,
           retry_delay_ms: 500,
@@ -531,7 +531,7 @@ async function createScheduledRegistrations(
     // Update plan status
     await supabase
       .from('registration_plans')
-      .update({ status: 'scheduled' })
+      .update({ status: REGISTRATION_STATES.SCHEDULED })
       .eq('id', plan.id);
 
     return new Response(

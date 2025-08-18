@@ -51,7 +51,7 @@ serve(async (req) => {
     if (tokenData.registration_id) {
       await supabase
         .from('registrations')
-        .update({ status: 'pending' })
+        .update({ status: REGISTRATION_STATES.PENDING })
         .eq('id', tokenData.registration_id);
 
       console.log(`[OTP-SUBMIT] Resumed registration: ${tokenData.registration_id}`);

@@ -83,7 +83,7 @@ serve(async (req: Request) => {
         provider,
         detected_at: new Date().toISOString(),
         expires_at: expiresAt.toISOString(),
-        status: 'pending',
+        status: CAPTCHA_STATES.PENDING,
         resume_token: resumeToken,
         magic_url: magicUrl,
         meta: { app_base_url: appBaseUrl }

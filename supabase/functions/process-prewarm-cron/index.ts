@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
+import { PREWARM_STATES } from "../_shared/states.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,7 +52,7 @@ serve(async (req) => {
         id, session_id, prewarm_at,
         sessions:session_id(title, registration_open_at)
       `)
-      .eq('status', 'scheduled')
+      .eq('status', PREWARM_STATES.SCHEDULED)
       .lte('prewarm_at', new Date().toISOString())
       .order('prewarm_at', { ascending: true })
       .limit(10); // Process up to 10 jobs per run
@@ -169,8 +170,8 @@ serve(async (req) => {
       }
     }
 
-    const successCount = results.filter(r => r.status === 'completed').length;
-    const failureCount = results.filter(r => r.status === 'failed').length;
+    const successCount = results.filter(r => r.status === PREWARM_STATES.COMPLETED).length;
+    const failureCount = results.filter(r => r.status === PREWARM_STATES.FAILED).length;
 
     console.log(`[PROCESS-PREWARM-CRON] Processed ${results.length} jobs: ${successCount} successful, ${failureCount} failed`);
 

@@ -120,7 +120,7 @@ async function resendCaptchaMagicUrl(phoneE164: string): Promise<{ sent: boolean
       .from('captcha_events')
       .select('*, sessions(title)')
       .eq('user_id', userProfile.user_id)
-      .eq('status', 'pending')
+      .eq('status', CAPTCHA_STATES.PENDING)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(1)

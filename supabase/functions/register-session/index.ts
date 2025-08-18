@@ -155,7 +155,7 @@ async function executeRegistrationWithRetry(
     })
     .eq('id', registration_id)
     .eq('user_id', user.id)
-    .eq('status', 'pending') // Only process if still pending
+    .eq('status', REGISTRATION_STATES.PENDING) // Only process if still pending
     .select()
     .single();
 

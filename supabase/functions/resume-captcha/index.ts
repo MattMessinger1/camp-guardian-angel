@@ -142,7 +142,7 @@ serve(async (req: Request) => {
     }
 
     // Check if status is pending
-    if (captchaEvent.status !== 'pending') {
+    if (captchaEvent.status !== CAPTCHA_STATES.PENDING) {
       return new Response(
         JSON.stringify({ error: `Cannot resume captcha with status: ${captchaEvent.status}` }),
         {

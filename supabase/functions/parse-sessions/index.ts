@@ -483,7 +483,7 @@ Deno.serve(async (req) => {
         url: url,
         extracted_json: candidate,
         confidence: candidate.confidence,
-        status: 'pending',
+        status: REGISTRATION_STATES.PENDING,
         notes: candidate.extractionNotes
       };
       
