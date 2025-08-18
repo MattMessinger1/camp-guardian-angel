@@ -12,7 +12,7 @@ export default function Search() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4">Find Your Activity / Camp</h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Get ready to signup
+            Get ready for signup
           </p>
         </div>
 
