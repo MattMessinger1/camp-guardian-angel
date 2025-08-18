@@ -39,10 +39,9 @@ function AvailabilityBadge({ status }: { status?: string }) {
   );
 }
 
-function SessionCard({ session, onReserve, onDateSubmit }: { 
+function SessionCard({ session, onReserve }: { 
   session: SessionItem; 
   onReserve: (sessionId: string) => void;
-  onDateSubmit: (sessionId: string, date: string) => void;
 }) {
   const startDate = session.start ? new Date(session.start) : null;
   const endDate = session.end ? new Date(session.end) : null;
@@ -74,7 +73,7 @@ function SessionCard({ session, onReserve, onDateSubmit }: {
             </div>
           )}
 
-          <RegistrationStatus session={session} onDateSubmit={onDateSubmit} />
+          <RegistrationStatus session={session} />
         </div>
 
         <div className="flex items-center gap-3">
@@ -99,10 +98,9 @@ function SessionCard({ session, onReserve, onDateSubmit }: {
   );
 }
 
-function ActivityCard({ activity, onReserve, onDateSubmit }: { 
+function ActivityCard({ activity, onReserve }: { 
   activity: ActivityResult; 
   onReserve: (sessionId: string) => void;
-  onDateSubmit: (sessionId: string, date: string) => void;
 }) {
   const upcomingSessions = activity.sessions.slice(0, 3);
   const hasMoreSessions = activity.sessions.length > 3;
@@ -153,7 +151,6 @@ function ActivityCard({ activity, onReserve, onDateSubmit }: {
             key={session.id} 
             session={session} 
             onReserve={onReserve}
-            onDateSubmit={onDateSubmit}
           />
         ))}
         
@@ -183,11 +180,6 @@ export default function Results({ items, loading, error }:{
     setReserveModalOpen(true);
   };
 
-  const handleDateSubmit = (sessionId: string, date: string) => {
-    // TODO: Implement saving user-provided registration date
-    console.log('User provided registration date:', { sessionId, date });
-    // This would typically call an API to save the user's registration date
-  };
 
   if (loading) {
     return (
@@ -241,7 +233,6 @@ export default function Results({ items, loading, error }:{
             key={activity.activity_id} 
             activity={activity} 
             onReserve={handleReserve}
-            onDateSubmit={handleDateSubmit}
           />
         ))}
       </div>

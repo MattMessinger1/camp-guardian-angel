@@ -1,17 +1,15 @@
 import React from 'react';
 import { format, isPast, isFuture } from 'date-fns';
 import { Calendar, Clock } from 'lucide-react';
-import { RegistrationDateInput } from './RegistrationDateInput';
 
 interface RegistrationStatusProps {
   session: {
     id: string;
     registration_open_at?: string | null;
   };
-  onDateSubmit: (sessionId: string, date: string) => void;
 }
 
-export function RegistrationStatus({ session, onDateSubmit }: RegistrationStatusProps) {
+export function RegistrationStatus({ session }: RegistrationStatusProps) {
   const { registration_open_at } = session;
 
   // If we have a registration date
@@ -36,14 +34,11 @@ export function RegistrationStatus({ session, onDateSubmit }: RegistrationStatus
     }
   }
 
-  // If we don't have a registration date, show the tracking message with option to add
+  // If we don't have a registration date, show the tracking message
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Clock className="w-3 h-3" />
-        <span>Will post Registration date when available (we're tracking it)</span>
-      </div>
-      <RegistrationDateInput sessionId={session.id} onDateSubmit={onDateSubmit} />
+    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      <Clock className="w-3 h-3" />
+      <span>Will post Registration date when available (we're tracking it)</span>
     </div>
   );
 }
