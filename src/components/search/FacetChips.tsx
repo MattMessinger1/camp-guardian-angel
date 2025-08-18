@@ -17,7 +17,6 @@ export default function FacetChips({ chips, onClearAll }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border">
-      <span className="text-sm text-muted-foreground">Active filters:</span>
       
       {chips.map((chip, index) => (
         <button
