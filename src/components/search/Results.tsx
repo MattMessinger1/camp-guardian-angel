@@ -233,10 +233,6 @@ export default function Results({ items, loading, error }:{
   return (
     <div className="space-y-6">
       
-      {/* Results count */}
-      <div className="text-sm text-muted-foreground">
-        Found {items.length} camp{items.length !== 1 ? 's' : ''} with available sessions
-      </div>
 
       {/* Results grid - mobile first */}
       <div className="grid gap-6">
