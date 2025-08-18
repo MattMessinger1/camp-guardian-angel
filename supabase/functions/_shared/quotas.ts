@@ -6,15 +6,163 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ACTIVE_RESERVATION_STATES } from "./states.ts";
+import { ACTIVE_RESERVATION_STATES, ACTIVE_REGISTRATION_STATES } from "./states.ts";
 
-// Quota constants
+// Quota constants - single source of truth
+export const MAX_ACTIVE_PER_ACCOUNT = 3;
+export const MAX_ACTIVE_PER_CHILD = 1;
+export const MAX_DAILY_ATTEMPTS_IP = 10;
 export const MAX_PER_USER_PER_SESSION = 2;
 
 export interface QuotaCheckResult {
   ok: boolean;
   code?: string;
   message?: string;
+}
+
+export interface QuotaCheckParams {
+  userId: string;
+  childId?: string;
+  sessionId?: string;
+  ip?: string;
+  supabase?: any;
+}
+
+/**
+ * Consolidated quota check - single source of truth for all admission decisions
+ * Checks all quotas and returns first violation encountered
+ * @param params Object with userId, childId, sessionId, ip, and optional supabase client
+ * @returns Promise<QuotaCheckResult>
+ */
+export async function checkQuotas({
+  userId,
+  childId,
+  sessionId,
+  ip,
+  supabase
+}: QuotaCheckParams): Promise<QuotaCheckResult> {
+  console.log(`[QUOTAS] Running consolidated quota check for user ${userId}`);
+  
+  // Use provided client or create service role client
+  const client = supabase || createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } }
+  );
+
+  try {
+    // 1. Check account-wide active reservation limit
+    const { count: accountCount, error: accountError } = await client
+      .from("reservations")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("status", ACTIVE_RESERVATION_STATES);
+
+    if (accountError) {
+      console.error(`[QUOTAS] Error checking account reservations:`, accountError);
+      throw new Error(`Account quota check failed: ${accountError.message}`);
+    }
+
+    const activeAccountReservations = accountCount || 0;
+    console.log(`[QUOTAS] User ${userId} has ${activeAccountReservations} active reservations (limit: ${MAX_ACTIVE_PER_ACCOUNT})`);
+
+    if (activeAccountReservations >= MAX_ACTIVE_PER_ACCOUNT) {
+      return {
+        ok: false,
+        code: 'ACCOUNT_QUOTA',
+        message: `You can have at most ${MAX_ACTIVE_PER_ACCOUNT} active reservations across all sessions.`
+      };
+    }
+
+    // 2. Check per-child active reservation limit (if childId provided)
+    if (childId) {
+      const { count: childCount, error: childError } = await client
+        .from("reservations")
+        .select("*", { count: "exact", head: true })
+        .eq("child_id", childId)
+        .in("status", ACTIVE_RESERVATION_STATES);
+
+      if (childError) {
+        console.error(`[QUOTAS] Error checking child reservations:`, childError);
+        throw new Error(`Child quota check failed: ${childError.message}`);
+      }
+
+      const activeChildReservations = childCount || 0;
+      console.log(`[QUOTAS] Child ${childId} has ${activeChildReservations} active reservations (limit: ${MAX_ACTIVE_PER_CHILD})`);
+
+      if (activeChildReservations >= MAX_ACTIVE_PER_CHILD) {
+        return {
+          ok: false,
+          code: 'CHILD_QUOTA',
+          message: `Each child can have at most ${MAX_ACTIVE_PER_CHILD} active reservation at a time.`
+        };
+      }
+    }
+
+    // 3. Check per-session limit for this user (if sessionId provided)
+    if (sessionId) {
+      const { count: sessionCount, error: sessionError } = await client
+        .from("reservations")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("session_id", sessionId)
+        .in("status", ACTIVE_RESERVATION_STATES);
+
+      if (sessionError) {
+        console.error(`[QUOTAS] Error checking session reservations:`, sessionError);
+        throw new Error(`Session quota check failed: ${sessionError.message}`);
+      }
+
+      const activeSessionReservations = sessionCount || 0;
+      console.log(`[QUOTAS] User ${userId} has ${activeSessionReservations} active reservations for session ${sessionId} (limit: ${MAX_PER_USER_PER_SESSION})`);
+
+      if (activeSessionReservations >= MAX_PER_USER_PER_SESSION) {
+        return {
+          ok: false,
+          code: 'USER_SESSION_CAP',
+          message: `You can register at most ${MAX_PER_USER_PER_SESSION} children per session.`
+        };
+      }
+    }
+
+    // 4. Check daily IP attempt limit (if ip provided)
+    if (ip) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const { count: ipCount, error: ipError } = await client
+        .from("reservation_attempts")
+        .select("*", { count: "exact", head: true })
+        .eq("client_ip", ip)
+        .gte("started_at", today.toISOString())
+        .lt("started_at", tomorrow.toISOString());
+
+      if (ipError) {
+        console.error(`[QUOTAS] Error checking IP attempts:`, ipError);
+        throw new Error(`IP quota check failed: ${ipError.message}`);
+      }
+
+      const dailyAttempts = ipCount || 0;
+      console.log(`[QUOTAS] IP ${ip} has ${dailyAttempts} attempts today (limit: ${MAX_DAILY_ATTEMPTS_IP})`);
+
+      if (dailyAttempts >= MAX_DAILY_ATTEMPTS_IP) {
+        return {
+          ok: false,
+          code: 'IP_ATTEMPTS',
+          message: `Too many registration attempts from this IP address today. Limit: ${MAX_DAILY_ATTEMPTS_IP} per day.`
+        };
+      }
+    }
+
+    console.log(`[QUOTAS] All quota checks passed for user ${userId}`);
+    return { ok: true };
+
+  } catch (error) {
+    console.error(`[QUOTAS] Failed to check quotas:`, error);
+    throw error;
+  }
 }
 
 /**

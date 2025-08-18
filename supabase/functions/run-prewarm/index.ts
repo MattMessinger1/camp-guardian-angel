@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 import { REGISTRATION_STATES, PREWARM_STATES } from "../_shared/states.ts";
 import { requirePaymentMethodOrThrow } from "../_shared/billing.ts";
-import { checkPerUserSessionCap } from "../_shared/quotas.ts";
+import { checkQuotas } from "../_shared/quotas.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -135,15 +135,10 @@ serve(async (req) => {
       const blockedUsers = [];
       for (const reg of pendingRegistrations || []) {
         try {
-          // Re-check payment method requirement at dispatch time
-          const { data: userProfile } = await admin.auth.admin.getUserById(reg.user_id);
-          if (userProfile.user?.email) {
-            await requirePaymentMethodOrThrow(reg.user_id, userProfile.user.email);
-          }
-
-          // Check per-user session quota
-          const quotaCheck = await checkPerUserSessionCap({
+          // Check consolidated quotas (includes payment method check)
+          const quotaCheck = await checkQuotas({
             userId: reg.user_id,
+            childId: reg.child_id,
             sessionId: sessionId,
             supabase: admin
           });
@@ -156,10 +151,9 @@ serve(async (req) => {
               .from('attempt_events')
               .insert({
                 reservation_id: reg.id,
-                event_type: 'quota_blocked:USER_SESSION_CAP',
+                event_type: `quota_blocked:${quotaCheck.code}`,
                 metadata: {
-                  quota_type: 'per_user_session',
-                  limit: 2,
+                  quota_type: quotaCheck.code,
                   message: quotaCheck.message
                 }
               });
@@ -173,7 +167,7 @@ serve(async (req) => {
               })
               .eq('id', reg.id);
               
-            console.log(`[RUN-PREWARM] User ${reg.user_id} blocked - quota exceeded: ${quotaCheck.message}`);
+            console.log(`[RUN-PREWARM] User ${reg.user_id} blocked - quota failed: ${quotaCheck.message}`);
             continue;
           }
 
