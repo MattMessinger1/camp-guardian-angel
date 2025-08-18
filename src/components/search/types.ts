@@ -6,6 +6,7 @@ export type SessionItem = {
   availability_status?: string;
   price_min: number | null;
   platform: string | null;
+  registration_open_at?: string | null;
 };
 
 export type ActivityResult = {

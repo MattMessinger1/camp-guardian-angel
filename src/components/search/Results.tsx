@@ -4,6 +4,7 @@ import { format, formatDistance } from 'date-fns';
 import { Calendar, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
 import { AddSessionModal } from './AddSessionModal';
 import ReserveModal from '../reserve/ReserveModal';
+import { RegistrationStatus } from './RegistrationStatus';
 
 function AvailabilityBadge({ status }: { status?: string }) {
   const getStatusStyle = (status?: string) => {
@@ -38,7 +39,11 @@ function AvailabilityBadge({ status }: { status?: string }) {
   );
 }
 
-function SessionCard({ session, onReserve }: { session: SessionItem; onReserve: (sessionId: string) => void }) {
+function SessionCard({ session, onReserve, onDateSubmit }: { 
+  session: SessionItem; 
+  onReserve: (sessionId: string) => void;
+  onDateSubmit: (sessionId: string, date: string) => void;
+}) {
   const startDate = session.start ? new Date(session.start) : null;
   const endDate = session.end ? new Date(session.end) : null;
   
@@ -68,6 +73,8 @@ function SessionCard({ session, onReserve }: { session: SessionItem; onReserve: 
               <span>${session.price_min}</span>
             </div>
           )}
+
+          <RegistrationStatus session={session} onDateSubmit={onDateSubmit} />
         </div>
 
         <div className="flex items-center gap-3">
@@ -92,7 +99,11 @@ function SessionCard({ session, onReserve }: { session: SessionItem; onReserve: 
   );
 }
 
-function ActivityCard({ activity, onReserve }: { activity: ActivityResult; onReserve: (sessionId: string) => void }) {
+function ActivityCard({ activity, onReserve, onDateSubmit }: { 
+  activity: ActivityResult; 
+  onReserve: (sessionId: string) => void;
+  onDateSubmit: (sessionId: string, date: string) => void;
+}) {
   const upcomingSessions = activity.sessions.slice(0, 3);
   const hasMoreSessions = activity.sessions.length > 3;
   
@@ -141,7 +152,8 @@ function ActivityCard({ activity, onReserve }: { activity: ActivityResult; onRes
           <SessionCard 
             key={session.id} 
             session={session} 
-            onReserve={onReserve} 
+            onReserve={onReserve}
+            onDateSubmit={onDateSubmit}
           />
         ))}
         
@@ -169,6 +181,12 @@ export default function Results({ items, loading, error }:{
   const handleReserve = (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setReserveModalOpen(true);
+  };
+
+  const handleDateSubmit = (sessionId: string, date: string) => {
+    // TODO: Implement saving user-provided registration date
+    console.log('User provided registration date:', { sessionId, date });
+    // This would typically call an API to save the user's registration date
   };
 
   if (loading) {
@@ -214,12 +232,6 @@ export default function Results({ items, loading, error }:{
 
   return (
     <div className="space-y-6">
-      {/* Legal compliance banner */}
-      <div className="bg-muted/50 border border-border rounded-lg p-3">
-        <p className="text-xs text-muted-foreground">
-          Listings gathered from public sources. Click-out goes to official provider sites.
-        </p>
-      </div>
       
       {/* Results count */}
       <div className="text-sm text-muted-foreground">
@@ -232,7 +244,8 @@ export default function Results({ items, loading, error }:{
           <ActivityCard 
             key={activity.activity_id} 
             activity={activity} 
-            onReserve={handleReserve} 
+            onReserve={handleReserve}
+            onDateSubmit={handleDateSubmit}
           />
         ))}
       </div>
