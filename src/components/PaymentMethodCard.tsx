@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CreditCard, AlertTriangle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { UI_STRINGS } from "@/lib/constants/ui-strings";
 
 interface PaymentMethodCardProps {
   hasPaymentMethod?: boolean;
@@ -21,7 +22,7 @@ export function PaymentMethodCard({ hasPaymentMethod = false, onPaymentMethodAdd
     if (!user) {
       toast({
         title: "Authentication required",
-        description: "Please log in to add a payment method",
+        description: UI_STRINGS.NOTIFICATION_LOGIN_REQUIRED,
         variant: "destructive"
       });
       return;
@@ -42,7 +43,7 @@ export function PaymentMethodCard({ hasPaymentMethod = false, onPaymentMethodAdd
         // For now, we'll simulate adding a payment method
         toast({
           title: "Payment method setup",
-          description: "Redirecting to secure payment method setup...",
+          description: UI_STRINGS.NOTIFICATION_SETUP_REDIRECTING,
         });
         
         // Simulate success after a delay
@@ -50,7 +51,7 @@ export function PaymentMethodCard({ hasPaymentMethod = false, onPaymentMethodAdd
           onPaymentMethodAdded?.();
           toast({
             title: "Payment method added",
-            description: "Your payment method has been saved successfully",
+            description: UI_STRINGS.SUCCESS_PAYMENT_METHOD_ADDED,
           });
         }, 2000);
       }
@@ -58,7 +59,7 @@ export function PaymentMethodCard({ hasPaymentMethod = false, onPaymentMethodAdd
       console.error('Payment method setup error:', error);
       toast({
         title: "Setup failed",
-        description: error.message || "Failed to set up payment method",
+        description: error.message || UI_STRINGS.ERROR_PAYMENT_SETUP_FAILED,
         variant: "destructive"
       });
     } finally {
@@ -72,10 +73,10 @@ export function PaymentMethodCard({ hasPaymentMethod = false, onPaymentMethodAdd
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
             <CheckCircle className="h-5 w-5" />
-            Payment Method Ready
+            {UI_STRINGS.PAYMENT_METHOD_READY_TITLE}
           </CardTitle>
           <CardDescription className="text-green-700 dark:text-green-300">
-            You have a payment method on file. You're ready to register!
+            {UI_STRINGS.PAYMENT_METHOD_READY_DESC}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -87,19 +88,19 @@ export function PaymentMethodCard({ hasPaymentMethod = false, onPaymentMethodAdd
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
           <AlertTriangle className="h-5 w-5" />
-          Payment Method Required
+          {UI_STRINGS.PAYMENT_METHOD_REQUIRED_TITLE}
         </CardTitle>
         <CardDescription className="text-orange-700 dark:text-orange-300">
-          Add a payment method now so you're ready for registration.
+          {UI_STRINGS.PAYMENT_METHOD_REQUIRED_DESC}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert className="border-orange-200 bg-orange-100 dark:border-orange-700 dark:bg-orange-900">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-orange-800 dark:text-orange-200">
-            <strong>We'll only charge $20 if your signup succeeds.</strong>
+            <strong>{UI_STRINGS.PAYMENT_METHOD_SUCCESS_FEE_NOTE}</strong>
             <br />
-            No charges for failed attempts or if registration doesn't open.
+            {UI_STRINGS.PAYMENT_METHOD_NO_FAILED_CHARGES}
           </AlertDescription>
         </Alert>
         
@@ -110,7 +111,7 @@ export function PaymentMethodCard({ hasPaymentMethod = false, onPaymentMethodAdd
           size="lg"
         >
           <CreditCard className="mr-2 h-4 w-4" />
-          {isLoading ? "Setting up..." : "Add Card"}
+          {isLoading ? UI_STRINGS.ACTION_SETTING_UP : UI_STRINGS.ACTION_ADD_CARD}
         </Button>
       </CardContent>
     </Card>

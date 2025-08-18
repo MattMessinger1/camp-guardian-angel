@@ -4,6 +4,9 @@ import { STRIPE_PUBLISHABLE_KEY } from '@/config/stripe';
 import { FuzzyDuplicateWarning, findSimilarChild } from '@/components/FuzzyDuplicateWarning';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@supabase/supabase-js';
+import { UI_STRINGS } from '@/lib/constants/ui-strings';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
@@ -37,6 +40,7 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
   const [similarChild, setSimilarChild] = useState<{ child: Child; similarity: number } | null>(null);
   const [existingChildren, setExistingChildren] = useState<Child[]>([]);
   const [userOverrideDuplicate, setUserOverrideDuplicate] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(false);
 
   const [parent, setParent] = useState(presetParent ?? { name: '', email: '', phone: '' });
   const [child, setChild] = useState(presetChild ?? { name: '', dob: '' });
@@ -56,6 +60,12 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
   }, [open]);
 
   const handleReserveClick = () => {
+    // Check consent first
+    if (!consentGiven) {
+      setError(UI_STRINGS.RESERVE_CONSENT_REQUIRED_ERROR);
+      return;
+    }
+    
     // Proceed directly - server-side fingerprint system handles duplicates
     authorizeAndExecute();
   };
@@ -78,7 +88,7 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        throw new Error('Please log in to make a reservation');
+        throw new Error(UI_STRINGS.ERROR_AUTHENTICATION_REQUIRED);
       }
 
       const res = await supabase.functions.invoke('reserve-init', {
@@ -157,7 +167,7 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
       // Handle response: confirmed instantly, or pending/SMS
       const json2 = res2.data;
       if (json2.status === 'confirmed') {
-        alert('Success! Your spot is reserved.'); 
+        alert(UI_STRINGS.SUCCESS_RESERVATION_CONFIRMED); 
         onClose();
       } else if (json2.status === 'needs_user_action') {
         // Automatically send SMS for verification
@@ -165,10 +175,10 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
           await supabase.functions.invoke('sms-send', {
             body: { reservation_id: currentReservationId }
           });
-          alert('Quick verification sent via SMS. Tap the link or enter the code to finish.');
+          alert(UI_STRINGS.SUCCESS_VERIFICATION_SENT);
         } catch (smsError) {
           console.error('Failed to send SMS:', smsError);
-          alert('Verification required. Please check your messages or contact support.');
+          alert(UI_STRINGS.NOTIFICATION_VERIFICATION_REQUIRED);
         }
         onClose();
       } else {
@@ -197,11 +207,28 @@ export default function ReserveModal({ open, onClose, sessionId, presetParent, p
               <input className="border rounded p-2" type="date" value={child.dob} onChange={e=>setChild({...child, dob:e.target.value})}/>
             </div>
           </div>
+          
+          {/* Consent Checkbox */}
+          <div className="mt-4 flex items-start space-x-2">
+            <Checkbox
+              id="consent"
+              checked={consentGiven}
+              onCheckedChange={(checked) => setConsentGiven(checked === true)}
+            />
+            <Label htmlFor="consent" className="text-sm font-normal cursor-pointer leading-relaxed">
+              {UI_STRINGS.RESERVE_CONSENT_CHECKBOX}
+            </Label>
+          </div>
+          
           {error && <div className="text-red-600 mt-2">{error}</div>}
           <div className="mt-4 flex gap-2 justify-end">
-            <button className="px-4 py-2 border rounded" onClick={onClose}>Cancel</button>
-            <button className="px-4 py-2 border rounded shadow" onClick={handleReserveClick} disabled={loading}>
-              {loading ? 'Working…' : 'Reserve'}
+            <button className="px-4 py-2 border rounded" onClick={onClose}>{UI_STRINGS.ACTION_CANCEL}</button>
+            <button 
+              className="px-4 py-2 border rounded shadow disabled:opacity-50 disabled:cursor-not-allowed" 
+              onClick={handleReserveClick} 
+              disabled={loading || !consentGiven}
+            >
+              {loading ? UI_STRINGS.ACTION_WORKING : UI_STRINGS.ACTION_RESERVE}
             </button>
           </div>
         </div>

@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
+import { PaymentMethodBanner } from '@/components/PaymentMethodBanner'
 
 const HomePage = () => {
   const { user, loading } = useAuth()
@@ -166,6 +167,11 @@ const HomePage = () => {
       {/* Search Components - Only show if authenticated */}
       {user ? (
         <>
+          {/* Payment Method Banner for authenticated users */}
+          <div className="max-w-6xl mx-auto px-4 pt-6">
+            <PaymentMethodBanner />
+          </div>
+          
           <SearchBar
             q={search.q} setQ={search.setQ}
             city={search.city} setCity={search.setCity}
