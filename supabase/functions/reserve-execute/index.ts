@@ -155,6 +155,58 @@ serve(async (req) => {
       })
       .eq("id", reservation_id);
 
+    // WORKER SUCCESS HOOK: Capture success fee for confirmed reservations
+    if (result === 'confirmed') {
+      try {
+        console.log(`[FAIRNESS-WORKER] Success detected - initiating success fee capture for reservation ${reservation_id}`);
+        
+        // Get user info for customer lookup
+        const { data: userInfo } = await supabase
+          .from("reservations")
+          .select(`
+            user_id,
+            users:user_id (email)
+          `)
+          .eq("id", reservation_id)
+          .single();
+
+        if (userInfo?.users?.email) {
+          // Import billing functions at runtime to avoid dependency issues
+          const { captureSuccessFeeOrThrow, getOrCreateCustomer } = await import("../_shared/billing.ts");
+          
+          // Get or create customer
+          const { customerId } = await getOrCreateCustomer(userInfo.user_id, userInfo.users.email);
+          
+          // Capture $20 success fee (idempotent)
+          await captureSuccessFeeOrThrow({ 
+            reservationId: reservation_id, 
+            customerId 
+          });
+          
+          console.log(`[FAIRNESS-WORKER] Success fee captured for reservation ${reservation_id}`);
+          
+          // TODO: Call finish_attempt_and_maybe_close_queue(...) here
+          // This would handle queue cleanup and worker coordination
+          console.log(`[FAIRNESS-WORKER] TODO: finish_attempt_and_maybe_close_queue for reservation ${reservation_id}`);
+        }
+      } catch (feeError) {
+        console.error(`[FAIRNESS-WORKER] Success fee capture failed for reservation ${reservation_id}:`, feeError);
+        // Log failure but don't fail the entire operation
+        await supabase
+          .from('compliance_audit')
+          .insert({
+            user_id: reservation.user_id,
+            event_type: 'SUCCESS_FEE_CAPTURE_FAILED',
+            event_data: {
+              reservation_id,
+              error: feeError.message,
+              timestamp: new Date().toISOString()
+            },
+            payload_summary: 'Success fee capture failed in reserve-execute'
+          });
+      }
+    }
+
     return new Response(JSON.stringify({
       status: result,
       mode: executionMode

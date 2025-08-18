@@ -106,26 +106,53 @@ serve(async (req) => {
       });
       lockId = lock.lockId;
 
-      // Check payment method requirement
-      await requirePaymentMethodOrThrow(user.id);
+      // SCHEDULER PRE-DISPATCH GUARDS: Payment Method + Quotas
+      console.log(`[FAIRNESS-SCHEDULER] Running admission guards for user ${user.id}, session ${session_id}`);
+      
+      // Guard 1: Payment method requirement (Prompt 1)
+      try {
+        await requirePaymentMethodOrThrow(user.id, user.email!);
+        console.log(`[FAIRNESS-SCHEDULER] Payment method verified for user ${user.id}`);
+      } catch (error: any) {
+        if (error.code === 'NO_PM') {
+          console.log(`[FAIRNESS-SCHEDULER] Payment method required - marking needs_user_action`);
+          // Note: In real system, this would be flagged as 'needs_user_action' in queue
+          return new Response(JSON.stringify({ 
+            error: "Payment method required. Please add a payment method before creating reservations.",
+            code: "NO_PAYMENT_METHOD",
+            action_required: "setup_payment_method"
+          }), { 
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+        throw error;
+      }
 
-      // Run consolidated quota checks (includes per-session cap)
+      // Guard 2: Consolidated quota checks (Prompt 4 + 2-cap)
       const quotaResult = await checkQuotas({
         userId: user.id,
+        childId: null, // Will be checked after child creation
         sessionId: session_id,
         ip: clientIP,
         supabase
       });
 
       if (!quotaResult.ok) {
+        console.log(`[FAIRNESS-SCHEDULER] Quota check failed: ${quotaResult.code} - ${quotaResult.message}`);
+        // Note: In real system, this would be flagged as 'quota_blocked:{code}' in queue
         return new Response(JSON.stringify({ 
           error: quotaResult.message,
-          code: quotaResult.code
+          code: `QUOTA_BLOCKED_${quotaResult.code}`,
+          quota_exceeded: quotaResult.code
         }), { 
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
+
+      console.log(`[FAIRNESS-SCHEDULER] All admission guards passed - proceeding to enqueue reservation`);
+      // Only eligible reservations reach this point and get enqueued for barrier GO
 
       // Lookup session for platform and provider key snapshot
       const { data: sessionRow, error: sErr } = await supabase
