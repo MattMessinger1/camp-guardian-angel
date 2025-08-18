@@ -117,32 +117,47 @@ export type Database = {
         Row: {
           created_at: string
           error_type: string | null
+          event_category: string | null
           event_type: string
+          failure_reason: string | null
           id: string
           latency_ms: number | null
           metadata: Json | null
           provider: string | null
+          queue_wait_ms: number | null
           reservation_id: string
+          success_indicator: boolean | null
+          t0_offset_ms: number | null
         }
         Insert: {
           created_at?: string
           error_type?: string | null
+          event_category?: string | null
           event_type: string
+          failure_reason?: string | null
           id?: string
           latency_ms?: number | null
           metadata?: Json | null
           provider?: string | null
+          queue_wait_ms?: number | null
           reservation_id: string
+          success_indicator?: boolean | null
+          t0_offset_ms?: number | null
         }
         Update: {
           created_at?: string
           error_type?: string | null
+          event_category?: string | null
           event_type?: string
+          failure_reason?: string | null
           id?: string
           latency_ms?: number | null
           metadata?: Json | null
           provider?: string | null
+          queue_wait_ms?: number | null
           reservation_id?: string
+          success_indicator?: boolean | null
+          t0_offset_ms?: number | null
         }
         Relationships: []
       }
@@ -741,6 +756,42 @@ export type Database = {
           request_hash?: string
           response_data?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      observability_metrics: {
+        Row: {
+          created_at: string
+          dimensions: Json | null
+          id: string
+          metric_name: string
+          metric_type: string
+          recorded_at: string
+          value: number
+          window_end: string | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          dimensions?: Json | null
+          id?: string
+          metric_name: string
+          metric_type: string
+          recorded_at?: string
+          value: number
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          dimensions?: Json | null
+          id?: string
+          metric_name?: string
+          metric_type?: string
+          recorded_at?: string
+          value?: number
+          window_end?: string | null
+          window_start?: string | null
         }
         Relationships: []
       }
@@ -3073,6 +3124,24 @@ export type Database = {
         }
         Relationships: []
       }
+      metrics_dashboard: {
+        Row: {
+          avg_latency_ms: number | null
+          avg_queue_wait_ms: number | null
+          failure_events: number | null
+          fees_captured_count: number | null
+          fees_failed_count: number | null
+          p95_latency_ms: number | null
+          pm_coverage_pct: number | null
+          pm_missing_count: number | null
+          pm_present_count: number | null
+          success_events: number | null
+          success_fee_capture_rate_pct: number | null
+          time_bucket: string | null
+          total_events: number | null
+        }
+        Relationships: []
+      }
       mv_sessions_search: {
         Row: {
           activity_id: string | null
@@ -3166,6 +3235,10 @@ export type Database = {
         Returns: undefined
       }
       cleanup_search_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      collect_automated_metrics: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
@@ -3290,6 +3363,31 @@ export type Database = {
           similarity: number
           text: string
         }[]
+      }
+      record_metric: {
+        Args: {
+          p_dimensions?: Json
+          p_metric_name: string
+          p_metric_type: string
+          p_value: number
+          p_window_end?: string
+          p_window_start?: string
+        }
+        Returns: string
+      }
+      record_observability_event: {
+        Args: {
+          p_event_category?: string
+          p_event_type: string
+          p_failure_reason?: string
+          p_latency_ms?: number
+          p_metadata?: Json
+          p_queue_wait_ms?: number
+          p_reservation_id: string
+          p_success?: boolean
+          p_t0_offset_ms?: number
+        }
+        Returns: string
       }
       refresh_activity_sessions_mv: {
         Args: Record<PropertyKey, never>
