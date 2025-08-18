@@ -28,13 +28,8 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
     try {
       const parsedQuery = await parseSearchQuery(query)
       
-      // Navigate to ConfirmCamp page with parsed data
-      navigate('/confirm-camp', { 
-        state: { 
-          searchQuery: query,
-          parsedData: parsedQuery 
-        }
-      })
+      // Navigate to results page with search query
+      navigate(`/search/results?q=${encodeURIComponent(query)}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse search query')
     } finally {
@@ -106,26 +101,6 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
         </form>
       </div>
       
-      {/* Example queries */}
-      <div className="mt-4 text-center">
-        <p className="text-sm text-muted-foreground mb-2">Try examples:</p>
-        <div className="flex flex-wrap gap-2 justify-center">
-          {[
-            "Soccer camp in Austin, TX for July 2024",
-            "Basketball camp near Seattle summer session",
-            "Art camp in Los Angeles for ages 8-12"
-          ].map((example, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => setQuery(example)}
-              className="text-xs px-3 py-1 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {example}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }

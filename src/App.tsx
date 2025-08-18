@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import { TestEnvironment } from "./pages/TestEnvironment";
 import Diagnostics from "./pages/Diagnostics";
 import Search from "./pages/Search";
+import SearchResults from "./pages/SearchResults";
 
 export default function App() {
   return (
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/test-environment" element={<TestEnvironment />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/search/results" element={<SearchResults />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
