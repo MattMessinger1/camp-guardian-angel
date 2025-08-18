@@ -2964,12 +2964,15 @@ export type Database = {
         Row: {
           blocked_items: Json | null
           collected_data: Json | null
+          communication_cadence: string | null
           completed_items: Json | null
           completion_percentage: number | null
           confidence_in_requirements: string | null
           created_at: string | null
           id: string
           last_reminder_sent: string | null
+          last_reminder_sent_at: string | null
+          next_reminder_due_at: string | null
           ready_for_signup: boolean | null
           reminder_count: number | null
           required_items: Json | null
@@ -2983,12 +2986,15 @@ export type Database = {
         Insert: {
           blocked_items?: Json | null
           collected_data?: Json | null
+          communication_cadence?: string | null
           completed_items?: Json | null
           completion_percentage?: number | null
           confidence_in_requirements?: string | null
           created_at?: string | null
           id?: string
           last_reminder_sent?: string | null
+          last_reminder_sent_at?: string | null
+          next_reminder_due_at?: string | null
           ready_for_signup?: boolean | null
           reminder_count?: number | null
           required_items?: Json | null
@@ -3002,12 +3008,15 @@ export type Database = {
         Update: {
           blocked_items?: Json | null
           collected_data?: Json | null
+          communication_cadence?: string | null
           completed_items?: Json | null
           completion_percentage?: number | null
           confidence_in_requirements?: string | null
           created_at?: string | null
           id?: string
           last_reminder_sent?: string | null
+          last_reminder_sent_at?: string | null
+          next_reminder_due_at?: string | null
           ready_for_signup?: boolean | null
           reminder_count?: number | null
           required_items?: Json | null
@@ -3130,6 +3139,10 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      calculate_communication_cadence: {
+        Args: { days_until_signup: number }
+        Returns: string
+      }
       check_and_resolve_duplicate_registrations: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -3175,6 +3188,10 @@ export type Database = {
       get_attempts_count_week: {
         Args: { p_child_id: string; p_tz?: string }
         Returns: number
+      }
+      get_next_reminder_time: {
+        Args: { cadence: string; last_sent?: string }
+        Returns: string
       }
       gtrgm_compress: {
         Args: { "": unknown }
