@@ -54,11 +54,16 @@ serve(async (req) => {
     try {
       const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
       
-      // Try to ping Supabase (this will test URL reachability)
-      const healthCheck = await fetch(`${supabaseUrl}/health`);
-      diagnosticResult.supabaseUrlReachable = healthCheck.ok;
+      // Try to ping Supabase REST API instead of health endpoint
+      const restCheck = await fetch(`${supabaseUrl}/rest/v1/`, {
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        }
+      });
+      diagnosticResult.supabaseUrlReachable = restCheck.ok || restCheck.status === 200;
       
-      console.log('Health check result:', healthCheck.status);
+      console.log('REST API check result:', restCheck.status);
     } catch (error) {
       console.error('Health check failed:', error);
       diagnosticResult.errorMessage = `Health check failed: ${error.message}`;
@@ -69,23 +74,36 @@ serve(async (req) => {
       try {
         const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
         
-        // Query information_schema to get table list
-        const { data: tables, error: tablesError } = await supabaseService
-          .from('information_schema.tables')
-          .select('table_name')
-          .eq('table_schema', 'public')
-          .limit(50);
+        // Use Supabase's REST API to get schema information
+        // This is the correct way to get table information from Supabase
+        const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+          headers: {
+            'apikey': supabaseServiceKey,
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
 
-        if (tablesError) {
-          console.error('Tables query error:', tablesError);
-          if (tablesError.code === '401' || tablesError.code === '403') {
+        if (response.ok) {
+          const schemaInfo = await response.text();
+          // Parse the OpenAPI spec returned by PostgREST
+          if (schemaInfo.includes('openapi')) {
+            const tableMatches = schemaInfo.match(/\/([a-zA-Z_][a-zA-Z0-9_]*)/g);
+            if (tableMatches) {
+              const tables = [...new Set(tableMatches.map(match => match.slice(1)))]
+                .filter(table => !table.includes('rpc') && table.length > 1)
+                .slice(0, 20); // Limit to first 20 tables
+              diagnosticResult.tablesFound = tables;
+              diagnosticResult.permissionTest = true;
+              console.log('Found tables via REST API:', tables);
+            }
+          }
+        } else {
+          console.error('REST API schema fetch failed:', response.status, response.statusText);
+          if (response.status === 401 || response.status === 403) {
             diagnosticResult.authError = true;
           }
-          diagnosticResult.errorMessage = `Tables query failed: ${tablesError.message}`;
-        } else {
-          diagnosticResult.tablesFound = tables?.map(t => t.table_name) || [];
-          diagnosticResult.permissionTest = true;
-          console.log('Found tables:', diagnosticResult.tablesFound);
+          diagnosticResult.errorMessage = `REST API schema fetch failed: ${response.status} ${response.statusText}`;
         }
       } catch (error) {
         console.error('Service role test failed:', error);
@@ -93,28 +111,36 @@ serve(async (req) => {
       }
     }
 
-    // Alternative: Try to query a known public table if information_schema fails
+    // Test direct table access if schema parsing failed
     if (diagnosticResult.tablesFound === "none" && supabaseServiceKey) {
       try {
         const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
         
-        // Try to query activities table specifically (we know it exists from the schema)
-        const { data: activities, error: activitiesError } = await supabaseService
-          .from('activities')
-          .select('id')
-          .limit(1);
-
-        if (!activitiesError) {
-          diagnosticResult.tablesFound = ["activities (confirmed accessible)"];
-          diagnosticResult.permissionTest = true;
-        } else {
-          console.error('Activities query error:', activitiesError);
-          if (activitiesError.code === '401' || activitiesError.code === '403') {
-            diagnosticResult.authError = true;
+        // Test known tables from your schema
+        const knownTables = ['activities', 'sessions', 'children', 'parents', 'registrations', 'providers'];
+        const accessibleTables = [];
+        
+        for (const tableName of knownTables) {
+          try {
+            const { data, error } = await supabaseService
+              .from(tableName)
+              .select('*')
+              .limit(1);
+            
+            if (!error) {
+              accessibleTables.push(tableName);
+            }
+          } catch (e) {
+            // Table not accessible, skip
           }
         }
+        
+        if (accessibleTables.length > 0) {
+          diagnosticResult.tablesFound = accessibleTables.map(t => `${t} (confirmed accessible)`);
+          diagnosticResult.permissionTest = true;
+        }
       } catch (error) {
-        console.error('Activities test failed:', error);
+        console.error('Direct table test failed:', error);
       }
     }
 
