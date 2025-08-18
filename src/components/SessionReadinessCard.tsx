@@ -19,6 +19,8 @@ import { RequirementResearchModal } from "./RequirementResearchModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { ReadinessBadge } from "@/components/ui/readiness-badge";
+import { READINESS_STATUS } from "@/lib/constants/readiness";
 
 interface SessionReadinessCardProps {
   session: {
@@ -210,12 +212,10 @@ export function SessionReadinessCard({ session, onReadinessUpdate }: SessionRead
               >
                 {requirements?.confidence_level || 'estimated'}
               </Badge>
-              {readiness?.ready_for_signup && (
-                <Badge variant="default" className="bg-green-500 text-white">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Ready!
-                </Badge>
-              )}
+              <ReadinessBadge
+                status={readiness?.ready_for_signup ? READINESS_STATUS.READY_FOR_SIGNUP : READINESS_STATUS.NEEDS_SETUP}
+                size="sm"
+              />
             </div>
           </div>
         </CardHeader>
@@ -293,9 +293,9 @@ export function SessionReadinessCard({ session, onReadinessUpdate }: SessionRead
           {/* Action buttons */}
           <div className="flex gap-2 pt-2">
             {readiness?.ready_for_signup ? (
-              <Button className="flex-1" disabled>
+              <Button className="flex-1 bg-secondary hover:bg-secondary/90" disabled>
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Ready for Signup!
+                Ready for Signup
               </Button>
             ) : (
               <Button variant="outline" className="flex-1">
