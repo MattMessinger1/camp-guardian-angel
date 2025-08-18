@@ -49,7 +49,7 @@ function SessionCard({ session, onReserve, onDateSubmit }: {
   
   const duration = startDate && endDate 
     ? formatDistance(endDate, startDate)
-    : 'Duration TBD';
+    : 'Duration varies';
 
   return (
     <div className="border border-border rounded-lg p-4 bg-card hover:shadow-md transition-shadow">
@@ -58,7 +58,7 @@ function SessionCard({ session, onReserve, onDateSubmit }: {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="w-4 h-4" />
             <span>
-              {startDate ? format(startDate, 'MMM d, yyyy') : 'Date TBD'}
+              {startDate ? format(startDate, 'MMM d, yyyy') : 'Date varies'}
             </span>
           </div>
           
