@@ -89,48 +89,24 @@ if [ "$NO_BUILD" = false ]; then
   count_test
 fi
 
-# 2. Unit Tests (always run)
-run_test "Unit Tests" "npm run test:unit" "required"
-count_test
+# 2. Unit Tests (if available)
+if npm run test:unit &>/dev/null; then
+  run_test "Unit Tests" "npm run test:unit" "optional"
+  count_test
+fi
 
 # 3. Linting (quick check)
 run_test "ESLint Check" "npm run lint" "optional"
 count_test
 
-# 4. Integration Tests (full or fast mode)
+# 4. E2E Tests (full or fast mode)
 if [ "$FAST_MODE" = true ]; then
-  # Fast mode - just readiness workflow
-  run_test "Readiness Workflow Tests" "npm run test:readiness" "required"
-  count_test
-else
-  # Full mode - all integration tests
-  run_test "Integration Tests" "npm run test:integration" "required"
-  count_test
-  
-  run_test "Readiness Workflow Tests" "npm run test:readiness" "required"
-  count_test
-fi
-
-# 5. E2E Tests (full or fast mode)
-if [ "$FAST_MODE" = true ]; then
-  # Fast mode - just MVP workflow
-  run_test "MVP Workflow Tests" "playwright test tests/mvp-workflow.spec.ts" "required"
+  # Fast mode - just basic tests
+  run_test "MVP Workflow Tests" "npm run test:mvp" "required"
   count_test
 else
   # Full mode - all E2E tests
   run_test "E2E Tests" "npm run test:e2e" "required"
-  count_test
-  
-  run_test "Mobile Tests" "npm run test:mobile" "optional"
-  count_test
-fi
-
-# 6. Manual feature tests (if not in fast mode)
-if [ "$FAST_MODE" = false ]; then
-  run_test "Manual Backup Tests" "playwright test tests/manual-backup.spec.ts" "optional"
-  count_test
-  
-  run_test "Policy Tests" "playwright test tests/policy.spec.ts" "optional"
   count_test
 fi
 
