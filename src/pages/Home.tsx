@@ -164,7 +164,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Search Components - Only show if authenticated */}
+      {/* Search Components - Make search primary for authenticated users */}
       {user ? (
         <>
           {/* Payment Method Banner for authenticated users */}
@@ -172,18 +172,32 @@ const HomePage = () => {
             <PaymentMethodBanner />
           </div>
           
-          <SearchBar
-            q={search.q} setQ={search.setQ}
-            city={search.city} setCity={search.setCity}
-            state={search.state} setState={search.setState}
-            ageMin={search.ageMin} setAgeMin={search.setAgeMin}
-            ageMax={search.ageMax} setAgeMax={search.setAgeMax}
-            dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
-            dateTo={search.dateTo} setDateTo={search.setDateTo}
-            priceMax={search.priceMax} setPriceMax={search.setPriceMax}
-            availability={search.availability} setAvailability={search.setAvailability}
-            onSearch={search.run}
-          />
+          {/* Primary Search Section */}
+          <section className="px-4 py-8 bg-background border-b border-border">
+            <div className="max-w-6xl mx-auto">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  Search for your camp
+                </h2>
+                <p className="text-muted-foreground">
+                  Find the specific camp you want to register for and get an advantage in signup
+                </p>
+              </div>
+              
+              <SearchBar
+                q={search.q} setQ={search.setQ}
+                city={search.city} setCity={search.setCity}
+                state={search.state} setState={search.setState}
+                ageMin={search.ageMin} setAgeMin={search.setAgeMin}
+                ageMax={search.ageMax} setAgeMax={search.setAgeMax}
+                dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
+                dateTo={search.dateTo} setDateTo={search.setDateTo}
+                priceMax={search.priceMax} setPriceMax={search.setPriceMax}
+                availability={search.availability} setAvailability={search.setAvailability}
+                onSearch={search.run}
+              />
+            </div>
+          </section>
 
           <div className="max-w-6xl mx-auto px-4 py-8">
             {/* Dev Tools Section */}
