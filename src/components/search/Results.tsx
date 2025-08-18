@@ -6,39 +6,6 @@ import { AddSessionModal } from './AddSessionModal';
 import ReserveModal from '../reserve/ReserveModal';
 import { RegistrationStatus } from './RegistrationStatus';
 
-function AvailabilityBadge({ status }: { status?: string }) {
-  const getStatusStyle = (status?: string) => {
-    switch (status) {
-      case 'open':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'limited':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'waitlist':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'full':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-600 border-gray-200';
-    }
-  };
-
-  const getStatusText = (status?: string) => {
-    switch (status) {
-      case 'open': return 'Open';
-      case 'limited': return 'Limited';
-      case 'waitlist': return 'Waitlist';
-      case 'full': return 'Full';
-      default: return 'Unknown';
-    }
-  };
-
-  return (
-    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusStyle(status)}`}>
-      {getStatusText(status)}
-    </span>
-  );
-}
-
 function SessionCard({ session, onReserve }: { 
   session: SessionItem; 
   onReserve: (sessionId: string) => void;
@@ -76,15 +43,7 @@ function SessionCard({ session, onReserve }: {
           <RegistrationStatus session={session} />
         </div>
 
-        <div className="flex items-center gap-3">
-          {session.platform && (
-            <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground border">
-              {session.platform}
-            </span>
-          )}
-          
-          <AvailabilityBadge status={session.availability_status} />
-          
+        <div className="flex items-center gap-3 justify-end">
           <button 
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm flex items-center gap-2"
             onClick={() => window.location.href = `/sessions/${session.id}`}
