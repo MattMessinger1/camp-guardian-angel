@@ -24,6 +24,7 @@ import GuardrailsTest from "./pages/GuardrailsTest";
 import DevLimits from "./pages/DevLimits";
 import DevRunPrewarm from "./pages/DevRunPrewarm";
 import NotFound from "./pages/NotFound";
+import { TestEnvironment } from "./pages/TestEnvironment";
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/tests" element={<GuardrailsTest />} />
         <Route path="/dev/limits" element={<DevLimits />} />
         <Route path="/dev/prewarm" element={<DevRunPrewarm />} />
+        <Route path="/test-environment" element={<TestEnvironment />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
