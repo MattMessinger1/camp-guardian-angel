@@ -26,19 +26,14 @@ export default function SearchResults() {
     run
   } = useSearch();
 
-  // Set initial query from URL params
+  // Set initial query from URL params and trigger search
   useEffect(() => {
     if (query && query !== q) {
       setQ(query);
+      // Trigger search immediately after setting query
+      setTimeout(() => run(), 100);
     }
-  }, [query, q, setQ]);
-
-  // Run search when query changes
-  useEffect(() => {
-    if (q) {
-      run();
-    }
-  }, [q, run]);
+  }, [query, q, setQ, run]);
 
   return (
     <Layout>
