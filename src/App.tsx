@@ -26,6 +26,7 @@ import DevRunPrewarm from "./pages/DevRunPrewarm";
 import NotFound from "./pages/NotFound";
 import { TestEnvironment } from "./pages/TestEnvironment";
 import Diagnostics from "./pages/Diagnostics";
+import Search from "./pages/Search";
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/dev/prewarm" element={<DevRunPrewarm />} />
         <Route path="/test-environment" element={<TestEnvironment />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
+        <Route path="/search" element={<Search />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
