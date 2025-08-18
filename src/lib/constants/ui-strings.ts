@@ -64,6 +64,15 @@ export const UI_STRINGS = {
   NOTIFICATION_SETUP_REDIRECTING: "Redirecting to secure payment method setup...",
   NOTIFICATION_VERIFICATION_REQUIRED: "Verification required. Please check your messages or contact support.",
 
+  // Camp Watch & Pre-Public
+  CAMP_WATCH_CREATE_SUCCESS: "We'll notify you when registration information becomes available",
+  CAMP_WATCH_MONITORING: "We're now monitoring for registration information",
+  CAMP_WATCH_NEXT_STEPS: "While you wait, start preparing with our general camp checklist",
+  CAMP_WATCH_NOTIFICATION_SENT: "You'll be notified when camp details are announced",
+  CAMP_PREPARATION_COMPLETE: "Great job! You've completed all general preparation items",
+  CAMP_PREPARATION_UPDATE: (campName: string) => `Camp preparation update for ${campName}`,
+  CAMP_INFO_AVAILABLE: (campName: string) => `Registration details for ${campName} are now available`,
+
 } as const;
 
 export type UIStringKey = keyof typeof UI_STRINGS;

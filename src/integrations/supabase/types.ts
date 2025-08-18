@@ -327,6 +327,56 @@ export type Database = {
           },
         ]
       }
+      camp_watch_requests: {
+        Row: {
+          camp_id: string | null
+          camp_name: string
+          camp_website: string | null
+          created_at: string
+          expected_announcement_timeframe: string | null
+          id: string
+          notification_preferences: Json
+          status: string
+          updated_at: string
+          user_id: string
+          user_notes: string | null
+        }
+        Insert: {
+          camp_id?: string | null
+          camp_name: string
+          camp_website?: string | null
+          created_at?: string
+          expected_announcement_timeframe?: string | null
+          id?: string
+          notification_preferences?: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_notes?: string | null
+        }
+        Update: {
+          camp_id?: string | null
+          camp_name?: string
+          camp_website?: string | null
+          created_at?: string
+          expected_announcement_timeframe?: string | null
+          id?: string
+          notification_preferences?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camp_watch_requests_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       camps: {
         Row: {
           created_at: string | null
@@ -759,6 +809,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          priority: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority?: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       observability_metrics: {
         Row: {
           created_at: string
@@ -1038,6 +1124,62 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      preparation_reminders: {
+        Row: {
+          camp_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          priority: string
+          reminder_type: string
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          camp_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority?: string
+          reminder_type: string
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          camp_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: string
+          reminder_type?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preparation_reminders_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
             referencedColumns: ["id"]
           },
         ]
