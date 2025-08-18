@@ -25,6 +25,7 @@ import DevLimits from "./pages/DevLimits";
 import DevRunPrewarm from "./pages/DevRunPrewarm";
 import NotFound from "./pages/NotFound";
 import { TestEnvironment } from "./pages/TestEnvironment";
+import Diagnostics from "./pages/Diagnostics";
 
 export default function App() {
   return (
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/dev/limits" element={<DevLimits />} />
         <Route path="/dev/prewarm" element={<DevRunPrewarm />} />
         <Route path="/test-environment" element={<TestEnvironment />} />
+        <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
