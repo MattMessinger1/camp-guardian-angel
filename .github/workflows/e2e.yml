@@ -41,8 +41,8 @@ jobs:
           # Verify installation
           echo "Verifying installation..."
           yarn list --depth=0 || echo "Some peer dependency warnings expected"
-      - run: npx playwright install --with-deps
-      - run: npm run test:mvp
+      - run: yarn playwright install --with-deps
+      - run: yarn test:mvp
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
