@@ -830,6 +830,48 @@ export type Database = {
         }
         Relationships: []
       }
+      hipaa_avoidance_log: {
+        Row: {
+          compliance_cost_saved: number | null
+          created_at: string
+          detection_accuracy: number | null
+          false_positive_rate: number | null
+          id: string
+          learning_iteration: number
+          provider_domain: string
+          risk_level: string
+          risky_fields: string[]
+          safe_alternatives: Json | null
+          sessions_avoided: number
+        }
+        Insert: {
+          compliance_cost_saved?: number | null
+          created_at?: string
+          detection_accuracy?: number | null
+          false_positive_rate?: number | null
+          id?: string
+          learning_iteration?: number
+          provider_domain: string
+          risk_level: string
+          risky_fields?: string[]
+          safe_alternatives?: Json | null
+          sessions_avoided?: number
+        }
+        Update: {
+          compliance_cost_saved?: number | null
+          created_at?: string
+          detection_accuracy?: number | null
+          false_positive_rate?: number | null
+          id?: string
+          learning_iteration?: number
+          provider_domain?: string
+          risk_level?: string
+          risky_fields?: string[]
+          safe_alternatives?: Json | null
+          sessions_avoided?: number
+        }
+        Relationships: []
+      }
       idempotency_keys: {
         Row: {
           created_at: string
