@@ -3237,6 +3237,57 @@ export type Database = {
           },
         ]
       }
+      velocity_metrics: {
+        Row: {
+          acceleration: number | null
+          cascade_multiplier: number | null
+          created_at: string
+          current_value: number
+          downstream_effects: Json | null
+          id: string
+          measurement_time: string
+          metric_name: string
+          projected_12w: number | null
+          projected_1w: number | null
+          projected_4w: number | null
+          provider_domain: string | null
+          velocity: number | null
+          velocity_confidence: number | null
+        }
+        Insert: {
+          acceleration?: number | null
+          cascade_multiplier?: number | null
+          created_at?: string
+          current_value: number
+          downstream_effects?: Json | null
+          id?: string
+          measurement_time?: string
+          metric_name: string
+          projected_12w?: number | null
+          projected_1w?: number | null
+          projected_4w?: number | null
+          provider_domain?: string | null
+          velocity?: number | null
+          velocity_confidence?: number | null
+        }
+        Update: {
+          acceleration?: number | null
+          cascade_multiplier?: number | null
+          created_at?: string
+          current_value?: number
+          downstream_effects?: Json | null
+          id?: string
+          measurement_time?: string
+          metric_name?: string
+          projected_12w?: number | null
+          projected_1w?: number | null
+          projected_4w?: number | null
+          provider_domain?: string | null
+          velocity?: number | null
+          velocity_confidence?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       activity_sessions_mv: {
