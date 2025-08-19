@@ -135,10 +135,11 @@ serve(async (req) => {
     const { data: defaults } = await supabase
       .from("requirement_defaults")
       .select("*")
-      .or(`provider_platform.eq.${session.platform}`)
+      .eq("provider_platform", session.platform)
       .order("confidence_score", { ascending: false })
       .limit(1);
 
+    console.log(`[DISCOVER-REQUIREMENTS] Defaults query result:`, defaults);
     let discovery: RequirementDiscovery;
 
     if (defaults && defaults.length > 0) {
