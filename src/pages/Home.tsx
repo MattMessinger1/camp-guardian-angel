@@ -46,17 +46,6 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Auth banner */}
-      {!user && (
-        <div className="bg-primary text-primary-foreground px-4 py-3 text-center">
-          <span className="text-sm">
-            You'll need to sign in to search and reserve spots. {' '}
-            <Link to="/login" className="underline font-medium">
-              Sign in here
-            </Link>
-          </span>
-        </div>
-      )}
       
       {/* User menu for authenticated users */}
       {user && (
