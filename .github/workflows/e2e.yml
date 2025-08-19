@@ -29,8 +29,6 @@ jobs:
       - name: Build and test
         run: |
           npm run build
-          npm run preview &
-          sleep 5
           npm run test:mvp
       - name: Upload Playwright report
         if: always()
