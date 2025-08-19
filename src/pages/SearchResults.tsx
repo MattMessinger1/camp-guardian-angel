@@ -70,6 +70,7 @@ export default function SearchResults() {
             loading={loading}
             error={error}
             items={items}
+            searchQuery={q}
           />
         </div>
       </div>

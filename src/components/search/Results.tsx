@@ -125,10 +125,11 @@ function ActivityCard({ activity, onReserve }: {
   );
 }
 
-export default function Results({ items, loading, error }:{
+export default function Results({ items, loading, error, searchQuery }:{
   items: ActivityResult[];
   loading: boolean;
   error: string | null;
+  searchQuery?: string;
 }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [reserveModalOpen, setReserveModalOpen] = useState(false);
@@ -159,11 +160,47 @@ export default function Results({ items, loading, error }:{
   }
   
   if (!items?.length) {
+    // Generate specific no results message based on search query
+    const getNoResultsMessage = () => {
+      const query = searchQuery?.toLowerCase() || '';
+      
+      // Check for month searches
+      const months = ['january', 'february', 'march', 'april', 'may', 'june', 
+                     'july', 'august', 'september', 'october', 'november', 'december'];
+      const foundMonth = months.find(month => query.includes(month));
+      
+      if (foundMonth) {
+        return {
+          title: `No ${foundMonth.charAt(0).toUpperCase() + foundMonth.slice(1)} camps found`,
+          message: `We don't have any camps scheduled for ${foundMonth.charAt(0).toUpperCase() + foundMonth.slice(1)} yet. Try searching for other months or check back later as new camps are added regularly.`
+        };
+      }
+      
+      // Check for activity types
+      const activities = ['soccer', 'basketball', 'tennis', 'swimming', 'coding', 'art', 'music', 'dance'];
+      const foundActivity = activities.find(activity => query.includes(activity));
+      
+      if (foundActivity) {
+        return {
+          title: `No ${foundActivity} camps found`,
+          message: `We don't have any ${foundActivity} camps available right now. Try searching for other activities or locations, or check back later.`
+        };
+      }
+      
+      // Default message
+      return {
+        title: 'No camps found',
+        message: 'Try broadening your search criteria or clear some filters. You can also add a session manually and we\'ll try to reserve it for you.'
+      };
+    };
+
+    const { title, message } = getNoResultsMessage();
+
     return (
       <div className="py-12 text-center space-y-4">
-        <div className="text-lg font-medium text-foreground">No camps found</div>
+        <div className="text-lg font-medium text-foreground">{title}</div>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Try broadening your search criteria or clear some filters. You can also add a session manually and we'll try to reserve it for you.
+          {message}
         </p>
         <button 
           onClick={() => setIsAddModalOpen(true)}
