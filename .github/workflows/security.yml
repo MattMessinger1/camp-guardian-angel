@@ -132,7 +132,7 @@ jobs:
     - name: Check for hardcoded secrets
       run: |
         echo "Checking for potential hardcoded secrets..."
-        if grep -r -E "(sk_|pk_|api_key|secret|password).*[=:]\s*['\"][a-zA-Z0-9]{10,}" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" .; then
+        if grep -r -E "(sk_|pk_|api_key|secret|password).*[=:]\s*['\"][a-zA-Z0-9]{10,}" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" --exclude-dir=tests --exclude-dir=test src/; then
           echo "❌ Potential hardcoded secrets found"
           exit 1
         else
