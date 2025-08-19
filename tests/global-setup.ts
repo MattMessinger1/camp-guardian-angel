@@ -9,7 +9,7 @@ async function globalSetup(config: FullConfig) {
   
   // Health check - ensure application is running
   try {
-    await page.goto(config.webServer?.url || 'https://localhost:5173', { 
+    await page.goto(config.webServer?.url || 'http://localhost:4173', { 
       timeout: 30000,
       waitUntil: 'networkidle' 
     });
@@ -43,7 +43,7 @@ async function globalSetup(config: FullConfig) {
   
   // Set test environment variables
   process.env.TEST_MODE = 'true';
-  process.env.PLAYWRIGHT_TEST_BASE_URL = config.webServer?.url || 'https://localhost:5173';
+  process.env.PLAYWRIGHT_TEST_BASE_URL = config.webServer?.url || 'http://localhost:4173';
   
   console.log('✅ Global setup complete');
 }

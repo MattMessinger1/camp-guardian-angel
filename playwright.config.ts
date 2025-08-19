@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
   expect: { timeout: 5_000 },
+  globalSetup: require.resolve('./tests/global-setup'),
+  globalTeardown: require.resolve('./tests/global-teardown'),
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'retain-on-failure',
@@ -12,6 +14,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run preview',
     url: 'http://localhost:4173',
+    timeout: 120_000,
     reuseExistingServer: true,
   },
   projects: [
