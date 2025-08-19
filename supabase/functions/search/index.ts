@@ -210,6 +210,12 @@ Deno.serve(async (req) => {
   try {
     const started = performance.now();
     
+    // For debugging: clear cache if this is a Madison search
+    if (q && q.toLowerCase().includes('madison')) {
+      console.log('Clearing cache for Madison search debugging');
+      searchCache.clear();
+    }
+    
     // Check in-memory LRU cache first
     const cacheKey = generateCacheKey(searchParams);
     const cacheResult = searchCache.get(cacheKey);
@@ -259,6 +265,14 @@ Deno.serve(async (req) => {
 
     const qEmbedding = await embed(q);
     console.log('Calling search_hybrid RPC...');
+    console.log('RPC parameters:', {
+      q, q_embedding: qEmbedding ? 'present' : 'null',
+      p_city: city, p_state: state,
+      p_age_min: ageMin, p_age_max: ageMax,
+      p_date_from: dateFrom, p_date_to: dateTo,
+      p_price_max: priceMax, p_availability: availability,
+      p_limit: pageSize, p_offset: page * pageSize
+    });
     
     const { data, error } = await supabase.rpc("search_hybrid", {
       q,
