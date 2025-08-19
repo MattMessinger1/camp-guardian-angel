@@ -46,7 +46,7 @@ function SessionCard({ session, onReserve }: {
         <div className="flex items-center gap-3 justify-end">
           <button 
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm flex items-center gap-2"
-            onClick={() => window.location.href = `/sessions/${session.id}`}
+            onClick={() => window.location.href = `/sessions/${session.id}/signup`}
           >
             <ExternalLink className="w-4 h-4" />
             Get ready for signup
