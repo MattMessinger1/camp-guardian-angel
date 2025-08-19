@@ -79,11 +79,8 @@ const HomePage = () => {
         <div className="relative z-10 mx-auto max-w-4xl">
           {/* HERO TEXT BLOCK */}
           <div className="hero-card">
-            <h1 className="hero-title">Get the spot — reduce the stress</h1>
+            <h1 className="hero-title">Get the spot — without refreshing at midnight</h1>
             <div className="hero-accent" aria-hidden="true"></div>
-            <p className="hero-sub">
-              Signing up for kids' activities is competitive. Set it up now; we submit the instant registration opens.
-            </p>
           </div>
         </div>
       </section>
