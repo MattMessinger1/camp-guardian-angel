@@ -322,7 +322,7 @@ All colors MUST be HSL. */
   background: #1F2937; /* dark slate for guaranteed contrast */
   color: #fff;
   padding: 40px 32px;
-  max-width: 760px;
+  max-width: 900px; /* Expanded to accommodate longer text */
   margin: 0 auto;
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.25);
@@ -337,8 +337,10 @@ All colors MUST be HSL. */
   letter-spacing: -0.01em;
   margin: 0 0 12px 0;
   text-align: center;
-  white-space: nowrap;
-  overflow: visible;
+  max-width: 24ch; /* Allow for better text wrapping */
+  margin-left: auto;
+  margin-right: auto;
+  text-wrap: balance;
 }
 
 .hero-accent {
