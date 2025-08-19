@@ -215,11 +215,9 @@ Deno.serve(async (req) => {
   try {
     const started = performance.now();
     
-    // For debugging: clear cache if this is a Madison search
-    if (q && q.toLowerCase().includes('madison')) {
-      console.log('Clearing cache for Madison search debugging');
-      searchCache.clear();
-    }
+    // Clear cache completely for all searches during debugging
+    searchCache.clear();
+    console.log('Cache cleared for debugging');
     
     // Check in-memory LRU cache first
     const cacheKey = generateCacheKey(searchParams);
