@@ -180,19 +180,6 @@ export default function SessionDetail() {
                         {sessionData.platform}
                       </span>
                     )}
-                    {sessionData.availability_status && 
-                     sessionData.availability_status !== 'active' && 
-                     sessionData.availability_status !== 'unknown' && (
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                        sessionData.availability_status === 'open' 
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                          : sessionData.availability_status === 'full'
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {sessionData.availability_status}
-                      </span>
-                    )}
                   </div>
                 </div>
               </CardHeader>
