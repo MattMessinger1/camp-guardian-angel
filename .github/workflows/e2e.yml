@@ -31,8 +31,12 @@ jobs:
           echo "Verifying installation..."
           npm list --depth=0 || echo "Some peer dependency warnings expected"
       - run: npx playwright install --with-deps
-      - run: npm run test:mvp
-        continue-on-error: true
+      - name: Build and test
+        run: |
+          npm run build
+          npm run preview &
+          sleep 5
+          npm run test:mvp
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
