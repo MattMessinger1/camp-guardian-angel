@@ -150,6 +150,32 @@ async function backgroundRevalidate(cacheKey: string, searchParams: any, qEmbedd
   }
 }
 
+// Helper function to extract location from query text
+function extractLocationFromQuery(q: string | null): { city: string | null, state: string | null } {
+  if (!q) return { city: null, state: null };
+  
+  const query = q.toLowerCase().trim();
+  
+  // Common patterns for cities we know about
+  const cityPatterns = [
+    { pattern: /madison/i, city: 'Madison', state: 'WI' },
+    { pattern: /austin/i, city: 'Austin', state: 'TX' },
+    { pattern: /seattle/i, city: 'Seattle', state: 'WA' },
+    { pattern: /denver/i, city: 'Denver', state: 'CO' },
+    { pattern: /portland/i, city: 'Portland', state: 'OR' },
+    { pattern: /chicago/i, city: 'Chicago', state: 'IL' },
+    { pattern: /milwaukee/i, city: 'Milwaukee', state: 'WI' },
+  ];
+  
+  for (const { pattern, city, state } of cityPatterns) {
+    if (pattern.test(query)) {
+      return { city, state };
+    }
+  }
+  
+  return { city: null, state: null };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -158,8 +184,16 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const q = url.searchParams.get("q");
-  const city = url.searchParams.get("city");
-  const state = url.searchParams.get("state");
+  let city = url.searchParams.get("city");
+  let state = url.searchParams.get("state");
+  
+  // If no explicit city/state provided, try to extract from query
+  if (!city && !state && q) {
+    const extracted = extractLocationFromQuery(q);
+    city = extracted.city;
+    state = extracted.state;
+  }
+  
   const ageMin = url.searchParams.get("age_min") ? parseInt(url.searchParams.get("age_min")!) : null;
   const ageMax = url.searchParams.get("age_max") ? parseInt(url.searchParams.get("age_max")!) : null;
   const dateFrom = url.searchParams.get("date_from");
@@ -171,6 +205,7 @@ Deno.serve(async (req) => {
 
   const searchParams = { q, city, state, ageMin, ageMax, dateFrom, dateTo, priceMax, availability, page, page_size: pageSize };
   console.log(`Search request:`, searchParams);
+  console.log(`Extracted location from query "${q}": city=${city}, state=${state}`);
 
   try {
     const started = performance.now();
