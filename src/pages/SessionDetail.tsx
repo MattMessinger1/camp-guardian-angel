@@ -89,8 +89,8 @@ export default function SessionDetail() {
 
   const handleGoToSignup = () => {
     if (sessionData?.signup_url) {
-      // Use our tracking redirect instead of direct external link
-      window.location.href = `/r/${sessionId}`;
+      // Open the external signup URL directly
+      window.open(sessionData.signup_url, '_blank', 'noopener,noreferrer');
     } else {
       toast({ 
         title: "No signup URL", 
@@ -263,20 +263,25 @@ export default function SessionDetail() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button 
-                    onClick={handleGoToSignup}
-                    className="flex-1 sm:flex-none"
-                    size="lg"
-                    disabled={!sessionData.signup_url}
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Go to signup
-                  </Button>
-                  <CopyChildInfo 
-                    sessionId={sessionId}
-                    className="flex-1 sm:flex-none"
-                  />
+                <div className="space-y-3 pt-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button 
+                      onClick={handleGoToSignup}
+                      className="flex-1 sm:flex-none"
+                      size="lg"
+                      disabled={!sessionData.signup_url}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Pre-load your info
+                    </Button>
+                    <CopyChildInfo 
+                      sessionId={sessionId}
+                      className="flex-1 sm:flex-none"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    🔒 Your information is encrypted and secure
+                  </p>
                 </div>
               </CardContent>
             </Card>
