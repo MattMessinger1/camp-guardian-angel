@@ -17,8 +17,24 @@ jobs:
           node-version: 20
       - name: Clean install dependencies
         run: |
-          rm -f package-lock.json
-          npm install
+          # Create .npmrc for better resolution
+          cat > .npmrc << EOF
+          legacy-peer-deps=true
+          fund=false
+          audit=false
+          prefer-offline=true
+          maxsockets=1
+          registry=https://registry.npmjs.org/
+          EOF
+          
+          # Remove any existing files that might cause conflicts
+          rm -rf node_modules package-lock.json
+          
+          # Clear npm cache
+          npm cache clean --force
+          
+          # Install with maximum compatibility flags
+          npm install --legacy-peer-deps --no-audit --no-fund --maxsockets=1
       - run: npx playwright install --with-deps
       - run: npm run test:mvp
       - name: Upload Playwright report
