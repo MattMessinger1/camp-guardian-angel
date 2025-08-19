@@ -94,17 +94,17 @@ const HomePage = () => {
             {[
               {
                 stepNum: 1,
-                title: "1. Enter details once —<br/><span style='font-weight: 400;'>bank-level security, Stripe&nbsp;payments</span>",
+                title: "1. Enter details once<br/><span style='font-weight: 400;'>bank-level security, Stripe&nbsp;payments</span>",
                 description: "",
               },
               {
                 stepNum: 2,
-                title: "2. We submit instantly —<br/><span style='font-weight: 400;'>text you if action&nbsp;needed</span>", 
+                title: "2. We submit instantly<br/><span style='font-weight: 400;'>text you if action&nbsp;needed</span>", 
                 description: "",
               },
               {
                 stepNum: 3,
-                title: "3. Pay $20 on success —<br/><span style='font-weight: 400;'>no spot, no&nbsp;charge</span>",
+                title: "3. Pay $20 on success<br/><span style='font-weight: 400;'>no spot, no&nbsp;charge</span>",
                 description: "",
               }
             ].map((step, index) => {
