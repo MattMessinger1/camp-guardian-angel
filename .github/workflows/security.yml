@@ -2,7 +2,7 @@
 name: "Security Scanning"
 
 on:
-  workflow_dispatch:  # Only run manually for now
+  workflow_dispatch:  # Only manual for now
   # push:
   #   branches: [ "main", "master", "develop" ]
   # pull_request:
