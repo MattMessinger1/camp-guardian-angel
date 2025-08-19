@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { CheckCircle, Circle, PlayCircle, AlertCircle, Clock } from 'lucide-react';
-import { useToast } from './ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface TestCase {
   id: string;
