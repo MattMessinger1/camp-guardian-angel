@@ -13,11 +13,17 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
 
+  // Force clear any error state on mount
+  React.useEffect(() => {
+    console.log('SmartSearchBar mounted - error state should be clear')
+  }, [])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!query.trim()) return
 
+    console.log('SmartSearchBar: Navigating with query:', query)
     // Navigate directly to results page - let the backend handle query parsing
     navigate(`/search/results?q=${encodeURIComponent(query)}`)
   }

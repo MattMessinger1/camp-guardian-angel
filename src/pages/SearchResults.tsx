@@ -28,10 +28,15 @@ export default function SearchResults() {
 
   // Set initial query from URL params and trigger search
   useEffect(() => {
+    console.log('SearchResults: URL query:', query, 'Current q:', q)
     if (query && query !== q) {
+      console.log('SearchResults: Setting query to:', query)
       setQ(query);
       // Trigger search immediately after setting query
-      setTimeout(() => run(), 100);
+      setTimeout(() => {
+        console.log('SearchResults: Running search with query:', query)
+        run()
+      }, 100);
     }
   }, [query, q, setQ, run]);
 
