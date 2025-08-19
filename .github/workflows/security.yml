@@ -59,9 +59,14 @@ jobs:
 
     - name: Install dependencies
       run: |
-        # Always use npm install for now to avoid ci issues
-        echo "Installing dependencies with npm install..."
-        npm install --legacy-peer-deps --no-package-lock
+        # Create .npmrc to prevent any ci behavior
+        echo "package-lock=false" > .npmrc
+        echo "fund=false" >> .npmrc
+        echo "audit=false" >> .npmrc
+        echo "legacy-peer-deps=true" >> .npmrc
+        
+        # Force npm install without any lockfile behavior
+        npm install --legacy-peer-deps --no-package-lock --no-fund --no-audit
         echo "✅ Dependencies installed successfully"
 
     - name: Run npm audit (informational only)
