@@ -66,7 +66,7 @@ jobs:
           npm install --legacy-peer-deps
         else
           echo "✅ Using existing package-lock.json"
-          npm ci --legacy-peer-deps
+          npm ci
         fi
 
     - name: Run npm audit (informational only)

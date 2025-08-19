@@ -23,7 +23,7 @@ jobs:
             npm install --legacy-peer-deps
           else
             echo "✅ Using existing package-lock.json"
-            npm ci --legacy-peer-deps
+            npm ci
           fi
       - run: npx playwright install --with-deps
       - name: Build and test
