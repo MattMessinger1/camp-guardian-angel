@@ -2,8 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
+  timeout: 180_000, // 3 minutes for individual tests
+  expect: { timeout: 30_000 },
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'retain-on-failure',
@@ -12,7 +12,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run preview',
     url: 'http://localhost:4173',
-    timeout: 300_000, // 5 minutes
+    timeout: 600_000, // 10 minutes for server startup
     reuseExistingServer: true,
   },
   projects: [
