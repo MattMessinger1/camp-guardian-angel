@@ -456,16 +456,23 @@ export default function SessionSignup() {
       console.log("Children data:", children);
       console.log("Requirements:", requirements);
       
-      toast({
-        title: "Information Collected",
-        description: "Proceeding to payment verification...",
-      });
-
-      // For now, simulate processing
+      // Simulate processing and redirect to Ready for Signup page
+      setIsProcessing(true);
+      
+      // Store form data for the assessment
+      localStorage.setItem(`sessionSignup_${sessionId}`, JSON.stringify(formData));
+      localStorage.setItem(`sessionChildren_${sessionId}`, JSON.stringify(children));
+      
+      // Simulate some processing time
       await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Navigate to payment verification (to be implemented)
-      navigate(`/sessions/${sessionId}/payment`);
+      
+      toast({
+        title: "Account Created Successfully",
+        description: "Proceeding to readiness assessment...",
+      });
+      
+      // Redirect to Ready for Signup assessment page
+      navigate(`/sessions/${sessionId}/ready-to-signup`);
       
     } catch (error) {
       console.error('Error processing signup:', error);

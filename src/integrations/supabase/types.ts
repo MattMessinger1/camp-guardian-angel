@@ -1551,6 +1551,48 @@ export type Database = {
           },
         ]
       }
+      readiness_assessments: {
+        Row: {
+          assessment_data: Json
+          created_at: string
+          id: string
+          session_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assessment_data: Json
+          created_at?: string
+          id?: string
+          session_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assessment_data?: Json
+          created_at?: string
+          id?: string
+          session_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "readiness_assessments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "readiness_assessments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registration_attempts: {
         Row: {
           attempted_at: string

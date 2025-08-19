@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { 
   CheckCircle, 
   AlertCircle, 
@@ -55,7 +55,7 @@ interface ReadinessAssessment {
 export default function ReadyToSignup() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [assessment, setAssessment] = useState<ReadinessAssessment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +72,6 @@ export default function ReadyToSignup() {
           *,
           activities (
             name,
-            provider_name,
             city,
             state
           )
@@ -102,7 +101,7 @@ export default function ReadyToSignup() {
       const { data, error } = await supabase.functions.invoke('ai-readiness-assessment', {
         body: {
           sessionId,
-          userProfile: profile,
+          userProfile: user,
           formData,
           children
         }
@@ -198,7 +197,7 @@ export default function ReadyToSignup() {
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-bold tracking-tight">Ready for Signup</h1>
           <p className="text-muted-foreground">
-            AI-powered assessment of your registration readiness for {sessionData?.activities?.name}
+            AI-powered assessment of your readiness for {sessionData?.activities?.name}
           </p>
         </div>
 
@@ -231,7 +230,7 @@ export default function ReadyToSignup() {
               </div>
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-muted-foreground" />
-                <span>{sessionData?.activities?.provider_name}</span>
+                <span>Provider Details</span>
               </div>
             </div>
           </CardContent>
@@ -280,7 +279,7 @@ export default function ReadyToSignup() {
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{item.item}</span>
-                      <Badge variant={getPriorityColor(item.priority) as any} size="sm">
+                      <Badge variant={getPriorityColor(item.priority) as any}>
                         {item.priority}
                       </Badge>
                     </div>
@@ -313,7 +312,7 @@ export default function ReadyToSignup() {
                         <AlertDescription className="mt-1">
                           {rec.message}
                         </AlertDescription>
-                        <Badge variant="outline" size="sm" className="mt-2">
+                        <Badge variant="outline" className="mt-2">
                           {rec.timeframe.replace('_', ' ')}
                         </Badge>
                       </div>
