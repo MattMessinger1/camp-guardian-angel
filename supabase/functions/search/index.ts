@@ -206,6 +206,11 @@ Deno.serve(async (req) => {
   const searchParams = { q, city, state, ageMin, ageMax, dateFrom, dateTo, priceMax, availability, page, page_size: pageSize };
   console.log(`Search request:`, searchParams);
   console.log(`Extracted location from query "${q}": city=${city}, state=${state}`);
+  
+  // TEMP DEBUG: Force clear cache and add debug headers for Madison searches
+  if (q && q.toLowerCase().includes('madison')) {
+    console.log('🔍 MADISON SEARCH DETECTED - clearing cache and adding debug');
+  }
 
   try {
     const started = performance.now();
