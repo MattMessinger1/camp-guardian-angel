@@ -346,8 +346,9 @@ async function logHIPAAAvoidance(
         compliance_cost_saved: 10000, // Estimated cost of HIPAA violation
         created_at: new Date().toISOString()
       });
-      
+    
     console.log(`[HIPAA-AVOIDANCE] Logged avoidance decision for domain: ${providerDomain}`);
   } catch (error) {
     console.error(`[HIPAA-AVOIDANCE] Error logging avoidance:`, error);
   }
+}
