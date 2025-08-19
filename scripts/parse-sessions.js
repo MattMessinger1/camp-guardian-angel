@@ -147,7 +147,7 @@ Examples:
   
   if (args.url && !validateUrl(args.url)) {
     console.error('❌ Error: Invalid URL format');
-    console.error('URL must start with http:// or https://');
+    console.error('URL must use HTTP or HTTPS protocol');
     process.exit(1);
   }
   
