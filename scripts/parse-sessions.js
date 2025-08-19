@@ -106,7 +106,7 @@ function parseArguments() {
 function validateUrl(url) {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    return ['http:', 'https:'].includes(parsed.protocol);
   } catch {
     return false;
   }
