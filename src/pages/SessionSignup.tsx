@@ -26,7 +26,7 @@ interface SessionRow {
 
 interface RequirementField {
   name: string;
-  type: 'text' | 'email' | 'phone' | 'date' | 'select' | 'textarea' | 'checkbox';
+  type: 'text' | 'email' | 'phone' | 'date' | 'select' | 'textarea' | 'checkbox' | 'password';
   required: boolean;
   label: string;
   placeholder?: string;
@@ -188,6 +188,17 @@ export default function SessionSignup() {
     const fields: RequirementField[] = [];
     const { required_parent_fields, required_child_fields, custom_requirements } = requirements.requirements;
 
+    // Always include parent name if any parent fields are required
+    if (required_parent_fields.length > 0) {
+      fields.push({
+        name: 'parentName',
+        type: 'text',
+        required: true,
+        label: 'Parent/Guardian Name',
+        placeholder: 'Your full name'
+      });
+    }
+
     // Generate parent fields
     if (required_parent_fields.includes("email")) {
       fields.push({
@@ -199,6 +210,17 @@ export default function SessionSignup() {
       });
     }
 
+    // Add password field for new users (only if not already authenticated)
+    if (required_parent_fields.includes("email") && !user) {
+      fields.push({
+        name: 'parentPassword',
+        type: 'password',
+        required: true,
+        label: 'Create Password',
+        placeholder: 'Choose a secure password'
+      });
+    }
+
     if (required_parent_fields.includes("phone")) {
       fields.push({
         name: 'parentPhone',
@@ -206,17 +228,6 @@ export default function SessionSignup() {
         required: true,
         label: 'Parent Phone Number',
         placeholder: '(555) 123-4567'
-      });
-    }
-
-    // Always include parent name if any parent fields are required
-    if (required_parent_fields.length > 0) {
-      fields.unshift({
-        name: 'parentName',
-        type: 'text',
-        required: true,
-        label: 'Parent/Guardian Name',
-        placeholder: 'Your full name'
       });
     }
 
@@ -301,9 +312,6 @@ export default function SessionSignup() {
         });
       }
     });
-
-    // Remove special instructions - not needed for streamlined signup
-    // Only include core required fields
 
     return fields;
   };
@@ -417,15 +425,29 @@ export default function SessionSignup() {
     const fields = generateFormFields();
     if (!validateForm(fields)) return;
 
-    // Check if user is authenticated
-    if (!user) {
-      setShowAuthPrompt(true);
-      return;
-    }
-
     setIsProcessing(true);
 
     try {
+      // If user is not authenticated, create account first
+      if (!user && formData.parentEmail && formData.parentPassword) {
+        const { error } = await supabase.auth.signUp({
+          email: formData.parentEmail,
+          password: formData.parentPassword,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`
+          }
+        });
+
+        if (error) {
+          throw new Error(`Account creation failed: ${error.message}`);
+        }
+
+        toast({
+          title: "Account Created",
+          description: "Your account has been created! Proceeding to payment verification...",
+        });
+      }
+
       // Here we would typically:
       // 1. Save the signup information to the database
       // 2. Create a Stripe payment intent for the provider fees + $20 service fee
@@ -450,7 +472,7 @@ export default function SessionSignup() {
       console.error('Error processing signup:', error);
       toast({
         title: "Error",
-        description: "There was an error processing your information. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error processing your information. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -629,7 +651,7 @@ export default function SessionSignup() {
           <Alert className="mb-6">
             <User className="h-4 w-4" />
             <AlertDescription>
-              <strong>New to our platform?</strong> Don't worry! After you fill out the registration information below, we'll help you create a secure account using your email. This only takes a few seconds and lets you manage your registrations.
+              <strong>Creating your account:</strong> Fill out the registration information below including your password. We'll create your secure account and then process your payment. This lets you manage your registrations and makes future signups faster.
             </AlertDescription>
           </Alert>
         )}
@@ -829,9 +851,9 @@ export default function SessionSignup() {
                 </>
               ) : (
                 <>
-                  <Lock className="w-4 h-4 mr-2" />
-                  Proceed to Payment Verification
-                </>
+                   <Lock className="w-4 h-4 mr-2" />
+                   {user ? 'Proceed to Payment Verification' : 'Create Account & Verify Payment'}
+                 </>
               )}
             </Button>
             
