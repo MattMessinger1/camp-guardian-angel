@@ -94,18 +94,18 @@ const HomePage = () => {
             {[
               {
                 stepNum: 1,
-                title: "#1 — Find your activity or&nbsp;camp",
-                description: "Choose the specific session(s) you'd like",
+                title: "1. Enter details once — bank-level security, Stripe&nbsp;payments",
+                description: "",
               },
               {
                 stepNum: 2,
-                title: "#2 — Load your signup info ahead of&nbsp;time",
-                description: "We encrypt it and we'll use it for future registrations too",
+                title: "2. We submit instantly — text you if action&nbsp;needed", 
+                description: "",
               },
               {
                 stepNum: 3,
-                title: "#3 — Give yourself the best chance to get your&nbsp;spot",
-                description: "We'll text you if we need your help with\u00A0captcha",
+                title: "3. Pay $20 on success — no spot, no&nbsp;charge",
+                description: "",
               }
             ].map((step, index) => {
               return (
