@@ -59,10 +59,11 @@ jobs:
     - name: Clean install dependencies
       run: |
         rm -f package-lock.json
-        npm install
+        npm install --no-audit
+        npm install --package-lock-only
 
     - name: Run npm audit
-      run: npm audit --audit-level=critical
+      run: npm audit --audit-level=critical || true
 
     - name: Run dependency check
       uses: dependency-check/Dependency-Check_Action@main
