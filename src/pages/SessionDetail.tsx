@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SecurityBadge } from "@/components/ui/security-badge";
-import { TrustStrip } from "@/components/ui/trust-strip";
-import { ExternalLink, Copy, Calendar, MapPin, DollarSign, Users, Clock } from "lucide-react";
+import { ExternalLink, Calendar, MapPin, DollarSign, Users, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { CopyChildInfo } from "@/components/CopyChildInfo";
 import { useGeocoding } from "@/hooks/useGeocoding";
 import { LazyCoordinates } from "@/components/LazyCoordinates";
 
@@ -61,6 +58,7 @@ interface SessionRow {
 
 export default function SessionDetail() {
   const params = useParams();
+  const navigate = useNavigate();
   const sessionId = params.id!;
 
   const { data: sessionData, isLoading } = useQuery({
@@ -88,24 +86,10 @@ export default function SessionDetail() {
   );
 
   const handleGoToSignup = () => {
-    if (sessionData?.signup_url) {
-      // Open the external signup URL directly
-      window.open(sessionData.signup_url, '_blank', 'noopener,noreferrer');
-    } else {
-      toast({ 
-        title: "No signup URL", 
-        description: "This session doesn't have a direct signup link available." 
-      });
-    }
+    // Navigate to signup information collection page
+    navigate(`/sessions/${sessionId}/signup`);
   };
 
-  const handleCopyChildInfo = () => {
-    // This is now handled by the CopyChildInfo component
-    toast({ 
-      title: "Copy feature moved", 
-      description: "Use the 'Copy my child info' button below for enhanced copying." 
-    });
-  };
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "—";
@@ -264,21 +248,14 @@ export default function SessionDetail() {
 
                 {/* Action buttons */}
                 <div className="space-y-3 pt-4">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button 
-                      onClick={handleGoToSignup}
-                      className="flex-1 sm:flex-none"
-                      size="lg"
-                      disabled={!sessionData.signup_url}
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Pre-load your info
-                    </Button>
-                    <CopyChildInfo 
-                      sessionId={sessionId}
-                      className="flex-1 sm:flex-none"
-                    />
-                  </div>
+                  <Button 
+                    onClick={handleGoToSignup}
+                    className="w-full sm:w-auto"
+                    size="lg"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Pre-load your info
+                  </Button>
                   <p className="text-xs text-muted-foreground">
                     🔒 Your information is encrypted and secure
                   </p>
@@ -325,8 +302,6 @@ export default function SessionDetail() {
                     <span className="text-muted-foreground">Public data</span>
                   </div>
                 </div>
-
-                <TrustStrip />
               </CardContent>
             </Card>
           </>

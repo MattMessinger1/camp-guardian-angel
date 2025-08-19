@@ -10,6 +10,7 @@ import Children from "./pages/Children";
 import Settings from "./pages/Settings";
 import FindCamps from "./pages/FindCamps";
 import SessionDetail from "./pages/SessionDetail";
+import SessionSignup from "./pages/SessionSignup";
 import SessionForm from "./pages/SessionForm";
 import PlanDetail from "./pages/PlanDetail";
 import Billing from "./pages/Billing";
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/sessions" element={<Sessions />} />
         <Route path="/sessions/new" element={<SessionForm />} />
         <Route path="/sessions/:id" element={<SessionDetail />} />
+        <Route path="/sessions/:id/signup" element={<SessionSignup />} />
         <Route path="/sessions/:id/edit" element={<SessionForm />} />
         <Route path="/children" element={<Children />} />
         <Route path="/settings" element={<Settings />} />
