@@ -17,6 +17,12 @@ jobs:
           node-version: 20
       - name: Clean install dependencies
         run: |
+          # Debug environment
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Current directory: $(pwd)"
+          echo "Available disk space: $(df -h .)"
+          
           # Create .npmrc for better resolution
           cat > .npmrc << EOF
           legacy-peer-deps=true
@@ -25,16 +31,31 @@ jobs:
           prefer-offline=true
           maxsockets=1
           registry=https://registry.npmjs.org/
+          package-lock=false
           EOF
           
           # Remove any existing files that might cause conflicts
-          rm -rf node_modules package-lock.json
+          rm -rf node_modules package-lock.json .npm
           
-          # Clear npm cache
+          # Clear npm cache completely
           npm cache clean --force
+          npm cache verify
           
-          # Install with maximum compatibility flags
-          npm install --legacy-peer-deps --no-audit --no-fund --maxsockets=1
+          # Try npm install first, fallback to manual resolution if needed
+          echo "Attempting npm install..."
+          if ! npm install --legacy-peer-deps --no-audit --no-fund --maxsockets=1 --no-package-lock --progress=false; then
+            echo "npm install failed, trying alternative approach..."
+            
+            # Create a clean package-lock.json
+            npm install --package-lock-only --legacy-peer-deps
+            
+            # Try npm ci with the generated lock file
+            npm ci --legacy-peer-deps --no-audit --no-fund
+          fi
+          
+          # Verify installation
+          echo "Verifying installation..."
+          npm list --depth=0 || echo "Some peer dependency warnings expected"
       - run: npx playwright install --with-deps
       - run: npm run test:mvp
       - name: Upload Playwright report
