@@ -15,7 +15,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
+      - name: Clean install dependencies
+        run: |
+          rm -f package-lock.json
+          npm install
       - run: npx playwright install --with-deps
       - run: npm run test:mvp
       - name: Upload Playwright report
