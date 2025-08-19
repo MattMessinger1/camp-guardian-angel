@@ -3499,15 +3499,7 @@ export type Database = {
           unique_children: number | null
           unique_sessions: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "sessions_provider_id_fkey"
-            columns: ["provider_domain"]
-            isOneToOne: false
-            referencedRelation: "providers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
