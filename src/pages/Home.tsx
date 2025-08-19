@@ -46,25 +46,24 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen">
-      
-      {/* User menu for authenticated users */}
-      {user && (
-        <div className="bg-muted px-4 py-2 flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">
-            Welcome, {user.email}
-          </span>
-          <div className="flex items-center gap-3">
-            <Link to="/dashboard">
-              <Button variant="default" size="sm">
-                Return to signups in progress
-              </Button>
-            </Link>
+      {/* Top navigation bar */}
+      <div className="bg-muted px-4 py-2 flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          {user ? `Welcome, ${user.email}` : 'SignUpAssist'}
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to={user ? "/dashboard" : "/login?redirect=/dashboard"}>
+            <Button variant="default" size="sm">
+              Return to signups in progress
+            </Button>
+          </Link>
+          {user && (
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               Sign Out
             </Button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
       {/* Hero Section */}
       <section 
         ref={heroRef}
