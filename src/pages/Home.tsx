@@ -179,7 +179,7 @@ const HomePage = () => {
               Search for your activity
             </h2>
             <p className="text-muted-foreground">
-              Find the specific camp you want to register for and get an advantage in signup
+              We'll help you reserve a spot
             </p>
           </div>
           
