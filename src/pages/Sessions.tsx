@@ -106,23 +106,21 @@ export default function Sessions() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data?.map((s) => (
           <Link key={s.id} to={`/sessions/${s.id}`}>
-            <Card className="surface-card h-full">
+            <Card className="surface-card h-full hover:surface-hover transition-colors cursor-pointer">
               <CardHeader>
                 <CardTitle className="line-clamp-1">{s.title || "Untitled"}</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-1">
                 <div>Provider: {s.provider?.name || "—"}</div>
-                {s.registration_open_at && (
-                  <div className="font-medium text-orange-600">
-                    Registration opens: {new Date(s.registration_open_at).toLocaleString()}
-                  </div>
-                )}
+                <div className="font-medium text-orange-600">
+                  Registration opens: {s.registration_open_at ? new Date(s.registration_open_at).toLocaleString() : "TBD"}
+                </div>
                 <div>
-                  {s.start_at ? new Date(s.start_at).toLocaleString() : ""}
+                  <span className="font-medium">Dates:</span> {s.start_at ? new Date(s.start_at).toLocaleString() : ""}
                   {s.end_at ? ` – ${new Date(s.end_at).toLocaleString()}` : ""}
                 </div>
                 <div>Capacity: {s.capacity ?? "—"}</div>
-                <div>Upfront fee: {typeof s.upfront_fee_cents === 'number' ? `$${(s.upfront_fee_cents/100).toFixed(2)}` : "—"}</div>
+                <div>Fee due at signup: {typeof s.upfront_fee_cents === 'number' ? `$${(s.upfront_fee_cents/100).toFixed(2)}` : "—"}</div>
               </CardContent>
             </Card>
           </Link>

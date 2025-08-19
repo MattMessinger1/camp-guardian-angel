@@ -267,7 +267,7 @@ class SessionMerger {
     let query = this.supabase
       .from('session_candidates')
       .select('*')
-      .eq('status', 'pending');
+      .eq('status', REGISTRATION_STATES.PENDING);
     
     if (request.candidateIds) {
       query = query.in('id', request.candidateIds);

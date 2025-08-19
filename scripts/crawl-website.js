@@ -72,7 +72,7 @@ function parseArguments() {
 function validateUrl(url) {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    return ['http:', 'https:'].includes(parsed.protocol);
   } catch {
     return false;
   }
@@ -111,7 +111,7 @@ Examples:
   
   if (!validateUrl(args.base)) {
     console.error('❌ Error: Invalid URL format for --base');
-    console.error('URL must start with http:// or https://');
+    console.error('URL must use HTTP or HTTPS protocol');
     process.exit(1);
   }
   

@@ -113,6 +113,54 @@ export type Database = {
         }
         Relationships: []
       }
+      attempt_events: {
+        Row: {
+          created_at: string
+          error_type: string | null
+          event_category: string | null
+          event_type: string
+          failure_reason: string | null
+          id: string
+          latency_ms: number | null
+          metadata: Json | null
+          provider: string | null
+          queue_wait_ms: number | null
+          reservation_id: string
+          success_indicator: boolean | null
+          t0_offset_ms: number | null
+        }
+        Insert: {
+          created_at?: string
+          error_type?: string | null
+          event_category?: string | null
+          event_type: string
+          failure_reason?: string | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          provider?: string | null
+          queue_wait_ms?: number | null
+          reservation_id: string
+          success_indicator?: boolean | null
+          t0_offset_ms?: number | null
+        }
+        Update: {
+          created_at?: string
+          error_type?: string | null
+          event_category?: string | null
+          event_type?: string
+          failure_reason?: string | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          provider?: string | null
+          queue_wait_ms?: number | null
+          reservation_id?: string
+          success_indicator?: boolean | null
+          t0_offset_ms?: number | null
+        }
+        Relationships: []
+      }
       billing_profiles: {
         Row: {
           created_at: string
@@ -279,6 +327,56 @@ export type Database = {
           },
         ]
       }
+      camp_watch_requests: {
+        Row: {
+          camp_id: string | null
+          camp_name: string
+          camp_website: string | null
+          created_at: string
+          expected_announcement_timeframe: string | null
+          id: string
+          notification_preferences: Json
+          status: string
+          updated_at: string
+          user_id: string
+          user_notes: string | null
+        }
+        Insert: {
+          camp_id?: string | null
+          camp_name: string
+          camp_website?: string | null
+          created_at?: string
+          expected_announcement_timeframe?: string | null
+          id?: string
+          notification_preferences?: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_notes?: string | null
+        }
+        Update: {
+          camp_id?: string | null
+          camp_name?: string
+          camp_website?: string | null
+          created_at?: string
+          expected_announcement_timeframe?: string | null
+          id?: string
+          notification_preferences?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camp_watch_requests_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       camps: {
         Row: {
           created_at: string | null
@@ -302,6 +400,65 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: []
+      }
+      captcha_cascade_notifications: {
+        Row: {
+          cancelled_at: string | null
+          captcha_event_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message: string
+          notification_type: string
+          priority: string
+          scheduled_at: string
+          sent_at: string | null
+          skipped_at: string | null
+          skipped_reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          captcha_event_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message: string
+          notification_type: string
+          priority: string
+          scheduled_at: string
+          sent_at?: string | null
+          skipped_at?: string | null
+          skipped_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          captcha_event_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message?: string
+          notification_type?: string
+          priority?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          skipped_at?: string | null
+          skipped_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_captcha_cascade_notifications_captcha_event_id"
+            columns: ["captcha_event_id"]
+            isOneToOne: false
+            referencedRelation: "captcha_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       captcha_events: {
         Row: {
@@ -379,10 +536,64 @@ export type Database = {
           },
         ]
       }
+      cascade_patterns_v2: {
+        Row: {
+          confidence_score: number | null
+          context: Json | null
+          created_at: string
+          direct_effect: number
+          discovery_velocity: number | null
+          exploitation_velocity: number | null
+          id: string
+          improvement_type: string
+          last_validated: string | null
+          multiplier: number
+          pattern_name: string
+          total_cascade_effect: number | null
+          trigger_description: string
+          validation_count: number | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          context?: Json | null
+          created_at?: string
+          direct_effect: number
+          discovery_velocity?: number | null
+          exploitation_velocity?: number | null
+          id?: string
+          improvement_type: string
+          last_validated?: string | null
+          multiplier?: number
+          pattern_name: string
+          total_cascade_effect?: number | null
+          trigger_description: string
+          validation_count?: number | null
+        }
+        Update: {
+          confidence_score?: number | null
+          context?: Json | null
+          created_at?: string
+          direct_effect?: number
+          discovery_velocity?: number | null
+          exploitation_velocity?: number | null
+          id?: string
+          improvement_type?: string
+          last_validated?: string | null
+          multiplier?: number
+          pattern_name?: string
+          total_cascade_effect?: number | null
+          trigger_description?: string
+          validation_count?: number | null
+        }
+        Relationships: []
+      }
       children: {
         Row: {
+          admin_override_reason: string | null
           created_at: string | null
           dob: string
+          duplicate_of_child_id: string | null
+          fingerprint: string
           id: string
           name: string
           notes: string | null
@@ -390,8 +601,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          admin_override_reason?: string | null
           created_at?: string | null
           dob: string
+          duplicate_of_child_id?: string | null
+          fingerprint: string
           id?: string
           name: string
           notes?: string | null
@@ -399,8 +613,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          admin_override_reason?: string | null
           created_at?: string | null
           dob?: string
+          duplicate_of_child_id?: string | null
+          fingerprint?: string
           id?: string
           name?: string
           notes?: string | null
@@ -413,6 +630,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_children_duplicate_of"
+            columns: ["duplicate_of_child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
             referencedColumns: ["id"]
           },
         ]
@@ -435,6 +659,99 @@ export type Database = {
           id?: string
           info_token?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      clock_sync_events: {
+        Row: {
+          created_at: string
+          drift_ms: number | null
+          error_message: string | null
+          id: string
+          local_time: string
+          network_latency_ms: number | null
+          parsed_server_time: string | null
+          provider_url: string
+          request_end_ms: number
+          request_start_ms: number
+          reservation_id: string
+          server_date_header: string | null
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          created_at?: string
+          drift_ms?: number | null
+          error_message?: string | null
+          id?: string
+          local_time?: string
+          network_latency_ms?: number | null
+          parsed_server_time?: string | null
+          provider_url: string
+          request_end_ms: number
+          request_start_ms: number
+          reservation_id: string
+          server_date_header?: string | null
+          status?: string
+          sync_type?: string
+        }
+        Update: {
+          created_at?: string
+          drift_ms?: number | null
+          error_message?: string | null
+          id?: string
+          local_time?: string
+          network_latency_ms?: number | null
+          parsed_server_time?: string | null
+          provider_url?: string
+          request_end_ms?: number
+          request_start_ms?: number
+          reservation_id?: string
+          server_date_header?: string | null
+          status?: string
+          sync_type?: string
+        }
+        Relationships: []
+      }
+      compliance_audit: {
+        Row: {
+          created_at: string | null
+          delete_after: string | null
+          event_data: Json
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          payload_summary: string | null
+          reservation_id: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          delete_after?: string | null
+          event_data: Json
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          payload_summary?: string | null
+          reservation_id?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          delete_after?: string | null
+          event_data?: Json
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          payload_summary?: string | null
+          reservation_id?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -540,6 +857,78 @@ export type Database = {
           request_hash?: string
           response_data?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          priority: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority?: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      observability_metrics: {
+        Row: {
+          created_at: string
+          dimensions: Json | null
+          id: string
+          metric_name: string
+          metric_type: string
+          recorded_at: string
+          value: number
+          window_end: string | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          dimensions?: Json | null
+          id?: string
+          metric_name: string
+          metric_type: string
+          recorded_at?: string
+          value: number
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          dimensions?: Json | null
+          id?: string
+          metric_name?: string
+          metric_type?: string
+          recorded_at?: string
+          value?: number
+          window_end?: string | null
+          window_start?: string | null
         }
         Relationships: []
       }
@@ -790,6 +1179,62 @@ export type Database = {
           },
         ]
       }
+      preparation_reminders: {
+        Row: {
+          camp_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          priority: string
+          reminder_type: string
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          camp_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority?: string
+          reminder_type: string
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          camp_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: string
+          reminder_type?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preparation_reminders_camp_id_fkey"
+            columns: ["camp_id"]
+            isOneToOne: false
+            referencedRelation: "camps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prewarm_jobs: {
         Row: {
           created_at: string
@@ -945,6 +1390,42 @@ export type Database = {
           platform_hint?: string | null
           site_url?: string | null
           stripe_connect_id?: string | null
+        }
+        Relationships: []
+      }
+      queue_events: {
+        Row: {
+          created_at: string
+          estimated_wait: string | null
+          event_type: string
+          id: string
+          message: string | null
+          metadata: Json | null
+          position: number | null
+          queue_type: string | null
+          reservation_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_wait?: string | null
+          event_type: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          position?: number | null
+          queue_type?: string | null
+          reservation_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_wait?: string | null
+          event_type?: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          position?: number | null
+          queue_type?: string | null
+          reservation_id?: string
         }
         Relationships: []
       }
@@ -1275,6 +1756,245 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          created_at: string
+          id: string
+          reminder_type: string
+          reservation_id: string
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reminder_type: string
+          reservation_id: string
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reminder_type?: string
+          reservation_id?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requirement_defaults: {
+        Row: {
+          camp_type: string | null
+          common_requirements: Json | null
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          provider_platform: string | null
+          typical_deposit_cents: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          camp_type?: string | null
+          common_requirements?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          provider_platform?: string | null
+          typical_deposit_cents?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          camp_type?: string | null
+          common_requirements?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          provider_platform?: string | null
+          typical_deposit_cents?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      research_reminders: {
+        Row: {
+          call_to_action: string | null
+          confidence_level: string | null
+          created_at: string | null
+          days_until_signup: number | null
+          dismissed_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          priority: number | null
+          reminder_type: string
+          sent_at: string | null
+          session_id: string
+          triggered_at: string | null
+          user_id: string
+        }
+        Insert: {
+          call_to_action?: string | null
+          confidence_level?: string | null
+          created_at?: string | null
+          days_until_signup?: number | null
+          dismissed_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority?: number | null
+          reminder_type: string
+          sent_at?: string | null
+          session_id: string
+          triggered_at?: string | null
+          user_id: string
+        }
+        Update: {
+          call_to_action?: string | null
+          confidence_level?: string | null
+          created_at?: string | null
+          days_until_signup?: number | null
+          dismissed_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: number | null
+          reminder_type?: string
+          sent_at?: string | null
+          session_id?: string
+          triggered_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reservation_attempts: {
+        Row: {
+          attempt_no: number
+          captcha_pause_ended_at: string | null
+          captcha_pause_started_at: string | null
+          clock_sync_attempts: number | null
+          confirmation_number: string | null
+          confirmation_url: string | null
+          created_at: string
+          detection_patterns_matched: string[] | null
+          drift_ms: number | null
+          error_message: string | null
+          final_classification: string | null
+          id: string
+          locator_resolution_ms: number | null
+          measured_network_latency_ms: number | null
+          metadata: Json | null
+          pending_review: boolean | null
+          preconnect_at: string | null
+          proof_screenshot_path: string | null
+          provider_clock_synced_at: string | null
+          queue_detected: boolean | null
+          queue_duration_ms: number | null
+          queue_heartbeat_count: number | null
+          queue_position: number | null
+          reservation_id: string
+          started_at: string
+          status: string
+          submission_nonce: string
+          submit_latency_ms: number | null
+          submitted_at: string | null
+          success_detection_score: number | null
+          t0_provider_tz: string | null
+          t0_skew_ms: number | null
+          t0_user_tz: string | null
+          t0_utc: string | null
+          total_captcha_pause_ms: number | null
+        }
+        Insert: {
+          attempt_no?: number
+          captcha_pause_ended_at?: string | null
+          captcha_pause_started_at?: string | null
+          clock_sync_attempts?: number | null
+          confirmation_number?: string | null
+          confirmation_url?: string | null
+          created_at?: string
+          detection_patterns_matched?: string[] | null
+          drift_ms?: number | null
+          error_message?: string | null
+          final_classification?: string | null
+          id?: string
+          locator_resolution_ms?: number | null
+          measured_network_latency_ms?: number | null
+          metadata?: Json | null
+          pending_review?: boolean | null
+          preconnect_at?: string | null
+          proof_screenshot_path?: string | null
+          provider_clock_synced_at?: string | null
+          queue_detected?: boolean | null
+          queue_duration_ms?: number | null
+          queue_heartbeat_count?: number | null
+          queue_position?: number | null
+          reservation_id: string
+          started_at?: string
+          status?: string
+          submission_nonce: string
+          submit_latency_ms?: number | null
+          submitted_at?: string | null
+          success_detection_score?: number | null
+          t0_provider_tz?: string | null
+          t0_skew_ms?: number | null
+          t0_user_tz?: string | null
+          t0_utc?: string | null
+          total_captcha_pause_ms?: number | null
+        }
+        Update: {
+          attempt_no?: number
+          captcha_pause_ended_at?: string | null
+          captcha_pause_started_at?: string | null
+          clock_sync_attempts?: number | null
+          confirmation_number?: string | null
+          confirmation_url?: string | null
+          created_at?: string
+          detection_patterns_matched?: string[] | null
+          drift_ms?: number | null
+          error_message?: string | null
+          final_classification?: string | null
+          id?: string
+          locator_resolution_ms?: number | null
+          measured_network_latency_ms?: number | null
+          metadata?: Json | null
+          pending_review?: boolean | null
+          preconnect_at?: string | null
+          proof_screenshot_path?: string | null
+          provider_clock_synced_at?: string | null
+          queue_detected?: boolean | null
+          queue_duration_ms?: number | null
+          queue_heartbeat_count?: number | null
+          queue_position?: number | null
+          reservation_id?: string
+          started_at?: string
+          status?: string
+          submission_nonce?: string
+          submit_latency_ms?: number | null
+          submitted_at?: string | null
+          success_detection_score?: number | null
+          t0_provider_tz?: string | null
+          t0_skew_ms?: number | null
+          t0_user_tz?: string | null
+          t0_utc?: string | null
+          total_captcha_pause_ms?: number | null
+        }
+        Relationships: []
+      }
       reservation_audit: {
         Row: {
           action: string
@@ -1307,6 +2027,63 @@ export type Database = {
           metadata?: Json | null
           session_id?: string | null
           user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      reservation_forms: {
+        Row: {
+          agent_consent_given: boolean | null
+          child_dob: string
+          child_first_name: string
+          child_last_name: string
+          consented_at: string | null
+          created_at: string
+          id: string
+          parent_email: string
+          parent_first_name: string
+          parent_last_name: string
+          parent_phone: string
+          payment_consent_given: boolean | null
+          session_id: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_consent_given?: boolean | null
+          child_dob: string
+          child_first_name: string
+          child_last_name: string
+          consented_at?: string | null
+          created_at?: string
+          id?: string
+          parent_email: string
+          parent_first_name: string
+          parent_last_name: string
+          parent_phone: string
+          payment_consent_given?: boolean | null
+          session_id: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_consent_given?: boolean | null
+          child_dob?: string
+          child_first_name?: string
+          child_last_name?: string
+          consented_at?: string | null
+          created_at?: string
+          id?: string
+          parent_email?: string
+          parent_first_name?: string
+          parent_last_name?: string
+          parent_phone?: string
+          payment_consent_given?: boolean | null
+          session_id?: string
+          status?: string
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: []
@@ -1407,48 +2184,84 @@ export type Database = {
           child_id: string
           created_at: string | null
           id: string
+          last_clock_sync_at: string | null
           parent_id: string
+          prereqs: Json | null
           price_fee_cents: number
+          provider_clock_drift_ms: number | null
+          provider_network_latency_ms: number | null
           provider_platform: string | null
           provider_response: Json | null
           provider_session_key: string | null
+          reminder_plan: Json | null
           requires_captcha: boolean | null
           session_id: string
+          signup_open_at: string | null
+          signup_timezone: string | null
+          state: Database["public"]["Enums"]["reservation_state"] | null
           status: Database["public"]["Enums"]["reservation_status"]
+          stripe_customer_id: string | null
           stripe_payment_intent_id: string | null
+          stripe_payment_method_id: string | null
+          stripe_setup_intent_id: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           automation_job_id?: string | null
           child_id: string
           created_at?: string | null
           id?: string
+          last_clock_sync_at?: string | null
           parent_id: string
+          prereqs?: Json | null
           price_fee_cents?: number
+          provider_clock_drift_ms?: number | null
+          provider_network_latency_ms?: number | null
           provider_platform?: string | null
           provider_response?: Json | null
           provider_session_key?: string | null
+          reminder_plan?: Json | null
           requires_captcha?: boolean | null
           session_id: string
+          signup_open_at?: string | null
+          signup_timezone?: string | null
+          state?: Database["public"]["Enums"]["reservation_state"] | null
           status?: Database["public"]["Enums"]["reservation_status"]
+          stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_payment_method_id?: string | null
+          stripe_setup_intent_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           automation_job_id?: string | null
           child_id?: string
           created_at?: string | null
           id?: string
+          last_clock_sync_at?: string | null
           parent_id?: string
+          prereqs?: Json | null
           price_fee_cents?: number
+          provider_clock_drift_ms?: number | null
+          provider_network_latency_ms?: number | null
           provider_platform?: string | null
           provider_response?: Json | null
           provider_session_key?: string | null
+          reminder_plan?: Json | null
           requires_captcha?: boolean | null
           session_id?: string
+          signup_open_at?: string | null
+          signup_timezone?: string | null
+          state?: Database["public"]["Enums"]["reservation_state"] | null
           status?: Database["public"]["Enums"]["reservation_status"]
+          stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_payment_method_id?: string | null
+          stripe_setup_intent_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1477,6 +2290,77 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservations_preflight: {
+        Row: {
+          alert_sent: boolean | null
+          changed_fields: string[] | null
+          created_at: string
+          diff_summary: Json | null
+          error_message: string | null
+          id: string
+          load_ms: number | null
+          login_required: boolean | null
+          login_success: boolean | null
+          metadata: Json | null
+          missing_fields: string[] | null
+          previous_snapshot_path: string | null
+          reservation_id: string
+          run_at: string
+          selectors_verified: Json | null
+          snapshot_path: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          alert_sent?: boolean | null
+          changed_fields?: string[] | null
+          created_at?: string
+          diff_summary?: Json | null
+          error_message?: string | null
+          id?: string
+          load_ms?: number | null
+          login_required?: boolean | null
+          login_success?: boolean | null
+          metadata?: Json | null
+          missing_fields?: string[] | null
+          previous_snapshot_path?: string | null
+          reservation_id: string
+          run_at?: string
+          selectors_verified?: Json | null
+          snapshot_path?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          alert_sent?: boolean | null
+          changed_fields?: string[] | null
+          created_at?: string
+          diff_summary?: Json | null
+          error_message?: string | null
+          id?: string
+          load_ms?: number | null
+          login_required?: boolean | null
+          login_success?: boolean | null
+          metadata?: Json | null
+          missing_fields?: string[] | null
+          previous_snapshot_path?: string | null
+          reservation_id?: string
+          run_at?: string
+          selectors_verified?: Json | null
+          snapshot_path?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_reservations_preflight_reservation_id"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
             referencedColumns: ["id"]
           },
         ]
@@ -1655,6 +2539,60 @@ export type Database = {
           },
         ]
       }
+      session_requirements: {
+        Row: {
+          confidence_level: string | null
+          created_at: string | null
+          custom_requirements: Json | null
+          deposit_amount_cents: number | null
+          discovery_method: string | null
+          last_verified_at: string | null
+          needs_verification: boolean | null
+          required_child_fields: Json | null
+          required_documents: Json | null
+          required_parent_fields: Json | null
+          research_notes: string | null
+          session_id: string
+          source_urls: string[] | null
+          updated_at: string | null
+          verified_by_user_id: string | null
+        }
+        Insert: {
+          confidence_level?: string | null
+          created_at?: string | null
+          custom_requirements?: Json | null
+          deposit_amount_cents?: number | null
+          discovery_method?: string | null
+          last_verified_at?: string | null
+          needs_verification?: boolean | null
+          required_child_fields?: Json | null
+          required_documents?: Json | null
+          required_parent_fields?: Json | null
+          research_notes?: string | null
+          session_id: string
+          source_urls?: string[] | null
+          updated_at?: string | null
+          verified_by_user_id?: string | null
+        }
+        Update: {
+          confidence_level?: string | null
+          created_at?: string | null
+          custom_requirements?: Json | null
+          deposit_amount_cents?: number | null
+          discovery_method?: string | null
+          last_verified_at?: string | null
+          needs_verification?: boolean | null
+          required_child_fields?: Json | null
+          required_documents?: Json | null
+          required_parent_fields?: Json | null
+          research_notes?: string | null
+          session_id?: string
+          source_urls?: string[] | null
+          updated_at?: string | null
+          verified_by_user_id?: string | null
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           activity_id: string | null
@@ -1668,6 +2606,7 @@ export type Database = {
           embedding: string | null
           end_at: string | null
           end_date: string | null
+          evidence_snippet: string | null
           high_demand: boolean
           id: string
           last_verified_at: string | null
@@ -1683,6 +2622,11 @@ export type Database = {
           price_min: number | null
           provider_id: string | null
           provider_session_key: string | null
+          queue_estimated_wait: string | null
+          queue_joined_at: string | null
+          queue_position: number | null
+          queue_status: string | null
+          queue_type: string | null
           registration_open_at: string | null
           signup_url: string | null
           source_id: string | null
@@ -1705,6 +2649,7 @@ export type Database = {
           embedding?: string | null
           end_at?: string | null
           end_date?: string | null
+          evidence_snippet?: string | null
           high_demand?: boolean
           id?: string
           last_verified_at?: string | null
@@ -1720,6 +2665,11 @@ export type Database = {
           price_min?: number | null
           provider_id?: string | null
           provider_session_key?: string | null
+          queue_estimated_wait?: string | null
+          queue_joined_at?: string | null
+          queue_position?: number | null
+          queue_status?: string | null
+          queue_type?: string | null
           registration_open_at?: string | null
           signup_url?: string | null
           source_id?: string | null
@@ -1742,6 +2692,7 @@ export type Database = {
           embedding?: string | null
           end_at?: string | null
           end_date?: string | null
+          evidence_snippet?: string | null
           high_demand?: boolean
           id?: string
           last_verified_at?: string | null
@@ -1757,6 +2708,11 @@ export type Database = {
           price_min?: number | null
           provider_id?: string | null
           provider_session_key?: string | null
+          queue_estimated_wait?: string | null
+          queue_joined_at?: string | null
+          queue_position?: number | null
+          queue_status?: string | null
+          queue_type?: string | null
           registration_open_at?: string | null
           signup_url?: string | null
           source_id?: string | null
@@ -1837,6 +2793,69 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      signup_learnings: {
+        Row: {
+          accuracy_score: number | null
+          actual_deposit_cents: number | null
+          actual_requirements: Json | null
+          created_at: string | null
+          difficulty_rating: number | null
+          discovery_method: string | null
+          id: string
+          missing_predictions: Json | null
+          session_id: string | null
+          signup_success: boolean | null
+          unexpected_requirements: Json | null
+          user_feedback: string | null
+          user_id: string | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          actual_deposit_cents?: number | null
+          actual_requirements?: Json | null
+          created_at?: string | null
+          difficulty_rating?: number | null
+          discovery_method?: string | null
+          id?: string
+          missing_predictions?: Json | null
+          session_id?: string | null
+          signup_success?: boolean | null
+          unexpected_requirements?: Json | null
+          user_feedback?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          actual_deposit_cents?: number | null
+          actual_requirements?: Json | null
+          created_at?: string | null
+          difficulty_rating?: number | null
+          discovery_method?: string | null
+          id?: string
+          missing_predictions?: Json | null
+          session_id?: string | null
+          signup_success?: boolean | null
+          unexpected_requirements?: Json | null
+          user_feedback?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signup_learnings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "signup_learnings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signup_reminders: {
         Row: {
@@ -2125,6 +3144,201 @@ export type Database = {
         }
         Relationships: []
       }
+      user_requirement_research: {
+        Row: {
+          confidence_rating: number | null
+          created_at: string | null
+          deposit_amount_cents: number | null
+          found_requirements: Json | null
+          id: string
+          research_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          session_id: string | null
+          source_urls: string[] | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          confidence_rating?: number | null
+          created_at?: string | null
+          deposit_amount_cents?: number | null
+          found_requirements?: Json | null
+          id?: string
+          research_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          source_urls?: string[] | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          confidence_rating?: number | null
+          created_at?: string | null
+          deposit_amount_cents?: number | null
+          found_requirements?: Json | null
+          id?: string
+          research_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          source_urls?: string[] | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_requirement_research_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "user_requirement_research_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_session_readiness: {
+        Row: {
+          blocked_items: Json | null
+          collected_data: Json | null
+          communication_cadence: string | null
+          completed_items: Json | null
+          completion_percentage: number | null
+          confidence_in_requirements: string | null
+          created_at: string | null
+          id: string
+          last_reminder_sent: string | null
+          last_reminder_sent_at: string | null
+          next_reminder_due_at: string | null
+          ready_for_signup: boolean | null
+          reminder_count: number | null
+          required_items: Json | null
+          research_completed_at: string | null
+          research_requested_at: string | null
+          session_id: string
+          updated_at: string | null
+          user_id: string
+          user_researched: boolean | null
+        }
+        Insert: {
+          blocked_items?: Json | null
+          collected_data?: Json | null
+          communication_cadence?: string | null
+          completed_items?: Json | null
+          completion_percentage?: number | null
+          confidence_in_requirements?: string | null
+          created_at?: string | null
+          id?: string
+          last_reminder_sent?: string | null
+          last_reminder_sent_at?: string | null
+          next_reminder_due_at?: string | null
+          ready_for_signup?: boolean | null
+          reminder_count?: number | null
+          required_items?: Json | null
+          research_completed_at?: string | null
+          research_requested_at?: string | null
+          session_id: string
+          updated_at?: string | null
+          user_id: string
+          user_researched?: boolean | null
+        }
+        Update: {
+          blocked_items?: Json | null
+          collected_data?: Json | null
+          communication_cadence?: string | null
+          completed_items?: Json | null
+          completion_percentage?: number | null
+          confidence_in_requirements?: string | null
+          created_at?: string | null
+          id?: string
+          last_reminder_sent?: string | null
+          last_reminder_sent_at?: string | null
+          next_reminder_due_at?: string | null
+          ready_for_signup?: boolean | null
+          reminder_count?: number | null
+          required_items?: Json | null
+          research_completed_at?: string | null
+          research_requested_at?: string | null
+          session_id?: string
+          updated_at?: string | null
+          user_id?: string
+          user_researched?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_session_readiness_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "user_session_readiness_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      velocity_metrics: {
+        Row: {
+          acceleration: number | null
+          cascade_multiplier: number | null
+          created_at: string
+          current_value: number
+          downstream_effects: Json | null
+          id: string
+          measurement_time: string
+          metric_name: string
+          projected_12w: number | null
+          projected_1w: number | null
+          projected_4w: number | null
+          provider_domain: string | null
+          velocity: number | null
+          velocity_confidence: number | null
+        }
+        Insert: {
+          acceleration?: number | null
+          cascade_multiplier?: number | null
+          created_at?: string
+          current_value: number
+          downstream_effects?: Json | null
+          id?: string
+          measurement_time?: string
+          metric_name: string
+          projected_12w?: number | null
+          projected_1w?: number | null
+          projected_4w?: number | null
+          provider_domain?: string | null
+          velocity?: number | null
+          velocity_confidence?: number | null
+        }
+        Update: {
+          acceleration?: number | null
+          cascade_multiplier?: number | null
+          created_at?: string
+          current_value?: number
+          downstream_effects?: Json | null
+          id?: string
+          measurement_time?: string
+          metric_name?: string
+          projected_12w?: number | null
+          projected_1w?: number | null
+          projected_4w?: number | null
+          provider_domain?: string | null
+          velocity?: number | null
+          velocity_confidence?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       activity_sessions_mv: {
@@ -2132,11 +3346,43 @@ export type Database = {
           activity_id: string | null
           city: string | null
           embedding: string | null
-          kind: string | null
           name: string | null
           search_tsv: unknown | null
           sessions_json: Json | null
           state: string | null
+        }
+        Relationships: []
+      }
+      attempt_analytics_mv: {
+        Row: {
+          avg_latency_ms: number | null
+          event_count: number | null
+          event_type: string | null
+          failure_count: number | null
+          median_latency_ms: number | null
+          minute_bucket: string | null
+          p95_latency_ms: number | null
+          provider: string | null
+          success_count: number | null
+          success_rate: number | null
+        }
+        Relationships: []
+      }
+      metrics_dashboard: {
+        Row: {
+          avg_latency_ms: number | null
+          avg_queue_wait_ms: number | null
+          failure_events: number | null
+          fees_captured_count: number | null
+          fees_failed_count: number | null
+          p95_latency_ms: number | null
+          pm_coverage_pct: number | null
+          pm_missing_count: number | null
+          pm_present_count: number | null
+          success_events: number | null
+          success_fee_capture_rate_pct: number | null
+          time_bucket: string | null
+          total_events: number | null
         }
         Relationships: []
       }
@@ -2206,6 +3452,14 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      calculate_communication_cadence: {
+        Args: { days_until_signup: number }
+        Returns: string
+      }
+      calculate_pattern_effectiveness: {
+        Args: { p_pattern_id: string }
+        Returns: number
+      }
       check_and_resolve_duplicate_registrations: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -2232,6 +3486,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      collect_automated_metrics: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      compute_child_fingerprint: {
+        Args: { p_dob: string; p_name: string }
+        Returns: string
+      }
       detect_session_duplicates: {
         Args: {
           p_candidate_id: string
@@ -2247,6 +3509,10 @@ export type Database = {
       get_attempts_count_week: {
         Args: { p_child_id: string; p_tz?: string }
         Returns: number
+      }
+      get_next_reminder_time: {
+        Args: { cadence: string; last_sent?: string }
+        Returns: string
       }
       gtrgm_compress: {
         Args: { "": unknown }
@@ -2320,6 +3586,18 @@ export type Database = {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
       }
+      log_compliance_event: {
+        Args: {
+          p_event_data: Json
+          p_event_type: string
+          p_ip_address?: unknown
+          p_reservation_id?: string
+          p_session_id?: string
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       match_embeddings: {
         Args: {
           match_count?: number
@@ -2334,13 +3612,46 @@ export type Database = {
           text: string
         }[]
       }
+      record_metric: {
+        Args: {
+          p_dimensions?: Json
+          p_metric_name: string
+          p_metric_type: string
+          p_value: number
+          p_window_end?: string
+          p_window_start?: string
+        }
+        Returns: string
+      }
+      record_observability_event: {
+        Args: {
+          p_event_category?: string
+          p_event_type: string
+          p_failure_reason?: string
+          p_latency_ms?: number
+          p_metadata?: Json
+          p_queue_wait_ms?: number
+          p_reservation_id: string
+          p_success?: boolean
+          p_t0_offset_ms?: number
+        }
+        Returns: string
+      }
       refresh_activity_sessions_mv: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      refresh_attempt_analytics_mv: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
       refresh_mv_sessions_search: {
         Args: { concurrent?: boolean }
         Returns: undefined
+      }
+      register_session_legacy: {
+        Args: { registration_id: string }
+        Returns: Json
       }
       search_hybrid: {
         Args: {
@@ -2393,6 +3704,14 @@ export type Database = {
         Args: { "": unknown[] }
         Returns: number
       }
+      unaccent: {
+        Args: { "": string }
+        Returns: string
+      }
+      unaccent_init: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       vector_avg: {
         Args: { "": number[] }
         Returns: string
@@ -2432,6 +3751,13 @@ export type Database = {
         | "daysmart_recreation"
         | "shopify_product"
         | "playmetrics"
+      reservation_state:
+        | "info_collected"
+        | "account_setup"
+        | "scheduled"
+        | "action_required"
+        | "success"
+        | "failed"
       reservation_status:
         | "pending"
         | "needs_user_action"
@@ -2578,6 +3904,14 @@ export const Constants = {
         "daysmart_recreation",
         "shopify_product",
         "playmetrics",
+      ],
+      reservation_state: [
+        "info_collected",
+        "account_setup",
+        "scheduled",
+        "action_required",
+        "success",
+        "failed",
       ],
       reservation_status: [
         "pending",

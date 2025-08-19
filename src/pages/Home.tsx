@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
+import { PaymentMethodBanner } from '@/components/PaymentMethodBanner'
 
 const HomePage = () => {
   const { user, loading } = useAuth()
@@ -163,21 +164,40 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Search Components - Only show if authenticated */}
+      {/* Search Components - Make search primary for authenticated users */}
       {user ? (
         <>
-          <SearchBar
-            q={search.q} setQ={search.setQ}
-            city={search.city} setCity={search.setCity}
-            state={search.state} setState={search.setState}
-            ageMin={search.ageMin} setAgeMin={search.setAgeMin}
-            ageMax={search.ageMax} setAgeMax={search.setAgeMax}
-            dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
-            dateTo={search.dateTo} setDateTo={search.setDateTo}
-            priceMax={search.priceMax} setPriceMax={search.setPriceMax}
-            availability={search.availability} setAvailability={search.setAvailability}
-            onSearch={search.run}
-          />
+          {/* Payment Method Banner for authenticated users */}
+          <div className="max-w-6xl mx-auto px-4 pt-6">
+            <PaymentMethodBanner />
+          </div>
+          
+          {/* Primary Search Section */}
+          <section className="px-4 py-8 bg-background border-b border-border">
+            <div className="max-w-6xl mx-auto">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  Search for your camp
+                </h2>
+                <p className="text-muted-foreground">
+                  Find the specific camp you want to register for and get an advantage in signup
+                </p>
+              </div>
+              
+              <SearchBar
+                q={search.q} setQ={search.setQ}
+                city={search.city} setCity={search.setCity}
+                state={search.state} setState={search.setState}
+                ageMin={search.ageMin} setAgeMin={search.setAgeMin}
+                ageMax={search.ageMax} setAgeMax={search.setAgeMax}
+                dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
+                dateTo={search.dateTo} setDateTo={search.setDateTo}
+                priceMax={search.priceMax} setPriceMax={search.setPriceMax}
+                availability={search.availability} setAvailability={search.setAvailability}
+                onSearch={search.run}
+              />
+            </div>
+          </section>
 
           <div className="max-w-6xl mx-auto px-4 py-8">
             {/* Dev Tools Section */}
@@ -256,6 +276,70 @@ const HomePage = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Demo & Test Section */}
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-4">Demo & Testing</h2>
+            <p className="text-muted-foreground">
+              Explore our testing tools and UI improvements
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Link
+              to="/ui-showcase"
+              className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">🎨</div>
+              <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                UI Showcase
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                See all the new UI improvements in action
+              </p>
+            </Link>
+
+            <Link
+              to="/test-environment"
+              className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">🧪</div>
+              <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                Test Environment
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Automated testing suite for signup workflows
+              </p>
+            </Link>
+
+            <Link
+              to="/ui-audit-summary"
+              className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">📊</div>
+              <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                UI Audit Dashboard
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Track UI quality across all pages
+              </p>
+            </Link>
+
+            <Link
+              to="/example-new-page"
+              className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">🚀</div>
+              <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                New Page Template
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                See how new pages get all features automatically
+              </p>
+            </Link>
           </div>
         </div>
       </section>

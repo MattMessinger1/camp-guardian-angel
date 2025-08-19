@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
+import { REGISTRATION_STATES, PREWARM_STATES } from "../_shared/states.ts";
+import { requirePaymentMethodOrThrow } from "../_shared/billing.ts";
+import { checkQuotas } from "../_shared/quotas.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -114,7 +117,7 @@ serve(async (req) => {
           billing_profiles!inner(stripe_customer_id, default_payment_method_id)
         `)
         .eq('session_id', sessionId)
-        .eq('status', 'pending')
+        .eq('status', REGISTRATION_STATES.PENDING)
         .order('priority_opt_in', { ascending: false })
         .order('requested_at', { ascending: true });
 
@@ -128,14 +131,61 @@ serve(async (req) => {
         count: pendingRegistrations?.length || 0 
       });
 
-      // Step 4: Validate payment methods for all candidates
+      // Step 4: Validate payment methods and quotas for all candidates (pre-dispatch check)
       const blockedUsers = [];
       for (const reg of pendingRegistrations || []) {
-        const hasPaymentMethod = reg.billing_profiles?.default_payment_method_id;
-        if (!hasPaymentMethod) {
-          blockedUsers.push(reg.user_id);
-          // TODO: Send email notification about missing payment method
-          console.log(`[RUN-PREWARM] User ${reg.user_id} blocked - no payment method`);
+        try {
+          // Check consolidated quotas (includes payment method check)
+          const quotaCheck = await checkQuotas({
+            userId: reg.user_id,
+            childId: reg.child_id,
+            sessionId: sessionId,
+            supabase: admin
+          });
+
+          if (!quotaCheck.ok) {
+            blockedUsers.push(reg.user_id);
+            
+            // Log attempt event for quota blocking
+            await admin
+              .from('attempt_events')
+              .insert({
+                reservation_id: reg.id,
+                event_type: `quota_blocked:${quotaCheck.code}`,
+                metadata: {
+                  quota_type: quotaCheck.code,
+                  message: quotaCheck.message
+                }
+              });
+
+            // Set registration to needs_user_action state
+            await admin
+              .from('registrations')
+              .update({ 
+                status: 'needs_user_action',
+                processed_at: new Date().toISOString()
+              })
+              .eq('id', reg.id);
+              
+            console.log(`[RUN-PREWARM] User ${reg.user_id} blocked - quota failed: ${quotaCheck.message}`);
+            continue;
+          }
+
+        } catch (error: any) {
+          if (error.code === 'NO_PM') {
+            blockedUsers.push(reg.user_id);
+            
+            // Set registration to needs_user_action state
+            await admin
+              .from('registrations')
+              .update({ 
+                status: 'needs_user_action',
+                processed_at: new Date().toISOString()
+              })
+              .eq('id', reg.id);
+              
+            console.log(`[RUN-PREWARM] User ${reg.user_id} blocked - no payment method, set to needs_user_action`);
+          }
         }
       }
 
@@ -215,17 +265,18 @@ serve(async (req) => {
         );
       }
 
-      // Step 10: Process successful registrations
+      // Step 10: Process successful registrations and capture success fees
       if (registrationResult.successful.length > 0) {
         for (const regId of registrationResult.successful) {
           try {
-            // Call payment capture function
-            await admin.functions.invoke('charge-registration', {
-              body: { registration_id: regId }
+            // Call success fee capture function instead of old charge-registration
+            await admin.functions.invoke('capture-success-fee', {
+              body: { reservation_id: regId, amount_cents: 2000 }
             });
-            console.log(`[RUN-PREWARM] Payment capture initiated for registration ${regId}`);
+            console.log(`[RUN-PREWARM] Success fee capture initiated for registration ${regId}`);
           } catch (e) {
-            console.error(`[RUN-PREWARM] Payment capture failed for ${regId}:`, e);
+            console.error(`[RUN-PREWARM] Success fee capture failed for ${regId}:`, e);
+            // Note: Fee capture failure doesn't revert provider success
           }
         }
       }
@@ -285,7 +336,7 @@ async function acquireSessionLock(admin: any, sessionId: string): Promise<boolea
         updated_at: new Date().toISOString()
       })
       .eq('session_id', sessionId)
-      .eq('status', 'scheduled');
+      .eq('status', PREWARM_STATES.SCHEDULED);
     
     return !error;
   } catch (e) {
@@ -460,11 +511,11 @@ async function executeRegistrationLoop(
           const { error } = await admin
             .from('registrations')
             .update({ 
-              status: 'accepted',
+              status: REGISTRATION_STATES.ACCEPTED,
               processed_at: new Date().toISOString()
             })
             .eq('id', registration.id)
-            .eq('status', 'pending'); // Only update if still pending
+            .eq('status', REGISTRATION_STATES.PENDING); // Only update if still pending
           
           if (!error) {
             successful.push(registration.id);
@@ -491,7 +542,7 @@ async function executeRegistrationLoop(
           await admin
             .from('registrations')
             .update({ 
-              status: 'failed',
+              status: REGISTRATION_STATES.FAILED,
               processed_at: new Date().toISOString()
             })
             .in('id', remainingIds)
@@ -615,7 +666,7 @@ async function executePollingRegistrationLoop(
           const { error } = await admin
             .from('registrations')
             .update({ 
-              status: 'accepted',
+              status: REGISTRATION_STATES.ACCEPTED,
               processed_at: new Date().toISOString()
             })
             .eq('id', registration.id)
@@ -645,7 +696,7 @@ async function executePollingRegistrationLoop(
           await admin
             .from('registrations')
             .update({ 
-              status: 'failed',
+              status: REGISTRATION_STATES.FAILED,
               processed_at: new Date().toISOString()
             })
             .in('id', remainingIds)

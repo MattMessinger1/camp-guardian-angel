@@ -150,6 +150,60 @@ async function backgroundRevalidate(cacheKey: string, searchParams: any, qEmbedd
   }
 }
 
+// Helper function to extract location from query text
+function extractLocationFromQuery(q: string | null): { city: string | null, state: string | null } {
+  if (!q) return { city: null, state: null };
+  
+  const query = q.toLowerCase().trim();
+  
+  // Common patterns for cities we know about
+  const cityPatterns = [
+    { pattern: /madison/i, city: 'Madison', state: 'WI' },
+    { pattern: /austin/i, city: 'Austin', state: 'TX' },
+    { pattern: /seattle/i, city: 'Seattle', state: 'WA' },
+    { pattern: /denver/i, city: 'Denver', state: 'CO' },
+    { pattern: /portland/i, city: 'Portland', state: 'OR' },
+    { pattern: /chicago/i, city: 'Chicago', state: 'IL' },
+    { pattern: /milwaukee/i, city: 'Milwaukee', state: 'WI' },
+  ];
+  
+  for (const { pattern, city, state } of cityPatterns) {
+    if (pattern.test(query)) {
+      return { city, state };
+    }
+  }
+  
+  return { city: null, state: null };
+}
+
+// Helper function to detect specific activity searches
+function detectActivitySearch(q: string | null): string | null {
+  if (!q) return null;
+  
+  const query = q.toLowerCase().trim();
+  
+  // Define specific activity patterns that should require exact matches
+  const activityPatterns = [
+    { pattern: /^art$|^art camps?$|^art classes?$/i, activity: 'art' },
+    { pattern: /^soccer$|^soccer camps?$|^football camps?$/i, activity: 'soccer' },
+    { pattern: /^basketball$|^basketball camps?$/i, activity: 'basketball' },
+    { pattern: /^tennis$|^tennis camps?$/i, activity: 'tennis' },
+    { pattern: /^swimming$|^swim camps?$|^swimming camps?$/i, activity: 'swimming' },
+    { pattern: /^coding$|^programming$|^code camps?$|^coding camps?$/i, activity: 'coding' },
+    { pattern: /^music$|^music camps?$/i, activity: 'music' },
+    { pattern: /^dance$|^dance camps?$/i, activity: 'dance' },
+  ];
+  
+  for (const { pattern, activity } of activityPatterns) {
+    if (pattern.test(query)) {
+      console.log(`🎯 Detected specific activity search: "${query}" -> ${activity}`);
+      return activity;
+    }
+  }
+  
+  return null;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -158,8 +212,23 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const q = url.searchParams.get("q");
-  const city = url.searchParams.get("city");
-  const state = url.searchParams.get("state");
+  let city = url.searchParams.get("city");
+  let state = url.searchParams.get("state");
+  
+  // If no explicit city/state provided, try to extract from query
+  if (!city && !state && q) {
+    const extracted = extractLocationFromQuery(q);
+    city = extracted.city;
+    state = extracted.state;
+  }
+  
+  // Check if this is a specific activity search
+  const detectedActivity = detectActivitySearch(q);
+  console.log(`Extracted location from query "${q}": city=${city}, state=${state}`);
+  if (detectedActivity) {
+    console.log(`🎯 Activity detected: ${detectedActivity}`);
+  }
+  
   const ageMin = url.searchParams.get("age_min") ? parseInt(url.searchParams.get("age_min")!) : null;
   const ageMax = url.searchParams.get("age_max") ? parseInt(url.searchParams.get("age_max")!) : null;
   const dateFrom = url.searchParams.get("date_from");
@@ -171,9 +240,18 @@ Deno.serve(async (req) => {
 
   const searchParams = { q, city, state, ageMin, ageMax, dateFrom, dateTo, priceMax, availability, page, page_size: pageSize };
   console.log(`Search request:`, searchParams);
+  
+  // TEMP DEBUG: Force clear cache and add debug headers for Madison searches
+  if (q && q.toLowerCase().includes('madison')) {
+    console.log('🔍 MADISON SEARCH DETECTED - clearing cache and adding debug');
+  }
 
   try {
     const started = performance.now();
+    
+    // Clear cache completely for all searches during debugging
+    searchCache.clear();
+    console.log('Cache cleared for debugging');
     
     // Check in-memory LRU cache first
     const cacheKey = generateCacheKey(searchParams);
@@ -224,6 +302,14 @@ Deno.serve(async (req) => {
 
     const qEmbedding = await embed(q);
     console.log('Calling search_hybrid RPC...');
+    console.log('RPC parameters:', {
+      q, q_embedding: qEmbedding ? 'present' : 'null',
+      p_city: city, p_state: state,
+      p_age_min: ageMin, p_age_max: ageMax,
+      p_date_from: dateFrom, p_date_to: dateTo,
+      p_price_max: priceMax, p_availability: availability,
+      p_limit: pageSize, p_offset: page * pageSize
+    });
     
     const { data, error } = await supabase.rpc("search_hybrid", {
       q,
@@ -245,13 +331,34 @@ Deno.serve(async (req) => {
       throw error;
     }
 
+    // Filter results for specific activity searches
+    let filteredData = data || [];
+    if (detectedActivity && filteredData.length > 0) {
+      console.log(`🔍 Filtering ${filteredData.length} results for activity: ${detectedActivity}`);
+      
+      filteredData = filteredData.filter((item: any) => {
+        const name = (item.name || '').toLowerCase();
+        const activityMatch = name.includes(detectedActivity);
+        
+        if (activityMatch) {
+          console.log(`✅ Match: "${item.name}" contains "${detectedActivity}"`);
+        } else {
+          console.log(`❌ Filtered out: "${item.name}" (no "${detectedActivity}")`);
+        }
+        
+        return activityMatch;
+      });
+      
+      console.log(`🎯 Activity filter: ${data.length} -> ${filteredData.length} results for "${detectedActivity}"`);
+    }
+
     const elapsed = Math.round(performance.now() - started);
     const results = { 
-      items: data || [], 
+      items: filteredData, 
       meta: { 
         elapsed, 
         cached: false,
-        total_count: data?.length || 0,
+        total_count: filteredData?.length || 0,
         page,
         page_size: pageSize
       } 
@@ -264,13 +371,14 @@ Deno.serve(async (req) => {
     console.log(JSON.stringify({
       type: 'search_result',
       ...searchParams,
-      count: data?.length || 0,
-      avg_score: data?.length ? (data.reduce((sum: number, item: any) => sum + item.score, 0) / data.length).toFixed(3) : 0,
+      count: filteredData?.length || 0,
+      avg_score: filteredData?.length ? (filteredData.reduce((sum: number, item: any) => sum + item.score, 0) / filteredData.length).toFixed(3) : 0,
       ms: elapsed,
-      cache_status: 'miss'
+      cache_status: 'miss',
+      activity_filter: detectedActivity
     }));
 
-    console.log(`Search completed: ${data?.length || 0} results in ${elapsed}ms`);
+    console.log(`Search completed: ${filteredData?.length || 0} results in ${elapsed}ms`);
 
     return new Response(JSON.stringify(results), {
       headers: {

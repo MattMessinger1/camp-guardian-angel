@@ -398,16 +398,7 @@ export default function CaptchaAssist() {
           </Card>
         )}
 
-        {!statusInfo.canContinue && (
-          <div className="text-center">
-            <Button 
-              variant="outline" 
-              onClick={() => window.location.href = '/sessions'}
-            >
-              Browse Sessions
-            </Button>
-          </div>
-        )}
+        {/* Browse Sessions button hidden - search is now primary entry point */}
       </div>
     </main>
   );

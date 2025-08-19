@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Search, Loader2 } from 'lucide-react';
-import FacetChips from './FacetChips';
-import { parseSearchQuery } from '@/lib/ai/parseSearchQuery';
 
 type Props = {
   q: string; setQ: (v:string)=>void;
@@ -19,56 +17,6 @@ type Props = {
 export default function SearchBar(p: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Generate facet chips from active filters
-  const facetChips = [
-    ...(p.ageMin !== null || p.ageMax !== null ? [{
-      label: `Age ${p.ageMin || ''}${p.ageMin && p.ageMax ? '-' : ''}${p.ageMax || ''}`,
-      value: `${p.ageMin || ''}-${p.ageMax || ''}`,
-      onRemove: () => { p.setAgeMin(null); p.setAgeMax(null); }
-    }] : []),
-    ...(p.dateFrom ? [{
-      label: `From ${p.dateFrom}`,
-      value: p.dateFrom,
-      onRemove: () => p.setDateFrom('')
-    }] : []),
-    ...(p.dateTo ? [{
-      label: `To ${p.dateTo}`,
-      value: p.dateTo,
-      onRemove: () => p.setDateTo('')
-    }] : []),
-    ...(p.priceMax !== null ? [{
-      label: `Under $${p.priceMax}`,
-      value: p.priceMax,
-      onRemove: () => p.setPriceMax(null)
-    }] : []),
-    ...(p.availability ? [{
-      label: `${p.availability} availability`,
-      value: p.availability,
-      onRemove: () => p.setAvailability('')
-    }] : []),
-    ...(p.city ? [{
-      label: `${p.city}`,
-      value: p.city,
-      onRemove: () => p.setCity('')
-    }] : []),
-    ...(p.state ? [{
-      label: `${p.state}`,
-      value: p.state,
-      onRemove: () => p.setState('')
-    }] : [])
-  ];
-
-  const clearAllFilters = () => {
-    p.setAgeMin(null);
-    p.setAgeMax(null);
-    p.setDateFrom('');
-    p.setDateTo('');
-    p.setPriceMax(null);
-    p.setAvailability('');
-    p.setCity('');
-    p.setState('');
-  };
-
   const handleSearch = async () => {
     if (!p.q.trim()) {
       p.onSearch();
@@ -77,34 +25,15 @@ export default function SearchBar(p: Props) {
 
     setIsLoading(true);
     try {
-      // Try to parse natural language query
-      const parsed = await parseSearchQuery(p.q);
-      
-      // Auto-populate filters from parsed query
-      if (parsed.location) {
-        const locationParts = parsed.location.split(',');
-        if (locationParts.length >= 2) {
-          p.setCity(locationParts[0].trim());
-          p.setState(locationParts[1].trim());
-        } else {
-          p.setCity(parsed.location);
-        }
+      // Auto-populate location filters from query if it contains location info
+      const locationMatch = p.q.match(/([a-zA-Z\s]+),\s*([A-Z]{2})/i);
+      if (locationMatch) {
+        p.setCity(locationMatch[1].trim());
+        p.setState(locationMatch[2].trim());
       }
       
-      if (parsed.ageGroup) {
-        const ageMatch = parsed.ageGroup.match(/(\d+)(?:-(\d+))?/);
-        if (ageMatch) {
-          p.setAgeMin(parseInt(ageMatch[1]));
-          if (ageMatch[2]) {
-            p.setAgeMax(parseInt(ageMatch[2]));
-          }
-        }
-      }
-      
-      // Keep the original query in the search field for broader search
       p.onSearch();
     } catch (error) {
-      // If parsing fails, just search with the original query
       p.onSearch();
     } finally {
       setIsLoading(false);
@@ -142,9 +71,6 @@ export default function SearchBar(p: Props) {
           </button>
         </div>
       </div>
-      
-      {/* Facet chips */}
-      <FacetChips chips={facetChips} onClearAll={clearAllFilters} />
     </div>
   );
 }

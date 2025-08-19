@@ -33,7 +33,7 @@ serve(async (req) => {
         await supabase
           .from('registrations')
           .update({ 
-            status: 'pending',
+            status: REGISTRATION_STATES.PENDING,
             result_message: 'Approved by parent via SMS link'
           })
           .eq('id', tokenData.registration_id);

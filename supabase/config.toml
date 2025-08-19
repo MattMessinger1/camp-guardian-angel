@@ -3,6 +3,12 @@ project_id = "ezvwyfqtyanwnoyymhav"
 [functions.environment-check]
 verify_jwt = false
 
+[functions.create-payment-setup]
+verify_jwt = true
+
+[functions.capture-success-fee]
+verify_jwt = false
+
 [functions.reserve-callback]
 verify_jwt = false
 

@@ -4,47 +4,18 @@ import { format, formatDistance } from 'date-fns';
 import { Calendar, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
 import { AddSessionModal } from './AddSessionModal';
 import ReserveModal from '../reserve/ReserveModal';
+import { RegistrationStatus } from './RegistrationStatus';
 
-function AvailabilityBadge({ status }: { status?: string }) {
-  const getStatusStyle = (status?: string) => {
-    switch (status) {
-      case 'open':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'limited':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'waitlist':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'full':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-600 border-gray-200';
-    }
-  };
-
-  const getStatusText = (status?: string) => {
-    switch (status) {
-      case 'open': return 'Open';
-      case 'limited': return 'Limited';
-      case 'waitlist': return 'Waitlist';
-      case 'full': return 'Full';
-      default: return 'Unknown';
-    }
-  };
-
-  return (
-    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusStyle(status)}`}>
-      {getStatusText(status)}
-    </span>
-  );
-}
-
-function SessionCard({ session, onReserve }: { session: SessionItem; onReserve: (sessionId: string) => void }) {
+function SessionCard({ session, onReserve }: { 
+  session: SessionItem; 
+  onReserve: (sessionId: string) => void;
+}) {
   const startDate = session.start ? new Date(session.start) : null;
   const endDate = session.end ? new Date(session.end) : null;
   
   const duration = startDate && endDate 
     ? formatDistance(endDate, startDate)
-    : 'Duration TBD';
+    : 'Duration varies';
 
   return (
     <div className="border border-border rounded-lg p-4 bg-card hover:shadow-md transition-shadow">
@@ -53,7 +24,7 @@ function SessionCard({ session, onReserve }: { session: SessionItem; onReserve: 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="w-4 h-4" />
             <span>
-              {startDate ? format(startDate, 'MMM d, yyyy') : 'Date TBD'}
+              {startDate ? format(startDate, 'MMM d, yyyy') : 'Date varies'}
             </span>
           </div>
           
@@ -68,17 +39,11 @@ function SessionCard({ session, onReserve }: { session: SessionItem; onReserve: 
               <span>${session.price_min}</span>
             </div>
           )}
+
+          <RegistrationStatus session={session} />
         </div>
 
-        <div className="flex items-center gap-3">
-          {session.platform && (
-            <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground border">
-              {session.platform}
-            </span>
-          )}
-          
-          <AvailabilityBadge status={session.availability_status} />
-          
+        <div className="flex items-center gap-3 justify-end">
           <button 
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm flex items-center gap-2"
             onClick={() => window.location.href = `/sessions/${session.id}`}
@@ -92,7 +57,10 @@ function SessionCard({ session, onReserve }: { session: SessionItem; onReserve: 
   );
 }
 
-function ActivityCard({ activity, onReserve }: { activity: ActivityResult; onReserve: (sessionId: string) => void }) {
+function ActivityCard({ activity, onReserve }: { 
+  activity: ActivityResult; 
+  onReserve: (sessionId: string) => void;
+}) {
   const upcomingSessions = activity.sessions.slice(0, 3);
   const hasMoreSessions = activity.sessions.length > 3;
   
@@ -141,7 +109,7 @@ function ActivityCard({ activity, onReserve }: { activity: ActivityResult; onRes
           <SessionCard 
             key={session.id} 
             session={session} 
-            onReserve={onReserve} 
+            onReserve={onReserve}
           />
         ))}
         
@@ -157,10 +125,11 @@ function ActivityCard({ activity, onReserve }: { activity: ActivityResult; onRes
   );
 }
 
-export default function Results({ items, loading, error }:{
+export default function Results({ items, loading, error, searchQuery }:{
   items: ActivityResult[];
   loading: boolean;
   error: string | null;
+  searchQuery?: string;
 }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [reserveModalOpen, setReserveModalOpen] = useState(false);
@@ -170,6 +139,7 @@ export default function Results({ items, loading, error }:{
     setSelectedSessionId(sessionId);
     setReserveModalOpen(true);
   };
+
 
   if (loading) {
     return (
@@ -190,11 +160,47 @@ export default function Results({ items, loading, error }:{
   }
   
   if (!items?.length) {
+    // Generate specific no results message based on search query
+    const getNoResultsMessage = () => {
+      const query = searchQuery?.toLowerCase() || '';
+      
+      // Check for month searches
+      const months = ['january', 'february', 'march', 'april', 'may', 'june', 
+                     'july', 'august', 'september', 'october', 'november', 'december'];
+      const foundMonth = months.find(month => query.includes(month));
+      
+      if (foundMonth) {
+        return {
+          title: `No ${foundMonth.charAt(0).toUpperCase() + foundMonth.slice(1)} camps found`,
+          message: `We don't have any camps scheduled for ${foundMonth.charAt(0).toUpperCase() + foundMonth.slice(1)} yet. Try searching for other months or check back later as new camps are added regularly.`
+        };
+      }
+      
+      // Check for activity types
+      const activities = ['soccer', 'basketball', 'tennis', 'swimming', 'coding', 'art', 'music', 'dance'];
+      const foundActivity = activities.find(activity => query.includes(activity));
+      
+      if (foundActivity) {
+        return {
+          title: `No ${foundActivity} camps found`,
+          message: `We don't have any ${foundActivity} camps available right now. Try searching for other activities or locations, or check back later.`
+        };
+      }
+      
+      // Default message
+      return {
+        title: 'No camps found',
+        message: 'Try broadening your search criteria or clear some filters. You can also add a session manually and we\'ll try to reserve it for you.'
+      };
+    };
+
+    const { title, message } = getNoResultsMessage();
+
     return (
       <div className="py-12 text-center space-y-4">
-        <div className="text-lg font-medium text-foreground">No camps found</div>
+        <div className="text-lg font-medium text-foreground">{title}</div>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Try broadening your search criteria or clear some filters. You can also add a session manually and we'll try to reserve it for you.
+          {message}
         </p>
         <button 
           onClick={() => setIsAddModalOpen(true)}
@@ -214,17 +220,7 @@ export default function Results({ items, loading, error }:{
 
   return (
     <div className="space-y-6">
-      {/* Legal compliance banner */}
-      <div className="bg-muted/50 border border-border rounded-lg p-3">
-        <p className="text-xs text-muted-foreground">
-          Listings gathered from public sources. Click-out goes to official provider sites.
-        </p>
-      </div>
       
-      {/* Results count */}
-      <div className="text-sm text-muted-foreground">
-        Found {items.length} camp{items.length !== 1 ? 's' : ''} with available sessions
-      </div>
 
       {/* Results grid - mobile first */}
       <div className="grid gap-6">
@@ -232,7 +228,7 @@ export default function Results({ items, loading, error }:{
           <ActivityCard 
             key={activity.activity_id} 
             activity={activity} 
-            onReserve={handleReserve} 
+            onReserve={handleReserve}
           />
         ))}
       </div>

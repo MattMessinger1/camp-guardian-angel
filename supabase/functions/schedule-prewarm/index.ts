@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
+import { PREWARM_STATES } from "../_shared/states.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,7 +76,7 @@ serve(async (req) => {
       .upsert({
         session_id: session.id,
         prewarm_at: prewarmTime.toISOString(),
-        status: 'scheduled',
+        status: PREWARM_STATES.SCHEDULED,
         updated_at: new Date().toISOString(),
         error_message: null,
       }, {
