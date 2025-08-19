@@ -2,11 +2,11 @@
 name: "Security Scanning"
 
 on:
-  workflow_dispatch:  # Only manual for now
-  # push:
-  #   branches: [ "main", "master", "develop" ]
-  # pull_request:
-  #   branches: [ "main", "master", "develop" ]
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master", "develop" ]
+  workflow_dispatch:  # Can also run manually
   # schedule:
   #   - cron: '30 2 * * 1'
 
@@ -59,15 +59,15 @@ jobs:
 
     - name: Install dependencies
       run: |
-        # Create .npmrc to prevent any ci behavior
-        echo "package-lock=false" > .npmrc
-        echo "fund=false" >> .npmrc
-        echo "audit=false" >> .npmrc
-        echo "legacy-peer-deps=true" >> .npmrc
-        
-        # Force npm install without any lockfile behavior
-        npm install --legacy-peer-deps --no-package-lock --no-fund --no-audit
-        echo "✅ Dependencies installed successfully"
+        # Check if package-lock.json exists, if not create it
+        if [ ! -f package-lock.json ]; then
+          echo "⚠️ No package-lock.json found. This should be generated locally and committed."
+          echo "📝 Generating package-lock.json in CI as fallback..."
+          npm install --legacy-peer-deps
+        else
+          echo "✅ Using existing package-lock.json"
+          npm ci --legacy-peer-deps
+        fi
 
     - name: Run npm audit (informational only)
       run: |

@@ -1,10 +1,10 @@
 name: E2E Tests
 
 on:
-  workflow_dispatch:  # Only manual for now
-  # push:
-  #   branches: [ main ]
-  # pull_request:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:  # Can also run manually
 
 jobs:
   e2e:
@@ -16,15 +16,15 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: |
-          # Create .npmrc to prevent any ci behavior
-          echo "package-lock=false" > .npmrc
-          echo "fund=false" >> .npmrc
-          echo "audit=false" >> .npmrc
-          echo "legacy-peer-deps=true" >> .npmrc
-          
-          # Force npm install without any lockfile behavior
-          npm install --legacy-peer-deps --no-package-lock --no-fund --no-audit
-          echo "✅ Dependencies installed successfully"
+          # Check if package-lock.json exists, if not create it
+          if [ ! -f package-lock.json ]; then
+            echo "⚠️ No package-lock.json found. This should be generated locally and committed."
+            echo "📝 Generating package-lock.json in CI as fallback..."
+            npm install --legacy-peer-deps
+          else
+            echo "✅ Using existing package-lock.json"
+            npm ci --legacy-peer-deps
+          fi
       - run: npx playwright install --with-deps
       - name: Build and test
         run: |
