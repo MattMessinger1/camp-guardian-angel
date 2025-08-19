@@ -5,13 +5,13 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 5_000 },
   use: {
-    baseURL: 'https://localhost:4173',
+    baseURL: 'http://localhost:4173',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
   },
   webServer: {
     command: 'npm run preview',
-    url: 'https://localhost:4173',
+    url: 'http://localhost:4173',
     reuseExistingServer: true,
   },
   projects: [
