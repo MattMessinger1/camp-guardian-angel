@@ -41,6 +41,9 @@ const HomePage = () => {
     )
   }
 
+  // Debug log to verify component rendering
+  console.log('HomePage component rendering:', { user: !!user, loading })
+
   return (
     <div className="min-h-screen">
       {/* Auth banner */}
