@@ -278,6 +278,70 @@ const HomePage = () => {
             </div>
           </div>
         </div>
+
+        {/* Demo & Test Section */}
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-4">Demo & Testing</h2>
+            <p className="text-muted-foreground">
+              Explore our testing tools and UI improvements
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Link
+              to="/ui-showcase"
+              className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">🎨</div>
+              <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                UI Showcase
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                See all the new UI improvements in action
+              </p>
+            </Link>
+
+            <Link
+              to="/test-environment"
+              className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">🧪</div>
+              <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                Test Environment
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Automated testing suite for signup workflows
+              </p>
+            </Link>
+
+            <Link
+              to="/ui-audit-summary"
+              className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">📊</div>
+              <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                UI Audit Dashboard
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Track UI quality across all pages
+              </p>
+            </Link>
+
+            <Link
+              to="/example-new-page"
+              className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">🚀</div>
+              <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                New Page Template
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                See how new pages get all features automatically
+              </p>
+            </Link>
+          </div>
+        </div>
       </section>
 
       {/* Footer */}

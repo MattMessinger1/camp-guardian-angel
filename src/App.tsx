@@ -28,6 +28,9 @@ import { TestEnvironment } from "./pages/TestEnvironment";
 import Diagnostics from "./pages/Diagnostics";
 import Search from "./pages/Search";
 import SearchResults from "./pages/SearchResults";
+import UIAuditSummary from './pages/UIAuditSummary';
+import UIShowcase from './pages/UIShowcase';
+import ExampleNewPage from './pages/ExampleNewPage';
 
 export default function App() {
   return (
@@ -67,6 +70,9 @@ export default function App() {
         <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="/search" element={<Search />} />
         <Route path="/search/results" element={<SearchResults />} />
+        <Route path="/ui-audit-summary" element={<UIAuditSummary />} />
+        <Route path="/ui-showcase" element={<UIShowcase />} />
+        <Route path="/example-new-page" element={<ExampleNewPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
