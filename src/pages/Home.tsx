@@ -164,81 +164,83 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Search Components - Make search primary for authenticated users */}
-      {user ? (
-        <>
-          {/* Payment Method Banner for authenticated users */}
-          <div className="max-w-6xl mx-auto px-4 pt-6">
-            <PaymentMethodBanner />
-          </div>
-          
-          {/* Primary Search Section */}
-          <section className="px-4 py-8 bg-background border-b border-border">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-foreground mb-2">
-                  Search for your camp
-                </h2>
-                <p className="text-muted-foreground">
-                  Find the specific camp you want to register for and get an advantage in signup
-                </p>
-              </div>
-              
-              <SearchBar
-                q={search.q} setQ={search.setQ}
-                city={search.city} setCity={search.setCity}
-                state={search.state} setState={search.setState}
-                ageMin={search.ageMin} setAgeMin={search.setAgeMin}
-                ageMax={search.ageMax} setAgeMax={search.setAgeMax}
-                dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
-                dateTo={search.dateTo} setDateTo={search.setDateTo}
-                priceMax={search.priceMax} setPriceMax={search.setPriceMax}
-                availability={search.availability} setAvailability={search.setAvailability}
-                onSearch={search.run}
-              />
-            </div>
-          </section>
-
-          <div className="max-w-6xl mx-auto px-4 py-8">
-            {/* Dev Tools Section */}
-            <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h3 className="text-lg font-semibold mb-4 text-yellow-800">🛠️ Development Tools</h3>
-              <div className="flex gap-4">
-                <EmbeddingsBackfill />
-              </div>
-            </div>
-            
-            <Results items={search.items} loading={search.loading} error={search.error} />
-            
-            {/* Search performance indicator */}
-            {search.meta.elapsed && (
-              <div className="text-xs text-muted-foreground text-center mt-6 p-2 bg-muted/30 rounded">
-                Search completed in {search.meta.elapsed}ms
-                {search.meta.cached && ' (cached)'}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="max-w-5xl mx-auto px-4 py-12 text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-4">
-            Ready to beat the registration rush?
-          </h2>
-          <p className="text-muted-foreground mb-6">
-            Sign in to search for activities and reserve your spots automatically.
-          </p>
-          <Link to="/login">
-            <Button size="lg" className="mr-4">
-              Sign In
-            </Button>
-          </Link>
-          <Link to="/signup">
-            <Button variant="outline" size="lg">
-              Sign Up
-            </Button>
-          </Link>
+      {/* Payment Method Banner for authenticated users */}
+      {user && (
+        <div className="max-w-6xl mx-auto px-4 pt-6">
+          <PaymentMethodBanner />
         </div>
       )}
+      
+      {/* Primary Search Section */}
+      <section className="px-4 py-8 bg-background border-b border-border">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Search for your camp
+            </h2>
+            <p className="text-muted-foreground">
+              Find the specific camp you want to register for and get an advantage in signup
+            </p>
+          </div>
+          
+          <SearchBar
+            q={search.q} setQ={search.setQ}
+            city={search.city} setCity={search.setCity}
+            state={search.state} setState={search.setState}
+            ageMin={search.ageMin} setAgeMin={search.setAgeMin}
+            ageMax={search.ageMax} setAgeMax={search.setAgeMax}
+            dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
+            dateTo={search.dateTo} setDateTo={search.setDateTo}
+            priceMax={search.priceMax} setPriceMax={search.setPriceMax}
+            availability={search.availability} setAvailability={search.setAvailability}
+            onSearch={search.run}
+          />
+        </div>
+      </section>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Dev Tools Section - only for authenticated users */}
+        {user && (
+          <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 className="text-lg font-semibold mb-4 text-yellow-800">🛠️ Development Tools</h3>
+            <div className="flex gap-4">
+              <EmbeddingsBackfill />
+            </div>
+          </div>
+        )}
+        
+        <Results items={search.items} loading={search.loading} error={search.error} />
+        
+        {/* Search performance indicator */}
+        {search.meta.elapsed && (
+          <div className="text-xs text-muted-foreground text-center mt-6 p-2 bg-muted/30 rounded">
+            Search completed in {search.meta.elapsed}ms
+            {search.meta.cached && ' (cached)'}
+          </div>
+        )}
+
+        {/* Sign up prompt for non-authenticated users */}
+        {!user && (
+          <div className="max-w-5xl mx-auto px-4 py-12 text-center">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              Ready to beat the registration rush?
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Sign in to search for activities and reserve your spots automatically.
+            </p>
+            <Link to="/login">
+              <Button size="lg" className="mr-4">
+                Sign In
+              </Button>
+            </Link>
+            <Link to="/signup">
+              <Button variant="outline" size="lg">
+                Sign Up
+              </Button>
+            </Link>
+          </div>
+        )}
+      </div>
 
 
 
