@@ -60,14 +60,10 @@ jobs:
 
     - name: Install dependencies
       run: |
-        # If no package-lock.json exists, create one
-        if [ ! -f package-lock.json ]; then
-          echo "No package-lock.json found, generating one..."
-          npm install --legacy-peer-deps
-        else
-          echo "Using existing package-lock.json..."
-          npm ci --legacy-peer-deps
-        fi
+        # Always use npm install for now to avoid ci issues
+        echo "Installing dependencies with npm install..."
+        npm install --legacy-peer-deps --no-package-lock
+        echo "✅ Dependencies installed successfully"
 
     - name: Run npm audit (informational only)
       run: |
