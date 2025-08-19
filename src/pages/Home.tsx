@@ -374,6 +374,16 @@ const HomePage = () => {
               >
                 support@signupassist.com
               </a>
+              
+              {/* Test Button for Ready for Signup Page */}
+              <div className="mt-4">
+                <Link 
+                  to="/sessions/003217fe-7854-43da-8a64-db592d5d78d5/ready-to-signup"
+                  className="text-blue-400 hover:text-blue-300 transition-colors text-sm underline"
+                >
+                  🧪 Test Ready for Signup Page
+                </Link>
+              </div>
             </div>
           </div>
         </div>
