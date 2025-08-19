@@ -15,34 +15,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
-      - name: Install dependencies with Yarn
+          cache: 'npm'
+      - name: Install dependencies
         run: |
           # Debug environment
           echo "Node version: $(node --version)"
+          echo "Npm version: $(npm --version)"
           echo "Current directory: $(pwd)"
           
-          # Install yarn if not present
-          npm install -g yarn
-          echo "Yarn version: $(yarn --version)"
-          
-          # Remove any existing npm artifacts
-          rm -rf node_modules package-lock.json .npm
-          
-          # Create yarn.lock if it doesn't exist
-          if [ ! -f yarn.lock ]; then
-            echo "Generating yarn.lock from package.json..."
-            yarn install --ignore-engines --network-timeout 100000
-          else
-            echo "Using existing yarn.lock..."
-            yarn install --frozen-lockfile --ignore-engines --network-timeout 100000
-          fi
+          # Clean install
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
           
           # Verify installation
           echo "Verifying installation..."
-          yarn list --depth=0 || echo "Some peer dependency warnings expected"
-      - run: yarn playwright install --with-deps
-      - run: yarn test:mvp
+          npm list --depth=0 || echo "Some peer dependency warnings expected"
+      - run: npx playwright install --with-deps
+      - run: npm run test:mvp
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
