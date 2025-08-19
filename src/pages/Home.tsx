@@ -116,8 +116,8 @@ const HomePage = () => {
                     <div className="flex-shrink-0 md:mb-4">
                       <img 
                         src={
-                          step.stepNum === 1 ? (isMobile ? '/step1_pin_48.png' : '/step1_pin_192.png') :
-                          step.stepNum === 2 ? (isMobile ? '/step2_form_48.png' : '/step2_form_192.png') :
+                          step.stepNum === 1 ? (isMobile ? '/step1_pin_48.png' : '/step1_pin_96.png') :
+                          step.stepNum === 2 ? (isMobile ? '/step2_form_48.png' : '/step2_form_96.png') :
                           (isMobile ? '/lovable-uploads/70608b6c-9b21-4c36-a47a-433b637be2e9.png' : '/lovable-uploads/38a86184-8613-4ff5-9a9f-bd671e8a4188.png')
                         }
                         alt=""
