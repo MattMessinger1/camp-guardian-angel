@@ -176,7 +176,7 @@ const HomePage = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-foreground mb-2">
-              Search for your camp
+              Search for your activity
             </h2>
             <p className="text-muted-foreground">
               Find the specific camp you want to register for and get an advantage in signup
