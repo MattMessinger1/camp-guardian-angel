@@ -12,19 +12,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          registry-url: 'https://registry.npmjs.org'
       - name: Install dependencies
         run: |
           # Debug environment
           echo "Node version: $(node --version)"
           echo "Npm version: $(npm --version)"
           echo "Current directory: $(pwd)"
+          echo "Package.json exists: $(ls -la package.json)"
           
-          # Clean install
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
+          # Create custom npmrc to avoid ci behavior
+          echo "legacy-peer-deps=true" > .npmrc
+          echo "fund=false" >> .npmrc
+          echo "audit=false" >> .npmrc
+          
+          # Completely clean start
+          rm -rf node_modules package-lock.json .npm
+          
+          # Force regular install (not ci)
+          npm install --verbose
           
           # Verify installation
           echo "Verifying installation..."
