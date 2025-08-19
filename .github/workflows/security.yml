@@ -91,7 +91,7 @@ jobs:
     - name: Check for HTTP URLs in codebase
       run: |
         echo "Checking for insecure HTTP URLs..."
-        if grep -r "http://" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" .; then
+        if grep -r "http://" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" --exclude="*.svg" .; then
           echo "❌ Found insecure HTTP URLs in codebase"
           exit 1
         else

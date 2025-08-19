@@ -49,7 +49,7 @@ fi
 echo "Setting up test environment..."
 
 # Start development server in background (if needed)
-if ! curl -s http://localhost:5173 > /dev/null 2>&1; then
+if ! curl -s https://localhost:5173 > /dev/null 2>&1; then
     echo "Starting development server..."
     npm run dev &
     DEV_SERVER_PID=$!
@@ -57,7 +57,7 @@ if ! curl -s http://localhost:5173 > /dev/null 2>&1; then
     # Wait for server to start
     echo "Waiting for development server to start..."
     for i in {1..30}; do
-        if curl -s http://localhost:5173 > /dev/null 2>&1; then
+        if curl -s https://localhost:5173 > /dev/null 2>&1; then
             echo "✅ Development server is running"
             break
         fi
