@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Smartphone, Mail, HelpCircle, Loader2 } from "lucide-react";
+import { logger } from "@/lib/log";
 
 interface AssistedSignupRequirementsProps {
   onComplete: () => void;
@@ -47,7 +48,19 @@ export default function AssistedSignupRequirements({ onComplete, onSkip }: Assis
           .maybeSingle();
 
         if (error) {
-          console.error('Error loading profile:', error);
+          // Engineering Guardrails: docs/ENGINEERING_GUARDRAILS.md
+          // PHI Avoidance: This endpoint deliberately avoids collecting any PHI data
+          logger.error('Error loading profile for assisted signup', {
+            component: 'AssistedSignupRequirements',
+            action: 'loadProfile',
+            userId: user.id,
+            errorType: error.code || 'unknown',
+            phiAvoidance: {
+              reason: 'Profile data excludes medical information',
+              dataType: 'user-profile',
+              decision: 'excluded'
+            }
+          });
           return;
         }
 
