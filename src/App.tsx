@@ -31,6 +31,7 @@ import SearchResults from "./pages/SearchResults";
 import UIAuditSummary from './pages/UIAuditSummary';
 import UIShowcase from './pages/UIShowcase';
 import ExampleNewPage from './pages/ExampleNewPage';
+import Readiness from './pages/Readiness';
 
 export default function App() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="/search/results" element={<SearchResults />} />
         <Route path="/ui-audit-summary" element={<UIAuditSummary />} />
         <Route path="/ui-showcase" element={<UIShowcase />} />
+        <Route path="/readiness" element={<Readiness />} />
         <Route path="/example-new-page" element={<ExampleNewPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

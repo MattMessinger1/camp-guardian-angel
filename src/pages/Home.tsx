@@ -229,6 +229,30 @@ const HomePage = () => {
             </Link>
           </div>
         )}
+
+        {/* Readiness workflow for authenticated users */}
+        {user && (
+          <div className="max-w-5xl mx-auto px-4 py-12 text-center">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              Get Ready for Signup
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Configure your automated registration settings and monitor your progress.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/readiness">
+                <Button size="lg">
+                  Setup Ready to Signup
+                </Button>
+              </Link>
+              <Link to="/dashboard">
+                <Button variant="outline" size="lg">
+                  View Dashboard
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
 
