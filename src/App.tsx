@@ -3,6 +3,7 @@ import HomePage from "./pages/Home";
 import ReservationHolds from "./pages/ReservationHolds";
 import ManualBackup from "./pages/ManualBackup";
 import Login from "./pages/Login";
+import Auth from "./pages/Auth";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Sessions from "./pages/Sessions";
@@ -44,6 +45,7 @@ export default function App() {
     >
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/auth" element={<Auth />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />

@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, CreditCard, Lock, User, Calendar, Phone, Mail, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, CreditCard, Lock, User, Calendar, Phone, Mail, AlertCircle, Loader2, Plus, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SessionRow {
   id: string;
@@ -47,17 +48,28 @@ interface RequirementDiscovery {
   requirements: SessionRequirements;
   needsVerification: boolean;
   source?: string;
+  hipaa_avoidance?: boolean;
+}
+
+interface ChildData {
+  name: string;
+  dob: string;
+  medical_info?: string;
 }
 
 export default function SessionSignup() {
   const params = useParams();
   const navigate = useNavigate();
   const sessionId = params.id!;
+  const { user } = useAuth();
   
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [children, setChildren] = useState<ChildData[]>([{ name: '', dob: '', medical_info: '' }]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [requirements, setRequirements] = useState<RequirementDiscovery | null>(null);
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(true);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [password, setPassword] = useState('');
 
   const { data: sessionData, isLoading: isLoadingSession } = useQuery({
     queryKey: ["session", sessionId],
@@ -302,6 +314,30 @@ export default function SessionSignup() {
     return fields;
   };
 
+  const addChild = () => {
+    if (children.length < 2) {
+      setChildren([...children, { name: '', dob: '', medical_info: '' }]);
+    } else {
+      toast({
+        title: "Maximum Children Reached",
+        description: "You can register a maximum of 2 children per session.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removeChild = (index: number) => {
+    if (children.length > 1) {
+      setChildren(children.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateChild = (index: number, field: keyof ChildData, value: string) => {
+    const updated = [...children];
+    updated[index] = { ...updated[index], [field]: value };
+    setChildren(updated);
+  };
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -323,12 +359,75 @@ export default function SessionSignup() {
       }
     }
 
+    // Validate children data
+    for (let i = 0; i < children.length; i++) {
+      if (!children[i].name) {
+        toast({
+          title: "Missing Information",
+          description: `Please fill in the name for child ${i + 1}.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      if (!children[i].dob) {
+        toast({
+          title: "Missing Information", 
+          description: `Please fill in the date of birth for child ${i + 1}.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+    }
+
     return true;
+  };
+
+  const createAccount = async () => {
+    if (!formData.parentEmail || !password) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide email and password to create your account.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: formData.parentEmail,
+        password: password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Account Created",
+        description: "Your account has been created! Please check your email to verify your account.",
+      });
+
+      setShowAuthPrompt(false);
+    } catch (error) {
+      console.error('Error creating account:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create account. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSubmit = async () => {
     const fields = generateFormFields();
     if (!validateForm(fields)) return;
+
+    // Check if user is authenticated
+    if (!user) {
+      setShowAuthPrompt(true);
+      return;
+    }
 
     setIsProcessing(true);
 
@@ -339,6 +438,7 @@ export default function SessionSignup() {
       // 3. Redirect to payment confirmation
       
       console.log("Submitting registration with data:", formData);
+      console.log("Children data:", children);
       console.log("Requirements:", requirements);
       
       toast({
@@ -559,6 +659,88 @@ export default function SessionSignup() {
 
             <Separator />
 
+            {/* Children Information */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Children Information
+                </h3>
+                {children.length < 2 && (
+                  <Button
+                    onClick={addChild}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Child
+                  </Button>
+                )}
+              </div>
+
+              {children.map((child, index) => (
+                <Card key={index} className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium">Child {index + 1}</h4>
+                    {children.length > 1 && (
+                      <Button
+                        onClick={() => removeChild(index)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`child-${index}-name`}>
+                        Child's Full Name *
+                      </Label>
+                      <Input
+                        id={`child-${index}-name`}
+                        value={child.name}
+                        onChange={(e) => updateChild(index, 'name', e.target.value)}
+                        placeholder="Child's full name"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor={`child-${index}-dob`}>
+                        Child's Date of Birth *
+                      </Label>
+                      <Input
+                        id={`child-${index}-dob`}
+                        type="date"
+                        value={child.dob}
+                        onChange={(e) => updateChild(index, 'dob', e.target.value)}
+                      />
+                    </div>
+                    
+                    {requirements?.requirements.required_child_fields?.includes("medical_info") && !requirements?.hipaa_avoidance && (
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor={`child-${index}-medical`}>
+                          Medical Conditions or Allergies
+                        </Label>
+                        <Textarea
+                          id={`child-${index}-medical`}
+                          value={child.medical_info || ''}
+                          onChange={(e) => updateChild(index, 'medical_info', e.target.value)}
+                          placeholder="Please list any medical conditions, allergies, or medications..."
+                          rows={3}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <Separator />
+
             {/* Payment Summary */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -642,6 +824,74 @@ export default function SessionSignup() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Authentication Prompt Modal */}
+        {showAuthPrompt && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Create Your Account</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  You need an account to register for sessions. Since you've already provided your email, just create a password to complete your account setup.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email-display">Email Address</Label>
+                  <Input
+                    id="email-display"
+                    type="email"
+                    value={formData.parentEmail || ''}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password">Create Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Choose a secure password"
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setShowAuthPrompt(false)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={createAccount}
+                    className="flex-1"
+                    disabled={!password}
+                  >
+                    Create Account
+                  </Button>
+                </div>
+                
+                <p className="text-xs text-center text-muted-foreground">
+                  Already have an account? <Link to="/auth" className="text-primary hover:underline">Sign in here</Link>
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* HIPAA Compliance Notice */}
+        {requirements?.hipaa_avoidance && (
+          <Alert className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Privacy Notice:</strong> Medical information will be collected directly by the provider during registration to ensure HIPAA compliance and protect your child's health privacy.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     </main>
   );

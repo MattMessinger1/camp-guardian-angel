@@ -169,28 +169,29 @@ serve(async (req) => {
 
       await upsertSessionRequirements(supabase, session_id, requirements, 'defaults', 'estimated');
 
-      discovery = {
-        method: 'defaults',
-        confidence: 'estimated',
-        requirements,
-        needsVerification: true,
-        source: `Based on similar ${defaultReqs.camp_type || defaultReqs.provider_platform} camps${shouldAvoidPHI ? ' (HIPAA-compliant)' : ''}`
-      };
-    } else {
-      console.log(`[DISCOVER-REQUIREMENTS] No defaults found, using generic requirements`);
-      
-      // Fallback to generic requirements
-      let childFields = ["name", "dob"];
-      let documents = ["waiver"];
-      
-      // Apply HIPAA avoidance to fallback requirements too
-      if (!shouldAvoidPHI) {
-        childFields.push("medical_info");
-        documents.push("medical_form");
+        discovery = {
+          method: 'defaults',
+          confidence: 'estimated',
+          requirements,
+          needsVerification: true,
+          source: `Based on similar ${defaultReqs.camp_type || defaultReqs.provider_platform} camps${shouldAvoidPHI ? ' (HIPAA-compliant)' : ''}`,
+          hipaa_avoidance: shouldAvoidPHI
+        };
       } else {
-        console.log(`[DISCOVER-REQUIREMENTS] HIPAA avoidance: Using PHI-free fallback requirements for domain ${providerDomain}`);
-        await logHIPAAAvoidance(supabase, providerDomain, childFields, documents);
-      }
+        console.log(`[DISCOVER-REQUIREMENTS] No defaults found, using generic requirements`);
+        
+        // Fallback to generic requirements
+        let childFields = ["name", "dob"];
+        let documents = ["waiver"];
+        
+        // Apply HIPAA avoidance to fallback requirements too
+        if (!shouldAvoidPHI) {
+          childFields.push("medical_info");
+          documents.push("medical_form");
+        } else {
+          console.log(`[DISCOVER-REQUIREMENTS] HIPAA avoidance: Using PHI-free fallback requirements for domain ${providerDomain}`);
+          await logHIPAAAvoidance(supabase, providerDomain, childFields, documents);
+        }
       
       const requirements = {
         deposit_amount_cents: 5000, // $50 default
@@ -207,7 +208,8 @@ serve(async (req) => {
         confidence: 'estimated',
         requirements,
         needsVerification: true,
-        source: `Generic camp requirements${shouldAvoidPHI ? ' (HIPAA-compliant)' : ''} (needs verification)`
+        source: "Generic camp requirements (needs verification)",
+        hipaa_avoidance: shouldAvoidPHI
       };
     }
 
