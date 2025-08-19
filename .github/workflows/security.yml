@@ -56,31 +56,18 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+        cache: 'npm'
 
-    - name: Create .npmrc for better resolution
+    - name: Install dependencies
       run: |
-        cat > .npmrc << EOF
-        legacy-peer-deps=true
-        fund=false
-        audit=false
-        prefer-offline=true
-        maxsockets=1
-        registry=https://registry.npmjs.org/
-        EOF
-
-    - name: Robust dependency installation
-      run: |
-        # Remove any existing files that might cause conflicts
-        rm -rf node_modules package-lock.json
-        
-        # Clear npm cache completely
-        npm cache clean --force
-        
-        # Install with maximum compatibility flags
-        npm install --legacy-peer-deps --no-audit --no-fund --maxsockets=1 --progress=false
-        
-        # Verify installation
-        npm list --depth=0 || echo "Some peer dependency warnings expected"
+        # If no package-lock.json exists, create one
+        if [ ! -f package-lock.json ]; then
+          echo "No package-lock.json found, generating one..."
+          npm install --legacy-peer-deps
+        else
+          echo "Using existing package-lock.json..."
+          npm ci --legacy-peer-deps
+        fi
 
     - name: Run npm audit (informational only)
       run: |

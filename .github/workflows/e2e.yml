@@ -1,39 +1,30 @@
 name: E2E Tests
 
 on:
-  workflow_dispatch:  # Only run manually for now
-  # push:
-  #   branches: [ main ]
-  # pull_request:
-  # schedule:
-  #   - cron: "0 5 * * *"
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:  # Can also run manually
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Manual Node.js setup without npm automation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - name: Install dependencies
         run: |
-          # Install Node.js manually to avoid any npm automation
-          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-          
-          echo "Node version: $(node --version)"
-          echo "Npm version: $(npm --version)"
-          
-          # Completely disable npm ci behavior
-          npm config set fund false
-          npm config set audit false
-          npm config set legacy-peer-deps true
-          
-          # Clean everything
-          rm -rf node_modules package-lock.json .npm ~/.npm
-          
-          # Manual install with verbose output
-          npm install --no-package-lock --legacy-peer-deps --verbose
-          
-          echo "✅ Dependencies installed successfully"
+          # If no package-lock.json exists, create one
+          if [ ! -f package-lock.json ]; then
+            echo "No package-lock.json found, generating one..."
+            npm install --legacy-peer-deps
+          else
+            echo "Using existing package-lock.json..."
+            npm ci --legacy-peer-deps
+          fi
       - run: npx playwright install --with-deps
       - name: Build and test
         run: |
