@@ -54,16 +54,18 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
 
-    - name: Clean install dependencies
+    - name: Clear npm cache and install dependencies
       run: |
-        rm -f package-lock.json
-        npm install --no-audit
-        npm install --package-lock-only
+        npm cache clean --force
+        rm -rf node_modules package-lock.json
+        npm install --legacy-peer-deps --no-audit --no-fund
 
-    - name: Run npm audit
-      run: npm audit --audit-level=critical || true
+    - name: Run npm audit (continue on failure)
+      run: npm audit --audit-level=high || echo "Audit completed with warnings"
+      continue-on-error: true
 
     - name: Run dependency check
       uses: dependency-check/Dependency-Check_Action@main
