@@ -176,6 +176,34 @@ function extractLocationFromQuery(q: string | null): { city: string | null, stat
   return { city: null, state: null };
 }
 
+// Helper function to detect specific activity searches
+function detectActivitySearch(q: string | null): string | null {
+  if (!q) return null;
+  
+  const query = q.toLowerCase().trim();
+  
+  // Define specific activity patterns that should require exact matches
+  const activityPatterns = [
+    { pattern: /^art$|^art camps?$|^art classes?$/i, activity: 'art' },
+    { pattern: /^soccer$|^soccer camps?$|^football camps?$/i, activity: 'soccer' },
+    { pattern: /^basketball$|^basketball camps?$/i, activity: 'basketball' },
+    { pattern: /^tennis$|^tennis camps?$/i, activity: 'tennis' },
+    { pattern: /^swimming$|^swim camps?$|^swimming camps?$/i, activity: 'swimming' },
+    { pattern: /^coding$|^programming$|^code camps?$|^coding camps?$/i, activity: 'coding' },
+    { pattern: /^music$|^music camps?$/i, activity: 'music' },
+    { pattern: /^dance$|^dance camps?$/i, activity: 'dance' },
+  ];
+  
+  for (const { pattern, activity } of activityPatterns) {
+    if (pattern.test(query)) {
+      console.log(`🎯 Detected specific activity search: "${query}" -> ${activity}`);
+      return activity;
+    }
+  }
+  
+  return null;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -194,6 +222,13 @@ Deno.serve(async (req) => {
     state = extracted.state;
   }
   
+  // Check if this is a specific activity search
+  const detectedActivity = detectActivitySearch(q);
+  console.log(`Extracted location from query "${q}": city=${city}, state=${state}`);
+  if (detectedActivity) {
+    console.log(`🎯 Activity detected: ${detectedActivity}`);
+  }
+  
   const ageMin = url.searchParams.get("age_min") ? parseInt(url.searchParams.get("age_min")!) : null;
   const ageMax = url.searchParams.get("age_max") ? parseInt(url.searchParams.get("age_max")!) : null;
   const dateFrom = url.searchParams.get("date_from");
@@ -205,7 +240,6 @@ Deno.serve(async (req) => {
 
   const searchParams = { q, city, state, ageMin, ageMax, dateFrom, dateTo, priceMax, availability, page, page_size: pageSize };
   console.log(`Search request:`, searchParams);
-  console.log(`Extracted location from query "${q}": city=${city}, state=${state}`);
   
   // TEMP DEBUG: Force clear cache and add debug headers for Madison searches
   if (q && q.toLowerCase().includes('madison')) {
@@ -297,13 +331,34 @@ Deno.serve(async (req) => {
       throw error;
     }
 
+    // Filter results for specific activity searches
+    let filteredData = data || [];
+    if (detectedActivity && filteredData.length > 0) {
+      console.log(`🔍 Filtering ${filteredData.length} results for activity: ${detectedActivity}`);
+      
+      filteredData = filteredData.filter((item: any) => {
+        const name = (item.name || '').toLowerCase();
+        const activityMatch = name.includes(detectedActivity);
+        
+        if (activityMatch) {
+          console.log(`✅ Match: "${item.name}" contains "${detectedActivity}"`);
+        } else {
+          console.log(`❌ Filtered out: "${item.name}" (no "${detectedActivity}")`);
+        }
+        
+        return activityMatch;
+      });
+      
+      console.log(`🎯 Activity filter: ${data.length} -> ${filteredData.length} results for "${detectedActivity}"`);
+    }
+
     const elapsed = Math.round(performance.now() - started);
     const results = { 
-      items: data || [], 
+      items: filteredData, 
       meta: { 
         elapsed, 
         cached: false,
-        total_count: data?.length || 0,
+        total_count: filteredData?.length || 0,
         page,
         page_size: pageSize
       } 
@@ -316,13 +371,14 @@ Deno.serve(async (req) => {
     console.log(JSON.stringify({
       type: 'search_result',
       ...searchParams,
-      count: data?.length || 0,
-      avg_score: data?.length ? (data.reduce((sum: number, item: any) => sum + item.score, 0) / data.length).toFixed(3) : 0,
+      count: filteredData?.length || 0,
+      avg_score: filteredData?.length ? (filteredData.reduce((sum: number, item: any) => sum + item.score, 0) / filteredData.length).toFixed(3) : 0,
       ms: elapsed,
-      cache_status: 'miss'
+      cache_status: 'miss',
+      activity_filter: detectedActivity
     }));
 
-    console.log(`Search completed: ${data?.length || 0} results in ${elapsed}ms`);
+    console.log(`Search completed: ${filteredData?.length || 0} results in ${elapsed}ms`);
 
     return new Response(JSON.stringify(results), {
       headers: {
