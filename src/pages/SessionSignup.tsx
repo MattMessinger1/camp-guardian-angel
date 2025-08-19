@@ -210,17 +210,6 @@ export default function SessionSignup() {
       });
     }
 
-    // Add password field for new users (only if not already authenticated)
-    if (required_parent_fields.includes("email") && !user) {
-      fields.push({
-        name: 'parentPassword',
-        type: 'password',
-        required: true,
-        label: 'Create Password',
-        placeholder: 'Choose a secure password'
-      });
-    }
-
     if (required_parent_fields.includes("phone")) {
       fields.push({
         name: 'parentPhone',
@@ -359,6 +348,16 @@ export default function SessionSignup() {
         });
         return false;
       }
+    }
+
+    // Validate password for new users
+    if (!user && !formData.parentPassword) {
+      toast({
+        title: "Missing Information",
+        description: "Please create a password for your account.",
+        variant: "destructive"
+      });
+      return false;
     }
 
     // Validate children data
@@ -694,6 +693,37 @@ export default function SessionSignup() {
                 ))}
               </div>
             </div>
+
+            {!user && (
+              <>
+                <Separator />
+                
+                {/* Create Account Password Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Lock className="w-5 h-5" />
+                    Create Account Password
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="parentPassword">
+                      Password *
+                    </Label>
+                    <Input
+                      id="parentPassword"
+                      type="password"
+                      value={formData.parentPassword || ''}
+                      onChange={(e) => handleInputChange('parentPassword', e.target.value)}
+                      placeholder="Choose a secure password"
+                    />
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    Finalize account creation below
+                  </p>
+                </div>
+              </>
+            )}
 
             <Separator />
 
