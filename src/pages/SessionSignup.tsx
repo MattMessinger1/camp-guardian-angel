@@ -246,6 +246,15 @@ export default function SessionSignup() {
         label: 'Medical Conditions or Allergies',
         placeholder: 'Please list any medical conditions, allergies, or medications...'
       });
+    } else if (requirements.source?.includes('HIPAA-compliant')) {
+      // Add informational note when medical info is excluded for HIPAA compliance
+      fields.push({
+        name: 'hipaaNotice',
+        type: 'text',
+        required: false,
+        label: 'Medical Information',
+        placeholder: 'Medical information will be collected directly by the provider for privacy compliance'
+      });
     }
 
     // Emergency contact
@@ -424,6 +433,20 @@ export default function SessionSignup() {
         );
 
       default:
+        // Special handling for HIPAA notice field
+        if (field.name === 'hipaaNotice') {
+          return (
+            <div key={field.name} className="space-y-2">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>{field.label}:</strong> {field.placeholder}
+                </AlertDescription>
+              </Alert>
+            </div>
+          );
+        }
+        
         return (
           <div key={field.name} className="space-y-2">
             <Label htmlFor={field.name}>
