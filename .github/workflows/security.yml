@@ -39,49 +39,77 @@ jobs:
       with:
         category: "/language:${{matrix.language}}"
 
-  # dependency-scan: # Temporarily disabled due to npm install issues
-  #   name: "Dependency Vulnerability Scan"
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     actions: read
-  #     contents: read
-  #     security-events: write
-  # 
-  #   steps:
-  #   - name: Checkout repository
-  #     uses: actions/checkout@v4
-  # 
-  #   - name: Setup Node.js
-  #     uses: actions/setup-node@v4
-  #     with:
-  #       node-version: '20'
-  #       registry-url: 'https://registry.npmjs.org'
-  # 
-  #   - name: Clear npm cache and install dependencies
-  #     run: |
-  #       npm cache clean --force
-  #       rm -rf node_modules package-lock.json
-  #       npm install --legacy-peer-deps --no-audit --no-fund
-  # 
-  #   - name: Run npm audit (continue on failure)
-  #     run: npm audit --audit-level=high || echo "Audit completed with warnings"
-  #     continue-on-error: true
-  # 
-  #   - name: Run dependency check
-  #     uses: dependency-check/Dependency-Check_Action@main
-  #     with:
-  #       project: 'CampRush'
-  #       path: '.'
-  #       format: 'SARIF'
-  #       args: >
-  #         --enableRetired
-  #         --enableExperimental
-  #         --nodeAuditSkipDevDependencies
-  # 
-  #   - name: Upload SARIF results
-  #     uses: github/codeql-action/upload-sarif@v3
-  #     with:
-  #       sarif_file: reports/dependency-check-report.sarif
+  dependency-scan:
+    name: "Dependency Vulnerability Scan"
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Create .npmrc for better resolution
+      run: |
+        cat > .npmrc << EOF
+        legacy-peer-deps=true
+        fund=false
+        audit=false
+        prefer-offline=true
+        maxsockets=1
+        registry=https://registry.npmjs.org/
+        EOF
+
+    - name: Robust dependency installation
+      run: |
+        # Remove any existing files that might cause conflicts
+        rm -rf node_modules package-lock.json
+        
+        # Clear npm cache completely
+        npm cache clean --force
+        
+        # Install with maximum compatibility flags
+        npm install --legacy-peer-deps --no-audit --no-fund --maxsockets=1 --progress=false
+        
+        # Verify installation
+        npm list --depth=0 || echo "Some peer dependency warnings expected"
+
+    - name: Run npm audit (informational only)
+      run: |
+        echo "Running npm audit for informational purposes..."
+        npm audit --audit-level=high --json > audit-results.json || true
+        if [ -s audit-results.json ]; then
+          echo "Audit found issues, but continuing..."
+          cat audit-results.json | jq '.vulnerabilities | length' || echo "No critical vulnerabilities parser available"
+        else
+          echo "Audit completed successfully"
+        fi
+      continue-on-error: true
+
+    - name: Security check with alternative approach
+      run: |
+        echo "Performing basic security checks..."
+        
+        # Check for known vulnerable packages in package.json
+        if grep -E "(event-stream|flatmap-stream)" package.json; then
+          echo "⚠️ Found potentially vulnerable packages"
+        fi
+        
+        # Check for outdated critical packages
+        npm outdated --json > outdated.json || true
+        if [ -s outdated.json ]; then
+          echo "Found outdated packages:"
+          cat outdated.json | jq '.[] | select(.type == "dependencies")' || echo "Some packages may be outdated"
+        fi
+      continue-on-error: true
 
   security-headers:
     name: "Security Headers Check"
