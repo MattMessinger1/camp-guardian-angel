@@ -2,12 +2,13 @@
 name: "Security Scanning"
 
 on:
-  push:
-    branches: [ "main", "master", "develop" ]
-  pull_request:
-    branches: [ "main", "master", "develop" ]
-  schedule:
-    - cron: '30 2 * * 1'  # Run weekly on Mondays at 2:30 AM UTC
+  workflow_dispatch:  # Only run manually for now
+  # push:
+  #   branches: [ "main", "master", "develop" ]
+  # pull_request:
+  #   branches: [ "main", "master", "develop" ]
+  # schedule:
+  #   - cron: '30 2 * * 1'
 
 jobs:
   codeql:

@@ -1,11 +1,12 @@
 name: E2E Tests
 
 on:
-  push:
-    branches: [ main ]   # run on pushes to main
-  pull_request:          # run on PRs targeting main
-  schedule:
-    - cron: "0 5 * * *"  # run daily at 05:00 UTC (midnight EST)
+  workflow_dispatch:  # Only run manually for now
+  # push:
+  #   branches: [ main ]
+  # pull_request:
+  # schedule:
+  #   - cron: "0 5 * * *"
 
 jobs:
   e2e:
