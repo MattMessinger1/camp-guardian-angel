@@ -15,47 +15,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Clean install dependencies
+          cache: 'yarn'
+      - name: Install dependencies with Yarn
         run: |
           # Debug environment
           echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
           echo "Current directory: $(pwd)"
-          echo "Available disk space: $(df -h .)"
           
-          # Create .npmrc for better resolution
-          cat > .npmrc << EOF
-          legacy-peer-deps=true
-          fund=false
-          audit=false
-          prefer-offline=true
-          maxsockets=1
-          registry=https://registry.npmjs.org/
-          package-lock=false
-          EOF
+          # Install yarn if not present
+          npm install -g yarn
+          echo "Yarn version: $(yarn --version)"
           
-          # Remove any existing files that might cause conflicts
+          # Remove any existing npm artifacts
           rm -rf node_modules package-lock.json .npm
           
-          # Clear npm cache completely
-          npm cache clean --force
-          npm cache verify
-          
-          # Try npm install first, fallback to manual resolution if needed
-          echo "Attempting npm install..."
-          if ! npm install --legacy-peer-deps --no-audit --no-fund --maxsockets=1 --no-package-lock --progress=false; then
-            echo "npm install failed, trying alternative approach..."
-            
-            # Create a clean package-lock.json
-            npm install --package-lock-only --legacy-peer-deps
-            
-            # Try npm ci with the generated lock file
-            npm ci --legacy-peer-deps --no-audit --no-fund
+          # Create yarn.lock if it doesn't exist
+          if [ ! -f yarn.lock ]; then
+            echo "Generating yarn.lock from package.json..."
+            yarn install --ignore-engines --network-timeout 100000
+          else
+            echo "Using existing yarn.lock..."
+            yarn install --frozen-lockfile --ignore-engines --network-timeout 100000
           fi
           
           # Verify installation
           echo "Verifying installation..."
-          npm list --depth=0 || echo "Some peer dependency warnings expected"
+          yarn list --depth=0 || echo "Some peer dependency warnings expected"
       - run: npx playwright install --with-deps
       - run: npm run test:mvp
       - name: Upload Playwright report
