@@ -175,7 +175,6 @@ export default function SessionDetail() {
                     {sessionData.title || sessionData.name || "Untitled Session"}
                   </CardTitle>
                   <div className="flex flex-wrap items-center gap-2">
-                    <SecurityBadge variant="small" />
                     {sessionData.platform && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
                         {sessionData.platform}
@@ -299,7 +298,7 @@ export default function SessionDetail() {
             </Card>
 
             {/* Provenance and trust info */}
-            <Card>
+            <Card className="hidden">
               <CardHeader>
                 <CardTitle className="text-lg">Data Source</CardTitle>
               </CardHeader>
