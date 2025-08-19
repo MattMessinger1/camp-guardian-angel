@@ -117,7 +117,7 @@ const HomePage = () => {
                       <img 
                         src={
                           step.stepNum === 1 ? (isMobile ? '/lovable-uploads/2c6de7f6-c6a9-4ab0-8b66-d6d777cfd0a0.png' : '/lovable-uploads/103d7239-d5ea-415a-ab4e-afcbe109e547.png') :
-                          step.stepNum === 2 ? '/step2_checkmark_96.png' :
+                          step.stepNum === 2 ? (isMobile ? '/lovable-uploads/6210bebc-9c12-4bd9-8f2d-349330268e8b.png' : '/lovable-uploads/103b80e6-36a5-4ad7-8445-cb90b43f2645.png') :
                           '/lovable-uploads/579c49c1-21f9-44eb-b26a-9b146c88e661.png'
                         }
                         alt=""
