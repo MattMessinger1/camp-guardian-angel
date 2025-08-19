@@ -3480,6 +3480,35 @@ export type Database = {
           },
         ]
       }
+      registration_funnels_mv: {
+        Row: {
+          attempt_success_rate: number | null
+          failed_attempts: number | null
+          failed_registrations: number | null
+          funnel_date: string | null
+          last_refreshed: string | null
+          pending_registrations: number | null
+          provider_domain: string | null
+          registration_success_rate: number | null
+          session_to_registration_rate: number | null
+          stages: Json | null
+          successful_attempts: number | null
+          successful_registrations: number | null
+          total_attempts: number | null
+          total_registrations: number | null
+          unique_children: number | null
+          unique_sessions: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_provider_id_fkey"
+            columns: ["provider_domain"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       allocate_registrations: {
@@ -3689,6 +3718,10 @@ export type Database = {
       }
       refresh_mv_sessions_search: {
         Args: { concurrent?: boolean }
+        Returns: undefined
+      }
+      refresh_registration_funnels_mv: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       register_session_legacy: {
