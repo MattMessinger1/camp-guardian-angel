@@ -87,6 +87,8 @@ serve(async (req) => {
 
     // HIPAA Avoidance Check - Check if this provider domain has HIPAA risks
     const providerDomain = extractDomainFromSession(session);
+    console.log(`[DISCOVER-REQUIREMENTS] Checking HIPAA avoidance for domain: ${providerDomain}`);
+    
     const { data: hipaaAvoidance } = await supabase
       .from("hipaa_avoidance_log")
       .select("*")
@@ -95,7 +97,9 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(1);
 
+    console.log(`[DISCOVER-REQUIREMENTS] HIPAA avoidance query result:`, hipaaAvoidance);
     const shouldAvoidPHI = hipaaAvoidance && hipaaAvoidance.length > 0;
+    console.log(`[DISCOVER-REQUIREMENTS] Should avoid PHI: ${shouldAvoidPHI}`);
 
     // Discovery Strategy 1: Look for user research contributions
     const { data: userResearch } = await supabase
