@@ -31,7 +31,11 @@ import SearchResults from "./pages/SearchResults";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter 
+      future={{
+        v7_relativeSplatPath: true
+      }}
+    >
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
