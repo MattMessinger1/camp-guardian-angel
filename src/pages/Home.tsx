@@ -115,17 +115,20 @@ const HomePage = () => {
                     {/* Icon */}
                     <div className="flex-shrink-0 md:mb-4">
                       <img 
-                        src={
-                          step.stepNum === 1 ? (isMobile ? '/step1_pin_48.png' : '/step1_pin_96.png') :
+                        src={(() => {
+                          const iconPath = step.stepNum === 1 ? (isMobile ? '/step1_pin_48.png' : '/step1_pin_96.png') :
                           step.stepNum === 2 ? (isMobile ? '/step2_form_48.png' : '/step2_form_96.png') :
-                          (isMobile ? '/lovable-uploads/70608b6c-9b21-4c36-a47a-433b637be2e9.png' : '/lovable-uploads/38a86184-8613-4ff5-9a9f-bd671e8a4188.png')
-                        }
+                          (isMobile ? '/step3_payment_48.png' : '/step3_payment_96.png');
+                          console.log(`Step ${step.stepNum} icon path:`, iconPath);
+                          return iconPath;
+                        })()}
                         alt=""
                         className={isMobile ? "w-12 h-12 mr-4" : "w-24 h-24"}
                         style={{
                           width: isMobile ? '48px' : '96px',
                           height: isMobile ? '48px' : '96px'
                         }}
+                        onError={(e) => console.error(`Failed to load icon for step ${step.stepNum}:`, e.currentTarget.src)}
                       />
                     </div>
                     
