@@ -70,8 +70,7 @@ serve(async (req) => {
     const { data: session } = await supabase
       .from("sessions")
       .select(`
-        id, title, platform, provider_id, start_at, registration_open_at,
-        activities!inner(kind, provider_id, description)
+        id, title, platform, provider_id, start_at, registration_open_at, source_url
       `)
       .eq("id", session_id)
       .single();
@@ -83,7 +82,7 @@ serve(async (req) => {
     console.log(`[DISCOVER-REQUIREMENTS] Session details:`, {
       platform: session.platform,
       provider_id: session.provider_id,
-      activity_kind: session.activities?.kind
+      source_url: session.source_url
     });
 
     // HIPAA Avoidance Check - Check if this provider domain has HIPAA risks
@@ -132,7 +131,7 @@ serve(async (req) => {
     const { data: defaults } = await supabase
       .from("requirement_defaults")
       .select("*")
-      .or(`camp_type.eq.${session.activities?.kind},provider_platform.eq.${session.platform}`)
+      .or(`provider_platform.eq.${session.platform}`)
       .order("confidence_score", { ascending: false })
       .limit(1);
 
