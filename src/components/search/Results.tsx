@@ -49,7 +49,7 @@ function SessionCard({ session, onReserve }: {
             onClick={() => window.location.href = `/sessions/${session.id}`}
           >
             <ExternalLink className="w-4 h-4" />
-            View details
+            Get ready for signup
           </button>
         </div>
       </div>
