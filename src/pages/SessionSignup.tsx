@@ -302,14 +302,8 @@ export default function SessionSignup() {
       }
     });
 
-    // Special instructions
-    fields.push({
-      name: 'specialInstructions',
-      type: 'textarea',
-      required: false,
-      label: 'Special Instructions',
-      placeholder: 'Any special instructions or notes for the providers...'
-    });
+    // Remove special instructions - not needed for streamlined signup
+    // Only include core required fields
 
     return fields;
   };
@@ -618,6 +612,28 @@ export default function SessionSignup() {
           Back to session details
         </Link>
 
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold mb-2">Sign up for</h1>
+          <p className="text-xl text-muted-foreground mb-4">
+            {sessionData?.title || sessionData?.name || "Camp Session"}
+          </p>
+          {sessionData?.price_min && (
+            <p className="text-lg font-semibold flex items-center justify-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              ${sessionData.price_min} + $20 service fee
+            </p>
+          )}
+        </div>
+
+        {!user && (
+          <Alert className="mb-6">
+            <User className="h-4 w-4" />
+            <AlertDescription>
+              <strong>New to our platform?</strong> Don't worry! After you fill out the registration information below, we'll help you create a secure account using your email. This only takes a few seconds and lets you manage your registrations.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">
@@ -832,8 +848,14 @@ export default function SessionSignup() {
               <CardHeader>
                 <CardTitle>Create Your Account</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  You need an account to register for sessions. Since you've already provided your email, just create a password to complete your account setup.
+                  You're almost done! Since you've provided your email address, we just need you to create a password to complete your account setup. This keeps your information secure and lets you track your registrations.
                 </p>
+                <Alert>
+                  <Lock className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    <strong>Why create an account?</strong> Your account keeps your registration secure, lets you manage payments, and makes future signups faster. We'll create it now and then process your payment.
+                  </AlertDescription>
+                </Alert>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
