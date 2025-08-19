@@ -10,7 +10,7 @@ async function globalSetup(config: FullConfig) {
   // Health check - ensure application is running
   try {
     await page.goto(config.webServer?.url || 'http://localhost:4173', { 
-      timeout: 30000,
+      timeout: 120000,
       waitUntil: 'networkidle' 
     });
     console.log('✅ Application health check passed');

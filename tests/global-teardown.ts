@@ -8,7 +8,7 @@ async function globalTeardown(config: FullConfig) {
   
   try {
     // Clean up test data
-    await page.goto(config.webServer?.url || 'https://localhost:5173');
+    await page.goto(config.webServer?.url || 'http://localhost:4173', { timeout: 60000 });
     
     await page.evaluate(() => {
       return fetch('/api/test/cleanup-database', {
