@@ -536,6 +536,57 @@ export type Database = {
           },
         ]
       }
+      cascade_patterns_v2: {
+        Row: {
+          confidence_score: number | null
+          context: Json | null
+          created_at: string
+          direct_effect: number
+          discovery_velocity: number | null
+          exploitation_velocity: number | null
+          id: string
+          improvement_type: string
+          last_validated: string | null
+          multiplier: number
+          pattern_name: string
+          total_cascade_effect: number | null
+          trigger_description: string
+          validation_count: number | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          context?: Json | null
+          created_at?: string
+          direct_effect: number
+          discovery_velocity?: number | null
+          exploitation_velocity?: number | null
+          id?: string
+          improvement_type: string
+          last_validated?: string | null
+          multiplier?: number
+          pattern_name: string
+          total_cascade_effect?: number | null
+          trigger_description: string
+          validation_count?: number | null
+        }
+        Update: {
+          confidence_score?: number | null
+          context?: Json | null
+          created_at?: string
+          direct_effect?: number
+          discovery_velocity?: number | null
+          exploitation_velocity?: number | null
+          id?: string
+          improvement_type?: string
+          last_validated?: string | null
+          multiplier?: number
+          pattern_name?: string
+          total_cascade_effect?: number | null
+          trigger_description?: string
+          validation_count?: number | null
+        }
+        Relationships: []
+      }
       children: {
         Row: {
           admin_override_reason: string | null
@@ -3404,6 +3455,10 @@ export type Database = {
       calculate_communication_cadence: {
         Args: { days_until_signup: number }
         Returns: string
+      }
+      calculate_pattern_effectiveness: {
+        Args: { p_pattern_id: string }
+        Returns: number
       }
       check_and_resolve_duplicate_registrations: {
         Args: Record<PropertyKey, never>
