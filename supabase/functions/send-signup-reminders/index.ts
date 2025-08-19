@@ -84,7 +84,7 @@ serve(async (req: Request) => {
           .single();
 
         const sessionName = session?.title || session?.name || 'your session';
-        const confirmUrl = `${Deno.env.get('APP_BASE_URL') || 'http://localhost:8080'}/confirm-signup?session=${reminder.session_id}`;
+        const confirmUrl = `${Deno.env.get('APP_BASE_URL') || 'https://localhost:8080'}/confirm-signup?session=${reminder.session_id}`;
 
         // Send email via SendGrid
         const emailData = {

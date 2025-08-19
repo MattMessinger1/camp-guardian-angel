@@ -2,7 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export function getSecureCorsHeaders(allowedOrigin?: string): Record<string, string> {
-  const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'http://localhost:8080';
+  const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'https://localhost:8080';
   
   return {
     'Access-Control-Allow-Origin': allowedOrigin || appBaseUrl,

@@ -79,7 +79,7 @@ serve(async (req: Request) => {
     redirectUrl.searchParams.set('utm_medium', 'referral');
     
     // Add return URL for post-signup confirmation
-    const returnUrl = `${Deno.env.get('APP_BASE_URL') || 'http://localhost:8080'}/confirm-signup?session=${sessionId}`;
+    const returnUrl = `${Deno.env.get('APP_BASE_URL') || 'https://localhost:8080'}/confirm-signup?session=${sessionId}`;
     redirectUrl.searchParams.set('return', returnUrl);
 
     // Schedule reminder email (if user is logged in and we have SendGrid configured)
