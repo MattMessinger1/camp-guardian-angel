@@ -13,11 +13,6 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
 
-  // Force clear any error state on mount
-  React.useEffect(() => {
-    console.log('SmartSearchBar mounted - error state should be clear')
-  }, [])
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     

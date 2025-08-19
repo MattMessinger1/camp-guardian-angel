@@ -5,12 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Search as SearchIcon, Filter, MapPin, Calendar, DollarSign } from 'lucide-react';
 
 export default function Search() {
-  console.log('Search component mounting');
-  
-  React.useEffect(() => {
-    console.log('Search component mounted at /search');
-  }, []);
-  
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-6xl">
