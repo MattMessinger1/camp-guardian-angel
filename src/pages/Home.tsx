@@ -288,6 +288,32 @@ const HomePage = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Link
+              to="/test-debug"
+              className="group p-6 border border-red-200 bg-red-50 rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">🎯</div>
+              <h3 className="font-semibold mb-2 group-hover:text-red-600 transition-colors text-red-700">
+                Test Debug Route
+              </h3>
+              <p className="text-sm text-red-600">
+                Click to test if routing works (cache-busting enabled)
+              </p>
+            </Link>
+
+            <Link
+              to="/working-test"
+              className="group p-6 border border-blue-200 bg-blue-50 rounded-lg hover:shadow-lg transition-all animate-fade-in"
+            >
+              <div className="text-2xl mb-3">✅</div>
+              <h3 className="font-semibold mb-2 group-hover:text-blue-600 transition-colors text-blue-700">
+                Working Test Route
+              </h3>
+              <p className="text-sm text-blue-600">
+                Baseline test route that we know works
+              </p>
+            </Link>
+
+            <Link
               to="/ui-showcase"
               className="group p-6 border rounded-lg hover:shadow-lg transition-all animate-fade-in"
             >
