@@ -46,88 +46,116 @@ export default function AccountHistory() {
   const [isTimingModalOpen, setIsTimingModalOpen] = useState(false);
 
   // Fetch user's signup history with comprehensive data
-  const { data: signupHistory, isLoading } = useQuery({
+  const { data: signupHistory, isLoading, error } = useQuery({
     queryKey: ['user-signup-history', user?.id],
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
-        .from('reservations')
-        .select(`
-          id,
-          status,
-          state,
-          created_at,
-          updated_at,
-          sessions!inner (
-            id,
-            title,
-            start_at,
-            end_at,
-            registration_open_at,
-            activities!inner (
-              id,
-              name,
-              city,
-              state
-            )
-          ),
-          attempt_events (
-            t0_offset_ms,
-            latency_ms,
-            queue_wait_ms,
-            failure_reason,
-            success_indicator
-          ),
-          captcha_events (
-            detected_at,
-            updated_at,
-            status
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // Transform the data to match our interface
-      return (data || []).map((reservation: any): SignupHistoryRow => {
-        const session = reservation.sessions;
-        const activity = session?.activities;
-        const attemptEvent = reservation.attempt_events?.[0];
-        const captchaEvent = reservation.captcha_events?.[0];
+      try {
+        // First, try to get basic reservations data
+        const { data: reservations, error: reservationsError } = await supabase
+          .from('reservations')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
         
-        // Determine success/failure status
-        let status: 'success' | 'failed' | 'pending' = 'pending';
-        if (reservation.status === 'confirmed' || reservation.state === 'confirmed') {
-          status = 'success';
-        } else if (reservation.status === 'failed' || reservation.state === 'failed') {
-          status = 'failed';
-        } else if (attemptEvent?.success_indicator === true) {
-          status = 'success';
-        } else if (attemptEvent?.success_indicator === false) {
-          status = 'failed';
+        if (reservationsError) {
+          console.error('Reservations query error:', reservationsError);
+          return [];
         }
 
-        return {
-          id: reservation.id,
-          campName: activity?.name || 'Unknown Camp',
-          sessionTitle: session?.title || `Session - ${new Date(session?.start_at || reservation.created_at).toLocaleDateString()}`,
-          signupDateTime: reservation.created_at,
-          status,
-          state: reservation.state || reservation.status,
-          // Timing data
-          t0OffsetMs: attemptEvent?.t0_offset_ms,
-          latencyMs: attemptEvent?.latency_ms,
-          queueWaitMs: attemptEvent?.queue_wait_ms,
-          failureReason: attemptEvent?.failure_reason,
-          completedAt: reservation.updated_at !== reservation.created_at ? reservation.updated_at : undefined,
-          // CAPTCHA data
-          captchaDetectedAt: captchaEvent?.detected_at,
-          captchaResolvedAt: captchaEvent?.updated_at,
-          captchaStatus: captchaEvent?.status
-        };
-      });
+        if (!reservations || reservations.length === 0) {
+          console.log('No reservations found for user');
+          return [];
+        }
+
+        // For each reservation, try to get related data
+        const enrichedData = await Promise.all(
+          reservations.map(async (reservation: any): Promise<SignupHistoryRow> => {
+            let sessionData = null;
+            let activityData = null;
+            let attemptEvents = [];
+            let captchaEvents = [];
+
+            // Try to get session data
+            if (reservation.session_id) {
+              const { data: session } = await supabase
+                .from('sessions')
+                .select('*')
+                .eq('id', reservation.session_id)
+                .single();
+              
+              sessionData = session;
+
+              // Try to get activity data if we have a session
+              if (session?.activity_id) {
+                const { data: activity } = await supabase
+                  .from('activities')
+                  .select('*')
+                  .eq('id', session.activity_id)
+                  .single();
+                
+                activityData = activity;
+              }
+            }
+
+            // Try to get attempt events
+            const { data: attempts } = await supabase
+              .from('attempt_events')
+              .select('*')
+              .eq('reservation_id', reservation.id);
+            
+            if (attempts) attemptEvents = attempts;
+
+            // Try to get captcha events
+            const { data: captcha } = await supabase
+              .from('captcha_events')
+              .select('*')
+              .eq('user_id', user.id);
+            
+            if (captcha) captchaEvents = captcha;
+
+            const attemptEvent = attemptEvents[0];
+            const captchaEvent = captchaEvents[0];
+            
+            // Determine success/failure status
+            let status: 'success' | 'failed' | 'pending' = 'pending';
+            if (reservation.status === 'confirmed' || reservation.state === 'confirmed') {
+              status = 'success';
+            } else if (reservation.status === 'failed' || reservation.state === 'failed') {
+              status = 'failed';
+            } else if (attemptEvent?.success_indicator === true) {
+              status = 'success';
+            } else if (attemptEvent?.success_indicator === false) {
+              status = 'failed';
+            }
+
+            return {
+              id: reservation.id,
+              campName: activityData?.name || 'Unknown Camp',
+              sessionTitle: sessionData?.title || `Session - ${new Date(sessionData?.start_at || reservation.created_at).toLocaleDateString()}`,
+              signupDateTime: reservation.created_at,
+              status,
+              state: reservation.state || reservation.status,
+              // Timing data
+              t0OffsetMs: attemptEvent?.t0_offset_ms,
+              latencyMs: attemptEvent?.latency_ms,
+              queueWaitMs: attemptEvent?.queue_wait_ms,
+              failureReason: attemptEvent?.failure_reason,
+              completedAt: reservation.updated_at !== reservation.created_at ? reservation.updated_at : undefined,
+              // CAPTCHA data
+              captchaDetectedAt: captchaEvent?.detected_at,
+              captchaResolvedAt: captchaEvent?.updated_at,
+              captchaStatus: captchaEvent?.status
+            };
+          })
+        );
+
+        return enrichedData;
+      } catch (err) {
+        console.error('Error fetching signup history:', err);
+        return [];
+      }
     },
     enabled: !!user
   });
@@ -175,6 +203,20 @@ export default function AccountHistory() {
             <Clock className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
             <h2 className="text-xl font-semibold mb-2">Loading Your Signup History</h2>
             <p className="text-muted-foreground">Retrieving your registration attempts...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center py-12">
+            <AlertTriangle className="w-8 h-8 mx-auto mb-4 text-red-500" />
+            <h2 className="text-xl font-semibold mb-2">Error Loading History</h2>
+            <p className="text-muted-foreground">There was an error loading your signup history.</p>
           </div>
         </div>
       </div>
