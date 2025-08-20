@@ -59,57 +59,19 @@ export default function ReadyToSignup() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [assessment, setAssessment] = useState<ReadinessAssessment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [providerRequirements, setProviderRequirements] = useState<any>(null);
 
-  // Extract sessionId properly - handle both parameter names for backward compatibility
-  const rawSessionId = params.id || params.sessionId;
-  
-  // More robust sessionId extraction
-  let sessionId: string | undefined = rawSessionId;
-  
-  if (!rawSessionId || rawSessionId.includes(':')) {
-    // Extract from URL manually
-    const pathSegments = window.location.pathname.split('/');
-    const extractedId = pathSegments[2];
-    
-    // Only use extracted ID if it's a valid UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (extractedId && uuidRegex.test(extractedId)) {
-      sessionId = extractedId;
-    } else {
-      console.error('ReadyToSignup: No valid sessionId found in URL:', window.location.pathname);
-      sessionId = undefined;
-    }
-  }
+  // Extract sessionId from params
+  const sessionId = params.id || params.sessionId;
 
   // Debug logging
-  console.log('ReadyToSignup: Raw params:', params);
-  console.log('ReadyToSignup: Raw sessionId:', rawSessionId);
-  console.log('ReadyToSignup: Processed sessionId:', sessionId);
-  console.log('ReadyToSignup: URL pathname:', window.location.pathname);
+  console.log('ReadyToSignup: Session ID:', sessionId);
   
-  // If we still don't have a valid sessionId, redirect to sessions page
-  useEffect(() => {
-    if (!sessionId && !isLoading) {
-      console.log('ReadyToSignup: No valid sessionId, redirecting to sessions');
-      navigate('/sessions');
-    }
-  }, [sessionId, isLoading, navigate]);
-
   // Fetch session details
-  const { data: sessionData } = useQuery({
+  const { data: sessionData, isLoading: sessionLoading, error: sessionError } = useQuery({
     queryKey: ['session', sessionId],
     queryFn: async () => {
-      console.log('ReadyToSignup: Querying session with ID:', sessionId);
       if (!sessionId) throw new Error('Session ID required');
-      
-      // Additional validation
-      if (sessionId.includes(':')) {
-        console.error('ReadyToSignup: Invalid sessionId contains colon:', sessionId);
-        throw new Error('Invalid session ID format');
-      }
       
       const { data, error } = await supabase
         .from('sessions')
@@ -122,278 +84,91 @@ export default function ReadyToSignup() {
           )
         `)
         .eq('id', sessionId)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
     },
-    enabled: !!sessionId && !sessionId.includes(':') // Only run if we have a valid sessionId
+    enabled: !!sessionId
   });
 
-  // Run AI assessment with different scenarios
-  const runAssessment = async () => {
-    if (!sessionId || !user || !sessionData) {
-      console.log('ReadyToSignup: Missing required data', { sessionId, user: !!user, sessionData: !!sessionData });
-      return;
+  // Create simple assessment based on session data
+  const createSimpleAssessment = (): ReadinessAssessment => {
+    if (!sessionData) {
+      return {
+        readinessScore: 0,
+        overallStatus: 'missing_critical_info',
+        checklist: [{
+          category: 'Session Info',
+          item: 'Session not found',
+          status: 'needs_attention',
+          priority: 'high',
+          description: 'Could not load session information'
+        }],
+        recommendations: [],
+        signupReadiness: {
+          canSignupNow: false,
+          estimatedSignupDate: 'unknown',
+          needsCaptchaPreparation: false,
+          communicationPlan: 'none'
+        }
+      };
     }
 
-    console.log('ReadyToSignup: Starting assessment...');
-    setIsLoading(true);
+    const hasSignupTime = !!sessionData.registration_open_at;
+    const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
+    const now = new Date();
+    const isSignupOpen = signupDate ? signupDate <= now : false;
     
-    // Add timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      console.log('ReadyToSignup: Assessment timed out');
-      setIsLoading(false);
-      toast({
-        title: "Assessment Timeout",
-        description: "The assessment is taking too long. Please try again.",
-        variant: "destructive"
-      });
-    }, 30000); // 30 second timeout
-    try {
-      console.log('ReadyToSignup: Checking session requirements...');
-      // Check if we have session requirements first
-      const { data: requirements, error: reqError } = await supabase
-        .from('session_requirements')
-        .select('*')
-        .eq('session_id', sessionId)
-        .maybeSingle(); // Use maybeSingle instead of single to avoid errors
-      
-      if (reqError) {
-        console.error('ReadyToSignup: Error fetching requirements:', reqError);
+    const checklist: ChecklistItem[] = [
+      {
+        category: 'Session Details',
+        item: 'Session information loaded',
+        status: 'complete',
+        priority: 'high',
+        description: `${sessionData.activities?.name || 'Session'} in ${sessionData.activities?.city || 'Unknown location'}`
+      },
+      {
+        category: 'Signup Time',
+        item: hasSignupTime ? 'Signup time confirmed' : 'Signup time missing',
+        status: hasSignupTime ? 'complete' : 'needs_attention',
+        priority: 'high',
+        description: hasSignupTime 
+          ? `Signup ${isSignupOpen ? 'is open' : 'opens'}: ${signupDate?.toLocaleString()}`
+          : 'Signup time needs to be confirmed'
       }
-      
-      console.log('ReadyToSignup: Requirements found:', !!requirements);
-      
-      // Get stored form data from localStorage
-      const storedFormData = localStorage.getItem(`sessionSignup_${sessionId}`);
-      const storedChildren = localStorage.getItem(`sessionChildren_${sessionId}`);
-      
-      const formData = storedFormData ? JSON.parse(storedFormData) : {};
-      const children = storedChildren ? JSON.parse(storedChildren) : [];
-      
-      const hasRequirements = requirements && requirements.confidence_level;
-      const hasFormData = storedFormData && Object.keys(formData).length > 0;
-      
-      // Scenario 1: No requirements known - trigger discovery
-      if (!hasRequirements) {
-        console.log('ReadyToSignup: No requirements found, triggering discovery...');
-        try {
-          await supabase.functions.invoke('discover-session-requirements', {
-            body: { session_id: sessionId }
-          });
-          console.log('ReadyToSignup: Discovery triggered successfully');
-        } catch (discoveryError) {
-          console.error('ReadyToSignup: Discovery failed:', discoveryError);
-        }
-        
-        setAssessment({
-          readinessScore: 30,
-          overallStatus: 'missing_critical_info',
-          checklist: [
-            {
-              category: 'Requirements Discovery',
-              item: 'Session requirements are being discovered',
-              status: 'incomplete',
-              priority: 'high',
-              description: 'We are checking what information is needed for this session signup.'
-            },
-            {
-              category: 'Critical: Signup Time',
-              item: sessionData?.registration_open_at ? 'Signup time confirmed' : '⚠️ SIGNUP TIME MISSING',
-              status: sessionData?.registration_open_at ? 'complete' : 'needs_attention',
-              priority: 'high',
-              description: sessionData?.registration_open_at 
-                ? `Signup opens: ${new Date(sessionData.registration_open_at).toLocaleString()}`
-                : 'CRITICAL: Signup time must be confirmed! Contact provider immediately.'
-            }
-          ],
-          recommendations: [
-            {
-              type: 'info',
-              title: 'Discovering Requirements',
-              message: 'We are checking with the provider to understand what information is needed for signup. You will be notified once we have this information.',
-              timeframe: 'immediate'
-            },
-            ...(sessionData?.registration_open_at ? [] : [{
-              type: 'warning' as const,
-              title: 'CRITICAL: Missing Signup Time',
-              message: 'Signup time is not set! This must be confirmed before proceeding. Contact the provider immediately.',
-              timeframe: 'immediate' as const
-            }])
-          ],
-          signupReadiness: {
-            canSignupNow: false,
-            estimatedSignupDate: 'pending_discovery',
-            needsCaptchaPreparation: true,
-            communicationPlan: 'reminder'
-          }
-        });
-        return;
-      }
-      
-      // Scenario 2: Requirements known but missing form data (edge case - data lost/expired)
-      if (hasRequirements && !hasFormData) {
-        console.log('Requirements found but form data missing - unusual scenario...');
-        setAssessment({
-          readinessScore: 60,
-          overallStatus: 'needs_preparation',
-          checklist: [
-            {
-              category: 'Missing Information',
-              item: 'Registration form data not found',
-              status: 'needs_attention',
-              priority: 'high',
-              description: 'Your registration information may have been cleared. Please complete the signup process again.'
-            },
-            {
-              category: 'Next Steps',
-              item: 'Return to signup process',
-              status: 'incomplete',
-              priority: 'high',
-              description: 'Go back to the session signup page to provide your information.'
-            }
-          ],
-          recommendations: [{
-            type: 'action',
-            title: 'Complete Signup Process',
-            message: 'It looks like your registration information is missing. Please return to the signup page to complete the process.',
-            timeframe: 'immediate'
-          }],
-          signupReadiness: {
-            canSignupNow: false,
-            estimatedSignupDate: 'after_completing_signup',
-            needsCaptchaPreparation: true,
-            communicationPlan: 'assistance_needed'
-          }
-        });
-        console.log('ReadyToSignup: Set edge case assessment');
-        return;
-      }
-      
-      // Scenario 3: Normal flow - requirements known and form data provided
-      // This is the expected scenario after completing the signup process
-      console.log('ReadyToSignup: Running full assessment with all information...');
-      
-      try {
-        const { data: aiData, error } = await supabase.functions.invoke('ai-readiness-assessment', {
-        body: {
-          sessionId,
-          userProfile: user,
-          formData,
-          children
-        }
-        });
+    ];
 
-        if (error) {
-          console.error('ReadyToSignup: AI assessment error:', error);
-          throw error;
-        }
-        
-        console.log('ReadyToSignup: AI assessment completed successfully');
-        
-        // Check if captcha/account is needed by looking at provider profiles
-        let tempProviderRequirements = null;
-        if (sessionData.platform) {
-          const { data: providerProfile } = await supabase
-            .from('provider_profiles')
-            .select('captcha_expected, login_type, platform, name')
-            .eq('platform', sessionData.platform as any)
-            .single();
-          
-          tempProviderRequirements = providerProfile;
-          setProviderRequirements(providerProfile);
-          
-          // Enhance assessment with provider-specific requirements
-          if (aiData && providerProfile) {
-            aiData.signupReadiness.needsCaptchaPreparation = providerProfile.captcha_expected;
-            
-            // Add provider-specific checklist items
-            if (providerProfile.captcha_expected) {
-              aiData.checklist.push({
-                category: 'CAPTCHA Preparation',
-                item: '📱 SMS verification setup required',
-                status: 'needs_attention',
-                priority: 'high',
-                description: 'This provider requires solving CAPTCHAs. You MUST be ready to receive and respond to text messages during signup.'
-              });
-            }
-            
-            if (providerProfile.login_type === 'account_required') {
-              aiData.checklist.push({
-                category: 'Provider Account',
-                item: 'Create provider account',
-                status: 'needs_attention',
-                priority: 'high',
-                description: `You may need to create an account on ${providerProfile.name}'s platform before or during signup.`
-              });
-            } else if (providerProfile.login_type === 'email_password') {
-              aiData.checklist.push({
-                category: 'Provider Login',
-                item: 'Provider login credentials',
-                status: 'needs_attention',
-                priority: 'medium',
-                description: `Have your login credentials ready for ${providerProfile.name}'s platform.`
-              });
-            }
-          }
-        }
-        
-        setAssessment(aiData);
-      } catch (aiError) {
-        console.error('ReadyToSignup: AI assessment failed:', aiError);
-        // Provide fallback assessment if AI fails
-        const fallbackAssessment = {
-          readinessScore: 70,
-          overallStatus: 'needs_preparation' as const,
-          checklist: [
-            {
-              category: 'Information Review',
-              item: 'Manual review recommended',
-              status: 'needs_attention' as const,
-              priority: 'medium' as const,
-              description: 'AI assessment failed. Please review your information manually.'
-            }
-          ],
-          recommendations: [
-            {
-              type: 'warning' as const,
-              title: 'Manual Review Needed',
-              message: 'Our AI assessment encountered an issue. Please review your readiness manually.',
-              timeframe: 'before_signup' as const
-            }
-          ],
-          signupReadiness: {
-            canSignupNow: false,
-            estimatedSignupDate: 'manual_review_needed',
-            needsCaptchaPreparation: true,
-            communicationPlan: 'assistance_needed' as const
-          }
-        };
-        setAssessment(fallbackAssessment);
-        console.log('ReadyToSignup: Set fallback assessment');
-        return;
+    const readinessScore = hasSignupTime ? (isSignupOpen ? 90 : 75) : 25;
+    const overallStatus: 'ready' | 'needs_preparation' | 'missing_critical_info' = 
+      hasSignupTime ? (isSignupOpen ? 'ready' : 'needs_preparation') : 'missing_critical_info';
+
+    return {
+      readinessScore,
+      overallStatus,
+      checklist,
+      recommendations: hasSignupTime ? [] : [{
+        type: 'warning',
+        title: 'Missing Signup Time',
+        message: 'The signup time for this session needs to be confirmed.',
+        timeframe: 'immediate'
+      }],
+      signupReadiness: {
+        canSignupNow: isSignupOpen,
+        estimatedSignupDate: signupDate?.toISOString() || 'unknown',
+        needsCaptchaPreparation: false,
+        communicationPlan: 'reminder'
       }
-    } catch (error) {
-      console.error('Assessment error:', error);
-      toast({
-        title: "Assessment Error",
-        description: "Unable to complete readiness assessment. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      clearTimeout(timeoutId);
-      setIsLoading(false);
-      console.log('ReadyToSignup: Assessment completed');
-    }
+    };
   };
 
   useEffect(() => {
-    if (sessionData && user && sessionId) {
-      console.log('ReadyToSignup: Triggering assessment', { sessionId, userId: user.id });
-      runAssessment();
+    if (!sessionLoading) {
+      setIsLoading(false);
     }
-  }, [sessionData, user, sessionId]);
+  }, [sessionLoading]);
+
+  const assessment = createSimpleAssessment();
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -442,15 +217,15 @@ export default function ReadyToSignup() {
     );
   }
 
-  if (!assessment) {
+  if (sessionError || !sessionData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
-            <h2 className="text-xl font-semibold mb-2">Assessment Unavailable</h2>
-            <p className="text-muted-foreground mb-4">We couldn't complete your readiness assessment.</p>
-            <Button onClick={runAssessment}>Try Again</Button>
+            <h2 className="text-xl font-semibold mb-2">Session Not Found</h2>
+            <p className="text-muted-foreground mb-4">We couldn't load the session information.</p>
+            <Button onClick={() => navigate('/sessions')}>Back to Sessions</Button>
           </div>
         </div>
       </div>
@@ -603,13 +378,6 @@ export default function ReadyToSignup() {
           </Card>
         )}
 
-        {/* Signup Preparation Guide */}
-        <SignupPreparationGuide 
-          sessionData={sessionData}
-          assessment={assessment}
-          providerRequirements={providerRequirements}
-        />
-
         {/* Signup Readiness */}
         <Card>
           <CardHeader>
@@ -661,7 +429,7 @@ export default function ReadyToSignup() {
           <Button variant="outline" onClick={() => navigate(`/sessions/${sessionId}`)}>
             Back to Session
           </Button>
-          <Button onClick={runAssessment} variant="secondary">
+          <Button variant="secondary" onClick={() => window.location.reload()}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh Assessment
           </Button>
@@ -671,14 +439,6 @@ export default function ReadyToSignup() {
             </Button>
           )}
         </div>
-
-        {/* Requirements Notification Component */}
-        {assessment.overallStatus === 'missing_critical_info' && (
-          <RequirementsNotification 
-            sessionId={sessionId!} 
-            onRequirementsDiscovered={runAssessment}
-          />
-        )}
       </div>
     </div>
   );
