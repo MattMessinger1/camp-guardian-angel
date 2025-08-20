@@ -78,7 +78,7 @@ export default function Readiness() {
         .from('registration_plans')
         .select('camp_id')
         .eq('id', planId)
-        .single();
+        .maybeSingle();
 
       if (planData?.camp_id) {
         const { data } = await supabase
@@ -137,11 +137,13 @@ export default function Readiness() {
             status: 'draft'
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (createError) throw createError;
-        setPlan(newPlan);
-        await checkForCredentials(newPlan.id);
+        if (newPlan) {
+          setPlan(newPlan);
+          await checkForCredentials(newPlan.id);
+        }
       }
     } catch (error) {
       console.error('Error loading plan:', error);
