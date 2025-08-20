@@ -62,6 +62,7 @@ export default function Sessions() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["sessions"],
     queryFn: async (): Promise<SessionRow[]> => {
+      console.log('🔍 DIAGNOSTIC: Fetching sessions from database...');
       const { data, error } = await supabase
         .from("sessions")
         .select(`
@@ -69,9 +70,26 @@ export default function Sessions() {
           provider:providers(name)
         `)
         .order("start_at", { ascending: true });
-      if (error) throw error;
+      
+      console.log('🔍 DIAGNOSTIC: Query result:', { 
+        data: data?.length || 0, 
+        error: error?.message || 'none' 
+      });
+      
+      if (error) {
+        console.log('🚨 DIAGNOSTIC: Database error:', error);
+        throw error;
+      }
       return data as SessionRow[];
     },
+  });
+
+  // Add diagnostic logging
+  console.log('🔍 DIAGNOSTIC: Sessions component state:', {
+    isLoading,
+    hasError: !!error,
+    dataCount: data?.length || 0,
+    user: !!user
   });
 
   const showBanner = Boolean(user) && !sessionStorage.getItem("hide_save_card_banner") && (!billing || !billing.default_payment_method_id);
