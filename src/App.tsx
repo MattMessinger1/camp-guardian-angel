@@ -35,6 +35,7 @@ import UIShowcase from './pages/UIShowcase';
 import ExampleNewPage from './pages/ExampleNewPage';
 import Readiness from './pages/Readiness';
 import TestDebug from './pages/TestDebug';
+import WorkingTest from './pages/WorkingTest';
 import ReadyToSignup from './pages/ReadyToSignup';
 import SignupConfirmation from './pages/SignupConfirmation';
 import AccountHistory from './pages/AccountHistory';
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/ui-showcase" element={<UIShowcase />} />
         <Route path="/readiness" element={<Readiness />} />
         <Route path="/test-debug" element={<TestDebug />} />
+        <Route path="/working-test" element={<WorkingTest />} />
         <Route path="/example-new-page" element={<ExampleNewPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
