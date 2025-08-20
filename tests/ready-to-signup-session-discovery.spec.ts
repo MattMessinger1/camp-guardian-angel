@@ -1,22 +1,18 @@
 import { test, expect } from '@playwright/test';
+import { 
+  createSessionsTestSetup, 
+  checkPageState, 
+  waitForElementSmart,
+  logTestInfo 
+} from './utils';
 
 test.describe('Ready to Signup - Session Discovery', () => {
-test.beforeEach(async ({ page }) => {
-  // Navigate to sessions page
-  await page.goto('/sessions');
-  
-  // Wait for the page to fully load and React to render
-  await page.waitForTimeout(3000);
-  
-  // Wait for either sessions to load or the page to show a message
-  await page.waitForFunction(() => {
-    const body = document.body;
-    return body.textContent?.includes('Loading sessions') === false &&
-           (document.querySelector('[data-testid="session-card"]') !== null || 
-            body.textContent?.includes('No sessions found') ||
-            body.textContent?.includes('Error loading sessions'));
-  }, { timeout: 15000 });
-});
+  // Use the standardized, robust setup
+  createSessionsTestSetup({ 
+    debugMode: true, 
+    performance: true, 
+    allowEmpty: true 
+  });
 
   test('TC-001: Public Session Browsing', async ({ page }) => {
     // Verify page loads without authentication
