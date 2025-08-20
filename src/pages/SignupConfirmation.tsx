@@ -457,7 +457,7 @@ export default function SignupConfirmation() {
             className="flex items-center gap-2"
           >
             <MessageSquare className="w-4 h-4" />
-            View History
+            View Signup History
           </Button>
         </div>
 
