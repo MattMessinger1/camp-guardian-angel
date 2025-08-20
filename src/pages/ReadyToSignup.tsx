@@ -63,11 +63,23 @@ export default function ReadyToSignup() {
   const [isLoading, setIsLoading] = useState(true);
   const [providerRequirements, setProviderRequirements] = useState<any>(null);
 
+  // Debug logging
+  console.log('ReadyToSignup: Raw useParams result:', useParams());
+  console.log('ReadyToSignup: Extracted sessionId:', sessionId);
+  console.log('ReadyToSignup: window.location.pathname:', window.location.pathname);
+
   // Fetch session details
   const { data: sessionData } = useQuery({
     queryKey: ['session', sessionId],
     queryFn: async () => {
+      console.log('ReadyToSignup: Querying session with ID:', sessionId);
       if (!sessionId) throw new Error('Session ID required');
+      
+      // Additional validation
+      if (sessionId.includes(':')) {
+        console.error('ReadyToSignup: Invalid sessionId contains colon:', sessionId);
+        throw new Error('Invalid session ID format');
+      }
       
       const { data, error } = await supabase
         .from('sessions')
