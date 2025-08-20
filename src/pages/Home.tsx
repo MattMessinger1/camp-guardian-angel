@@ -12,6 +12,10 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { PaymentMethodBanner } from '@/components/PaymentMethodBanner'
 
+// Cache buster to force browser refresh
+const CACHE_BUSTER = Date.now();
+console.log(`🏠 Home component loaded - Cache buster: ${CACHE_BUSTER}`);
+
 const HomePage = () => {
   const { user, loading } = useAuth()
   const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
@@ -277,26 +281,27 @@ const HomePage = () => {
           </div>
         </div>
 
-        {/* Demo & Test Section */}
+        {/* Demo & Test Section - CACHE BUSTED */}
         <div className="max-w-6xl mx-auto px-4 py-12">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold mb-4">Demo & Testing</h2>
             <p className="text-muted-foreground">
-              Explore our testing tools and UI improvements
+              Explore our testing tools and UI improvements - Updated: {CACHE_BUSTER}
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Link
               to="/test-debug"
-              className="group p-6 border border-red-200 bg-red-50 rounded-lg hover:shadow-lg transition-all animate-fade-in"
+              className="group p-8 border-4 border-red-500 bg-red-100 rounded-xl hover:shadow-2xl transition-all animate-fade-in transform hover:scale-105"
+              style={{background: 'linear-gradient(135deg, #fee2e2, #fecaca)'}}
             >
-              <div className="text-2xl mb-3">🎯</div>
-              <h3 className="font-semibold mb-2 group-hover:text-red-600 transition-colors text-red-700">
-                Test Debug Route
+              <div className="text-4xl mb-4">🎯</div>
+              <h3 className="font-bold text-xl mb-3 group-hover:text-red-700 transition-colors text-red-800">
+                🚨 TEST DEBUG ROUTE 🚨
               </h3>
-              <p className="text-sm text-red-600">
-                Click to test if routing works (cache-busting enabled)
+              <p className="text-base text-red-700 font-semibold">
+                Click to test if routing works! Cache: {CACHE_BUSTER}
               </p>
             </Link>
 
