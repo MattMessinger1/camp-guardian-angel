@@ -23,6 +23,7 @@ import {
   ArrowRight,
   RefreshCw
 } from 'lucide-react';
+import { RequirementsNotification } from '@/components/RequirementsNotification';
 
 interface ChecklistItem {
   category: string;
@@ -85,19 +86,102 @@ export default function ReadyToSignup() {
     enabled: !!sessionId
   });
 
-  // Run AI assessment
+  // Run AI assessment with different scenarios
   const runAssessment = async () => {
     if (!sessionId || !user || !sessionData) return;
 
     setIsLoading(true);
     try {
+      // Check if we have session requirements first
+      const { data: requirements } = await supabase
+        .from('session_requirements')
+        .select('*')
+        .eq('session_id', sessionId)
+        .single();
+      
       // Get stored form data from localStorage
       const storedFormData = localStorage.getItem(`sessionSignup_${sessionId}`);
       const storedChildren = localStorage.getItem(`sessionChildren_${sessionId}`);
       
       const formData = storedFormData ? JSON.parse(storedFormData) : {};
       const children = storedChildren ? JSON.parse(storedChildren) : [];
-
+      
+      const hasRequirements = requirements && requirements.confidence_level;
+      const hasFormData = storedFormData && Object.keys(formData).length > 0;
+      
+      // Scenario 1: No requirements known - trigger discovery
+      if (!hasRequirements) {
+        console.log('No requirements found, triggering discovery...');
+        await supabase.functions.invoke('discover-session-requirements', {
+          body: { session_id: sessionId }
+        });
+        
+        setAssessment({
+          readinessScore: 30,
+          overallStatus: 'missing_critical_info',
+          checklist: [{
+            category: 'Requirements Discovery',
+            item: 'Session requirements are being discovered',
+            status: 'incomplete',
+            priority: 'high',
+            description: 'We are checking what information is needed for this session signup.'
+          }],
+          recommendations: [{
+            type: 'info',
+            title: 'Discovering Requirements',
+            message: 'We are checking with the provider to understand what information is needed for signup. You will be notified once we have this information.',
+            timeframe: 'immediate'
+          }],
+          signupReadiness: {
+            canSignupNow: false,
+            estimatedSignupDate: 'pending_discovery',
+            needsCaptchaPreparation: true,
+            communicationPlan: 'reminder'
+          }
+        });
+        return;
+      }
+      
+      // Scenario 2: Requirements known but no form data
+      if (hasRequirements && !hasFormData) {
+        console.log('Requirements found but no form data, needs preparation...');
+        setAssessment({
+          readinessScore: 50,
+          overallStatus: 'needs_preparation',
+          checklist: [
+            {
+              category: 'Information Collection',
+              item: 'Complete required information',
+              status: 'incomplete',
+              priority: 'high',
+              description: 'Please provide the required information for signup.'
+            },
+            {
+              category: 'Next Steps',
+              item: 'Check captcha requirements',
+              status: 'incomplete',
+              priority: 'medium',
+              description: 'After completing information, we will check if captcha solving is needed.'
+            }
+          ],
+          recommendations: [{
+            type: 'action',
+            title: 'Complete Information',
+            message: 'We know what information is required. Please complete the form with your details.',
+            timeframe: 'before_signup'
+          }],
+          signupReadiness: {
+            canSignupNow: false,
+            estimatedSignupDate: 'after_form_completion',
+            needsCaptchaPreparation: true,
+            communicationPlan: 'reminder'
+          }
+        });
+        return;
+      }
+      
+      // Scenario 3: All information available - run full AI assessment + check captcha needs
+      console.log('Running full assessment with all information...');
       const { data, error } = await supabase.functions.invoke('ai-readiness-assessment', {
         body: {
           sessionId,
@@ -108,6 +192,29 @@ export default function ReadyToSignup() {
       });
 
       if (error) throw error;
+      
+      // Check if captcha/account is needed by looking at provider profiles
+      if (sessionData.platform) {
+        const { data: providerProfile } = await supabase
+          .from('provider_profiles')
+          .select('captcha_expected, login_type, platform')
+          .eq('platform', sessionData.platform as any)
+          .single();
+        
+        // Enhance assessment with captcha info
+        if (data && providerProfile) {
+          data.signupReadiness.needsCaptchaPreparation = providerProfile.captcha_expected;
+          if (providerProfile.login_type !== 'none') {
+            data.checklist.push({
+              category: 'Account Requirements',
+              item: 'Provider account may be required',
+              status: 'needs_attention',
+              priority: 'medium',
+              description: `This provider may require creating an account on their platform.`
+            });
+          }
+        }
+      }
       
       setAssessment(data);
     } catch (error) {
@@ -385,6 +492,14 @@ export default function ReadyToSignup() {
             </Button>
           )}
         </div>
+
+        {/* Requirements Notification Component */}
+        {assessment.overallStatus === 'missing_critical_info' && (
+          <RequirementsNotification 
+            sessionId={sessionId!} 
+            onRequirementsDiscovered={runAssessment}
+          />
+        )}
       </div>
     </div>
   );

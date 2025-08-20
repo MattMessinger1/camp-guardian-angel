@@ -32,7 +32,6 @@ serve(async (req) => {
         *,
         activities (
           name,
-          provider_name,
           city,
           state
         )
@@ -55,9 +54,8 @@ serve(async (req) => {
 You are an AI assistant helping parents prepare for camp/activity registration. Analyze the following information and provide a comprehensive readiness assessment.
 
 SESSION DETAILS:
-- Activity: ${session.activities.name}
-- Provider: ${session.activities.provider_name}  
-- Location: ${session.activities.city}, ${session.activities.state}
+- Activity: ${session.activities?.name || 'Activity'}
+- Location: ${session.activities?.city || 'City'}, ${session.activities?.state || 'State'}
 - Start Date: ${session.start_at}
 - Registration Opens: ${session.registration_open_at || 'Not specified'}
 - Platform: ${session.platform}
