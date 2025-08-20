@@ -29,10 +29,6 @@ cleanup() {
 trap cleanup EXIT
 
 case $TEST_TYPE in
-  "unit")
-    echo -e "${YELLOW}Running Unit Tests (Vitest)...${NC}"
-    npx vitest run
-    ;;
   "e2e")
     echo -e "${YELLOW}Running E2E Tests (Playwright)...${NC}"
     echo -e "${YELLOW}Starting dev server...${NC}"
@@ -52,25 +48,9 @@ case $TEST_TYPE in
     
     npx playwright test tests/ready-to-signup-*.spec.ts tests/readiness-*.spec.ts tests/integration-*.spec.ts tests/unit/readiness-*.test.ts --reporter=line
     ;;
-  "all")
-    echo -e "${YELLOW}Running All Tests (Sequential)...${NC}"
-    
-    # First run unit tests
-    echo -e "${YELLOW}1. Unit Tests...${NC}"
-    npx vitest run
-    
-    # Then run E2E tests
-    echo -e "${YELLOW}2. E2E Tests...${NC}"
-    echo -e "${YELLOW}Starting dev server...${NC}"
-    npm run dev &
-    DEV_PID=$!
-    sleep 5
-    
-    npx playwright test --reporter=line
-    ;;
   *)
     echo -e "${RED}Unknown test type: $TEST_TYPE${NC}"
-    echo "Usage: $0 [unit|e2e|readiness|all]"
+    echo "Usage: $0 [e2e|readiness]"
     exit 1
     ;;
 esac

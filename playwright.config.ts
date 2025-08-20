@@ -30,10 +30,7 @@ export default defineConfig({
       testMatch: '**/*.spec.ts',
       testIgnore: [
         '**/unit/**', 
-        '**/node_modules/**',
-        '**/src/**/*.{test,spec}.ts', // Exclude vitest unit tests
-        '**/*.unit.ts',
-        '**/vitest/**'
+        '**/node_modules/**'
       ],
     },
   ],
