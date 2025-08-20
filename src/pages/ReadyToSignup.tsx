@@ -55,7 +55,7 @@ interface ReadinessAssessment {
 }
 
 export default function ReadyToSignup() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const params = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -63,10 +63,17 @@ export default function ReadyToSignup() {
   const [isLoading, setIsLoading] = useState(true);
   const [providerRequirements, setProviderRequirements] = useState<any>(null);
 
+  // Extract sessionId properly - handle case where useParams returns route placeholder
+  const rawSessionId = params.sessionId;
+  const sessionId = rawSessionId && rawSessionId.includes(':') 
+    ? window.location.pathname.split('/')[2] // Extract from URL path /sessions/{sessionId}/ready-to-signup
+    : rawSessionId;
+
   // Debug logging
-  console.log('ReadyToSignup: Raw useParams result:', useParams());
-  console.log('ReadyToSignup: Extracted sessionId:', sessionId);
-  console.log('ReadyToSignup: window.location.pathname:', window.location.pathname);
+  console.log('ReadyToSignup: Raw params:', params);
+  console.log('ReadyToSignup: Raw sessionId:', rawSessionId);
+  console.log('ReadyToSignup: Processed sessionId:', sessionId);
+  console.log('ReadyToSignup: URL pathname:', window.location.pathname);
 
   // Fetch session details
   const { data: sessionData } = useQuery({
