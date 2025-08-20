@@ -142,45 +142,46 @@ export default function ReadyToSignup() {
         return;
       }
       
-      // Scenario 2: Requirements known but no form data
+      // Scenario 2: Requirements known but missing form data (edge case - data lost/expired)
       if (hasRequirements && !hasFormData) {
-        console.log('Requirements found but no form data, needs preparation...');
+        console.log('Requirements found but form data missing - unusual scenario...');
         setAssessment({
-          readinessScore: 50,
+          readinessScore: 60,
           overallStatus: 'needs_preparation',
           checklist: [
             {
-              category: 'Information Collection',
-              item: 'Complete required information',
-              status: 'incomplete',
+              category: 'Missing Information',
+              item: 'Registration form data not found',
+              status: 'needs_attention',
               priority: 'high',
-              description: 'Please provide the required information for signup.'
+              description: 'Your registration information may have been cleared. Please complete the signup process again.'
             },
             {
               category: 'Next Steps',
-              item: 'Check captcha requirements',
+              item: 'Return to signup process',
               status: 'incomplete',
-              priority: 'medium',
-              description: 'After completing information, we will check if captcha solving is needed.'
+              priority: 'high',
+              description: 'Go back to the session signup page to provide your information.'
             }
           ],
           recommendations: [{
             type: 'action',
-            title: 'Complete Information',
-            message: 'We know what information is required. Please complete the form with your details.',
-            timeframe: 'before_signup'
+            title: 'Complete Signup Process',
+            message: 'It looks like your registration information is missing. Please return to the signup page to complete the process.',
+            timeframe: 'immediate'
           }],
           signupReadiness: {
             canSignupNow: false,
-            estimatedSignupDate: 'after_form_completion',
+            estimatedSignupDate: 'after_completing_signup',
             needsCaptchaPreparation: true,
-            communicationPlan: 'reminder'
+            communicationPlan: 'assistance_needed'
           }
         });
         return;
       }
       
-      // Scenario 3: All information available - run full AI assessment + check captcha needs
+      // Scenario 3: Normal flow - requirements known and form data provided
+      // This is the expected scenario after completing the signup process
       console.log('Running full assessment with all information...');
       const { data, error } = await supabase.functions.invoke('ai-readiness-assessment', {
         body: {
