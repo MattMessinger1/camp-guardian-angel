@@ -5,13 +5,13 @@ export default defineConfig({
   timeout: 180_000, // 3 minutes for individual tests
   expect: { timeout: 30_000 },
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:8080',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
   },
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: 'http://localhost:8080',
     timeout: 120_000, // 2 minutes for server startup
     reuseExistingServer: true,
   },
