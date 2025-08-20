@@ -8,12 +8,9 @@ export default defineConfig({
     baseURL: 'http://localhost:8080',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
+    headless: false, // Force headed mode
   },
-  webServer: {
-    command: 'npm run dev',
-    port: 8080,
-    reuseExistingServer: !process.env.CI,
-  },
+  // Removed webServer - start dev server manually first
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
