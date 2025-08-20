@@ -47,14 +47,13 @@ export default function App() {
   console.log('🚀 App component rendering with routes');
   return (
     <AuthProvider>
-      <BrowserRouter 
-        future={{
-          v7_relativeSplatPath: true,
-          v7_startTransition: true
-        }}
-      >
+      <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/test-debug" element={(() => {
+            console.log('🎯 TestDebug route matched and rendering!');
+            return <TestDebug />;
+          })()} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -92,7 +91,6 @@ export default function App() {
           <Route path="/ui-audit-summary" element={<UIAuditSummary />} />
           <Route path="/ui-showcase" element={<UIShowcase />} />
           <Route path="/readiness" element={<Readiness />} />
-          <Route path="/test-debug" element={<TestDebug />} />
           <Route path="/working-test" element={<WorkingTest />} />
           <Route path="/example-new-page" element={<ExampleNewPage />} />
           <Route path="*" element={<NotFound />} />
