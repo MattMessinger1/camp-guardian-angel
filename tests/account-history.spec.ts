@@ -3,7 +3,14 @@ import { test, expect } from '@playwright/test';
 // Test the Account History page functionality
 test.describe('Account History Page', () => {
   test('loads and shows table headers', async ({ page }) => {
+    console.log('Navigating to /account/history...');
     await page.goto('/account/history');
+    
+    console.log('Current URL:', page.url());
+    
+    // Wait for the page to load
+    await page.waitForLoadState('networkidle');
+    console.log('Page loaded');
     
     // Check that the page loads
     await expect(page.locator('body')).toBeVisible();
