@@ -8,6 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
+  globalSetup: './tests/playwright-global-setup.ts',
   use: {
     headless: false,
     baseURL: 'http://localhost:8080',
@@ -28,7 +29,13 @@ export default defineConfig({
         browserName: 'chromium',
       },
       testMatch: '**/*.spec.ts',
-      testIgnore: ['**/unit/**', '**/node_modules/**'],
+      testIgnore: [
+        '**/unit/**',
+        '**/node_modules/**',
+        '**/*{.,-}{test,spec}.{js,ts,jsx,tsx}',
+        '**/vitest/**',
+        '**/__tests__/**'
+      ],
     },
   ],
 });

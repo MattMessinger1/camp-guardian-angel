@@ -16,6 +16,17 @@ echo -e "${BLUE}🎯 Complete Ready for Signup Test Suite${NC}"
 echo -e "${BLUE}Running all 8 test categories...${NC}"
 echo ""
 
+# Ensure dev server is running on correct port
+echo -e "${YELLOW}Starting dev server on port 8080...${NC}"
+npm run dev &
+DEV_PID=$!
+
+# Wait for server to start
+sleep 5
+
+# Trap to cleanup dev server on exit
+trap "kill $DEV_PID 2>/dev/null || true" EXIT
+
 # Track test results
 TOTAL_TESTS=8
 PASSED_TESTS=0
