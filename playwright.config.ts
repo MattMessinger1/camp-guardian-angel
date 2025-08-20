@@ -12,6 +12,12 @@ export default defineConfig({
   },
   // Removed webServer - start dev server manually first
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { 
+      name: 'chromium', 
+      use: { 
+        ...devices['Desktop Chrome'],
+        channel: 'chrome' // Use system Chrome instead
+      } 
+    },
   ],
 });
