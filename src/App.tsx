@@ -37,6 +37,7 @@ import Readiness from './pages/Readiness';
 import ReadyToSignup from './pages/ReadyToSignup';
 import SignupConfirmation from './pages/SignupConfirmation';
 import AccountHistory from './pages/AccountHistory';
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   return (
@@ -52,7 +53,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/sessions" element={<Sessions />} />
+        <Route path="/sessions" element={<ErrorBoundary><Sessions /></ErrorBoundary>} />
         <Route path="/sessions/new" element={<SessionForm />} />
         <Route path="/sessions/:id" element={<SessionDetail />} />
         <Route path="/sessions/:id/signup" element={<SessionSignup />} />

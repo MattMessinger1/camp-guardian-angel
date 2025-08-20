@@ -49,10 +49,11 @@ export default function Sessions() {
   const { data: billing } = useQuery({
     queryKey: ["billing_profile"],
     queryFn: async (): Promise<{ default_payment_method_id: string | null } | null> => {
+      if (!user?.id) return null;
       const { data } = await supabase
         .from("billing_profiles")
         .select("default_payment_method_id")
-        .eq("user_id", user!.id)
+        .eq("user_id", user.id)
         .maybeSingle();
       return (data as any) || null;
     },
