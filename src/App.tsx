@@ -44,6 +44,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 export default function App() {
+  console.log('🚀 App component rendering with routes');
   return (
     <AuthProvider>
       <BrowserRouter 
@@ -91,7 +92,10 @@ export default function App() {
           <Route path="/ui-audit-summary" element={<UIAuditSummary />} />
           <Route path="/ui-showcase" element={<UIShowcase />} />
           <Route path="/readiness" element={<Readiness />} />
-          <Route path="/test-debug" element={<TestDebug />} />
+          <Route path="/test-debug" element={(() => {
+            console.log('🔥 TestDebug route matched!');
+            return <TestDebug />;
+          })()} />
           <Route path="/working-test" element={<WorkingTest />} />
           <Route path="/example-new-page" element={<ExampleNewPage />} />
           <Route path="*" element={<NotFound />} />
