@@ -26,47 +26,16 @@ import {
 import { RequirementsNotification } from '@/components/RequirementsNotification';
 import { SignupPreparationGuide } from '@/components/SignupPreparationGuide';
 import { SetSignupTimeForm } from '@/components/SetSignupTimeForm';
-
-interface ChecklistItem {
-  category: string;
-  item: string;
-  status: 'complete' | 'incomplete' | 'needs_attention';
-  priority: 'high' | 'medium' | 'low';
-  description: string;
-}
-
-interface Recommendation {
-  type: 'action' | 'warning' | 'info';
-  title: string;
-  message: string;
-  timeframe: 'immediate' | 'before_signup' | 'optional';
-}
-
-interface ReadinessAssessment {
-  readinessScore: number;
-  overallStatus: 'ready' | 'needs_preparation' | 'missing_critical_info';
-  checklist: ChecklistItem[];
-  recommendations: Recommendation[];
-  signupReadiness: {
-    canSignupNow: boolean;
-    estimatedSignupDate: string;
-    needsCaptchaPreparation: boolean;
-    communicationPlan: 'none' | 'reminder' | 'assistance_needed';
-  };
-}
+import { useSmartReadiness } from '@/hooks/useSmartReadiness';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
 
   // Extract sessionId from params
   const sessionId = params.id || params.sessionId;
-
-  // Debug logging
-  console.log('ReadyToSignup: Session ID:', sessionId);
   
   // Fetch session details
   const { data: sessionData, isLoading: sessionLoading, error: sessionError } = useQuery({
@@ -93,83 +62,8 @@ export default function ReadyToSignup() {
     enabled: !!sessionId
   });
 
-  // Create simple assessment based on session data
-  const createSimpleAssessment = (): ReadinessAssessment => {
-    if (!sessionData) {
-      return {
-        readinessScore: 0,
-        overallStatus: 'missing_critical_info',
-        checklist: [{
-          category: 'Session Info',
-          item: 'Session not found',
-          status: 'needs_attention',
-          priority: 'high',
-          description: 'Could not load session information'
-        }],
-        recommendations: [],
-        signupReadiness: {
-          canSignupNow: false,
-          estimatedSignupDate: 'unknown',
-          needsCaptchaPreparation: false,
-          communicationPlan: 'none'
-        }
-      };
-    }
-
-    const hasSignupTime = !!sessionData.registration_open_at;
-    const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
-    const now = new Date();
-    const isSignupOpen = signupDate ? signupDate <= now : false;
-    
-    const checklist: ChecklistItem[] = [
-      {
-        category: 'Session Details',
-        item: 'Session information loaded',
-        status: 'complete',
-        priority: 'high',
-        description: `${sessionData.activities?.name || 'Session'} in ${sessionData.activities?.city || 'Unknown location'}`
-      },
-      {
-        category: 'Signup Time',
-        item: hasSignupTime ? 'Signup time confirmed' : 'Signup time missing',
-        status: hasSignupTime ? 'complete' : 'needs_attention',
-        priority: 'high',
-        description: hasSignupTime 
-          ? `Signup ${isSignupOpen ? 'is open' : 'opens'}: ${signupDate?.toLocaleString()}`
-          : 'Signup time needs to be confirmed'
-      }
-    ];
-
-    const readinessScore = hasSignupTime ? (isSignupOpen ? 90 : 75) : 25;
-    const overallStatus: 'ready' | 'needs_preparation' | 'missing_critical_info' = 
-      hasSignupTime ? (isSignupOpen ? 'ready' : 'needs_preparation') : 'missing_critical_info';
-
-    return {
-      readinessScore,
-      overallStatus,
-      checklist,
-      recommendations: hasSignupTime ? [] : [{
-        type: 'warning',
-        title: 'Missing Signup Time',
-        message: 'The signup time for this session needs to be confirmed.',
-        timeframe: 'immediate'
-      }],
-      signupReadiness: {
-        canSignupNow: isSignupOpen,
-        estimatedSignupDate: signupDate?.toISOString() || 'unknown',
-        needsCaptchaPreparation: false,
-        communicationPlan: 'reminder'
-      }
-    };
-  };
-
-  useEffect(() => {
-    if (!sessionLoading) {
-      setIsLoading(false);
-    }
-  }, [sessionLoading]);
-
-  const assessment = createSimpleAssessment();
+  // Use smart readiness assessment
+  const { assessment, isLoading: assessmentLoading, error: assessmentError, refreshAssessment } = useSmartReadiness(sessionId || '', sessionData);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -204,29 +98,44 @@ export default function ReadyToSignup() {
     }
   };
 
-  if (isLoading) {
+  if (sessionLoading || assessmentLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
             <h2 className="text-xl font-semibold mb-2">Analyzing Your Readiness</h2>
-            <p className="text-muted-foreground">Our AI is reviewing your information and preparing a personalized assessment...</p>
+            <p className="text-muted-foreground">Reviewing your information and preparing a personalized assessment...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (sessionError || !sessionData) {
+  if (sessionError || !sessionData || !assessment) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
-            <h2 className="text-xl font-semibold mb-2">Session Not Found</h2>
-            <p className="text-muted-foreground mb-4">We couldn't load the session information.</p>
-            <Button onClick={() => navigate('/sessions')}>Back to Sessions</Button>
+            <h2 className="text-xl font-semibold mb-2">
+              {sessionError || !sessionData ? 'Session Not Found' : 'Assessment Unavailable'}
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              {sessionError || !sessionData 
+                ? "We couldn't load the session information."
+                : "Unable to generate your readiness assessment."
+              }
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => navigate('/sessions')} variant="outline">Back to Sessions</Button>
+              {assessmentError && (
+                <Button onClick={refreshAssessment}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -240,8 +149,16 @@ export default function ReadyToSignup() {
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-bold tracking-tight">Ready for Signup</h1>
           <p className="text-muted-foreground">
-            AI-powered assessment of your readiness for {sessionData?.activities?.name}
+            Personalized assessment for {sessionData?.activities?.name}
           </p>
+          {assessmentError && (
+            <Alert>
+              <AlertCircle className="w-4 h-4" />
+              <AlertDescription>
+                Assessment may be limited due to: {assessmentError}
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         {/* Session Info Card */}
@@ -439,7 +356,7 @@ export default function ReadyToSignup() {
           <Button variant="outline" onClick={() => navigate(`/sessions/${sessionId}`)}>
             Back to Session
           </Button>
-          <Button variant="secondary" onClick={() => window.location.reload()}>
+          <Button variant="secondary" onClick={refreshAssessment}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh Assessment
           </Button>
