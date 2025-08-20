@@ -104,7 +104,7 @@ export default function ReadyToSignup() {
       if (error) throw error;
       return data;
     },
-    enabled: !!sessionId
+    enabled: !!sessionId && !sessionId.includes(':') // Only run if we have a valid sessionId
   });
 
   // Run AI assessment with different scenarios
