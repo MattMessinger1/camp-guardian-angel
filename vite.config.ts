@@ -19,4 +19,12 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Explicitly exclude vitest to prevent conflicts with Playwright
+  test: {
+    enabled: false,
+  },
+  // Prevent vitest from being loaded in any mode
+  define: {
+    'import.meta.vitest': false,
+  },
 }));
