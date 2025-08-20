@@ -101,10 +101,16 @@ export default function Sessions() {
           </div>
         </div>
       )}
-      {isLoading && <div className="text-muted-foreground">Loading…</div>}
-      {error && <div className="text-destructive">{(error as any).message}</div>}
+      {isLoading && <div className="text-muted-foreground">Loading sessions...</div>}
+      {error && <div className="text-destructive">Error loading sessions: {(error as any).message}</div>}
+      {!isLoading && !error && (!data || data.length === 0) && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p>No sessions found.</p>
+          <p className="text-sm">Check back later for new sessions!</p>
+        </div>
+      )}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data?.map((s) => (
+        {data && data.length > 0 && data.map((s) => (
           <Link key={s.id} to={`/sessions/${s.id}`} data-testid="session-card">
             <Card className="surface-card h-full hover:surface-hover transition-colors cursor-pointer">
               <CardHeader>
@@ -116,7 +122,7 @@ export default function Sessions() {
                   Registration opens: {s.registration_open_at ? new Date(s.registration_open_at).toLocaleString() : "TBD"}
                 </div>
                 <div>
-                  <span className="font-medium">Dates:</span> {s.start_at ? new Date(s.start_at).toLocaleString() : ""}
+                  <span className="font-medium">Dates:</span> {s.start_at ? new Date(s.start_at).toLocaleString() : "TBD"}
                   {s.end_at ? ` – ${new Date(s.end_at).toLocaleString()}` : ""}
                 </div>
                 <div>Capacity: {s.capacity ?? "—"}</div>
