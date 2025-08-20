@@ -9,7 +9,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    headless: false, // Set to false for debugging
+    headless: false,
     baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
@@ -28,7 +28,7 @@ export default defineConfig({
         browserName: 'chromium',
       },
       testMatch: '**/*.spec.ts',
-      testIgnore: '**/unit/**',
+      testIgnore: ['**/unit/**', '**/node_modules/**'],
     },
   ],
 });
