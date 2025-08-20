@@ -9,7 +9,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run dev',
-    port: 8080,
+    url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
   },
