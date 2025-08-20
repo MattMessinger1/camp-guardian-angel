@@ -55,7 +55,7 @@ interface ReadinessAssessment {
 }
 
 export default function ReadyToSignup() {
-  const params = useParams<{ sessionId: string }>();
+  const params = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -63,8 +63,8 @@ export default function ReadyToSignup() {
   const [isLoading, setIsLoading] = useState(true);
   const [providerRequirements, setProviderRequirements] = useState<any>(null);
 
-  // Extract sessionId properly - handle case where useParams returns route placeholder
-  const rawSessionId = params.sessionId;
+  // Extract sessionId properly - use 'id' to match route parameter
+  const rawSessionId = params.id;
   
   // More robust sessionId extraction
   let sessionId: string | undefined = rawSessionId;

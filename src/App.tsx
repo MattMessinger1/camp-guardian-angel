@@ -54,7 +54,7 @@ export default function App() {
         <Route path="/sessions/new" element={<SessionForm />} />
         <Route path="/sessions/:id" element={<SessionDetail />} />
         <Route path="/sessions/:id/signup" element={<SessionSignup />} />
-        <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
+        <Route path="/sessions/:id/ready-to-signup" element={<ReadyToSignup />} />
         <Route path="/sessions/:id/edit" element={<SessionForm />} />
         <Route path="/children" element={<Children />} />
         <Route path="/settings" element={<Settings />} />
