@@ -3195,6 +3195,69 @@ export type Database = {
         }
         Relationships: []
       }
+      text_verification_reminders: {
+        Row: {
+          camp_name: string
+          created_at: string
+          error_message: string | null
+          id: string
+          phone_e164: string
+          reminder_type: string
+          scheduled_at: string
+          sent_at: string | null
+          session_id: string
+          signup_datetime: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          camp_name: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          phone_e164: string
+          reminder_type: string
+          scheduled_at: string
+          sent_at?: string | null
+          session_id: string
+          signup_datetime: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          camp_name?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          phone_e164?: string
+          reminder_type?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          session_id?: string
+          signup_datetime?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "text_verification_reminders_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "text_verification_reminders_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           assisted_signup_consent_at: string | null
