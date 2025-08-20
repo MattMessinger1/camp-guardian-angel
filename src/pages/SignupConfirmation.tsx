@@ -211,8 +211,16 @@ export default function SignupConfirmation() {
 
           {/* Ready Signups Table */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Ready for Signup</CardTitle>
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/account/history')}
+                className="flex items-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                View Signup History
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -293,8 +301,16 @@ export default function SignupConfirmation() {
 
         {/* Ready Signups Table */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Ready for Signup</CardTitle>
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/account/history')}
+              className="flex items-center gap-2"
+            >
+              <MessageSquare className="w-4 h-4" />
+              View Signup History
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
