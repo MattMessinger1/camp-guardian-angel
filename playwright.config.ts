@@ -8,6 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
+  globalSetup: './tests/playwright-global-setup.ts',
   use: {
     headless: false,
     baseURL: 'http://localhost:8080',
@@ -15,6 +16,7 @@ export default defineConfig({
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
+  globalTeardown: undefined, // Prevent vitest teardown hooks
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:8080',
@@ -30,7 +32,12 @@ export default defineConfig({
       testMatch: '**/*.spec.ts',
       testIgnore: [
         '**/unit/**', 
-        '**/node_modules/**'
+        '**/node_modules/**',
+        '**/src/**/*.{test,spec}.ts', // Exclude vitest unit tests
+        '**/*.unit.ts',
+        '**/vitest/**',
+        '**/vi/**',
+        '**/*vitest*'
       ],
     },
   ],
