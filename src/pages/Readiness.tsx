@@ -99,8 +99,10 @@ export default function Readiness() {
   };
 
   const loadOrCreatePlan = async () => {
+    console.log('🔍 Starting loadOrCreatePlan for user:', user?.id);
     try {
       // Try to load existing plan
+      console.log('📋 Querying registration_plans...');
       const { data, error } = await supabase
         .from('registration_plans')
         .select('*')
@@ -108,6 +110,8 @@ export default function Readiness() {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+      
+      console.log('📋 Registration plans query result:', { data, error });
 
       if (error && error.code !== 'PGRST116') {
         throw error;
