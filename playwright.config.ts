@@ -5,11 +5,11 @@ export default defineConfig({
   timeout: 30000,
   use: {
     headless: true,
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:8080',
   },
   webServer: {
     command: 'npm run dev',
-    port: 5173,
+    port: 8080,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
   },
