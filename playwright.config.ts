@@ -9,12 +9,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
   },
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:8080',
-    timeout: 120_000, // 2 minutes for server startup
-    reuseExistingServer: true,
-  },
+  // webServer disabled - using existing dev server
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
