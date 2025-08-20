@@ -8,7 +8,10 @@ export default defineConfig({
   },
   projects: [
     { 
-      name: 'chromium'
+      name: 'chromium',
+      use: {
+        browserName: 'chromium',
+      },
     },
   ],
 });
