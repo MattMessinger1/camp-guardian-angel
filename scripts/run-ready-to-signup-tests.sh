@@ -66,11 +66,11 @@ run_test "Integration Tests" "npx playwright test tests/ready-to-signup-integrat
 # 6. Readiness Workflow
 run_test "Readiness Workflow" "npx playwright test tests/readiness-workflow.spec.ts --reporter=line"
 
-# 7. Unit Tests - Readiness Functionality  
-run_test "Unit Tests - Readiness Functions" "npx playwright test tests/unit/readiness-functionality.test.ts --reporter=line"
+# 7. Unit Tests - Readiness Functionality (run with Vitest, not Playwright)  
+run_test "Unit Tests - Readiness Functions" "npx vitest run tests/unit/readiness-functionality.unit.ts"
 
-# 8. Unit Tests - Edge Functions
-run_test "Unit Tests - Edge Functions" "npx playwright test tests/unit/readiness-edge-functions.test.ts --reporter=line"
+# 8. Unit Tests - Edge Functions (run with Vitest, not Playwright)
+run_test "Unit Tests - Edge Functions" "npx vitest run tests/unit/readiness-edge-functions.unit.ts"
 
 # Summary
 echo -e "${BLUE}📊 Test Results Summary${NC}"
