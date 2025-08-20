@@ -2,21 +2,18 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 180_000, // 3 minutes for individual tests
-  expect: { timeout: 30_000 },
+  timeout: 60_000, // 1 minute for individual tests
+  expect: { timeout: 10_000 },
   use: {
-    baseURL: 'http://localhost:8080',
-    trace: 'retain-on-failure',
-    video: 'retain-on-failure',
-    headless: false, // Force headed mode
+    headless: false, // Force headed mode for debugging
   },
-  // Removed webServer - start dev server manually first
+  // Minimal config - no global setup, no web server, no base URL
   projects: [
     { 
       name: 'chromium', 
       use: { 
         ...devices['Desktop Chrome'],
-        channel: 'chrome' // Use system Chrome instead
+        channel: 'chrome' // Use system Chrome
       } 
     },
   ],
