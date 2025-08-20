@@ -26,7 +26,7 @@ import {
 import { RequirementsNotification } from '@/components/RequirementsNotification';
 import { SignupPreparationGuide } from '@/components/SignupPreparationGuide';
 import { SetSignupTimeForm } from '@/components/SetSignupTimeForm';
-import { useSmartReadiness } from '@/hooks/useSmartReadiness';
+import { useSimpleReadiness } from '@/hooks/useSimpleReadiness';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -62,8 +62,8 @@ export default function ReadyToSignup() {
     enabled: !!sessionId
   });
 
-  // Use smart readiness assessment
-  const { assessment, isLoading: assessmentLoading, error: assessmentError, refreshAssessment } = useSmartReadiness(sessionId || '', sessionData);
+  // Use simple readiness assessment
+  const { assessment, isLoading: assessmentLoading } = useSimpleReadiness(sessionData);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -118,24 +118,9 @@ export default function ReadyToSignup() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
-            <h2 className="text-xl font-semibold mb-2">
-              {sessionError || !sessionData ? 'Session Not Found' : 'Assessment Unavailable'}
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              {sessionError || !sessionData 
-                ? "We couldn't load the session information."
-                : "Unable to generate your readiness assessment."
-              }
-            </p>
-            <div className="flex gap-2 justify-center">
-              <Button onClick={() => navigate('/sessions')} variant="outline">Back to Sessions</Button>
-              {assessmentError && (
-                <Button onClick={refreshAssessment}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Try Again
-                </Button>
-              )}
-            </div>
+            <h2 className="text-xl font-semibold mb-2">Session Not Found</h2>
+            <p className="text-muted-foreground mb-4">We couldn't load the session information.</p>
+            <Button onClick={() => navigate('/sessions')}>Back to Sessions</Button>
           </div>
         </div>
       </div>
@@ -149,16 +134,8 @@ export default function ReadyToSignup() {
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-bold tracking-tight">Ready for Signup</h1>
           <p className="text-muted-foreground">
-            Personalized assessment for {sessionData?.activities?.name}
+            Assessment for {sessionData?.activities?.name}
           </p>
-          {assessmentError && (
-            <Alert>
-              <AlertCircle className="w-4 h-4" />
-              <AlertDescription>
-                Assessment may be limited due to: {assessmentError}
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
 
         {/* Session Info Card */}
@@ -356,7 +333,7 @@ export default function ReadyToSignup() {
           <Button variant="outline" onClick={() => navigate(`/sessions/${sessionId}`)}>
             Back to Session
           </Button>
-          <Button variant="secondary" onClick={refreshAssessment}>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh Assessment
           </Button>
