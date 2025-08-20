@@ -5,11 +5,15 @@ export default defineConfig({
   timeout: 180_000, // 3 minutes for individual tests
   expect: { timeout: 30_000 },
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:5173',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
   },
-  // webServer disabled - using existing dev server
+  webServer: {
+    command: 'npm run dev',
+    port: 5173,
+    reuseExistingServer: !process.env.CI,
+  },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
