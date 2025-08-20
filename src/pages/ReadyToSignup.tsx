@@ -24,6 +24,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { RequirementsNotification } from '@/components/RequirementsNotification';
+import { SignupPreparationGuide } from '@/components/SignupPreparationGuide';
 
 interface ChecklistItem {
   category: string;
@@ -60,6 +61,7 @@ export default function ReadyToSignup() {
   const { toast } = useToast();
   const [assessment, setAssessment] = useState<ReadinessAssessment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [providerRequirements, setProviderRequirements] = useState<any>(null);
 
   // Fetch session details
   const { data: sessionData } = useQuery({
@@ -119,19 +121,38 @@ export default function ReadyToSignup() {
         setAssessment({
           readinessScore: 30,
           overallStatus: 'missing_critical_info',
-          checklist: [{
-            category: 'Requirements Discovery',
-            item: 'Session requirements are being discovered',
-            status: 'incomplete',
-            priority: 'high',
-            description: 'We are checking what information is needed for this session signup.'
-          }],
-          recommendations: [{
-            type: 'info',
-            title: 'Discovering Requirements',
-            message: 'We are checking with the provider to understand what information is needed for signup. You will be notified once we have this information.',
-            timeframe: 'immediate'
-          }],
+          checklist: [
+            {
+              category: 'Requirements Discovery',
+              item: 'Session requirements are being discovered',
+              status: 'incomplete',
+              priority: 'high',
+              description: 'We are checking what information is needed for this session signup.'
+            },
+            {
+              category: 'Critical: Signup Time',
+              item: sessionData?.registration_open_at ? 'Signup time confirmed' : '⚠️ SIGNUP TIME MISSING',
+              status: sessionData?.registration_open_at ? 'complete' : 'needs_attention',
+              priority: 'high',
+              description: sessionData?.registration_open_at 
+                ? `Signup opens: ${new Date(sessionData.registration_open_at).toLocaleString()}`
+                : 'CRITICAL: Signup time must be confirmed! Contact provider immediately.'
+            }
+          ],
+          recommendations: [
+            {
+              type: 'info',
+              title: 'Discovering Requirements',
+              message: 'We are checking with the provider to understand what information is needed for signup. You will be notified once we have this information.',
+              timeframe: 'immediate'
+            },
+            ...(sessionData?.registration_open_at ? [] : [{
+              type: 'warning' as const,
+              title: 'CRITICAL: Missing Signup Time',
+              message: 'Signup time is not set! This must be confirmed before proceeding. Contact the provider immediately.',
+              timeframe: 'immediate' as const
+            }])
+          ],
           signupReadiness: {
             canSignupNow: false,
             estimatedSignupDate: 'pending_discovery',
@@ -195,23 +216,47 @@ export default function ReadyToSignup() {
       if (error) throw error;
       
       // Check if captcha/account is needed by looking at provider profiles
+      let tempProviderRequirements = null;
       if (sessionData.platform) {
         const { data: providerProfile } = await supabase
           .from('provider_profiles')
-          .select('captcha_expected, login_type, platform')
+          .select('captcha_expected, login_type, platform, name')
           .eq('platform', sessionData.platform as any)
           .single();
         
-        // Enhance assessment with captcha info
+        tempProviderRequirements = providerProfile;
+        setProviderRequirements(providerProfile);
+        
+        // Enhance assessment with provider-specific requirements
         if (data && providerProfile) {
           data.signupReadiness.needsCaptchaPreparation = providerProfile.captcha_expected;
-          if (providerProfile.login_type !== 'none') {
+          
+          // Add provider-specific checklist items
+          if (providerProfile.captcha_expected) {
             data.checklist.push({
-              category: 'Account Requirements',
-              item: 'Provider account may be required',
+              category: 'CAPTCHA Preparation',
+              item: '📱 SMS verification setup required',
+              status: 'needs_attention',
+              priority: 'high',
+              description: 'This provider requires solving CAPTCHAs. You MUST be ready to receive and respond to text messages during signup.'
+            });
+          }
+          
+          if (providerProfile.login_type === 'account_required') {
+            data.checklist.push({
+              category: 'Provider Account',
+              item: 'Create provider account',
+              status: 'needs_attention',
+              priority: 'high',
+              description: `You may need to create an account on ${providerProfile.name}'s platform before or during signup.`
+            });
+          } else if (providerProfile.login_type === 'email_password') {
+            data.checklist.push({
+              category: 'Provider Login',
+              item: 'Provider login credentials',
               status: 'needs_attention',
               priority: 'medium',
-              description: `This provider may require creating an account on their platform.`
+              description: `Have your login credentials ready for ${providerProfile.name}'s platform.`
             });
           }
         }
@@ -329,16 +374,28 @@ export default function ReadyToSignup() {
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-muted-foreground" />
-                <span>
-                  {sessionData?.registration_open_at 
-                    ? new Date(sessionData.registration_open_at).toLocaleDateString()
-                    : 'Registration timing TBD'
-                  }
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-semibold">
+                    {sessionData?.registration_open_at 
+                      ? `${new Date(sessionData.registration_open_at).toLocaleDateString()} at ${new Date(sessionData.registration_open_at).toLocaleTimeString()}`
+                      : '⚠️ SIGNUP TIME NOT SET - Critical Issue!'
+                    }
+                  </span>
+                  {sessionData?.registration_open_at && (
+                    <span className="text-sm text-muted-foreground">
+                      {sessionData.open_time_exact ? '✅ Exact time confirmed' : '⏱️ Estimated (may change)'}
+                    </span>
+                  )}
+                  {!sessionData?.registration_open_at && (
+                    <span className="text-sm text-destructive">
+                      Contact provider for signup timing - this is required!
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-muted-foreground" />
-                <span>Provider Details</span>
+                <span>Platform: {sessionData?.platform || 'Unknown'}</span>
               </div>
             </div>
           </CardContent>
@@ -431,6 +488,13 @@ export default function ReadyToSignup() {
             </CardContent>
           </Card>
         )}
+
+        {/* Signup Preparation Guide */}
+        <SignupPreparationGuide 
+          sessionData={sessionData}
+          assessment={assessment}
+          providerRequirements={providerRequirements}
+        />
 
         {/* Signup Readiness */}
         <Card>
