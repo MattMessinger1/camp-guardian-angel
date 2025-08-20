@@ -8,7 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
-  globalSetup: './tests/playwright-global-setup.ts',
+  // globalSetup: './tests/playwright-global-setup.ts', // Temporarily disabled for testing
   use: {
     headless: false,
     baseURL: 'http://localhost:8080',
