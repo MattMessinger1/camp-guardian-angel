@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Complete Ready for Signup Test Suite  
-# Tests all 8 categories of the readiness system
+# Tests all 6 E2E categories of the readiness system
 
 set -e
 
@@ -13,7 +13,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${BLUE}🎯 Complete Ready for Signup Test Suite${NC}"
-echo -e "${BLUE}Running all 8 test categories...${NC}"
+echo -e "${BLUE}Running all 6 E2E test categories...${NC}"
 echo ""
 
 # Ensure dev server is running on correct port
@@ -28,7 +28,7 @@ sleep 5
 trap "kill $DEV_PID 2>/dev/null || true" EXIT
 
 # Track test results
-TOTAL_TESTS=8
+TOTAL_TESTS=6
 PASSED_TESTS=0
 FAILED_TESTS=0
 
@@ -65,12 +65,6 @@ run_test "Integration Tests" "npx playwright test tests/ready-to-signup-integrat
 
 # 6. Readiness Workflow
 run_test "Readiness Workflow" "npx playwright test tests/readiness-workflow.spec.ts --reporter=line"
-
-# 7. Unit Tests - Readiness Functionality (run with Vitest, not Playwright)  
-run_test "Unit Tests - Readiness Functions" "npx vitest run tests/unit/readiness-functionality.unit.ts"
-
-# 8. Unit Tests - Edge Functions (run with Vitest, not Playwright)
-run_test "Unit Tests - Edge Functions" "npx vitest run tests/unit/readiness-edge-functions.unit.ts"
 
 # Summary
 echo -e "${BLUE}📊 Test Results Summary${NC}"
