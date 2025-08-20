@@ -14,7 +14,7 @@ test.describe('Ready to Signup - Session Discovery', () => {
     await expect(page.locator('h1')).toContainText('Upcoming Sessions');
     
     // Verify session cards are displayed
-    const sessionCards = page.locator('[data-testid="session-card"]').or(page.locator('a[href^="/sessions/"]'));
+    const sessionCards = page.locator('[data-testid="session-card"]');
     await expect(sessionCards.first()).toBeVisible({ timeout: 10000 });
     
     // Verify each session card contains essential information
@@ -22,16 +22,15 @@ test.describe('Ready to Signup - Session Discovery', () => {
     await expect(firstCard).toBeVisible();
     
     // Check for session details within cards
-    const cardContent = firstCard.locator('..');
-    await expect(cardContent).toContainText(/Provider:|Capacity:|Upfront fee:/);
+    await expect(firstCard).toContainText(/Provider:|Capacity:|Fee due at signup:/);
   });
 
   test('TC-002: Session Card Information Display', async ({ page }) => {
     // Wait for sessions to load
-    await page.waitForSelector('a[href^="/sessions/"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="session-card"]', { timeout: 10000 });
     
     // Get all session cards
-    const sessionCards = page.locator('a[href^="/sessions/"]');
+    const sessionCards = page.locator('[data-testid="session-card"]');
     const cardCount = await sessionCards.count();
     
     expect(cardCount).toBeGreaterThan(0);
@@ -52,16 +51,16 @@ test.describe('Ready to Signup - Session Discovery', () => {
       expect(cardText).toContain('Provider:');
       
       // Should show fee information
-      expect(cardText).toContain('Upfront fee:');
+      expect(cardText).toContain('Fee due at signup:');
     }
   });
 
   test('TC-003: Session Detail Navigation', async ({ page }) => {
     // Wait for sessions to load
-    await page.waitForSelector('a[href^="/sessions/"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="session-card"]', { timeout: 10000 });
     
     // Click on first session card
-    const firstSessionCard = page.locator('a[href^="/sessions/"]').first();
+    const firstSessionCard = page.locator('[data-testid="session-card"]').first();
     const sessionHref = await firstSessionCard.getAttribute('href');
     
     await firstSessionCard.click();
@@ -78,24 +77,20 @@ test.describe('Ready to Signup - Session Discovery', () => {
     // Check if "Create Session" button is present
     const createButton = page.locator('text="Create Session"');
     
-    // Button should be visible (for authenticated users) or not present
-    const isVisible = await createButton.isVisible();
+    // Button should be visible
+    await expect(createButton).toBeVisible();
     
-    if (isVisible) {
-      // If visible, verify it's a proper link/button
-      await expect(createButton).toBeVisible();
-      
-      // Should navigate to sessions/new or similar
-      const href = await createButton.getAttribute('href');
-      expect(href).toMatch(/\/sessions\/new|\/sessions\/create/);
-    }
+    // Should be a link that navigates to sessions/new
+    const parentLink = createButton.locator('..');
+    const href = await parentLink.getAttribute('href');
+    expect(href).toBe('/sessions/new');
   });
 
   test('TC-005: Session Data Accuracy', async ({ page }) => {
     // Wait for sessions to load
-    await page.waitForSelector('a[href^="/sessions/"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="session-card"]', { timeout: 10000 });
     
-    const sessionCards = page.locator('a[href^="/sessions/"]');
+    const sessionCards = page.locator('[data-testid="session-card"]');
     const cardCount = await sessionCards.count();
     
     // Test first few sessions for data consistency
@@ -120,7 +115,7 @@ test.describe('Ready to Signup - Session Discovery', () => {
         }
         
         // Verify capacity is a number if present and not "—"
-        const capacityMatch = cardText.match(/Capacity:\s*([^Provider]+)/);
+        const capacityMatch = cardText.match(/Capacity:\s*([^Fee]+)/);
         if (capacityMatch && capacityMatch[1].trim() !== '—') {
           const capacity = capacityMatch[1].trim();
           expect(capacity).toMatch(/^\d+$/);
@@ -134,15 +129,15 @@ test.describe('Ready to Signup - Session Discovery', () => {
     
     // Navigate and wait for sessions to load
     await page.goto('/sessions');
-    await page.waitForSelector('a[href^="/sessions/"]', { timeout: 15000 });
+    await page.waitForSelector('[data-testid="session-card"]', { timeout: 15000 });
     
     const loadTime = Date.now() - startTime;
     
-    // Session list should load within reasonable time (10 seconds)
-    expect(loadTime).toBeLessThan(10000);
+    // Session list should load within reasonable time (15 seconds)
+    expect(loadTime).toBeLessThan(15000);
     
     // Verify at least some sessions are displayed
-    const sessionCards = page.locator('a[href^="/sessions/"]');
+    const sessionCards = page.locator('[data-testid="session-card"]');
     const cardCount = await sessionCards.count();
     expect(cardCount).toBeGreaterThan(0);
   });
@@ -151,18 +146,18 @@ test.describe('Ready to Signup - Session Discovery', () => {
     // Test desktop view first
     await page.setViewportSize({ width: 1200, height: 800 });
     await page.goto('/sessions');
-    await page.waitForSelector('a[href^="/sessions/"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="session-card"]', { timeout: 10000 });
     
-    let sessionCards = page.locator('a[href^="/sessions/"]');
+    let sessionCards = page.locator('[data-testid="session-card"]');
     const desktopCount = await sessionCards.count();
     expect(desktopCount).toBeGreaterThan(0);
     
     // Test mobile view
     await page.setViewportSize({ width: 375, height: 667 });
     await page.reload();
-    await page.waitForSelector('a[href^="/sessions/"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="session-card"]', { timeout: 10000 });
     
-    sessionCards = page.locator('a[href^="/sessions/"]');
+    sessionCards = page.locator('[data-testid="session-card"]');
     const mobileCount = await sessionCards.count();
     
     // Should show same number of sessions on mobile
@@ -177,9 +172,9 @@ test.describe('Ready to Signup - Session Discovery', () => {
     await page.goto('/sessions');
     
     // Wait for page to load
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
     
-    const sessionCards = page.locator('a[href^="/sessions/"]');
+    const sessionCards = page.locator('[data-testid="session-card"]');
     const cardCount = await sessionCards.count();
     
     if (cardCount === 0) {

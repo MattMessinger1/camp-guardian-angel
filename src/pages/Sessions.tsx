@@ -105,7 +105,7 @@ export default function Sessions() {
       {error && <div className="text-destructive">{(error as any).message}</div>}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data?.map((s) => (
-          <Link key={s.id} to={`/sessions/${s.id}`}>
+          <Link key={s.id} to={`/sessions/${s.id}`} data-testid="session-card">
             <Card className="surface-card h-full hover:surface-hover transition-colors cursor-pointer">
               <CardHeader>
                 <CardTitle className="line-clamp-1">{s.title || "Untitled"}</CardTitle>
