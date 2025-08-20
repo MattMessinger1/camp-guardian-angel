@@ -203,7 +203,7 @@ export default function SignupConfirmation() {
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}
           <div className="text-center space-y-4">
-            <h1 className="text-3xl font-bold tracking-tight">Registration Status</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Pending Signups</h1>
             <p className="text-lg text-muted-foreground">
               You can skip the midnight hovering -- you're ready for signup.
             </p>
@@ -285,7 +285,7 @@ export default function SignupConfirmation() {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-3xl font-bold tracking-tight">Registration Status</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Pending Signups</h1>
           <p className="text-lg text-muted-foreground">
             You can skip the midnight hovering -- you're ready for signup.
           </p>
