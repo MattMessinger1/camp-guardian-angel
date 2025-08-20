@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { RequirementsNotification } from '@/components/RequirementsNotification';
 import { SignupPreparationGuide } from '@/components/SignupPreparationGuide';
+import { SetSignupTimeForm } from '@/components/SetSignupTimeForm';
 
 interface ChecklistItem {
   category: string;
@@ -289,6 +290,15 @@ export default function ReadyToSignup() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Set Signup Time Form - Show when registration_open_at is missing */}
+        {!sessionData?.registration_open_at && sessionId && (
+          <SetSignupTimeForm
+            sessionId={sessionId}
+            sessionName={sessionData?.activities?.name || 'Session'}
+            onSuccess={() => window.location.reload()}
+          />
+        )}
 
         {/* Readiness Score */}
         <Card>
