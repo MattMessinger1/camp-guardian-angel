@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,56 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { detectPlatform } from '@/lib/providers/index';
+
+// Component to handle async text verification status
+const TextVerificationStatus = ({ canonicalUrl }: { canonicalUrl: string | null }) => {
+  const [status, setStatus] = useState<string>('Loading...');
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!canonicalUrl) {
+        setStatus('Unknown');
+        return;
+      }
+      
+      try {
+        const profile = await detectPlatform(canonicalUrl);
+        if (!profile) {
+          setStatus('Unknown');
+          return;
+        }
+        
+        const needsVerification = profile.captcha_expected || profile.login_type !== 'none';
+        setStatus(needsVerification ? 'Yes' : 'No');
+      } catch (error) {
+        console.error('Error detecting platform:', error);
+        setStatus('Unknown');
+      }
+    };
+
+    checkStatus();
+  }, [canonicalUrl]);
+
+  const getBadgeProps = (status: string) => {
+    switch (status) {
+      case 'Yes':
+        return { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' };
+      case 'No':
+        return { variant: 'secondary' as const, className: 'bg-green-100 text-green-800' };
+      default:
+        return { variant: 'outline' as const };
+    }
+  };
+
+  const badgeProps = getBadgeProps(status);
+
+  return (
+    <Badge {...badgeProps}>
+      {status}
+    </Badge>
+  );
+};
 
 export default function SignupConfirmation() {
   const params = useParams<{ sessionId?: string }>();
@@ -140,7 +190,8 @@ export default function SignupConfirmation() {
           activities (
             name,
             city,
-            state
+            state,
+            canonical_url
           )
         `)
         .eq('registration_open_at', null) // Sessions ready for signup
@@ -151,6 +202,22 @@ export default function SignupConfirmation() {
     },
     enabled: !!user?.id
   });
+
+  // Helper function to determine text verification requirements
+  const getTextVerificationStatus = async (canonicalUrl: string | null) => {
+    if (!canonicalUrl) return 'Unknown';
+    
+    try {
+      const profile = await detectPlatform(canonicalUrl);
+      if (!profile) return 'Unknown';
+      
+      const needsVerification = profile.captcha_expected || profile.login_type !== 'none';
+      return needsVerification ? 'Yes' : 'No';
+    } catch (error) {
+      console.error('Error detecting platform:', error);
+      return 'Unknown';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
@@ -177,6 +244,7 @@ export default function SignupConfirmation() {
                     <th className="text-left p-3 font-medium">Session</th>
                     <th className="text-left p-3 font-medium">Signup Date/Time</th>
                     <th className="text-left p-3 font-medium">Status</th>
+                    <th className="text-left p-3 font-medium">Text verification required at signup day/time?</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,10 +280,13 @@ export default function SignupConfirmation() {
                           Ready for Signup
                         </Badge>
                       </td>
+                      <td className="p-3">
+                        <TextVerificationStatus canonicalUrl={session.activities?.canonical_url} />
+                      </td>
                     </tr>
                   )) || (
                     <tr>
-                      <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                      <td colSpan={5} className="p-6 text-center text-muted-foreground">
                         No sessions ready for signup yet.
                       </td>
                     </tr>
