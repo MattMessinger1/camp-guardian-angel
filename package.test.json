@@ -15,7 +15,8 @@
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
     "test:setup": "playwright test --project=setup",
-    "test:cleanup": "playwright test --project=cleanup"
+    "test:cleanup": "playwright test --project=cleanup",
+    "test:account-history": "playwright test tests/account-history.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
