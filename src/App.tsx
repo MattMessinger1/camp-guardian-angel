@@ -35,6 +35,7 @@ import UIShowcase from './pages/UIShowcase';
 import ExampleNewPage from './pages/ExampleNewPage';
 import Readiness from './pages/Readiness';
 import TestReadyToSignup from './pages/TestReadyToSignup';
+import SimpleTest from './pages/SimpleTest';
 import ReadyToSignup from './pages/ReadyToSignup';
 import SignupConfirmation from './pages/SignupConfirmation';
 import AccountHistory from './pages/AccountHistory';
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="/dev/prewarm" element={<DevRunPrewarm />} />
         <Route path="/test-environment" element={<TestEnvironment />} />
         <Route path="/test-ready-to-signup" element={<TestReadyToSignup />} />
+        <Route path="/simple-test" element={<SimpleTest />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="/search" element={<Search />} />
         <Route path="/search/results" element={<SearchResults />} />
