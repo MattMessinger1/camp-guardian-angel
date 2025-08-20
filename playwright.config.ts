@@ -11,17 +11,17 @@ export default defineConfig({
   // globalSetup removed - was causing vitest symbol conflicts
   use: {
     headless: false,
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   globalTeardown: undefined, // Prevent vitest teardown hooks
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:8080',
+    command: 'npm run build && npm run preview',
+    url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 60000,
   },
   projects: [
     { 
