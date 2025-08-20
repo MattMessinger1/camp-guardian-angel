@@ -11,6 +11,7 @@ export default defineConfig({
     command: 'npm run dev',
     port: 8080,
     reuseExistingServer: !process.env.CI,
+    timeout: 30000,
   },
   projects: [
     { 
