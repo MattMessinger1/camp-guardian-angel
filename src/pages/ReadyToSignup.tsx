@@ -65,15 +65,38 @@ export default function ReadyToSignup() {
 
   // Extract sessionId properly - handle case where useParams returns route placeholder
   const rawSessionId = params.sessionId;
-  const sessionId = rawSessionId && rawSessionId.includes(':') 
-    ? window.location.pathname.split('/')[2] // Extract from URL path /sessions/{sessionId}/ready-to-signup
-    : rawSessionId;
+  
+  // More robust sessionId extraction
+  let sessionId: string | undefined = rawSessionId;
+  
+  if (!rawSessionId || rawSessionId.includes(':')) {
+    // Extract from URL manually
+    const pathSegments = window.location.pathname.split('/');
+    const extractedId = pathSegments[2];
+    
+    // Only use extracted ID if it's a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (extractedId && uuidRegex.test(extractedId)) {
+      sessionId = extractedId;
+    } else {
+      console.error('ReadyToSignup: No valid sessionId found in URL:', window.location.pathname);
+      sessionId = undefined;
+    }
+  }
 
   // Debug logging
   console.log('ReadyToSignup: Raw params:', params);
   console.log('ReadyToSignup: Raw sessionId:', rawSessionId);
   console.log('ReadyToSignup: Processed sessionId:', sessionId);
   console.log('ReadyToSignup: URL pathname:', window.location.pathname);
+  
+  // If we still don't have a valid sessionId, redirect to sessions page
+  useEffect(() => {
+    if (!sessionId && !isLoading) {
+      console.log('ReadyToSignup: No valid sessionId, redirecting to sessions');
+      navigate('/sessions');
+    }
+  }, [sessionId, isLoading, navigate]);
 
   // Fetch session details
   const { data: sessionData } = useQuery({
