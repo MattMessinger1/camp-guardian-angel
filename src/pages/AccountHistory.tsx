@@ -265,20 +265,20 @@ export default function AccountHistory() {
             <CardTitle>Registration History ({filteredHistory.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredHistory.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-semibold">Camp Name</th>
-                      <th className="text-left py-3 px-4 font-semibold">Session</th>
-                      <th className="text-left py-3 px-4 font-semibold">Signup Date/Time</th>
-                      <th className="text-left py-3 px-4 font-semibold">Success/Failure</th>
-                      <th className="text-left py-3 px-4 font-semibold">Timing Report</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredHistory.map((row) => (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold">Camp Name</th>
+                    <th className="text-left py-3 px-4 font-semibold">Session</th>
+                    <th className="text-left py-3 px-4 font-semibold">Signup Date/Time</th>
+                    <th className="text-left py-3 px-4 font-semibold">Success/Failure</th>
+                    <th className="text-left py-3 px-4 font-semibold">Timing Report</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHistory.length > 0 ? (
+                    filteredHistory.map((row) => (
                       <tr key={row.id} className="border-b hover:bg-muted/50">
                         <td className="py-3 px-4">
                           <div className="font-medium">{row.campName}</div>
@@ -309,19 +309,21 @@ export default function AccountHistory() {
                           </Button>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">No Signup History</h3>
-                <p className="text-muted-foreground">
-                  {searchTerm ? 'No results found for your search.' : 'You haven\'t attempted any registrations yet.'}
-                </p>
-              </div>
-            )}
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="text-center py-12">
+                        <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold mb-2">No Signup History</h3>
+                        <p className="text-muted-foreground">
+                          {searchTerm ? 'No results found for your search.' : 'You haven\'t attempted any registrations yet.'}
+                        </p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
 
