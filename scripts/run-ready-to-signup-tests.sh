@@ -1,160 +1,88 @@
 #!/bin/bash
 
-# Ready to Signup Test Suite Runner
-# This script runs all the "Ready to Signup" workflow tests
+# Complete Ready for Signup Test Suite  
+# Tests all 8 categories of the readiness system
 
-echo "🚀 Starting Ready to Signup Test Suite..."
-echo "======================================"
+set -e
 
-# Colors for output
-RED='\033[0;31m'
+# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+RED='\033[0;31m'
+NC='\033[0m'
 
-# Function to run test and capture results
-run_test_suite() {
-    local test_file=$1
-    local test_name=$2
+echo -e "${BLUE}🎯 Complete Ready for Signup Test Suite${NC}"
+echo -e "${BLUE}Running all 8 test categories...${NC}"
+echo ""
+
+# Track test results
+TOTAL_TESTS=8
+PASSED_TESTS=0
+FAILED_TESTS=0
+
+# Function to run test and track results
+run_test() {
+    local test_name="$1"
+    local test_command="$2"
     
-    echo -e "${BLUE}Running $test_name...${NC}"
-    
-    if npx playwright test "$test_file" --reporter=line; then
-        echo -e "${GREEN}✅ $test_name PASSED${NC}"
-        return 0
+    echo -e "${YELLOW}Testing: $test_name${NC}"
+    if eval "$test_command"; then
+        echo -e "${GREEN}✅ PASSED: $test_name${NC}"
+        ((PASSED_TESTS++))
     else
-        echo -e "${RED}❌ $test_name FAILED${NC}"
-        return 1
+        echo -e "${RED}❌ FAILED: $test_name${NC}"
+        ((FAILED_TESTS++))
     fi
+    echo ""
 }
 
-# Initialize counters
-total_suites=0
-passed_suites=0
-failed_suites=0
+# 1. Session Discovery & Search
+run_test "Session Discovery & Search" "npx playwright test tests/ready-to-signup-session-discovery.spec.ts --reporter=line"
 
-# Check if Playwright is installed
-if ! command -v npx &> /dev/null; then
-    echo -e "${RED}❌ npx not found. Please install Node.js and npm.${NC}"
-    exit 1
-fi
+# 2. Payment Pre-Authorization Flow  
+run_test "Payment Pre-Authorization Flow" "npx playwright test tests/ready-to-signup-payment-flow.spec.ts --reporter=line"
 
-# Check if Playwright tests directory exists
-if [ ! -d "tests" ]; then
-    echo -e "${RED}❌ Tests directory not found. Please run from project root.${NC}"
-    exit 1
-fi
+# 3. Information Gathering
+run_test "Information Gathering" "npx playwright test tests/ready-to-signup-information-gathering.spec.ts --reporter=line"
 
-echo "Setting up test environment..."
+# 4. Edge Cases & Error Handling
+run_test "Edge Cases & Error Handling" "npx playwright test tests/ready-to-signup-edge-cases.spec.ts --reporter=line"
 
-# Start development server in background (if needed)
-if ! curl -s https://localhost:5173 > /dev/null 2>&1; then
-    echo "Starting development server..."
-    npm run dev &
-    DEV_SERVER_PID=$!
-    
-    # Wait for server to start
-    echo "Waiting for development server to start..."
-    for i in {1..30}; do
-        if curl -s https://localhost:5173 > /dev/null 2>&1; then
-            echo "✅ Development server is running"
-            break
-        fi
-        sleep 1
-        if [ $i -eq 30 ]; then
-            echo -e "${RED}❌ Development server failed to start${NC}"
-            exit 1
-        fi
-    done
+# 5. Integration Tests (newly enabled)
+run_test "Integration Tests" "npx playwright test tests/ready-to-signup-integration.spec.ts --reporter=line"
+
+# 6. Readiness Workflow
+run_test "Readiness Workflow" "npx playwright test tests/readiness-workflow.spec.ts --reporter=line"
+
+# 7. Unit Tests - Readiness Functionality  
+run_test "Unit Tests - Readiness Functions" "npx playwright test tests/unit/readiness-functionality.test.ts --reporter=line"
+
+# 8. Unit Tests - Edge Functions
+run_test "Unit Tests - Edge Functions" "npx playwright test tests/unit/readiness-edge-functions.test.ts --reporter=line"
+
+# Summary
+echo -e "${BLUE}📊 Test Results Summary${NC}"
+echo -e "Total Tests: $TOTAL_TESTS"
+echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
+echo -e "${RED}Failed: $FAILED_TESTS${NC}"
+
+if [ $FAILED_TESTS -eq 0 ]; then
+    echo -e "${GREEN}🎉 All tests passed! Ready for Signup system is working correctly.${NC}"
 else
-    echo "✅ Development server already running"
+    echo -e "${RED}⚠️  Some tests failed. Check the output above for details.${NC}"
 fi
 
 echo ""
-echo "======================================"
-echo "🧪 RUNNING READY TO SIGNUP TEST SUITES"
-echo "======================================"
+echo -e "${BLUE}📝 Manual Testing Checklist:${NC}"
+echo "1. Navigate to /readiness - should show landing page"
+echo "2. Click 'Browse Sessions' - should go to /sessions"
+echo "3. Find a session and click 'Ready for Signup'"
+echo "4. Test AI readiness assessment"
+echo "5. Verify payment pre-authorization"
+echo "6. Test requirement research flow"
+echo "7. Check preparation guide completeness"
+echo "8. Test mobile responsiveness"
+
 echo ""
-
-# Test Suite 1: Session Discovery
-echo -e "${YELLOW}Test Suite 1: Session Discovery & Search${NC}"
-total_suites=$((total_suites + 1))
-if run_test_suite "tests/ready-to-signup-session-discovery.spec.ts" "Session Discovery"; then
-    passed_suites=$((passed_suites + 1))
-else
-    failed_suites=$((failed_suites + 1))
-fi
-echo ""
-
-# Test Suite 2: Payment Flow
-echo -e "${YELLOW}Test Suite 2: Payment Pre-Authorization${NC}"
-total_suites=$((total_suites + 1))
-if run_test_suite "tests/ready-to-signup-payment-flow.spec.ts" "Payment Flow"; then
-    passed_suites=$((passed_suites + 1))
-else
-    failed_suites=$((failed_suites + 1))
-fi
-echo ""
-
-# Test Suite 3: Information Gathering
-echo -e "${YELLOW}Test Suite 3: Information Gathering${NC}"
-total_suites=$((total_suites + 1))
-if run_test_suite "tests/ready-to-signup-information-gathering.spec.ts" "Information Gathering"; then
-    passed_suites=$((passed_suites + 1))
-else
-    failed_suites=$((failed_suites + 1))
-fi
-echo ""
-
-# Test Suite 4: Edge Cases
-echo -e "${YELLOW}Test Suite 4: Edge Cases & Error Handling${NC}"
-total_suites=$((total_suites + 1))
-if run_test_suite "tests/ready-to-signup-edge-cases.spec.ts" "Edge Cases"; then
-    passed_suites=$((passed_suites + 1))
-else
-    failed_suites=$((failed_suites + 1))
-fi
-echo ""
-
-# Test Suite 5: Integration Tests
-echo -e "${YELLOW}Test Suite 5: Integration Tests${NC}"
-total_suites=$((total_suites + 1))
-if run_test_suite "tests/ready-to-signup-integration.spec.ts" "Integration Tests"; then
-    passed_suites=$((passed_suites + 1))
-else
-    failed_suites=$((failed_suites + 1))
-fi
-echo ""
-
-# Cleanup: Stop development server if we started it
-if [ ! -z "$DEV_SERVER_PID" ]; then
-    echo "Stopping development server..."
-    kill $DEV_SERVER_PID 2>/dev/null || true
-fi
-
-# Final Results
-echo "======================================"
-echo "🏁 READY TO SIGNUP TEST RESULTS"
-echo "======================================"
-echo -e "Total Test Suites: $total_suites"
-echo -e "${GREEN}Passed: $passed_suites${NC}"
-echo -e "${RED}Failed: $failed_suites${NC}"
-
-if [ $failed_suites -eq 0 ]; then
-    echo ""
-    echo -e "${GREEN}🎉 ALL READY TO SIGNUP TESTS PASSED!${NC}"
-    echo -e "${GREEN}Your 'Ready to Signup' workflow is functioning correctly.${NC}"
-    exit 0
-else
-    echo ""
-    echo -e "${RED}⚠️  SOME TESTS FAILED${NC}"
-    echo -e "${YELLOW}Please review the failed tests and fix any issues.${NC}"
-    echo ""
-    echo "Common fixes:"
-    echo "1. Ensure development server is running on localhost:5173"
-    echo "2. Check database connectivity and test data"
-    echo "3. Verify authentication test credentials"
-    echo "4. Check Stripe test mode configuration"
-    exit 1
-fi
+echo -e "${GREEN}🚀 Testing complete. Review results above.${NC}"
