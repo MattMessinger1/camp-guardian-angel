@@ -35,6 +35,8 @@ import UIShowcase from './pages/UIShowcase';
 import ExampleNewPage from './pages/ExampleNewPage';
 import Readiness from './pages/Readiness';
 import ReadyToSignup from './pages/ReadyToSignup';
+import SignupConfirmation from './pages/SignupConfirmation';
+import AccountHistory from './pages/AccountHistory';
 
 export default function App() {
   return (
@@ -56,6 +58,8 @@ export default function App() {
         <Route path="/sessions/:id/signup" element={<SessionSignup />} />
         <Route path="/sessions/:id/ready-to-signup" element={<ReadyToSignup />} />
         <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
+        <Route path="/sessions/:sessionId/confirmation" element={<SignupConfirmation />} />
+        <Route path="/account/history" element={<AccountHistory />} />
         <Route path="/sessions/:id/edit" element={<SessionForm />} />
         <Route path="/children" element={<Children />} />
         <Route path="/settings" element={<Settings />} />
