@@ -209,19 +209,11 @@ export default function SignupConfirmation() {
             </p>
           </div>
 
-          {/* Ready Signups Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Ready for Signup</CardTitle>
-              <Button 
-                variant="outline"
-                onClick={() => navigate('/account/history')}
-                className="flex items-center gap-2"
-              >
-                <MessageSquare className="w-4 h-4" />
-                View Signup History
-              </Button>
-            </CardHeader>
+        {/* Ready Signups Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ready for Signup</CardTitle>
+          </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
@@ -283,6 +275,18 @@ export default function SignupConfirmation() {
               </div>
             </CardContent>
           </Card>
+
+          {/* View Signup History Button */}
+          <div className="flex justify-center">
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/account/history')}
+              className="flex items-center gap-2"
+            >
+              <MessageSquare className="w-4 h-4" />
+              View Signup History
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -301,16 +305,8 @@ export default function SignupConfirmation() {
 
         {/* Ready Signups Table */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle>Ready for Signup</CardTitle>
-            <Button 
-              variant="outline"
-              onClick={() => navigate('/account/history')}
-              className="flex items-center gap-2"
-            >
-              <MessageSquare className="w-4 h-4" />
-              View Signup History
-            </Button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -373,6 +369,18 @@ export default function SignupConfirmation() {
             </div>
           </CardContent>
         </Card>
+
+        {/* View Signup History Button */}
+        <div className="flex justify-center">
+          <Button 
+            variant="outline"
+            onClick={() => navigate('/account/history')}
+            className="flex items-center gap-2"
+          >
+            <MessageSquare className="w-4 h-4" />
+            View Signup History
+          </Button>
+        </div>
 
         {/* Status Card */}
         <Card className={`${statusInfo.bgColor} ${statusInfo.borderColor} border-2`}>
