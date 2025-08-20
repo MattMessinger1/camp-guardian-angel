@@ -90,16 +90,38 @@ export default function ReadyToSignup() {
 
   // Run AI assessment with different scenarios
   const runAssessment = async () => {
-    if (!sessionId || !user || !sessionData) return;
+    if (!sessionId || !user || !sessionData) {
+      console.log('ReadyToSignup: Missing required data', { sessionId, user: !!user, sessionData: !!sessionData });
+      return;
+    }
 
+    console.log('ReadyToSignup: Starting assessment...');
     setIsLoading(true);
+    
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.log('ReadyToSignup: Assessment timed out');
+      setIsLoading(false);
+      toast({
+        title: "Assessment Timeout",
+        description: "The assessment is taking too long. Please try again.",
+        variant: "destructive"
+      });
+    }, 30000); // 30 second timeout
     try {
+      console.log('ReadyToSignup: Checking session requirements...');
       // Check if we have session requirements first
-      const { data: requirements } = await supabase
+      const { data: requirements, error: reqError } = await supabase
         .from('session_requirements')
         .select('*')
         .eq('session_id', sessionId)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to avoid errors
+      
+      if (reqError) {
+        console.error('ReadyToSignup: Error fetching requirements:', reqError);
+      }
+      
+      console.log('ReadyToSignup: Requirements found:', !!requirements);
       
       // Get stored form data from localStorage
       const storedFormData = localStorage.getItem(`sessionSignup_${sessionId}`);
@@ -113,10 +135,15 @@ export default function ReadyToSignup() {
       
       // Scenario 1: No requirements known - trigger discovery
       if (!hasRequirements) {
-        console.log('No requirements found, triggering discovery...');
-        await supabase.functions.invoke('discover-session-requirements', {
-          body: { session_id: sessionId }
-        });
+        console.log('ReadyToSignup: No requirements found, triggering discovery...');
+        try {
+          await supabase.functions.invoke('discover-session-requirements', {
+            body: { session_id: sessionId }
+          });
+          console.log('ReadyToSignup: Discovery triggered successfully');
+        } catch (discoveryError) {
+          console.error('ReadyToSignup: Discovery failed:', discoveryError);
+        }
         
         setAssessment({
           readinessScore: 30,
@@ -198,71 +225,113 @@ export default function ReadyToSignup() {
             communicationPlan: 'assistance_needed'
           }
         });
+        console.log('ReadyToSignup: Set edge case assessment');
         return;
       }
       
       // Scenario 3: Normal flow - requirements known and form data provided
       // This is the expected scenario after completing the signup process
-      console.log('Running full assessment with all information...');
-      const { data, error } = await supabase.functions.invoke('ai-readiness-assessment', {
+      console.log('ReadyToSignup: Running full assessment with all information...');
+      
+      try {
+        const { data: aiData, error } = await supabase.functions.invoke('ai-readiness-assessment', {
         body: {
           sessionId,
           userProfile: user,
           formData,
           children
         }
-      });
+        });
 
-      if (error) throw error;
-      
-      // Check if captcha/account is needed by looking at provider profiles
-      let tempProviderRequirements = null;
-      if (sessionData.platform) {
-        const { data: providerProfile } = await supabase
-          .from('provider_profiles')
-          .select('captcha_expected, login_type, platform, name')
-          .eq('platform', sessionData.platform as any)
-          .single();
+        if (error) {
+          console.error('ReadyToSignup: AI assessment error:', error);
+          throw error;
+        }
         
-        tempProviderRequirements = providerProfile;
-        setProviderRequirements(providerProfile);
+        console.log('ReadyToSignup: AI assessment completed successfully');
         
-        // Enhance assessment with provider-specific requirements
-        if (data && providerProfile) {
-          data.signupReadiness.needsCaptchaPreparation = providerProfile.captcha_expected;
+        // Check if captcha/account is needed by looking at provider profiles
+        let tempProviderRequirements = null;
+        if (sessionData.platform) {
+          const { data: providerProfile } = await supabase
+            .from('provider_profiles')
+            .select('captcha_expected, login_type, platform, name')
+            .eq('platform', sessionData.platform as any)
+            .single();
           
-          // Add provider-specific checklist items
-          if (providerProfile.captcha_expected) {
-            data.checklist.push({
-              category: 'CAPTCHA Preparation',
-              item: '📱 SMS verification setup required',
-              status: 'needs_attention',
-              priority: 'high',
-              description: 'This provider requires solving CAPTCHAs. You MUST be ready to receive and respond to text messages during signup.'
-            });
-          }
+          tempProviderRequirements = providerProfile;
+          setProviderRequirements(providerProfile);
           
-          if (providerProfile.login_type === 'account_required') {
-            data.checklist.push({
-              category: 'Provider Account',
-              item: 'Create provider account',
-              status: 'needs_attention',
-              priority: 'high',
-              description: `You may need to create an account on ${providerProfile.name}'s platform before or during signup.`
-            });
-          } else if (providerProfile.login_type === 'email_password') {
-            data.checklist.push({
-              category: 'Provider Login',
-              item: 'Provider login credentials',
-              status: 'needs_attention',
-              priority: 'medium',
-              description: `Have your login credentials ready for ${providerProfile.name}'s platform.`
-            });
+          // Enhance assessment with provider-specific requirements
+          if (aiData && providerProfile) {
+            aiData.signupReadiness.needsCaptchaPreparation = providerProfile.captcha_expected;
+            
+            // Add provider-specific checklist items
+            if (providerProfile.captcha_expected) {
+              aiData.checklist.push({
+                category: 'CAPTCHA Preparation',
+                item: '📱 SMS verification setup required',
+                status: 'needs_attention',
+                priority: 'high',
+                description: 'This provider requires solving CAPTCHAs. You MUST be ready to receive and respond to text messages during signup.'
+              });
+            }
+            
+            if (providerProfile.login_type === 'account_required') {
+              aiData.checklist.push({
+                category: 'Provider Account',
+                item: 'Create provider account',
+                status: 'needs_attention',
+                priority: 'high',
+                description: `You may need to create an account on ${providerProfile.name}'s platform before or during signup.`
+              });
+            } else if (providerProfile.login_type === 'email_password') {
+              aiData.checklist.push({
+                category: 'Provider Login',
+                item: 'Provider login credentials',
+                status: 'needs_attention',
+                priority: 'medium',
+                description: `Have your login credentials ready for ${providerProfile.name}'s platform.`
+              });
+            }
           }
         }
+        
+        setAssessment(aiData);
+      } catch (aiError) {
+        console.error('ReadyToSignup: AI assessment failed:', aiError);
+        // Provide fallback assessment if AI fails
+        const fallbackAssessment = {
+          readinessScore: 70,
+          overallStatus: 'needs_preparation' as const,
+          checklist: [
+            {
+              category: 'Information Review',
+              item: 'Manual review recommended',
+              status: 'needs_attention' as const,
+              priority: 'medium' as const,
+              description: 'AI assessment failed. Please review your information manually.'
+            }
+          ],
+          recommendations: [
+            {
+              type: 'warning' as const,
+              title: 'Manual Review Needed',
+              message: 'Our AI assessment encountered an issue. Please review your readiness manually.',
+              timeframe: 'before_signup' as const
+            }
+          ],
+          signupReadiness: {
+            canSignupNow: false,
+            estimatedSignupDate: 'manual_review_needed',
+            needsCaptchaPreparation: true,
+            communicationPlan: 'assistance_needed' as const
+          }
+        };
+        setAssessment(fallbackAssessment);
+        console.log('ReadyToSignup: Set fallback assessment');
+        return;
       }
-      
-      setAssessment(data);
     } catch (error) {
       console.error('Assessment error:', error);
       toast({
@@ -271,15 +340,18 @@ export default function ReadyToSignup() {
         variant: "destructive"
       });
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
+      console.log('ReadyToSignup: Assessment completed');
     }
   };
 
   useEffect(() => {
-    if (sessionData && user) {
+    if (sessionData && user && sessionId) {
+      console.log('ReadyToSignup: Triggering assessment', { sessionId, userId: user.id });
       runAssessment();
     }
-  }, [sessionData, user]);
+  }, [sessionData, user, sessionId]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
