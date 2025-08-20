@@ -12,11 +12,15 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { PaymentMethodBanner } from '@/components/PaymentMethodBanner'
 
-// Cache buster to force browser refresh
-const CACHE_BUSTER = Date.now();
-console.log(`🏠 Home component loaded - Cache buster: ${CACHE_BUSTER}`);
+// EXTREME CACHE BUSTER - Force complete re-render
+const EXTREME_CACHE_BUSTER = `CB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+console.log(`🏠 EXTREME CACHE BUST - Home component loaded: ${EXTREME_CACHE_BUSTER}`);
+
+// Force DOM to recognize this as a completely new component
+window.location.hash = `#cache-bust-${Date.now()}`;
 
 const HomePage = () => {
+  console.log(`🏠 HomePage rendering with cache buster: ${EXTREME_CACHE_BUSTER}`);
   const { user, loading } = useAuth()
   const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
     threshold: 0.3,
@@ -286,7 +290,7 @@ const HomePage = () => {
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold mb-4">Demo & Testing</h2>
             <p className="text-muted-foreground">
-              Explore our testing tools and UI improvements - Updated: {CACHE_BUSTER}
+              Explore our testing tools and UI improvements - EXTREME UPDATE: {EXTREME_CACHE_BUSTER}
             </p>
           </div>
           
@@ -294,14 +298,14 @@ const HomePage = () => {
             <Link
               to="/test-debug"
               className="group p-8 border-4 border-red-500 bg-red-100 rounded-xl hover:shadow-2xl transition-all animate-fade-in transform hover:scale-105"
-              style={{background: 'linear-gradient(135deg, #fee2e2, #fecaca)'}}
+              style={{background: 'linear-gradient(135deg, #fee2e2, #fecaca)', border: '5px solid #dc2626'}}
             >
-              <div className="text-4xl mb-4">🎯</div>
-              <h3 className="font-bold text-xl mb-3 group-hover:text-red-700 transition-colors text-red-800">
-                🚨 TEST DEBUG ROUTE 🚨
+              <div className="text-6xl mb-4 animate-bounce">🚨</div>
+              <h3 className="font-black text-2xl mb-3 text-red-900 uppercase tracking-wide">
+                TEST DEBUG ROUTE - {Math.floor(Date.now() / 1000)}
               </h3>
-              <p className="text-base text-red-700 font-semibold">
-                Click to test if routing works! Cache: {CACHE_BUSTER}
+              <p className="text-lg text-red-800 font-bold">
+                CLICK HERE TO TEST ROUTING! Updated: {new Date().toLocaleTimeString()}
               </p>
             </Link>
 
