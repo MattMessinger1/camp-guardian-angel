@@ -92,10 +92,7 @@ export default function App() {
           <Route path="/ui-audit-summary" element={<UIAuditSummary />} />
           <Route path="/ui-showcase" element={<UIShowcase />} />
           <Route path="/readiness" element={<Readiness />} />
-          <Route path="/test-debug" element={(() => {
-            console.log('🔥 TestDebug route matched!');
-            return <TestDebug />;
-          })()} />
+          <Route path="/test-debug" element={<TestDebug />} />
           <Route path="/working-test" element={<WorkingTest />} />
           <Route path="/example-new-page" element={<ExampleNewPage />} />
           <Route path="*" element={<NotFound />} />
