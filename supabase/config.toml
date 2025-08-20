@@ -108,3 +108,9 @@ verify_jwt = false
 [functions.extract-session]
 verify_jwt = false
 
+[functions.schedule-text-verification-reminders]
+verify_jwt = true
+
+[functions.send-text-verification-reminders]
+verify_jwt = false
+
