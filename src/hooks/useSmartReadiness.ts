@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import * as React from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -37,15 +38,15 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!sessionId || !sessionData || !user) {
+    if (!sessionId || !sessionData || !user?.id) {
       setIsLoading(false);
       return;
     }
 
     generateAssessment();
-  }, [sessionId, user?.id]);
+  }, [sessionId, user?.id, sessionData?.id]);
 
-  const generateAssessment = async () => {
+  const generateAssessment = React.useCallback(async () => {
     if (!sessionData || !user) return;
     
     try {
@@ -88,9 +89,9 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sessionId, sessionData, user]);
 
-  const createEnhancedFallbackAssessment = (): SmartAssessment => {
+  const createEnhancedFallbackAssessment = React.useCallback((): SmartAssessment => {
     const hasSignupTime = !!sessionData?.registration_open_at;
     const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
     const now = new Date();
@@ -198,11 +199,11 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
         communicationPlan: hasSignupTime ? 'reminder' : 'assistance_needed'
       }
     };
-  };
+  }, [sessionData, user]);
 
-  const refreshAssessment = () => {
+  const refreshAssessment = React.useCallback(() => {
     generateAssessment();
-  };
+  }, [generateAssessment]);
 
   return {
     assessment,
