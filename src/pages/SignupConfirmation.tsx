@@ -127,16 +127,104 @@ export default function SignupConfirmation() {
   const statusInfo = getStatusInfo(status);
   const StatusIcon = statusInfo.icon;
 
+  // Fetch ready signups for this user
+  const { data: readySignups } = useQuery({
+    queryKey: ['ready-signups', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('sessions')
+        .select(`
+          *,
+          activities (
+            name,
+            city,
+            state
+          )
+        `)
+        .eq('registration_open_at', null) // Sessions ready for signup
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-3xl font-bold tracking-tight">Registration Result</h1>
-          <p className="text-muted-foreground">
-            {sessionData?.activities?.name} registration attempt
+          <h1 className="text-3xl font-bold tracking-tight">Registration Status</h1>
+          <p className="text-lg text-muted-foreground">
+            You can skip the midnight hovering -- you're ready for signup.
           </p>
         </div>
+
+        {/* Ready Signups Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ready for Signup</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3 font-medium">Camp Name</th>
+                    <th className="text-left p-3 font-medium">Session</th>
+                    <th className="text-left p-3 font-medium">Signup Date/Time</th>
+                    <th className="text-left p-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {readySignups?.map((session) => (
+                    <tr key={session.id} className="border-b hover:bg-muted/50">
+                      <td className="p-3">
+                        <div>
+                          <div className="font-medium">{session.activities?.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {session.activities?.city}, {session.activities?.state}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="text-sm">
+                          {session.start_date && new Date(session.start_date).toLocaleDateString()} - 
+                          {session.end_date && new Date(session.end_date).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Ages {session.age_min}-{session.age_max}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="text-sm">
+                          {session.registration_open_at 
+                            ? new Date(session.registration_open_at).toLocaleString()
+                            : 'TBD'
+                          }
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          Ready for Signup
+                        </Badge>
+                      </td>
+                    </tr>
+                  )) || (
+                    <tr>
+                      <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                        No sessions ready for signup yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Status Card */}
         <Card className={`${statusInfo.bgColor} ${statusInfo.borderColor} border-2`}>
