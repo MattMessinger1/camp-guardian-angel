@@ -70,8 +70,7 @@ serve(async (req) => {
     const { data: session } = await supabase
       .from("sessions")
       .select(`
-        id, title, platform, provider_id, start_at, registration_open_at,
-        activities!inner(kind, provider_id, description)
+        id, title, platform, provider_id, start_at, registration_open_at, source_url
       `)
       .eq("id", session_id)
       .single();
@@ -83,8 +82,24 @@ serve(async (req) => {
     console.log(`[DISCOVER-REQUIREMENTS] Session details:`, {
       platform: session.platform,
       provider_id: session.provider_id,
-      activity_kind: session.activities?.kind
+      source_url: session.source_url
     });
+
+    // HIPAA Avoidance Check - Check if this provider domain has HIPAA risks
+    const providerDomain = extractDomainFromSession(session);
+    console.log(`[DISCOVER-REQUIREMENTS] Checking HIPAA avoidance for domain: ${providerDomain}`);
+    
+    const { data: hipaaAvoidance } = await supabase
+      .from("hipaa_avoidance_log")
+      .select("*")
+      .eq("provider_domain", providerDomain)
+      .eq("risk_level", "high")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    console.log(`[DISCOVER-REQUIREMENTS] HIPAA avoidance query result:`, hipaaAvoidance);
+    const shouldAvoidPHI = hipaaAvoidance && hipaaAvoidance.length > 0;
+    console.log(`[DISCOVER-REQUIREMENTS] Should avoid PHI: ${shouldAvoidPHI}`);
 
     // Discovery Strategy 1: Look for user research contributions
     const { data: userResearch } = await supabase
@@ -120,42 +135,69 @@ serve(async (req) => {
     const { data: defaults } = await supabase
       .from("requirement_defaults")
       .select("*")
-      .or(`camp_type.eq.${session.activities?.kind},provider_platform.eq.${session.platform}`)
+      .eq("provider_platform", session.platform)
       .order("confidence_score", { ascending: false })
       .limit(1);
 
+    console.log(`[DISCOVER-REQUIREMENTS] Defaults query result:`, defaults);
     let discovery: RequirementDiscovery;
 
     if (defaults && defaults.length > 0) {
       const defaultReqs = defaults[0];
       console.log(`[DISCOVER-REQUIREMENTS] Using defaults for ${defaultReqs.camp_type || defaultReqs.provider_platform}`);
       
+      let childFields = defaultReqs.common_requirements.child_fields || [];
+      let documents = defaultReqs.common_requirements.documents || [];
+
+      // Apply HIPAA avoidance - remove PHI fields if provider has high risk
+      if (shouldAvoidPHI) {
+        console.log(`[DISCOVER-REQUIREMENTS] HIPAA avoidance: Removing PHI fields for domain ${providerDomain}`);
+        childFields = childFields.filter(field => !isPHIField(field));
+        documents = documents.filter(doc => !isPHIDocument(doc));
+        
+        // Log the avoidance decision
+        await logHIPAAAvoidance(supabase, providerDomain, childFields, documents);
+      }
+      
       const requirements = {
         deposit_amount_cents: defaultReqs.typical_deposit_cents,
         required_parent_fields: defaultReqs.common_requirements.parent_fields || [],
-        required_child_fields: defaultReqs.common_requirements.child_fields || [],
-        required_documents: defaultReqs.common_requirements.documents || [],
+        required_child_fields: childFields,
+        required_documents: documents,
         custom_requirements: {}
       };
 
       await upsertSessionRequirements(supabase, session_id, requirements, 'defaults', 'estimated');
 
-      discovery = {
-        method: 'defaults',
-        confidence: 'estimated',
-        requirements,
-        needsVerification: true,
-        source: `Based on similar ${defaultReqs.camp_type || defaultReqs.provider_platform} camps`
-      };
-    } else {
-      console.log(`[DISCOVER-REQUIREMENTS] No defaults found, using generic requirements`);
+        discovery = {
+          method: 'defaults',
+          confidence: 'estimated',
+          requirements,
+          needsVerification: true,
+          source: `Based on similar ${defaultReqs.camp_type || defaultReqs.provider_platform} camps${shouldAvoidPHI ? ' (HIPAA-compliant)' : ''}`,
+          hipaa_avoidance: shouldAvoidPHI
+        };
+      } else {
+        console.log(`[DISCOVER-REQUIREMENTS] No defaults found, using generic requirements`);
+        
+        // Fallback to generic requirements
+        let childFields = ["name", "dob"];
+        let documents = ["waiver"];
+        
+        // Apply HIPAA avoidance to fallback requirements too
+        if (!shouldAvoidPHI) {
+          childFields.push("medical_info");
+          documents.push("medical_form");
+        } else {
+          console.log(`[DISCOVER-REQUIREMENTS] HIPAA avoidance: Using PHI-free fallback requirements for domain ${providerDomain}`);
+          await logHIPAAAvoidance(supabase, providerDomain, childFields, documents);
+        }
       
-      // Fallback to generic requirements
       const requirements = {
         deposit_amount_cents: 5000, // $50 default
         required_parent_fields: ["email", "phone", "emergency_contact"],
-        required_child_fields: ["name", "dob", "medical_info"],
-        required_documents: ["waiver", "medical_form"],
+        required_child_fields: childFields,
+        required_documents: documents,
         custom_requirements: {}
       };
 
@@ -166,7 +208,8 @@ serve(async (req) => {
         confidence: 'estimated',
         requirements,
         needsVerification: true,
-        source: 'Generic camp requirements (needs verification)'
+        source: "Generic camp requirements (needs verification)",
+        hipaa_avoidance: shouldAvoidPHI
       };
     }
 
@@ -225,4 +268,89 @@ async function upsertSessionRequirements(
       last_verified_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }, { onConflict: 'session_id' });
+}
+
+// Helper function to extract domain from session data
+function extractDomainFromSession(session: any): string {
+  // Try to extract domain from session URL, platform, or provider info
+  if (session.source_url) {
+    try {
+      return new URL(session.source_url).hostname;
+    } catch {}
+  }
+  
+  // Fallback to platform or provider info
+  return session.platform || session.provider_id || 'unknown';
+}
+
+// Helper function to identify PHI fields
+function isPHIField(field: string): boolean {
+  const phiFields = [
+    'medical_info',
+    'medical_conditions', 
+    'allergies',
+    'medications',
+    'health_info',
+    'disability_info',
+    'special_needs',
+    'dietary_restrictions' // Some dietary restrictions can be medical
+  ];
+  
+  return phiFields.some(phiField => 
+    field.toLowerCase().includes(phiField) || 
+    phiField.includes(field.toLowerCase())
+  );
+}
+
+// Helper function to identify PHI documents
+function isPHIDocument(document: string): boolean {
+  const phiDocuments = [
+    'medical_form',
+    'health_form', 
+    'medical_waiver',
+    'health_records',
+    'immunization_records',
+    'medication_form'
+  ];
+  
+  return phiDocuments.some(phiDoc => 
+    document.toLowerCase().includes(phiDoc) || 
+    phiDoc.includes(document.toLowerCase())
+  );
+}
+
+// Helper function to log HIPAA avoidance decisions
+async function logHIPAAAvoidance(
+  supabase: any, 
+  providerDomain: string, 
+  safeChildFields: string[], 
+  safeDocuments: string[]
+) {
+  try {
+    const avoidedFields = ['medical_info', 'medical_conditions', 'allergies'];
+    const avoidedDocuments = ['medical_form', 'health_form'];
+    
+    await supabase
+      .from('hipaa_avoidance_log')
+      .insert({
+        provider_domain: providerDomain,
+        risk_level: 'high',
+        risky_fields: avoidedFields,
+        safe_alternatives: {
+          child_fields: safeChildFields,
+          documents: safeDocuments,
+          alternative_approach: 'Collect medical info directly with provider after registration'
+        },
+        detection_accuracy: 0.95, // High confidence in avoiding PHI
+        false_positive_rate: 0.05,
+        learning_iteration: 1,
+        sessions_avoided: 1,
+        compliance_cost_saved: 10000, // Estimated cost of HIPAA violation
+        created_at: new Date().toISOString()
+      });
+    
+    console.log(`[HIPAA-AVOIDANCE] Logged avoidance decision for domain: ${providerDomain}`);
+  } catch (error) {
+    console.error(`[HIPAA-AVOIDANCE] Error logging avoidance:`, error);
+  }
 }

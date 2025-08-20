@@ -1,20 +1,17 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 30_000,
-  expect: { timeout: 5_000 },
+  timeout: 30000,
   use: {
-    baseURL: 'https://localhost:4173',
-    trace: 'retain-on-failure',
-    video: 'retain-on-failure',
-  },
-  webServer: {
-    command: 'npm run preview',
-    url: 'https://localhost:4173',
-    reuseExistingServer: true,
+    headless: true,
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { 
+      name: 'chromium',
+      use: {
+        browserName: 'chromium',
+      },
+    },
   ],
 });

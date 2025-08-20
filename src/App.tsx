@@ -3,6 +3,7 @@ import HomePage from "./pages/Home";
 import ReservationHolds from "./pages/ReservationHolds";
 import ManualBackup from "./pages/ManualBackup";
 import Login from "./pages/Login";
+import Auth from "./pages/Auth";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Sessions from "./pages/Sessions";
@@ -10,6 +11,7 @@ import Children from "./pages/Children";
 import Settings from "./pages/Settings";
 import FindCamps from "./pages/FindCamps";
 import SessionDetail from "./pages/SessionDetail";
+import SessionSignup from "./pages/SessionSignup";
 import SessionForm from "./pages/SessionForm";
 import PlanDetail from "./pages/PlanDetail";
 import Billing from "./pages/Billing";
@@ -31,6 +33,10 @@ import SearchResults from "./pages/SearchResults";
 import UIAuditSummary from './pages/UIAuditSummary';
 import UIShowcase from './pages/UIShowcase';
 import ExampleNewPage from './pages/ExampleNewPage';
+import Readiness from './pages/Readiness';
+import ReadyToSignup from './pages/ReadyToSignup';
+import SignupConfirmation from './pages/SignupConfirmation';
+import AccountHistory from './pages/AccountHistory';
 
 export default function App() {
   return (
@@ -42,12 +48,18 @@ export default function App() {
     >
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/auth" element={<Auth />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/sessions" element={<Sessions />} />
         <Route path="/sessions/new" element={<SessionForm />} />
         <Route path="/sessions/:id" element={<SessionDetail />} />
+        <Route path="/sessions/:id/signup" element={<SessionSignup />} />
+        <Route path="/sessions/:id/ready-to-signup" element={<ReadyToSignup />} />
+        <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
+        <Route path="/sessions/:sessionId/confirmation" element={<SignupConfirmation />} />
+        <Route path="/account/history" element={<AccountHistory />} />
         <Route path="/sessions/:id/edit" element={<SessionForm />} />
         <Route path="/children" element={<Children />} />
         <Route path="/settings" element={<Settings />} />
@@ -72,6 +84,7 @@ export default function App() {
         <Route path="/search/results" element={<SearchResults />} />
         <Route path="/ui-audit-summary" element={<UIAuditSummary />} />
         <Route path="/ui-showcase" element={<UIShowcase />} />
+        <Route path="/readiness" element={<Readiness />} />
         <Route path="/example-new-page" element={<ExampleNewPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

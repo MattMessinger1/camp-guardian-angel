@@ -46,29 +46,24 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Auth banner */}
-      {!user && (
-        <div className="bg-primary text-primary-foreground px-4 py-3 text-center">
-          <span className="text-sm">
-            You'll need to sign in to search and reserve spots. {' '}
-            <Link to="/login" className="underline font-medium">
-              Sign in here
-            </Link>
-          </span>
+      {/* Top navigation bar */}
+      <div className="bg-muted px-4 py-2 flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          {user ? `Welcome, ${user.email}` : 'SignUpAssist'}
         </div>
-      )}
-      
-      {/* User menu for authenticated users */}
-      {user && (
-        <div className="bg-muted px-4 py-2 flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">
-            Welcome, {user.email}
-          </span>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            Sign Out
-          </Button>
+        <div className="flex items-center gap-3">
+          <Link to={user ? "/dashboard" : "/login?redirect=/dashboard"}>
+            <Button variant="default" size="sm">
+              Return to signups in progress
+            </Button>
+          </Link>
+          {user && (
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              Sign Out
+            </Button>
+          )}
         </div>
-      )}
+      </div>
       {/* Hero Section */}
       <section 
         ref={heroRef}
@@ -79,11 +74,8 @@ const HomePage = () => {
         <div className="relative z-10 mx-auto max-w-4xl">
           {/* HERO TEXT BLOCK */}
           <div className="hero-card">
-            <h1 className="hero-title">Get the spot — reduce the stress</h1>
+            <h1 className="hero-title">Get the spot<br />Without refreshing at midnight</h1>
             <div className="hero-accent" aria-hidden="true"></div>
-            <p className="hero-sub">
-              Signing up for kids' activities is competitive. Set it up now; we submit the instant registration opens.
-            </p>
           </div>
         </div>
       </section>
@@ -97,18 +89,18 @@ const HomePage = () => {
             {[
               {
                 stepNum: 1,
-                title: "#1 — Find your activity or&nbsp;camp",
-                description: "Choose the specific session(s) you'd like",
+                title: "1. Enter details once<br/><span style='font-weight: 400;'>bank-level security, Stripe&nbsp;payments</span>",
+                description: "",
               },
               {
                 stepNum: 2,
-                title: "#2 — Load your signup info ahead of&nbsp;time",
-                description: "We encrypt it and we'll use it for future registrations too",
+                title: "2. We submit instantly<br/><span style='font-weight: 400;'>text you if action&nbsp;needed</span>", 
+                description: "",
               },
               {
                 stepNum: 3,
-                title: "#3 — Give yourself the best chance to get your&nbsp;spot",
-                description: "We'll text you if we need your help with\u00A0captcha",
+                title: "3. Pay $20 on success<br/><span style='font-weight: 400;'>no spot, no&nbsp;charge</span>",
+                description: "",
               }
             ].map((step, index) => {
               return (
@@ -119,9 +111,9 @@ const HomePage = () => {
                     <div className="flex-shrink-0 md:mb-4">
                       <img 
                         src={
-                          step.stepNum === 1 ? (isMobile ? '/lovable-uploads/1e4c3eef-7722-4b2b-ba6a-a0bed50edb82.png' : '/lovable-uploads/b6798b9a-8c60-43d8-a73f-263b2a614dd3.png') :
-                          step.stepNum === 2 ? (isMobile ? '/lovable-uploads/2c6de7f6-c6a9-4ab0-8b66-d6d777cfd0a0.png' : '/lovable-uploads/103d7239-d5ea-415a-ab4e-afcbe109e547.png') :
-                          (isMobile ? '/lovable-uploads/6210bebc-9c12-4bd9-8f2d-349330268e8b.png' : '/lovable-uploads/103b80e6-36a5-4ad7-8445-cb90b43f2645.png')
+                          step.stepNum === 1 ? (isMobile ? '/lovable-uploads/2c6de7f6-c6a9-4ab0-8b66-d6d777cfd0a0.png' : '/lovable-uploads/103d7239-d5ea-415a-ab4e-afcbe109e547.png') :
+                          step.stepNum === 2 ? (isMobile ? '/lovable-uploads/6210bebc-9c12-4bd9-8f2d-349330268e8b.png' : '/lovable-uploads/103b80e6-36a5-4ad7-8445-cb90b43f2645.png') :
+                          '/lovable-uploads/579c49c1-21f9-44eb-b26a-9b146c88e661.png'
                         }
                         alt=""
                         className={isMobile ? "w-12 h-12 mr-4" : "w-24 h-24"}
@@ -167,81 +159,84 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Search Components - Make search primary for authenticated users */}
-      {user ? (
-        <>
-          {/* Payment Method Banner for authenticated users */}
-          <div className="max-w-6xl mx-auto px-4 pt-6">
-            <PaymentMethodBanner />
-          </div>
-          
-          {/* Primary Search Section */}
-          <section className="px-4 py-8 bg-background border-b border-border">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-foreground mb-2">
-                  Search for your camp
-                </h2>
-                <p className="text-muted-foreground">
-                  Find the specific camp you want to register for and get an advantage in signup
-                </p>
-              </div>
-              
-              <SearchBar
-                q={search.q} setQ={search.setQ}
-                city={search.city} setCity={search.setCity}
-                state={search.state} setState={search.setState}
-                ageMin={search.ageMin} setAgeMin={search.setAgeMin}
-                ageMax={search.ageMax} setAgeMax={search.setAgeMax}
-                dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
-                dateTo={search.dateTo} setDateTo={search.setDateTo}
-                priceMax={search.priceMax} setPriceMax={search.setPriceMax}
-                availability={search.availability} setAvailability={search.setAvailability}
-                onSearch={search.run}
-              />
-            </div>
-          </section>
-
-          <div className="max-w-6xl mx-auto px-4 py-8">
-            {/* Dev Tools Section */}
-            <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h3 className="text-lg font-semibold mb-4 text-yellow-800">🛠️ Development Tools</h3>
-              <div className="flex gap-4">
-                <EmbeddingsBackfill />
-              </div>
-            </div>
-            
-            <Results items={search.items} loading={search.loading} error={search.error} />
-            
-            {/* Search performance indicator */}
-            {search.meta.elapsed && (
-              <div className="text-xs text-muted-foreground text-center mt-6 p-2 bg-muted/30 rounded">
-                Search completed in {search.meta.elapsed}ms
-                {search.meta.cached && ' (cached)'}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="max-w-5xl mx-auto px-4 py-12 text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-4">
-            Ready to beat the registration rush?
-          </h2>
-          <p className="text-muted-foreground mb-6">
-            Sign in to search for activities and reserve your spots automatically.
-          </p>
-          <Link to="/login">
-            <Button size="lg" className="mr-4">
-              Sign In
-            </Button>
-          </Link>
-          <Link to="/signup">
-            <Button variant="outline" size="lg">
-              Sign Up
-            </Button>
-          </Link>
+      {/* Payment Method Banner for authenticated users */}
+      {user && (
+        <div className="max-w-6xl mx-auto px-4 pt-6">
+          <PaymentMethodBanner />
         </div>
       )}
+      
+      {/* Primary Search Section */}
+      <section className="px-4 py-8 bg-background border-b border-border">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Search for your activity
+            </h2>
+            <p className="text-muted-foreground">
+              We'll help you reserve a spot
+            </p>
+          </div>
+          
+          <SearchBar
+            q={search.q} setQ={search.setQ}
+            city={search.city} setCity={search.setCity}
+            state={search.state} setState={search.setState}
+            ageMin={search.ageMin} setAgeMin={search.setAgeMin}
+            ageMax={search.ageMax} setAgeMax={search.setAgeMax}
+            dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
+            dateTo={search.dateTo} setDateTo={search.setDateTo}
+            priceMax={search.priceMax} setPriceMax={search.setPriceMax}
+            availability={search.availability} setAvailability={search.setAvailability}
+            onSearch={search.run}
+          />
+        </div>
+      </section>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Dev Tools Section - only for authenticated users */}
+        {user && (
+          <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 className="text-lg font-semibold mb-4 text-yellow-800">🛠️ Development Tools</h3>
+            <div className="flex gap-4">
+              <EmbeddingsBackfill />
+            </div>
+          </div>
+        )}
+        
+        <Results items={search.items} loading={search.loading} error={search.error} />
+        
+        {/* Search performance indicator */}
+        {search.meta.elapsed && (
+          <div className="text-xs text-muted-foreground text-center mt-6 p-2 bg-muted/30 rounded">
+            Search completed in {search.meta.elapsed}ms
+            {search.meta.cached && ' (cached)'}
+          </div>
+        )}
+
+        {/* Sign up prompt for non-authenticated users */}
+        {!user && (
+          <div className="max-w-5xl mx-auto px-4 py-12 text-center">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              Ready to beat the registration rush?
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Sign in to search for activities and reserve your spots automatically.
+            </p>
+            <Link to="/login">
+              <Button size="lg" className="mr-4">
+                Sign In
+              </Button>
+            </Link>
+            <Link to="/signup">
+              <Button variant="outline" size="lg">
+                Sign Up
+              </Button>
+            </Link>
+          </div>
+        )}
+
+      </div>
 
 
 
@@ -379,6 +374,16 @@ const HomePage = () => {
               >
                 support@signupassist.com
               </a>
+              
+              {/* Test Button for Ready for Signup Page */}
+              <div className="mt-4">
+                <Link 
+                  to="/sessions/003217fe-7854-43da-8a64-db592d5d78d5/ready-to-signup"
+                  className="text-blue-400 hover:text-blue-300 transition-colors text-sm underline"
+                >
+                  🧪 Test Ready for Signup Page
+                </Link>
+              </div>
             </div>
           </div>
         </div>

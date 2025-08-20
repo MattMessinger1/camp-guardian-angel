@@ -29,9 +29,7 @@ jobs:
       - name: Build and test
         run: |
           npm run build
-          npm run preview &
-          sleep 5
-          npm run test:mvp
+          npx playwright test tests/smoke.spec.ts tests/session-cards.spec.ts tests/reservation-form.spec.ts tests/stripe-payment-flow.spec.ts tests/manual-backup.spec.ts tests/account-history.spec.ts
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4

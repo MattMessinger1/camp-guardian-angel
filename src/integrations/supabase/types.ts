@@ -830,6 +830,48 @@ export type Database = {
         }
         Relationships: []
       }
+      hipaa_avoidance_log: {
+        Row: {
+          compliance_cost_saved: number | null
+          created_at: string
+          detection_accuracy: number | null
+          false_positive_rate: number | null
+          id: string
+          learning_iteration: number
+          provider_domain: string
+          risk_level: string
+          risky_fields: string[]
+          safe_alternatives: Json | null
+          sessions_avoided: number
+        }
+        Insert: {
+          compliance_cost_saved?: number | null
+          created_at?: string
+          detection_accuracy?: number | null
+          false_positive_rate?: number | null
+          id?: string
+          learning_iteration?: number
+          provider_domain: string
+          risk_level: string
+          risky_fields?: string[]
+          safe_alternatives?: Json | null
+          sessions_avoided?: number
+        }
+        Update: {
+          compliance_cost_saved?: number | null
+          created_at?: string
+          detection_accuracy?: number | null
+          false_positive_rate?: number | null
+          id?: string
+          learning_iteration?: number
+          provider_domain?: string
+          risk_level?: string
+          risky_fields?: string[]
+          safe_alternatives?: Json | null
+          sessions_avoided?: number
+        }
+        Relationships: []
+      }
       idempotency_keys: {
         Row: {
           created_at: string
@@ -1505,6 +1547,48 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      readiness_assessments: {
+        Row: {
+          assessment_data: Json
+          created_at: string
+          id: string
+          session_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assessment_data: Json
+          created_at?: string
+          id?: string
+          session_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assessment_data?: Json
+          created_at?: string
+          id?: string
+          session_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "readiness_assessments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "readiness_assessments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -3111,6 +3195,69 @@ export type Database = {
         }
         Relationships: []
       }
+      text_verification_reminders: {
+        Row: {
+          camp_name: string
+          created_at: string
+          error_message: string | null
+          id: string
+          phone_e164: string
+          reminder_type: string
+          scheduled_at: string
+          sent_at: string | null
+          session_id: string
+          signup_datetime: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          camp_name: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          phone_e164: string
+          reminder_type: string
+          scheduled_at: string
+          sent_at?: string | null
+          session_id: string
+          signup_datetime: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          camp_name?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          phone_e164?: string
+          reminder_type?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          session_id?: string
+          signup_datetime?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "text_verification_reminders_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "mv_sessions_search"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "text_verification_reminders_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           assisted_signup_consent_at: string | null
@@ -3438,6 +3585,27 @@ export type Database = {
           },
         ]
       }
+      registration_funnels_mv: {
+        Row: {
+          attempt_success_rate: number | null
+          failed_attempts: number | null
+          failed_registrations: number | null
+          funnel_date: string | null
+          last_refreshed: string | null
+          pending_registrations: number | null
+          provider_domain: string | null
+          registration_success_rate: number | null
+          session_to_registration_rate: number | null
+          stages: Json | null
+          successful_attempts: number | null
+          successful_registrations: number | null
+          total_attempts: number | null
+          total_registrations: number | null
+          unique_children: number | null
+          unique_sessions: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       allocate_registrations: {
@@ -3647,6 +3815,10 @@ export type Database = {
       }
       refresh_mv_sessions_search: {
         Args: { concurrent?: boolean }
+        Returns: undefined
+      }
+      refresh_registration_funnels_mv: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       register_session_legacy: {

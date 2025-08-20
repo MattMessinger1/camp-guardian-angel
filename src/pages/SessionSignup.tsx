@@ -1,0 +1,979 @@
+import { useEffect, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, CreditCard, Lock, User, Calendar, Phone, Mail, AlertCircle, Loader2, Plus, X } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface SessionRow {
+  id: string;
+  title: string | null;
+  name: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  provider: { name: string | null } | null;
+  platform: string | null;
+}
+
+interface RequirementField {
+  name: string;
+  type: 'text' | 'email' | 'phone' | 'date' | 'select' | 'textarea' | 'checkbox' | 'password';
+  required: boolean;
+  label: string;
+  placeholder?: string;
+  options?: string[];
+  description?: string;
+}
+
+interface SessionRequirements {
+  deposit_amount_cents?: number;
+  required_parent_fields: string[];
+  required_child_fields: string[];
+  required_documents: string[];
+  custom_requirements: Record<string, any>;
+}
+
+interface RequirementDiscovery {
+  method: 'defaults' | 'user_research' | 'admin_verified' | 'learned_from_signup';
+  confidence: 'estimated' | 'verified' | 'confirmed';
+  requirements: SessionRequirements;
+  needsVerification: boolean;
+  source?: string;
+  hipaa_avoidance?: boolean;
+}
+
+interface ChildData {
+  name: string;
+  dob: string;
+  medical_info?: string;
+}
+
+export default function SessionSignup() {
+  const params = useParams();
+  const navigate = useNavigate();
+  const sessionId = params.id!;
+  const { user } = useAuth();
+  
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [children, setChildren] = useState<ChildData[]>([{ name: '', dob: '', medical_info: '' }]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [requirements, setRequirements] = useState<RequirementDiscovery | null>(null);
+  const [isLoadingRequirements, setIsLoadingRequirements] = useState(true);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [password, setPassword] = useState('');
+
+  const { data: sessionData, isLoading: isLoadingSession } = useQuery({
+    queryKey: ["session", sessionId],
+    queryFn: async (): Promise<SessionRow | null> => {
+      const { data, error } = await supabase
+        .from("sessions")
+        .select(`
+          id, title, name, price_min, price_max, platform,
+          provider:provider_id(name)
+        `)
+        .eq("id", sessionId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
+  // Load existing user profile data for pre-filling
+  const { data: userProfile } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: profile, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (error) console.error("Error loading profile:", error);
+      return profile;
+    },
+  });
+
+  // Discover session requirements using the learning system
+  useEffect(() => {
+    const discoverRequirements = async () => {
+      if (!sessionId) return;
+      
+      try {
+        setIsLoadingRequirements(true);
+        console.log("Discovering requirements for session:", sessionId);
+        
+        const { data, error } = await supabase.functions.invoke('discover-session-requirements', {
+          body: { session_id: sessionId }
+        });
+
+        if (error) throw error;
+
+        if (data.success) {
+          setRequirements(data.discovery);
+          console.log("Requirements discovered:", data.discovery);
+        } else {
+          throw new Error(data.error || "Failed to discover requirements");
+        }
+      } catch (error) {
+        console.error("Error discovering requirements:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load registration requirements. Using default form.",
+          variant: "destructive"
+        });
+        
+        // Fallback to basic requirements
+        setRequirements({
+          method: 'defaults',
+          confidence: 'estimated',
+          requirements: {
+            required_parent_fields: ["email", "phone", "emergency_contact"],
+            required_child_fields: ["name", "dob"],
+            required_documents: ["waiver"],
+            custom_requirements: {}
+          },
+          needsVerification: true,
+          source: "Fallback requirements"
+        });
+      } finally {
+        setIsLoadingRequirements(false);
+      }
+    };
+
+    discoverRequirements();
+  }, [sessionId]);
+
+  // Pre-fill form data when user profile loads
+  useEffect(() => {
+    if (userProfile && Object.keys(formData).length === 0) {
+      const prefillData: Record<string, any> = {};
+      
+      // Map user profile data to form fields using correct field names
+      if (userProfile.phone_e164) prefillData.parentPhone = userProfile.phone_e164;
+      
+      // For now, we'll focus on phone since that's what's available in the current schema
+      // Additional profile fields would need to be added to the user_profiles table
+      
+      setFormData(prefillData);
+      
+      if (Object.keys(prefillData).length > 0) {
+        toast({
+          title: "Information Pre-filled",
+          description: "We've pre-filled some information from your profile. Please review and update as needed.",
+        });
+      }
+    }
+  }, [userProfile]);
+
+  useEffect(() => {
+    const title = sessionData?.title || sessionData?.name || "Session";
+    document.title = `Sign up for ${title}`;
+  }, [sessionData]);
+
+  const generateFormFields = (): RequirementField[] => {
+    if (!requirements) return [];
+
+    const fields: RequirementField[] = [];
+    const { required_parent_fields, required_child_fields, custom_requirements } = requirements.requirements;
+
+    // Always include parent name if any parent fields are required
+    if (required_parent_fields.length > 0) {
+      fields.push({
+        name: 'parentName',
+        type: 'text',
+        required: true,
+        label: 'Parent/Guardian Name',
+        placeholder: 'Your full name'
+      });
+    }
+
+    // Generate parent fields
+    if (required_parent_fields.includes("email")) {
+      fields.push({
+        name: 'parentEmail',
+        type: 'email',
+        required: true,
+        label: 'Parent Email Address',
+        placeholder: 'your@email.com'
+      });
+    }
+
+    if (required_parent_fields.includes("phone")) {
+      fields.push({
+        name: 'parentPhone',
+        type: 'phone',
+        required: true,
+        label: 'Parent Phone Number',
+        placeholder: '(555) 123-4567'
+      });
+    }
+
+    // Generate child fields
+    if (required_child_fields.includes("name")) {
+      fields.push({
+        name: 'childName',
+        type: 'text',
+        required: true,
+        label: 'Child\'s Full Name',
+        placeholder: 'Child\'s full name'
+      });
+    }
+
+    if (required_child_fields.includes("dob")) {
+      fields.push({
+        name: 'childDateOfBirth',
+        type: 'date',
+        required: true,
+        label: 'Child\'s Date of Birth'
+      });
+    }
+
+    if (required_child_fields.includes("gender")) {
+      fields.push({
+        name: 'childGender',
+        type: 'select',
+        required: true,
+        label: 'Child\'s Gender',
+        options: ['Male', 'Female', 'Other', 'Prefer not to say']
+      });
+    }
+
+    if (required_child_fields.includes("medical_info")) {
+      fields.push({
+        name: 'medicalConditions',
+        type: 'textarea',
+        required: false,
+        label: 'Medical Conditions or Allergies',
+        placeholder: 'Please list any medical conditions, allergies, or medications...'
+      });
+    } else if (requirements.source?.includes('HIPAA-compliant')) {
+      // Add informational note when medical info is excluded for HIPAA compliance
+      fields.push({
+        name: 'hipaaNotice',
+        type: 'text',
+        required: false,
+        label: 'Medical Information',
+        placeholder: 'Medical information will be collected directly by the provider for privacy compliance'
+      });
+    }
+
+    // Emergency contact
+    if (required_parent_fields.includes("emergency_contact")) {
+      fields.push({
+        name: 'emergencyContact',
+        type: 'text',
+        required: true,
+        label: 'Emergency Contact Name',
+        placeholder: 'Emergency contact name'
+      });
+      fields.push({
+        name: 'emergencyPhone',
+        type: 'phone',
+        required: true,
+        label: 'Emergency Phone',
+        placeholder: '(555) 123-4567'
+      });
+    }
+
+    // Add custom requirements
+    Object.entries(custom_requirements).forEach(([key, config]: [string, any]) => {
+      if (config.field_type) {
+        fields.push({
+          name: key,
+          type: config.field_type,
+          required: config.required || false,
+          label: config.label || key,
+          placeholder: config.placeholder,
+          options: config.options,
+          description: config.description
+        });
+      }
+    });
+
+    return fields;
+  };
+
+  const addChild = () => {
+    if (children.length < 2) {
+      setChildren([...children, { name: '', dob: '', medical_info: '' }]);
+    } else {
+      toast({
+        title: "Maximum Children Reached",
+        description: "You can register a maximum of 2 children per session.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removeChild = (index: number) => {
+    if (children.length > 1) {
+      setChildren(children.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateChild = (index: number, field: keyof ChildData, value: string) => {
+    const updated = [...children];
+    updated[index] = { ...updated[index], [field]: value };
+    setChildren(updated);
+  };
+
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const validateForm = (fields: RequirementField[]): boolean => {
+    const requiredFields = fields.filter(f => f.required);
+
+    for (const field of requiredFields) {
+      if (!formData[field.name]) {
+        toast({
+          title: "Missing Information",
+          description: `Please fill in the ${field.label} field.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+    }
+
+    // Validate password for new users
+    if (!user && !formData.parentPassword) {
+      toast({
+        title: "Missing Information",
+        description: "Please create a password for your account.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Validate children data
+    for (let i = 0; i < children.length; i++) {
+      if (!children[i].name) {
+        toast({
+          title: "Missing Information",
+          description: `Please fill in the name for child ${i + 1}.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      if (!children[i].dob) {
+        toast({
+          title: "Missing Information", 
+          description: `Please fill in the date of birth for child ${i + 1}.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const createAccount = async () => {
+    if (!formData.parentEmail || !password) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide email and password to create your account.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: formData.parentEmail,
+        password: password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Account Created",
+        description: "Your account has been created! Please check your email to verify your account.",
+      });
+
+      setShowAuthPrompt(false);
+    } catch (error) {
+      console.error('Error creating account:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create account. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSubmit = async () => {
+    const fields = generateFormFields();
+    if (!validateForm(fields)) return;
+
+    setIsProcessing(true);
+
+    try {
+      // If user is not authenticated, create account first
+      if (!user && formData.parentEmail && formData.parentPassword) {
+        const { error } = await supabase.auth.signUp({
+          email: formData.parentEmail,
+          password: formData.parentPassword,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`
+          }
+        });
+
+        if (error) {
+          throw new Error(`Account creation failed: ${error.message}`);
+        }
+
+        toast({
+          title: "Account Created",
+          description: "Your account has been created! Proceeding to payment verification...",
+        });
+      }
+
+      // Here we would typically:
+      // 1. Save the signup information to the database
+      // 2. Create a Stripe payment intent for the provider fees + $20 service fee
+      // 3. Redirect to payment confirmation
+      
+      console.log("Submitting registration with data:", formData);
+      console.log("Children data:", children);
+      console.log("Requirements:", requirements);
+      
+      // Simulate processing and redirect to Ready for Signup page
+      setIsProcessing(true);
+      
+      // Store form data for the assessment
+      localStorage.setItem(`sessionSignup_${sessionId}`, JSON.stringify(formData));
+      localStorage.setItem(`sessionChildren_${sessionId}`, JSON.stringify(children));
+      
+      // Simulate some processing time
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast({
+        title: "Account Created Successfully",
+        description: "Proceeding to readiness assessment...",
+      });
+      
+      // Redirect to Ready for Signup assessment page
+      navigate(`/sessions/${sessionId}/ready-to-signup`);
+      
+    } catch (error) {
+      console.error('Error processing signup:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "There was an error processing your information. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const renderField = (field: RequirementField) => {
+    const value = formData[field.name] || '';
+
+    switch (field.type) {
+      case 'select':
+        return (
+          <div key={field.name} className="space-y-2">
+            <Label htmlFor={field.name}>
+              {field.label} {field.required && '*'}
+            </Label>
+            <Select value={value} onValueChange={(val) => handleInputChange(field.name, val)}>
+              <SelectTrigger>
+                <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map(option => (
+                  <SelectItem key={option} value={option.toLowerCase()}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {field.description && (
+              <p className="text-xs text-muted-foreground">{field.description}</p>
+            )}
+          </div>
+        );
+
+      case 'textarea':
+        return (
+          <div key={field.name} className="space-y-2">
+            <Label htmlFor={field.name}>
+              {field.label} {field.required && '*'}
+            </Label>
+            <Textarea
+              id={field.name}
+              value={value}
+              onChange={(e) => handleInputChange(field.name, e.target.value)}
+              placeholder={field.placeholder}
+              rows={3}
+            />
+            {field.description && (
+              <p className="text-xs text-muted-foreground">{field.description}</p>
+            )}
+          </div>
+        );
+
+      case 'checkbox':
+        return (
+          <div key={field.name} className="flex items-start space-x-2">
+            <input
+              type="checkbox"
+              id={field.name}
+              checked={!!value}
+              onChange={(e) => handleInputChange(field.name, e.target.checked)}
+              className="mt-1"
+            />
+            <Label htmlFor={field.name} className="text-sm">
+              {field.label} {field.required && '*'}
+              {field.description && (
+                <span className="block text-xs text-muted-foreground mt-1">
+                  {field.description}
+                </span>
+              )}
+            </Label>
+          </div>
+        );
+
+      default:
+        // Special handling for HIPAA notice field
+        if (field.name === 'hipaaNotice') {
+          return (
+            <div key={field.name} className="space-y-2">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>{field.label}:</strong> {field.placeholder}
+                </AlertDescription>
+              </Alert>
+            </div>
+          );
+        }
+        
+        return (
+          <div key={field.name} className="space-y-2">
+            <Label htmlFor={field.name}>
+              {field.label} {field.required && '*'}
+            </Label>
+            <Input
+              id={field.name}
+              type={field.type}
+              value={value}
+              onChange={(e) => handleInputChange(field.name, e.target.value)}
+              placeholder={field.placeholder}
+            />
+            {field.description && (
+              <p className="text-xs text-muted-foreground">{field.description}</p>
+            )}
+          </div>
+        );
+    }
+  };
+
+  const providerFee = sessionData?.price_min || 0;
+  const serviceFee = 20;
+  const depositAmount = requirements?.requirements.deposit_amount_cents 
+    ? requirements.requirements.deposit_amount_cents / 100 
+    : providerFee;
+  const totalFee = depositAmount + serviceFee;
+
+  if (isLoadingSession || isLoadingRequirements) {
+    return (
+      <main className="container mx-auto py-6 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {isLoadingSession ? "Loading session details..." : "Discovering registration requirements..."}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
+  if (!sessionData) {
+    return (
+      <main className="container mx-auto py-6 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Session not found.</div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
+  const formFields = generateFormFields();
+
+  return (
+    <main className="container mx-auto py-6 px-4">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Link 
+          to={`/sessions/${sessionId}`} 
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Back to session details
+        </Link>
+
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold mb-2">Sign up for</h1>
+          <p className="text-xl text-muted-foreground mb-4">
+            {sessionData?.title || sessionData?.name || "Camp Session"}
+          </p>
+          {sessionData?.price_min && (
+            <p className="text-lg font-semibold flex items-center justify-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              ${sessionData.price_min} + $20 service fee
+            </p>
+          )}
+        </div>
+
+        {!user && (
+          <Alert className="mb-6">
+            <User className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Creating your account:</strong> Fill out the registration information below including your password. We'll create your secure account and then process your payment. This lets you manage your registrations and makes future signups faster.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">
+              Sign up for {sessionData.title || sessionData.name}
+            </CardTitle>
+            <p className="text-muted-foreground">
+              Please provide the information required for registration
+            </p>
+            
+            {requirements?.needsVerification && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Requirements estimated based on {requirements.source}. 
+                  {requirements.confidence === 'estimated' && 
+                    " Some fields may not be required by this specific provider."
+                  }
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardHeader>
+          
+          <CardContent className="space-y-6">
+            {/* Dynamic form fields */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Registration Information
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {formFields.map(field => (
+                  <div key={field.name} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
+                    {renderField(field)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {!user && (
+              <>
+                <Separator />
+                
+                {/* Create Account Password Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Lock className="w-5 h-5" />
+                    Create Account Password
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="parentPassword">
+                      Password *
+                    </Label>
+                    <Input
+                      id="parentPassword"
+                      type="password"
+                      value={formData.parentPassword || ''}
+                      onChange={(e) => handleInputChange('parentPassword', e.target.value)}
+                      placeholder="Choose a secure password"
+                    />
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    Finalize account creation below
+                  </p>
+                </div>
+              </>
+            )}
+
+            <Separator />
+
+            {/* Children Information */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Children Information
+                </h3>
+                {children.length < 2 && (
+                  <Button
+                    onClick={addChild}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Child
+                  </Button>
+                )}
+              </div>
+
+              {children.map((child, index) => (
+                <Card key={index} className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium">Child {index + 1}</h4>
+                    {children.length > 1 && (
+                      <Button
+                        onClick={() => removeChild(index)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`child-${index}-name`}>
+                        Child's Full Name *
+                      </Label>
+                      <Input
+                        id={`child-${index}-name`}
+                        value={child.name}
+                        onChange={(e) => updateChild(index, 'name', e.target.value)}
+                        placeholder="Child's full name"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor={`child-${index}-dob`}>
+                        Child's Date of Birth *
+                      </Label>
+                      <Input
+                        id={`child-${index}-dob`}
+                        type="date"
+                        value={child.dob}
+                        onChange={(e) => updateChild(index, 'dob', e.target.value)}
+                      />
+                    </div>
+                    
+                    {requirements?.requirements.required_child_fields?.includes("medical_info") && !requirements?.hipaa_avoidance && (
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor={`child-${index}-medical`}>
+                          Medical Conditions or Allergies
+                        </Label>
+                        <Textarea
+                          id={`child-${index}-medical`}
+                          value={child.medical_info || ''}
+                          onChange={(e) => updateChild(index, 'medical_info', e.target.value)}
+                          placeholder="Please list any medical conditions, allergies, or medications..."
+                          rows={3}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <Separator />
+
+            {/* Payment Summary */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Payment Summary
+              </h3>
+              
+              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>
+                    {requirements?.requirements.deposit_amount_cents ? 'Registration Deposit' : 'Session Fee'} 
+                    ({sessionData.provider?.name || 'Provider'})
+                  </span>
+                  <span>${depositAmount}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Service Fee</span>
+                  <span>${serviceFee}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-semibold">
+                  <span>Total</span>
+                  <span>${totalFee}</span>
+                </div>
+                
+                {requirements?.requirements.deposit_amount_cents && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    This is a registration deposit. Additional fees may apply based on the provider's requirements.
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-3">
+                <label className="flex items-start space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.agreesToTerms || false}
+                    onChange={(e) => handleInputChange('agreesToTerms', e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    I agree to the terms and conditions and understand that registration is subject to approval by the provider.
+                  </span>
+                </label>
+                
+                <label className="flex items-start space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.agreesToPayment || false}
+                    onChange={(e) => handleInputChange('agreesToPayment', e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    I agree to pay the total amount of ${totalFee} (${depositAmount} deposit + ${serviceFee} service fee) upon successful registration.
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleSubmit}
+              disabled={isProcessing || !formData.agreesToTerms || !formData.agreesToPayment}
+              className="w-full"
+              size="lg"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                   <Lock className="w-4 h-4 mr-2" />
+                   {user ? 'Proceed to Payment Verification' : 'Create Account & Verify Payment'}
+                 </>
+              )}
+            </Button>
+            
+            <p className="text-xs text-center text-muted-foreground">
+              🔒 Your information is encrypted and secure. Payment will only be processed after successful registration.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Authentication Prompt Modal */}
+        {showAuthPrompt && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Create Your Account</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  You're almost done! Since you've provided your email address, we just need you to create a password to complete your account setup. This keeps your information secure and lets you track your registrations.
+                </p>
+                <Alert>
+                  <Lock className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    <strong>Why create an account?</strong> Your account keeps your registration secure, lets you manage payments, and makes future signups faster. We'll create it now and then process your payment.
+                  </AlertDescription>
+                </Alert>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email-display">Email Address</Label>
+                  <Input
+                    id="email-display"
+                    type="email"
+                    value={formData.parentEmail || ''}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password">Create Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Choose a secure password"
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setShowAuthPrompt(false)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={createAccount}
+                    className="flex-1"
+                    disabled={!password}
+                  >
+                    Create Account
+                  </Button>
+                </div>
+                
+                <p className="text-xs text-center text-muted-foreground">
+                  Already have an account? <Link to="/auth" className="text-primary hover:underline">Sign in here</Link>
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* HIPAA Compliance Notice */}
+        {requirements?.hipaa_avoidance && (
+          <Alert className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Privacy Notice:</strong> Medical information will be collected directly by the provider during registration to ensure HIPAA compliance and protect your child's health privacy.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </main>
+  );
+}
