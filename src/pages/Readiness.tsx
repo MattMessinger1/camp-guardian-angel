@@ -67,6 +67,9 @@ export default function Readiness() {
   useEffect(() => {
     if (user) {
       loadOrCreatePlan();
+    } else {
+      // If no user, stop loading immediately
+      setLoading(false);
     }
   }, [user]);
 
