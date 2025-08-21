@@ -29,6 +29,7 @@ import DevRunPrewarm from "./pages/DevRunPrewarm";
 import NotFound from "./pages/NotFound";
 import { TestEnvironment } from "./pages/TestEnvironment";
 import Diagnostics from "./pages/Diagnostics";
+import SearchTest from "./pages/SearchTest";
 import UIAuditSummary from './pages/UIAuditSummary';
 import UIShowcase from './pages/UIShowcase';
 import ExampleNewPage from './pages/ExampleNewPage';
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="/dev/prewarm" element={<DevRunPrewarm />} />
           <Route path="/test-environment" element={<TestEnvironment />} />
           <Route path="/diagnostics" element={<Diagnostics />} />
+          <Route path="/search-test" element={<SearchTest />} />
           <Route path="/ui-audit-summary" element={<UIAuditSummary />} />
           <Route path="/ui-showcase" element={<UIShowcase />} />
           <Route path="/readiness" element={<Readiness />} />
