@@ -196,9 +196,50 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
       return;
     }
 
+    if (!hasPaymentMethod) {
+      toast({ title: "Payment method required", description: "Please add a payment method to prevent gaming and complete signup." });
+      return;
+    }
+
     if (!consentGiven) {
       toast({ title: "Consent required", description: "Please agree to receive signup assistance." });
       return;
+    }
+
+    // Check for potential duplicates before creating account
+    try {
+      const duplicateChecks = await Promise.all(
+        children.map(async (child) => {
+          const { data, error } = await supabase.functions.invoke('detect-duplicates', {
+            body: {
+              child_name: child.name.trim(),
+              child_dob: child.dob
+            }
+          });
+          
+          if (error) {
+            console.warn('Duplicate check failed:', error);
+            return null;
+          }
+          
+          return data?.potential_duplicates?.length > 0 ? {
+            child: child.name,
+            duplicates: data.potential_duplicates
+          } : null;
+        })
+      );
+
+      const duplicates = duplicateChecks.filter(Boolean);
+      if (duplicates.length > 0) {
+        const duplicateNames = duplicates.map(d => d.child).join(', ');
+        toast({
+          title: "Potential duplicate detected",
+          description: `Similar children found for: ${duplicateNames}. Proceeding with enhanced verification.`,
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.warn('Duplicate detection failed, proceeding anyway:', error);
     }
 
     setLoading(true);
@@ -406,43 +447,39 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
 
             <Separator />
 
-            {/* Payment Setup - Only show if required */}
-            {requirements?.payment_required && (
-              <>
-                <Separator />
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <CreditCard className="h-5 w-5" />
-                    Payment Setup
+            {/* Payment Setup - Always Required */}
+            <Separator />
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-lg font-semibold">
+                <CreditCard className="h-5 w-5" />
+                Payment Setup (Required)
+              </div>
+              
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-3">
+                  A $20 success fee applies only when we successfully register your child for camp.
+                  No charge for unsuccessful attempts. Payment method required to prevent gaming.
+                </p>
+                
+                {hasPaymentMethod ? (
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <CreditCard className="h-4 w-4" />
+                    Payment method configured
                   </div>
-                  
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-3">
-                      A $20 success fee applies only when we successfully register your child for camp.
-                      No charge for unsuccessful attempts.
-                    </p>
-                    
-                    {hasPaymentMethod ? (
-                      <div className="flex items-center gap-2 text-sm text-green-600">
-                        <CreditCard className="h-4 w-4" />
-                        Payment method configured
-                      </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleAddPaymentMethod}
-                        disabled={paymentLoading}
-                        className="w-full"
-                      >
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        {paymentLoading ? "Setting up..." : "Add Payment Method"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddPaymentMethod}
+                    disabled={paymentLoading}
+                    className="w-full"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    {paymentLoading ? "Setting up..." : "Add Payment Method"}
+                  </Button>
+                )}
+              </div>
+            </div>
 
             <Separator />
 
