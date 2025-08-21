@@ -21,34 +21,74 @@ const HomePage = () => {
   const [searchResults, setSearchResults] = useState([])
   const [isSearchLoading, setIsSearchLoading] = useState(false)
   
-  // AI search function
+  // Hybrid search function - fast search first, then AI fallback
   const handleAISearch = useCallback(async (query) => {
     if (!query.trim()) return;
 
     setIsSearchLoading(true);
 
     try {
-      const searchPayload = {
-        query: query.trim(),
-        limit: 10,
-      };
-
-      const { data, error } = await supabase.functions.invoke('ai-camp-search', {
-        body: searchPayload
+      // Step 1: Try fast search first for high-intent users
+      console.log('Attempting fast search first...');
+      const fastSearchResponse = await supabase.functions.invoke('fast-camp-search', {
+        body: { query: query.trim(), limit: 10 }
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (fastSearchResponse.data?.success && fastSearchResponse.data?.results?.length > 0) {
+        // Fast search found results - use them immediately
+        setSearchResults(fastSearchResponse.data.results);
+        console.log(`Fast search completed in ${fastSearchResponse.data.duration_ms}ms with ${fastSearchResponse.data.results.length} results`);
+        return;
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Search failed');
+      // Step 2: Fallback to AI search for complex/natural language queries
+      console.log('Fast search found no results, falling back to AI search...');
+      const aiSearchResponse = await supabase.functions.invoke('ai-camp-search', {
+        body: { query: query.trim(), limit: 10 }
+      });
+
+      if (aiSearchResponse.error) {
+        throw new Error(aiSearchResponse.error.message || 'AI search failed');
       }
 
-      setSearchResults(data.results || []);
+      const aiData = aiSearchResponse.data;
+      if (!aiData.success) {
+        throw new Error(aiData.error || 'AI search failed');
+      }
+
+      // Transform AI results to match our interface if needed
+      const results = (aiData.results || []).map((result: any) => ({
+        sessionId: result.session_id || result.camp_id || result.sessionId,
+        campName: result.camp_name || result.campName,
+        providerName: result.provider_name || result.providerName || 'Camp Provider',
+        location: result.location_name || result.location ? 
+          (typeof result.location === 'string' ? {
+            city: result.location.split(',')[0]?.trim() || '',
+            state: result.location.split(',')[1]?.trim() || ''
+          } : result.location) : undefined,
+        registrationOpensAt: result.registration_opens_at || result.registrationOpensAt,
+        sessionDates: (result.start_date && result.end_date) || result.sessionDates ? {
+          start: result.start_date || result.sessionDates?.start,
+          end: result.end_date || result.sessionDates?.end
+        } : undefined,
+        capacity: result.capacity,
+        price: result.price_min || result.price,
+        ageRange: (result.age_min && result.age_max) || result.ageRange ? {
+          min: result.age_min || result.ageRange?.min,
+          max: result.age_max || result.ageRange?.max
+        } : undefined,
+        confidence: result.confidence || 0.5,
+        reasoning: result.reasoning || 'AI match found'
+      }));
+
+      setSearchResults(results);
+      console.log(`AI search fallback completed with ${results.length} results`);
+      
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
+      // Optional: Show a toast notification for errors
+      // toast({ title: "Search Error", description: "Unable to search at this time.", variant: "destructive" });
     } finally {
       setIsSearchLoading(false);
     }

@@ -90,7 +90,7 @@ export const CampSearchBox: React.FC<CampSearchBoxProps> = ({
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Activity / Camp name, city, dates..."
+            placeholder="Type camp name or city (e.g. 'madison' or 'soccer camp')"
             className="pl-10"
             disabled={isLoading}
           />
