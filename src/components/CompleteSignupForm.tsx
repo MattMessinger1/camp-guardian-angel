@@ -1,17 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, CreditCard, User, Baby, Lock, Mail } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, Trash2, CreditCard, User, Baby, Lock, Mail, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Child {
   name: string;
   dob: string;
+}
+
+interface RequiredField {
+  field_name: string;
+  field_type: string;
+  required: boolean;
+  label?: string;
+  help_text?: string;
+}
+
+interface SessionRequirements {
+  required_fields: RequiredField[];
+  phi_blocked_fields: string[];
+  communication_preferences: {
+    sms_required: boolean;
+    email_required: boolean;
+  };
+  payment_required: boolean;
 }
 
 interface CompleteSignupFormProps {
@@ -34,6 +53,11 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
   const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   
+  // Dynamic requirements
+  const [requirements, setRequirements] = useState<SessionRequirements | null>(null);
+  const [loadingRequirements, setLoadingRequirements] = useState(false);
+  const [requirementsError, setRequirementsError] = useState<string | null>(null);
+  
   // Form state
   const [loading, setLoading] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
@@ -54,6 +78,81 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
     );
     setChildren(updated);
   };
+
+  // Load session-specific requirements with PHI blocking
+  useEffect(() => {
+    const loadRequirements = async () => {
+      if (!sessionId) {
+        // Default requirements for general signup
+        setRequirements({
+          required_fields: [
+            { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
+            { field_name: "children", field_type: "array", required: true, label: "Children Information" },
+            { field_name: "email", field_type: "email", required: true, label: "Email Address" },
+            { field_name: "password", field_type: "password", required: true, label: "Password" }
+          ],
+          phi_blocked_fields: [],
+          communication_preferences: { sms_required: false, email_required: true },
+          payment_required: true
+        });
+        return;
+      }
+
+      setLoadingRequirements(true);
+      setRequirementsError(null);
+
+      try {
+        const { data, error } = await supabase.functions.invoke('discover-session-requirements', {
+          body: { session_id: sessionId }
+        });
+
+        if (error) throw error;
+
+        if (data) {
+          // Convert AI response to our requirements format
+          const sessionReqs: SessionRequirements = {
+            required_fields: [
+              { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
+              { field_name: "children", field_type: "array", required: true, label: "Children Information" },
+              { field_name: "email", field_type: "email", required: true, label: "Email Address" },
+              { field_name: "password", field_type: "password", required: true, label: "Password" },
+              // Add any additional fields from AI response (without PHI)
+              ...(data.required_fields || []).filter((field: any) => 
+                !data.phi_blocked_fields?.includes(field.field_name)
+              )
+            ],
+            phi_blocked_fields: data.phi_blocked_fields || [],
+            communication_preferences: {
+              sms_required: data.communication_preferences?.sms_required || false,
+              email_required: data.communication_preferences?.email_required || true
+            },
+            payment_required: data.payment_required !== false // Default to true unless explicitly false
+          };
+
+          setRequirements(sessionReqs);
+        }
+      } catch (error: any) {
+        console.error('Error loading session requirements:', error);
+        setRequirementsError(error.message || 'Failed to load session requirements');
+        // Fallback to default requirements
+        setRequirements({
+          required_fields: [
+            { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
+            { field_name: "children", field_type: "array", required: true, label: "Children Information" },
+            { field_name: "email", field_type: "email", required: true, label: "Email Address" },
+            { field_name: "password", field_type: "password", required: true, label: "Password" }
+          ],
+          phi_blocked_fields: [],
+          communication_preferences: { sms_required: false, email_required: true },
+          payment_required: true
+        });
+      } finally {
+        setLoadingRequirements(false);
+      }
+    };
+
+    loadRequirements();
+  }, [sessionId]);
 
   const handleAddPaymentMethod = async () => {
     setPaymentLoading(true);
@@ -142,6 +241,33 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
     }
   };
 
+  const isFieldRequired = (fieldName: string) => {
+    return requirements?.required_fields.some(field => 
+      field.field_name === fieldName && field.required
+    ) || false;
+  };
+
+  const isFieldBlocked = (fieldName: string) => {
+    return requirements?.phi_blocked_fields.includes(fieldName) || false;
+  };
+
+  if (loadingRequirements) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md surface-card">
+          <CardContent className="flex flex-col items-center gap-4 p-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-center text-muted-foreground">
+              Analyzing session requirements with AI...
+              <br />
+              <span className="text-xs">PHI protection active</span>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl surface-card">
@@ -149,7 +275,28 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
           <CardTitle className="flex items-center gap-2 text-2xl">
             <User className="h-6 w-6" />
             Complete Your Signup
+            {sessionId && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                • AI-Optimized
+              </span>
+            )}
           </CardTitle>
+          {requirementsError && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {requirementsError} - Using default requirements.
+              </AlertDescription>
+            </Alert>
+          )}
+          {requirements?.phi_blocked_fields.length > 0 && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Health information fields have been automatically excluded for privacy.
+              </AlertDescription>
+            </Alert>
+          )}
         </CardHeader>
         
         <CardContent>
@@ -259,38 +406,43 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
 
             <Separator />
 
-            {/* Payment Setup */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-lg font-semibold">
-                <CreditCard className="h-5 w-5" />
-                Payment Setup
-              </div>
-              
-              <div className="bg-muted/50 p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground mb-3">
-                  A $20 success fee applies only when we successfully register your child for camp.
-                  No charge for unsuccessful attempts.
-                </p>
-                
-                {hasPaymentMethod ? (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
-                    <CreditCard className="h-4 w-4" />
-                    Payment method configured
+            {/* Payment Setup - Only show if required */}
+            {requirements?.payment_required && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <CreditCard className="h-5 w-5" />
+                    Payment Setup
                   </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddPaymentMethod}
-                    disabled={paymentLoading}
-                    className="w-full"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    {paymentLoading ? "Setting up..." : "Add Payment Method"}
-                  </Button>
-                )}
-              </div>
-            </div>
+                  
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      A $20 success fee applies only when we successfully register your child for camp.
+                      No charge for unsuccessful attempts.
+                    </p>
+                    
+                    {hasPaymentMethod ? (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <CreditCard className="h-4 w-4" />
+                        Payment method configured
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAddPaymentMethod}
+                        disabled={paymentLoading}
+                        className="w-full"
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        {paymentLoading ? "Setting up..." : "Add Payment Method"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator />
 
