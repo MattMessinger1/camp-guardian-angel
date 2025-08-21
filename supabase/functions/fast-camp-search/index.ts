@@ -131,8 +131,8 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
           session.providers?.name
         );
         
-        // Only include results that have some relevance (confidence > 0.1)
-        if (confidence > 0.1) {
+        // Only include results that have some relevance (confidence > 0)
+        if (confidence > 0) {
           const reasoning = generateEnhancedReasoning(
             searchTerms, 
             session.name, 
@@ -181,8 +181,8 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
               session.providers?.name
             );
             
-            // Only include results that have some relevance
-            if (confidence > 0.1) {
+            // Only include results that have some relevance (confidence > 0)
+            if (confidence > 0) {
               const reasoning = generateEnhancedReasoning(
                 searchTerms, 
                 activity.name, 
@@ -253,42 +253,59 @@ function calculateEnhancedMatchConfidence(
   let totalScore = 0;
   let matchedTerms = 0;
   
+  console.log(`Evaluating: name="${name}", city="${city}", provider="${providerName}" against terms:`, searchTerms);
+  
   for (const term of searchTerms) {
     let termScore = 0;
+    let matchSource = '';
     
     // Higher scores for exact matches
     if (lowerName === term || lowerCity === term) {
       termScore = 1.0;
+      matchSource = 'exact_match';
     }
     // Provider name matches are important for high-intent searches
     else if (lowerProvider.includes(term)) {
       termScore = 0.95;
+      matchSource = 'provider';
     }
     // Camp name matches
     else if (lowerName.includes(term)) {
       termScore = 0.9;
+      matchSource = 'camp_name';
     }
     // Location matches
     else if (lowerCity.includes(term)) {
       termScore = 0.8;
+      matchSource = 'city';
     }
     else if (lowerState.includes(term)) {
       termScore = 0.7;
+      matchSource = 'state';
     }
     
     if (termScore > 0) {
+      console.log(`  ✓ "${term}" matched via ${matchSource} (score: ${termScore})`);
       totalScore += termScore;
       matchedTerms++;
+    } else {
+      console.log(`  ✗ "${term}" no match found`);
     }
   }
   
-  if (matchedTerms === 0) return 0.1;
+  if (matchedTerms === 0) {
+    console.log('  → Final score: 0 (no matches)');
+    return 0;
+  }
   
   // Boost score if multiple terms match
   const baseScore = totalScore / searchTerms.length;
   const completenessBonus = matchedTerms / searchTerms.length;
+  const finalScore = Math.min(1.0, baseScore + (completenessBonus * 0.2));
   
-  return Math.min(1.0, baseScore + (completenessBonus * 0.2));
+  console.log(`  → Final score: ${finalScore} (matched ${matchedTerms}/${searchTerms.length} terms)`);
+  
+  return finalScore;
 }
 
 function generateEnhancedReasoning(
