@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ export default function Signup() {
     "/signup"
   );
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('sessionId');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -92,11 +94,19 @@ export default function Signup() {
   };
 
   const handleRequirementsComplete = () => {
-    navigate("/dashboard", { replace: true });
+    if (sessionId) {
+      navigate(`/sessions/${sessionId}/ready-to-signup`, { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
   };
 
   const handleSkipRequirements = () => {
-    navigate("/dashboard", { replace: true });
+    if (sessionId) {
+      navigate(`/sessions/${sessionId}/ready-to-signup`, { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
   };
 
   const handleGoogle = async () => {
@@ -117,6 +127,7 @@ export default function Signup() {
           <AssistedSignupRequirements 
             onComplete={handleRequirementsComplete}
             onSkip={handleSkipRequirements}
+            sessionId={sessionId}
           />
         </div>
       </main>

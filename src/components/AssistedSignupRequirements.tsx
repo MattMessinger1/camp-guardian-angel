@@ -14,9 +14,10 @@ import { logger } from "@/lib/log";
 interface AssistedSignupRequirementsProps {
   onComplete: () => void;
   onSkip?: () => void;
+  sessionId?: string | null;
 }
 
-export default function AssistedSignupRequirements({ onComplete, onSkip }: AssistedSignupRequirementsProps) {
+export default function AssistedSignupRequirements({ onComplete, onSkip, sessionId }: AssistedSignupRequirementsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -34,6 +35,10 @@ export default function AssistedSignupRequirements({ onComplete, onSkip }: Assis
   const [verificationStep, setVerificationStep] = useState<"input" | "verify">("input");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  
+  // Session-specific requirements
+  const [sessionRequirements, setSessionRequirements] = useState<any>(null);
+  const [loadingRequirements, setLoadingRequirements] = useState(false);
 
   // Load existing profile data
   useEffect(() => {
@@ -80,6 +85,43 @@ export default function AssistedSignupRequirements({ onComplete, onSkip }: Assis
 
     loadProfile();
   }, [user]);
+
+  // Load session-specific requirements if sessionId provided
+  useEffect(() => {
+    const loadSessionRequirements = async () => {
+      if (!sessionId || !user) return;
+
+      setLoadingRequirements(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('discover-session-requirements', {
+          body: { session_id: sessionId }
+        });
+
+        if (error) {
+          logger.error('Error loading session requirements', {
+            component: 'AssistedSignupRequirements',
+            action: 'loadSessionRequirements',
+            sessionId,
+            errorType: error.code || 'unknown',
+          });
+          return;
+        }
+
+        setSessionRequirements(data);
+        logger.info('Session requirements loaded', {
+          component: 'AssistedSignupRequirements',
+          sessionId,
+          requirementsCount: data?.requirements?.length || 0,
+        });
+      } catch (error) {
+        console.error('Error loading session requirements:', error);
+      } finally {
+        setLoadingRequirements(false);
+      }
+    };
+
+    loadSessionRequirements();
+  }, [sessionId, user]);
 
   const handleSendOtp = async () => {
     if (!user || !phone.trim()) return;
@@ -243,16 +285,43 @@ export default function AssistedSignupRequirements({ onComplete, onSkip }: Assis
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="prose prose-sm max-w-none text-muted-foreground">
-            <p>
-              When registration opens, certain systems may ask for a CAPTCHA (to confirm you're human) and/or require an account creation step before completing signup.
-            </p>
-            <p>
-              For us to finish your signup without delay, we'll need:
-            </p>
-            <ol className="list-decimal pl-6 space-y-1">
-              <li>A verified mobile number (for instant SMS links)</li>
-              <li>Your email (as a backup if SMS can't be delivered)</li>
-            </ol>
+            {sessionId && sessionRequirements ? (
+              <>
+                <p>
+                  For this specific session, the following information will be needed during registration:
+                </p>
+                {loadingRequirements ? (
+                  <p>Loading session requirements...</p>
+                ) : (
+                  <ul className="list-disc pl-6 space-y-1">
+                    {sessionRequirements.requirements?.childInfo && (
+                      <li>Child information (name, age, emergency contacts)</li>
+                    )}
+                    {sessionRequirements.requirements?.documents && (
+                      <li>Required documents: {sessionRequirements.requirements.documents.join(', ')}</li>
+                    )}
+                    {sessionRequirements.requirements?.paymentMethod && (
+                      <li>Payment method setup ($20 success fee + session deposit)</li>
+                    )}
+                    <li>A verified mobile number (for instant SMS links if captcha needed)</li>
+                    <li>Your email (as a backup if SMS can't be delivered)</li>
+                  </ul>
+                )}
+              </>
+            ) : (
+              <>
+                <p>
+                  When registration opens, certain systems may ask for a CAPTCHA (to confirm you're human) and/or require an account creation step before completing signup.
+                </p>
+                <p>
+                  For us to finish your signup without delay, we'll need:
+                </p>
+                <ol className="list-decimal pl-6 space-y-1">
+                  <li>A verified mobile number (for instant SMS links)</li>
+                  <li>Your email (as a backup if SMS can't be delivered)</li>
+                </ol>
+              </>
+            )}
             <p className="text-xs">
               We'll use these only to send you one-time links during signup, and will never share them with the camp or any other party without your consent.
             </p>

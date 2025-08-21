@@ -105,8 +105,8 @@ const HomePage = () => {
   }, []);
 
   const handleRegister = (sessionId) => {
-    // Navigate to session signup or handle registration
-    console.log('Register for session:', sessionId);
+    // Navigate to signup page with sessionId for requirements completion
+    window.location.href = `/signup?sessionId=${sessionId}`;
   };
 
   useEffect(() => {
