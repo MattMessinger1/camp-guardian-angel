@@ -1,5 +1,8 @@
 project_id = "ezvwyfqtyanwnoyymhav"
 
+[functions.fast-camp-search]
+verify_jwt = false
+
 [functions.environment-check]
 verify_jwt = false
 

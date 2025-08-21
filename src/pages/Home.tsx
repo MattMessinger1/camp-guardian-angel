@@ -25,6 +25,7 @@ const HomePage = () => {
   const handleAISearch = useCallback(async (query) => {
     if (!query.trim()) return;
 
+    console.log('Search initiated for query:', query);
     setIsSearchLoading(true);
 
     try {
@@ -34,8 +35,11 @@ const HomePage = () => {
         body: { query: query.trim(), limit: 10 }
       });
 
+      console.log('Fast search response:', fastSearchResponse);
+
       if (fastSearchResponse.data?.success && fastSearchResponse.data?.results?.length > 0) {
         // Fast search found results - use them immediately
+        console.log(`Fast search found ${fastSearchResponse.data.results.length} results`);
         setSearchResults(fastSearchResponse.data.results);
         console.log(`Fast search completed in ${fastSearchResponse.data.duration_ms}ms with ${fastSearchResponse.data.results.length} results`);
         return;
@@ -47,12 +51,16 @@ const HomePage = () => {
         body: { query: query.trim(), limit: 10 }
       });
 
+      console.log('AI search response:', aiSearchResponse);
+
       if (aiSearchResponse.error) {
+        console.error('AI search error:', aiSearchResponse.error);
         throw new Error(aiSearchResponse.error.message || 'AI search failed');
       }
 
       const aiData = aiSearchResponse.data;
       if (!aiData.success) {
+        console.error('AI search failed:', aiData.error);
         throw new Error(aiData.error || 'AI search failed');
       }
 
@@ -81,6 +89,7 @@ const HomePage = () => {
         reasoning: result.reasoning || 'AI match found'
       }));
 
+      console.log('Processed AI results:', results);
       setSearchResults(results);
       console.log(`AI search fallback completed with ${results.length} results`);
       
@@ -91,6 +100,7 @@ const HomePage = () => {
       // toast({ title: "Search Error", description: "Unable to search at this time.", variant: "destructive" });
     } finally {
       setIsSearchLoading(false);
+      console.log('Search completed, loading state reset');
     }
   }, []);
 
