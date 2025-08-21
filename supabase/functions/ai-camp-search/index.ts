@@ -218,7 +218,7 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
             .select('id, location_name, city, state, postal_code')
             .eq('camp_id', camp.id);
 
-          // Apply geo filter
+          // Apply geo filter with US-wide support
           let geoMatch = true;
           let matchedLocation = null;
           
@@ -226,17 +226,32 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
             const targetCity = (request.geo?.city || parsedIntent.city || '').toLowerCase();
             const targetState = (request.geo?.state || parsedIntent.state || '').toLowerCase();
             
-            geoMatch = false;
-            for (const location of locations || []) {
-              if (targetCity && location.city?.toLowerCase().includes(targetCity)) {
-                geoMatch = true;
-                matchedLocation = location;
-                break;
-              }
-              if (targetState && location.state?.toLowerCase().includes(targetState)) {
-                geoMatch = true;
-                matchedLocation = location;
-                break;
+            // Check for nationwide terms
+            const isNationwideSearch = targetCity.includes('united states') || 
+                                     targetCity.includes('usa') || 
+                                     targetCity.includes('america') ||
+                                     targetState.includes('united states') ||
+                                     targetState.includes('usa') ||
+                                     targetState.includes('america') ||
+                                     request.query.toLowerCase().includes('anywhere') ||
+                                     request.query.toLowerCase().includes('nationwide');
+            
+            if (isNationwideSearch) {
+              geoMatch = true;
+              matchedLocation = locations && locations.length > 0 ? locations[0] : null;
+            } else {
+              geoMatch = false;
+              for (const location of locations || []) {
+                if (targetCity && location.city?.toLowerCase().includes(targetCity)) {
+                  geoMatch = true;
+                  matchedLocation = location;
+                  break;
+                }
+                if (targetState && location.state?.toLowerCase().includes(targetState)) {
+                  geoMatch = true;
+                  matchedLocation = location;
+                  break;
+                }
               }
             }
           } else if (locations && locations.length > 0) {
@@ -308,22 +323,36 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
             weekMatch = matchWeek(weekStart, session.start_at);
           }
 
-          // Apply geo filter
-          let geoMatch = true;
-          if (request.geo?.city || request.geo?.state || parsedIntent.city || parsedIntent.state) {
-            const targetCity = (request.geo?.city || parsedIntent.city || '').toLowerCase();
-            const targetState = (request.geo?.state || parsedIntent.state || '').toLowerCase();
-            
-            const location = session.camp_locations;
-            geoMatch = false;
-            
-            if (targetCity && location?.city?.toLowerCase().includes(targetCity)) {
-              geoMatch = true;
-            }
-            if (targetState && location?.state?.toLowerCase().includes(targetState)) {
-              geoMatch = true;
-            }
-          }
+           // Apply geo filter with US-wide support
+           let geoMatch = true;
+           if (request.geo?.city || request.geo?.state || parsedIntent.city || parsedIntent.state) {
+             const targetCity = (request.geo?.city || parsedIntent.city || '').toLowerCase();
+             const targetState = (request.geo?.state || parsedIntent.state || '').toLowerCase();
+             
+             // Check for nationwide terms
+             const isNationwideSearch = targetCity.includes('united states') || 
+                                      targetCity.includes('usa') || 
+                                      targetCity.includes('america') ||
+                                      targetState.includes('united states') ||
+                                      targetState.includes('usa') ||
+                                      targetState.includes('america') ||
+                                      request.query.toLowerCase().includes('anywhere') ||
+                                      request.query.toLowerCase().includes('nationwide');
+             
+             if (isNationwideSearch) {
+               geoMatch = true;
+             } else {
+               const location = session.camp_locations;
+               geoMatch = false;
+               
+               if (targetCity && location?.city?.toLowerCase().includes(targetCity)) {
+                 geoMatch = true;
+               }
+               if (targetState && location?.state?.toLowerCase().includes(targetState)) {
+                 geoMatch = true;
+               }
+             }
+           }
 
           if (!ageMatch || !weekMatch || !geoMatch) continue;
 

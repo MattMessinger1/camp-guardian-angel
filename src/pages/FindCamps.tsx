@@ -226,7 +226,7 @@ const FindCamps: React.FC = () => {
                   <div className="text-muted-foreground space-y-1">
                     <div>"soccer camps in Austin"</div>
                     <div>"art classes for kids"</div>
-                    <div>"swimming lessons"</div>
+                    <div>"swimming camps nationwide"</div>
                   </div>
                 </div>
                 <div className="space-y-2">
