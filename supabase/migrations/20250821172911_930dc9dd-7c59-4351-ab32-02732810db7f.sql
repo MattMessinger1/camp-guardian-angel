@@ -1,0 +1,100 @@
+-- Add some Madison sample data for testing
+INSERT INTO public.activities (id, name, provider_id, created_at, updated_at) VALUES
+  ('550e8400-e29b-41d4-a716-446655440020', 'Madison Soccer Academy', '550e8400-e29b-41d4-a716-446655440001', now(), now()),
+  ('550e8400-e29b-41d4-a716-446655440021', 'Fresh Open Soccer Camp', '550e8400-e29b-41d4-a716-446655440001', now(), now()),
+  ('550e8400-e29b-41d4-a716-446655440022', 'Summer Soccer Camp 2025', '550e8400-e29b-41d4-a716-446655440002', now(), now())
+ON CONFLICT (id) DO NOTHING;
+
+-- Add Madison sessions
+INSERT INTO public.sessions (
+  id, provider_id, activity_id, name, title, start_at, end_at, 
+  registration_open_at, capacity, upfront_fee_cents, 
+  location_city, location_state, age_min, age_max, 
+  price_min, availability_status, signup_url, 
+  last_verified_at, open_time_exact
+) VALUES
+  (
+    '550e8400-e29b-41d4-a716-446655440030',
+    '550e8400-e29b-41d4-a716-446655440001',
+    '550e8400-e29b-41d4-a716-446655440021',
+    'Fresh Open Soccer Camp',
+    'Camp Session',
+    '2024-09-15 08:00:00+00',
+    '2024-09-15 14:00:00+00',
+    '2025-08-27 18:04:09+00',
+    20,
+    7500,
+    'Madison',
+    'Wisconsin',
+    6,
+    12,
+    75.00,
+    'open',
+    'https://example.com/camps/madison/fresh-soccer',
+    now(),
+    true
+  ),
+  (
+    '550e8400-e29b-41d4-a716-446655440031',
+    '550e8400-e29b-41d4-a716-446655440001',
+    '550e8400-e29b-41d4-a716-446655440021',
+    'Stale Limited Soccer Training',
+    'Camp Session',
+    '2024-09-16 08:00:00+00',
+    '2024-09-16 14:00:00+00',
+    '2025-08-27 18:04:09+00',
+    15,
+    7500,
+    'Madison',
+    'Wisconsin',
+    8,
+    14,
+    75.00,
+    'limited',
+    'https://example.com/camps/madison/limited-soccer',
+    now(),
+    true
+  ),
+  (
+    '550e8400-e29b-41d4-a716-446655440032',
+    '550e8400-e29b-41d4-a716-446655440001',
+    '550e8400-e29b-41d4-a716-446655440020',
+    'Old Full Soccer Academy',
+    'Camp Session',
+    '2024-09-17 08:00:00+00',
+    '2024-09-17 14:00:00+00',
+    '2025-08-27 18:04:09+00',
+    25,
+    7500,
+    'Madison',
+    'Wisconsin',
+    10,
+    16,
+    75.00,
+    'full',
+    'https://example.com/camps/madison/full-soccer',
+    now(),
+    true
+  ),
+  (
+    '550e8400-e29b-41d4-a716-446655440033',
+    '550e8400-e29b-41d4-a716-446655440002',
+    '550e8400-e29b-41d4-a716-446655440022',
+    'Summer Soccer Camp 2025',
+    'Camp Session',
+    '2025-07-15 08:00:00+00',
+    '2025-07-15 14:00:00+00',
+    '2025-01-14 22:00:00+00',
+    20,
+    4999,
+    'Madison',
+    'Wisconsin',
+    6,
+    12,
+    49.99,
+    'open',
+    'https://example.com/camps/madison/summer-2025',
+    now(),
+    true
+  )
+ON CONFLICT (id) DO NOTHING;

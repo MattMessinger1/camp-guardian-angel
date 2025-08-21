@@ -10,16 +10,24 @@ import { CampLinkIngestModal } from './CampLinkIngestModal';
 import { ClarifyingQuestionsCard } from './ClarifyingQuestionsCard';
 
 interface SearchResult {
-  camp_id: string;
-  camp_name: string;
-  location_id?: string;
-  location_name?: string;
-  session_id?: string;
-  session_label?: string;
-  start_date?: string;
-  end_date?: string;
-  age_min?: number;
-  age_max?: number;
+  sessionId: string;
+  campName: string;
+  providerName?: string;
+  location?: {
+    city: string;
+    state: string;
+  };
+  registrationOpensAt?: string;
+  sessionDates?: {
+    start: string;
+    end: string;
+  };
+  capacity?: number;
+  price?: number;
+  ageRange?: {
+    min: number;
+    max: number;
+  };
   confidence: number;
   reasoning: string;
 }
@@ -126,31 +134,6 @@ interface SearchResultsProps {
 }
 
 export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegister }) => {
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return 'TBD';
-    try {
-      return new Date(dateStr).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } catch {
-      return 'TBD';
-    }
-  };
-
-  const formatDateRange = (start?: string, end?: string) => {
-    if (!start && !end) return 'Dates TBD';
-    if (start && !end) return `Starts ${formatDate(start)}`;
-    if (!start && end) return `Ends ${formatDate(end)}`;
-    
-    const startFormatted = formatDate(start);
-    const endFormatted = formatDate(end);
-    
-    if (startFormatted === endFormatted) return startFormatted;
-    return `${startFormatted} - ${endFormatted}`;
-  };
-
   if (results.length === 0) {
     return (
       <Card className="text-center p-8">
@@ -172,57 +155,80 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
       </div>
       
       {results.map((result, index) => (
-        <Card key={`${result.camp_id}-${result.session_id || result.location_id || index}`} className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-lg">{result.camp_name}</CardTitle>
-                {result.location_name && (
-                  <CardDescription className="flex items-center gap-1 mt-1">
-                    <MapPin className="h-3 w-3" />
-                    {result.location_name}
-                  </CardDescription>
-                )}
-              </div>
+        <Card key={`${result.sessionId}-${index}`} className="p-6 w-full hover:shadow-md transition-shadow">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                {result.campName}
+              </h2>
+              
+              {result.providerName && (
+                <p className="text-muted-foreground mb-3">
+                  Provider: {result.providerName}
+                </p>
+              )}
+              
+              {result.registrationOpensAt && (
+                <p className="text-orange-600 font-medium mb-3">
+                  Registration opens: {new Date(result.registrationOpensAt).toLocaleDateString('en-US', {
+                    month: 'numeric',
+                    day: 'numeric', 
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })}
+                </p>
+              )}
+              
+              {result.sessionDates && (
+                <p className="text-muted-foreground mb-2">
+                  Dates: {new Date(result.sessionDates.start).toLocaleDateString('en-US', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })} – {new Date(result.sessionDates.end).toLocaleDateString('en-US', {
+                    month: 'numeric', 
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })}
+                </p>
+              )}
+              
+              {result.capacity && (
+                <p className="text-muted-foreground mb-2">
+                  Capacity: {result.capacity}
+                </p>
+              )}
+              
+              {result.price && (
+                <p className="text-muted-foreground mb-4">
+                  Fee due at signup: ${result.price.toFixed(2)}
+                </p>
+              )}
+              
+              {result.reasoning && (
+                <p className="text-xs text-muted-foreground italic mb-2">
+                  {result.reasoning}
+                </p>
+              )}
+            </div>
+            
+            <div className="ml-6 flex flex-col items-end gap-2">
               <Badge variant="secondary" className="text-xs">
                 {Math.round(result.confidence * 100)}% match
               </Badge>
+              <Button 
+                onClick={() => onRegister(result.sessionId)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+              >
+                Register
+              </Button>
             </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-3">
-            {result.session_label && (
-              <div>
-                <div className="font-medium text-sm">{result.session_label}</div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {formatDateRange(result.start_date, result.end_date)}
-                  </div>
-                  {(result.age_min || result.age_max) && (
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      Ages {result.age_min || '?'}-{result.age_max || '?'}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            <div className="text-xs text-muted-foreground italic">
-              {result.reasoning}
-            </div>
-          </CardContent>
-          
-          <CardFooter>
-            <Button 
-              className="w-full"
-              onClick={() => onRegister(result.session_id || result.camp_id)}
-              disabled={!result.session_id}
-            >
-              {result.session_id ? 'Register with Guardian Angel' : 'View Camp Details'}
-            </Button>
-          </CardFooter>
+          </div>
         </Card>
       ))}
     </div>

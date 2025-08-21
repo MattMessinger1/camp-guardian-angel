@@ -8,16 +8,24 @@ import { CampSearchBox, SearchResults } from '@/components/camp-search/CampSearc
 import { ClarifyingQuestionsCard } from '@/components/camp-search/ClarifyingQuestionsCard';
 
 interface SearchResult {
-  camp_id: string;
-  camp_name: string;
-  location_id?: string;
-  location_name?: string;
-  session_id?: string;
-  session_label?: string;
-  start_date?: string;
-  end_date?: string;
-  age_min?: number;
-  age_max?: number;
+  sessionId: string;
+  campName: string;
+  providerName?: string;
+  location?: {
+    city: string;
+    state: string;
+  };
+  registrationOpensAt?: string;
+  sessionDates?: {
+    start: string;
+    end: string;
+  };
+  capacity?: number;
+  price?: number;
+  ageRange?: {
+    min: number;
+    max: number;
+  };
   confidence: number;
   reasoning: string;
 }
