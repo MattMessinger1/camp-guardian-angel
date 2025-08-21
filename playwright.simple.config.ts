@@ -12,7 +12,7 @@ export default defineConfig({
     { 
       name: 'chromium',
       use: { browserName: 'chromium' },
-      testMatch: '**/basic-test.spec.ts',
+      testMatch: '**/simple-test.spec.ts',
     },
   ],
 });
