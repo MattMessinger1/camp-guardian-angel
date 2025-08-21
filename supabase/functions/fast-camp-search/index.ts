@@ -66,31 +66,41 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
     const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
     console.log('Search terms:', searchTerms);
     
+    // Create a more targeted search that includes provider name filtering at database level
+    let allSessions: any[] = [];
+    
+    // Search 1: Sessions where any field matches any search term
+    for (const term of searchTerms) {
+      const { data: termResults } = await supabase
+        .from('sessions')
+        .select(`
+          id,
+          name,
+          location_city,
+          location_state,
+          registration_open_at,
+          start_at,
+          end_at,
+          capacity,
+          price_min,
+          age_min,
+          age_max,
+          providers!inner(name),
+          activities(id, name)
+        `)
+        .or(`name.ilike.%${term}%,location_city.ilike.%${term}%,location_state.ilike.%${term}%,providers.name.ilike.%${term}%`)
+        .limit(20);
+      
+      if (termResults) {
+        allSessions.push(...termResults);
+      }
+    }
+    
+    console.log(`Fetched ${allSessions.length} sessions across all search terms`);
+
     const results: SearchResult[] = [];
 
-    // Search sessions with provider names included
-    const { data: sessionResults, error: sessionError } = await supabase
-      .from('sessions')
-      .select(`
-        id,
-        name,
-        location_city,
-        location_state,
-        registration_open_at,
-        start_at,
-        end_at,
-        capacity,
-        price_min,
-        age_min,
-        age_max,
-        providers!inner(name),
-        activities(id, name)
-      `)
-      .limit(limit * 3); // Get more results to filter through
-
-    console.log('Session results count:', sessionResults?.length || 0);
-
-    // Search activities 
+    // Search activities
     const { data: activityResults, error: activityError } = await supabase
       .from('activities')
       .select(`
@@ -119,10 +129,17 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
       console.error('Activity search error:', activityError);
     }
 
+    // Remove duplicates by session ID
+    const uniqueSessions = allSessions.filter((session, index, self) => 
+      index === self.findIndex(s => s.id === session.id)
+    );
+    
+    console.log(`Unique sessions after deduplication: ${uniqueSessions.length}`);
+
     // Process session results - now filter client-side for multi-term matches
-    if (sessionResults) {
-      console.log('Processing session results:', sessionResults.length);
-      for (const session of sessionResults) {
+    if (uniqueSessions.length > 0) {
+      console.log('Processing session results:', uniqueSessions.length);
+      for (const session of uniqueSessions) {
         const confidence = calculateEnhancedMatchConfidence(
           searchTerms, 
           session.name, 
