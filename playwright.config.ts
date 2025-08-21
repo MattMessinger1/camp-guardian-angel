@@ -34,16 +34,8 @@ export default defineConfig({
       use: {
         browserName: 'chromium',
       },
-      testMatch: '**/*.spec.ts',
-      testIgnore: [
-        '**/unit/**', 
-        '**/node_modules/**',
-        '**/src/**/*.{test,spec}.ts', // Exclude vitest unit tests
-        '**/*.unit.ts',
-        '**/vitest/**',
-        '**/vi/**',
-        '**/*vitest*'
-      ],
+      // Simplified - just match all .spec.ts files in tests folder
+      testMatch: 'tests/**/*.spec.ts',
     },
   ],
 });
