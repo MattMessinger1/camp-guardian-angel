@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
-import SearchBar from '@/components/search/SearchBar'
-import Results from '@/components/search/Results'
-import { useSearch } from '@/components/search/useSearch'
+import { CampSearchBox, SearchResults } from '@/components/camp-search/CampSearchComponents'
 import { EmbeddingsBackfill } from '@/components/EmbeddingsBackfill'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -20,7 +18,46 @@ const HomePage = () => {
   })
 
   const [isMobile, setIsMobile] = useState(false)
-  const search = useSearch()
+  const [searchResults, setSearchResults] = useState([])
+  const [isSearchLoading, setIsSearchLoading] = useState(false)
+  
+  // AI search function
+  const handleAISearch = useCallback(async (query) => {
+    if (!query.trim()) return;
+
+    setIsSearchLoading(true);
+
+    try {
+      const searchPayload = {
+        query: query.trim(),
+        limit: 10,
+      };
+
+      const { data, error } = await supabase.functions.invoke('ai-camp-search', {
+        body: searchPayload
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Search failed');
+      }
+
+      setSearchResults(data.results || []);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearchLoading(false);
+    }
+  }, []);
+
+  const handleRegister = (sessionId) => {
+    // Navigate to session signup or handle registration
+    console.log('Register for session:', sessionId);
+  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
@@ -176,17 +213,9 @@ const HomePage = () => {
             </p>
           </div>
           
-          <SearchBar
-            q={search.q} setQ={search.setQ}
-            city={search.city} setCity={search.setCity}
-            state={search.state} setState={search.setState}
-            ageMin={search.ageMin} setAgeMin={search.setAgeMin}
-            ageMax={search.ageMax} setAgeMax={search.setAgeMax}
-            dateFrom={search.dateFrom} setDateFrom={search.setDateFrom}
-            dateTo={search.dateTo} setDateTo={search.setDateTo}
-            priceMax={search.priceMax} setPriceMax={search.setPriceMax}
-            availability={search.availability} setAvailability={search.setAvailability}
-            onSearch={search.run}
+          <CampSearchBox
+            onSearch={handleAISearch}
+            isLoading={isSearchLoading}
           />
         </div>
       </section>
@@ -202,15 +231,7 @@ const HomePage = () => {
           </div>
         )}
         
-        <Results items={search.items} loading={search.loading} error={search.error} />
-        
-        {/* Search performance indicator */}
-        {search.meta.elapsed && (
-          <div className="text-xs text-muted-foreground text-center mt-6 p-2 bg-muted/30 rounded">
-            Search completed in {search.meta.elapsed}ms
-            {search.meta.cached && ' (cached)'}
-          </div>
-        )}
+        <SearchResults results={searchResults} onRegister={handleRegister} />
 
         {/* Sign up prompt for non-authenticated users */}
         {!user && (
