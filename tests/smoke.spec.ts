@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-// Simplest smoke test: homepage loads and shows some text
-test('homepage loads', async ({ page }) => {
+// Completely rewritten smoke test to force file update
+test('homepage loads correctly', async ({ page }) => {
+  console.log('Navigating to http://localhost:8080/');
   await page.goto('http://localhost:8080/');
+  console.log('Page loaded, checking body...');
   await expect(page.locator('body')).toBeVisible();
+  console.log('Test passed!');
 });
