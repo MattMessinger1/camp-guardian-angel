@@ -66,109 +66,68 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
     const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
     console.log('Search terms:', searchTerms);
     
-    // Create a more targeted search that includes provider name filtering at database level
-    let allSessions: any[] = [];
-    
-    // Search 1: Direct session name and location matches
-    for (const term of searchTerms) {
-      const { data: sessionResults } = await supabase
-        .from('sessions')
-        .select(`
-          id,
-          name,
-          location_city,
-          location_state,
-          registration_open_at,
-          start_at,
-          end_at,
-          capacity,
-          price_min,
-          age_min,
-          age_max,
-          providers!inner(name),
-          activities(id, name)
-        `)
-        .or(`name.ilike.%${term}%,location_city.ilike.%${term}%,location_state.ilike.%${term}%`)
-        .limit(20);
-      
-      if (sessionResults) {
-        console.log(`Found ${sessionResults.length} sessions for term "${term}"`);
-        allSessions.push(...sessionResults);
-      }
-    }
-    
-    // Search 2: Provider name matches (separate query)
-    for (const term of searchTerms) {
-      const { data: providerSessions } = await supabase
-        .from('sessions')
-        .select(`
-          id,
-          name,
-          location_city,
-          location_state,
-          registration_open_at,
-          start_at,
-          end_at,
-          capacity,
-          price_min,
-          age_min,
-          age_max,
-          providers!inner(name),
-          activities(id, name)
-        `)
-        .eq('providers.name', 'Nature Kids') // Direct test first
-        .limit(20);
-      
-      if (providerSessions) {
-        console.log(`Found ${providerSessions.length} Nature Kids sessions for term "${term}"`);
-        allSessions.push(...providerSessions);
-      }
-    }
-    
-    console.log(`Fetched ${allSessions.length} sessions across all search terms`);
-
     const results: SearchResult[] = [];
-
-    // Search activities
-    const { data: activityResults, error: activityError } = await supabase
-      .from('activities')
+    
+    // Single comprehensive query: Search sessions with provider names
+    // First, get provider IDs that match any search term
+    const { data: matchingProviders } = await supabase
+      .from('providers')
+      .select('id')
+      .or(searchTerms.map(term => `name.ilike.%${term}%`).join(','));
+    
+    const providerIds = matchingProviders?.map(p => p.id) || [];
+    console.log(`Found ${providerIds.length} matching providers`);
+    
+    // Build search conditions for sessions
+    let sessionQuery = supabase
+      .from('sessions')
       .select(`
         id,
         name,
-        city,
-        state,
-        sessions!inner(
-          id,
-          name,
-          location_city,
-          location_state,
-          registration_open_at,
-          start_at,
-          end_at,
-          capacity,
-          price_min,
-          age_min,
-          age_max,
-          providers!inner(name)
-        )
-      `)
-      .limit(limit);
-
-    if (activityError) {
-      console.error('Activity search error:', activityError);
-    }
-
-    // Remove duplicates by session ID
-    const uniqueSessions = allSessions.filter((session, index, self) => 
-      index === self.findIndex(s => s.id === session.id)
-    );
+        location_city,
+        location_state,
+        registration_open_at,
+        start_at,
+        end_at,
+        capacity,
+        price_min,
+        age_min,
+        age_max,
+        providers!inner(id, name),
+        activities(id, name)
+      `);
     
-    console.log(`Unique sessions after deduplication: ${uniqueSessions.length}`);
-
-    // Process session results - now filter client-side for multi-term matches
-    if (uniqueSessions.length > 0) {
-      console.log('Processing session results:', uniqueSessions.length);
-      for (const session of uniqueSessions) {
+    // Create OR conditions for session name, location, and provider matches
+    const searchConditions = [];
+    
+    // Add session name and location conditions
+    for (const term of searchTerms) {
+      searchConditions.push(
+        `name.ilike.%${term}%`,
+        `location_city.ilike.%${term}%`,
+        `location_state.ilike.%${term}%`
+      );
+    }
+    
+    // Add provider ID conditions if we found matching providers
+    if (providerIds.length > 0) {
+      searchConditions.push(`provider_id.in.(${providerIds.join(',')})`);
+    }
+    
+    const { data: sessionResults, error } = await sessionQuery
+      .or(searchConditions.join(','))
+      .limit(100);
+    
+    if (error) {
+      console.error('Session search error:', error);
+      return [];
+    }
+    
+    console.log(`Found ${sessionResults?.length || 0} sessions from comprehensive search`);
+    
+    // Process results
+    if (sessionResults && sessionResults.length > 0) {
+      for (const session of sessionResults) {
         const confidence = calculateEnhancedMatchConfidence(
           searchTerms, 
           session.name, 
@@ -189,7 +148,7 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
           
           results.push({
             sessionId: session.id,
-            campName: session.name || 'Camp Session',
+            campName: session.name || session.activities?.name || 'Camp Session',
             providerName: session.providers?.name || 'Camp Provider',
             location: session.location_city ? {
               city: session.location_city,
@@ -213,64 +172,8 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
       }
     }
 
-    // Process activity results (flatten sessions from activities)
-    if (activityResults) {
-      console.log('Processing activity results:', activityResults.length);
-      for (const activity of activityResults) {
-        if (activity.sessions && activity.sessions.length > 0) {
-          for (const session of activity.sessions) {
-            const confidence = calculateEnhancedMatchConfidence(
-              searchTerms, 
-              activity.name, 
-              session.location_city, 
-              session.location_state,
-              session.providers?.name
-            );
-            
-            // Only include results that have some relevance (confidence > 0)
-            if (confidence > 0) {
-              const reasoning = generateEnhancedReasoning(
-                searchTerms, 
-                activity.name, 
-                session.location_city, 
-                session.location_state,
-                session.providers?.name
-              );
-              
-              results.push({
-                sessionId: session.id,
-                campName: activity.name,
-                providerName: session.providers?.name || 'Camp Provider',
-                location: session.location_city ? {
-                  city: session.location_city,
-                  state: session.location_state || ''
-                } : undefined,
-                registrationOpensAt: session.registration_open_at,
-                sessionDates: session.start_at && session.end_at ? {
-                  start: session.start_at,
-                  end: session.end_at
-                } : undefined,
-                capacity: session.capacity,
-                price: session.price_min ? parseFloat(session.price_min) : undefined,
-                ageRange: session.age_min && session.age_max ? {
-                  min: session.age_min,
-                  max: session.age_max
-                } : undefined,
-                confidence,
-                reasoning
-              });
-            }
-          }
-        }
-      }
-    }
-
-    // Remove duplicates and sort by confidence
-    const uniqueResults = results.filter((result, index, self) => 
-      index === self.findIndex(r => r.sessionId === result.sessionId)
-    );
-
-    const sortedResults = uniqueResults
+    // Sort by confidence and limit results
+    const sortedResults = results
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, limit);
 
