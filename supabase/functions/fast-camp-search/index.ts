@@ -62,8 +62,25 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
   const supabase = getSupabaseClient();
   
   try {
-    // Direct database search for fast results
-    // Search across sessions and activities simultaneously
+    // Split query into terms for better matching
+    const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
+    console.log('Search terms:', searchTerms);
+    
+    // Build search conditions for multiple terms
+    const buildSearchConditions = (terms: string[]) => {
+      const conditions: string[] = [];
+      
+      // For each term, search across name, location, and provider
+      for (const term of terms) {
+        conditions.push(`name.ilike.%${term}%`);
+        conditions.push(`location_city.ilike.%${term}%`);
+        conditions.push(`location_state.ilike.%${term}%`);
+      }
+      
+      return conditions.join(',');
+    };
+
+    // Search sessions with enhanced multi-term matching
     const { data: sessionResults, error: sessionError } = await supabase
       .from('sessions')
       .select(`
@@ -81,14 +98,14 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
         providers!inner(name),
         activities(id, name)
       `)
-      .or(`name.ilike.%${query}%,location_city.ilike.%${query}%,location_state.ilike.%${query}%`)
-      .limit(limit);
+      .or(buildSearchConditions(searchTerms))
+      .limit(limit * 2); // Get more results for better filtering
 
-    if (sessionError && !sessionResults) {
+    if (sessionError) {
       console.error('Session search error:', sessionError);
     }
 
-    // Search activities with Madison in the name
+    // Search activities with enhanced matching
     const { data: activityResults, error: activityError } = await supabase
       .from('activities')
       .select(`
@@ -111,7 +128,7 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
           providers!inner(name)
         )
       `)
-      .ilike('name', `%${query}%`)
+      .or(searchTerms.map(term => `name.ilike.%${term}%`).join(','))
       .limit(limit);
 
     if (activityError && !activityResults) {
@@ -123,8 +140,20 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
     // Process session results
     if (sessionResults) {
       for (const session of sessionResults) {
-        const confidence = calculateMatchConfidence(query, session.name, session.location_city, session.location_state);
-        const reasoning = generateReasoning(query, session.name, session.location_city, session.location_state);
+        const confidence = calculateEnhancedMatchConfidence(
+          searchTerms, 
+          session.name, 
+          session.location_city, 
+          session.location_state,
+          session.providers?.name
+        );
+        const reasoning = generateEnhancedReasoning(
+          searchTerms, 
+          session.name, 
+          session.location_city, 
+          session.location_state,
+          session.providers?.name
+        );
         
         results.push({
           sessionId: session.id,
@@ -156,8 +185,20 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
       for (const activity of activityResults) {
         if (activity.sessions && activity.sessions.length > 0) {
           for (const session of activity.sessions) {
-            const confidence = calculateMatchConfidence(query, activity.name, session.location_city, session.location_state);
-            const reasoning = generateReasoning(query, activity.name, session.location_city, session.location_state);
+            const confidence = calculateEnhancedMatchConfidence(
+              searchTerms, 
+              activity.name, 
+              session.location_city, 
+              session.location_state,
+              session.providers?.name
+            );
+            const reasoning = generateEnhancedReasoning(
+              searchTerms, 
+              activity.name, 
+              session.location_city, 
+              session.location_state,
+              session.providers?.name
+            );
             
             results.push({
               sessionId: session.id,
@@ -201,28 +242,94 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
   }
 }
 
-function calculateMatchConfidence(query: string, name: string | null, city: string | null, state: string | null): number {
-  const lowerQuery = query.toLowerCase();
+function calculateEnhancedMatchConfidence(
+  searchTerms: string[], 
+  name: string | null, 
+  city: string | null, 
+  state: string | null,
+  providerName: string | null
+): number {
   const lowerName = (name || '').toLowerCase();
-  const lowerCity = (city || '').toLowerCase();
+  const lowerCity = (city || '').toLowerCase();  
   const lowerState = (state || '').toLowerCase();
+  const lowerProvider = (providerName || '').toLowerCase();
+  
+  let totalScore = 0;
+  let matchedTerms = 0;
+  
+  for (const term of searchTerms) {
+    let termScore = 0;
+    
+    // Higher scores for exact matches
+    if (lowerName === term || lowerCity === term) {
+      termScore = 1.0;
+    }
+    // Provider name matches are important for high-intent searches
+    else if (lowerProvider.includes(term)) {
+      termScore = 0.95;
+    }
+    // Camp name matches
+    else if (lowerName.includes(term)) {
+      termScore = 0.9;
+    }
+    // Location matches
+    else if (lowerCity.includes(term)) {
+      termScore = 0.8;
+    }
+    else if (lowerState.includes(term)) {
+      termScore = 0.7;
+    }
+    
+    if (termScore > 0) {
+      totalScore += termScore;
+      matchedTerms++;
+    }
+  }
+  
+  if (matchedTerms === 0) return 0.1;
+  
+  // Boost score if multiple terms match
+  const baseScore = totalScore / searchTerms.length;
+  const completenessBonus = matchedTerms / searchTerms.length;
+  
+  return Math.min(1.0, baseScore + (completenessBonus * 0.2));
+}
 
-  if (lowerName === lowerQuery || lowerCity === lowerQuery) return 1.0;
-  if (lowerName.includes(lowerQuery)) return 0.9;
-  if (lowerCity.includes(lowerQuery)) return 0.8;
-  if (lowerState.includes(lowerQuery)) return 0.7;
-  return 0.6;
+function generateEnhancedReasoning(
+  searchTerms: string[], 
+  name: string | null, 
+  city: string | null, 
+  state: string | null,
+  providerName: string | null
+): string {
+  const matches: string[] = [];
+  
+  for (const term of searchTerms) {
+    const lowerName = (name || '').toLowerCase();
+    const lowerCity = (city || '').toLowerCase();
+    const lowerProvider = (providerName || '').toLowerCase();
+    
+    if (lowerProvider.includes(term)) {
+      matches.push(`Provider: "${providerName}"`);
+    } else if (lowerName.includes(term)) {
+      matches.push(`Camp name: "${name}"`);
+    } else if (lowerCity.includes(term)) {
+      matches.push(`Location: ${city}`);
+    }
+  }
+  
+  return matches.length > 0 
+    ? `Matches found - ${matches.join(', ')}`
+    : `Partial match for search terms`;
+}
+
+// Legacy functions for backward compatibility
+function calculateMatchConfidence(query: string, name: string | null, city: string | null, state: string | null): number {
+  return calculateEnhancedMatchConfidence([query], name, city, state, null);
 }
 
 function generateReasoning(query: string, name: string | null, city: string | null, state: string | null): string {
-  const lowerQuery = query.toLowerCase();
-  const lowerName = (name || '').toLowerCase();
-  const lowerCity = (city || '').toLowerCase();
-  
-  if (lowerName.includes(lowerQuery)) return `Match found in camp name: "${name}"`;
-  if (lowerCity.includes(lowerQuery)) return `Location match in ${city}`;
-  if (state && state.toLowerCase().includes(lowerQuery)) return `State match: ${state}`;
-  return `Partial match found for "${query}"`;
+  return generateEnhancedReasoning([query], name, city, state, null);
 }
 
 serve(async (req) => {
