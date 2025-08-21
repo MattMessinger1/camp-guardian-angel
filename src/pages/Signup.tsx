@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import AssistedSignupRequirements from "@/components/AssistedSignupRequirements";
+import { Plus, Trash2 } from "lucide-react";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -40,6 +41,8 @@ export default function Signup() {
   const sessionId = searchParams.get('sessionId');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [children, setChildren] = useState([{ name: "", dob: "" }]);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"signup" | "requirements">("signup");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -60,11 +63,35 @@ export default function Signup() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate children info
+    if (children.some(child => !child.name.trim() || !child.dob)) {
+      toast({ 
+        title: "Missing information", 
+        description: "Please fill in all child names and birth dates." 
+      });
+      return;
+    }
+
+    if (!guardianName.trim()) {
+      toast({ 
+        title: "Missing information", 
+        description: "Please enter your name." 
+      });
+      return;
+    }
+
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/` },
+      options: { 
+        emailRedirectTo: `${window.location.origin}/`,
+        data: {
+          guardian_name: guardianName,
+          children: children
+        }
+      },
     });
     setLoading(false);
     if (error) {
@@ -91,6 +118,23 @@ export default function Signup() {
         description: "Please check your email to verify your account, then complete the setup." 
       });
     }
+  };
+
+  const addChild = () => {
+    setChildren([...children, { name: "", dob: "" }]);
+  };
+
+  const removeChild = (index: number) => {
+    if (children.length > 1) {
+      setChildren(children.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateChild = (index: number, field: "name" | "dob", value: string) => {
+    const updated = children.map((child, i) => 
+      i === index ? { ...child, [field]: value } : child
+    );
+    setChildren(updated);
   };
 
   const handleRequirementsComplete = () => {
@@ -143,6 +187,64 @@ export default function Signup() {
         <CardContent>
           <form onSubmit={handleSignup} className="grid gap-4">
             <div className="grid gap-2">
+              <Label htmlFor="guardianName">Your Name (Guardian)</Label>
+              <Input 
+                id="guardianName" 
+                type="text" 
+                value={guardianName} 
+                onChange={(e) => setGuardianName(e.target.value)} 
+                placeholder="Enter your full name"
+                required 
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Children</Label>
+              {children.map((child, index) => (
+                <div key={index} className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Input 
+                      type="text" 
+                      value={child.name} 
+                      onChange={(e) => updateChild(index, "name", e.target.value)}
+                      placeholder="Child's name"
+                      required 
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input 
+                      type="date" 
+                      value={child.dob} 
+                      onChange={(e) => updateChild(index, "dob", e.target.value)}
+                      required 
+                    />
+                  </div>
+                  {children.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeChild(index)}
+                      className="px-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addChild}
+                className="w-fit"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Another Child
+              </Button>
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
@@ -151,7 +253,7 @@ export default function Signup() {
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <Button type="submit" variant="hero" disabled={loading}>
-              {loading ? "Creating..." : "Sign up with Email"}
+              {loading ? "Creating..." : "Create Account"}
             </Button>
           </form>
           <div className="my-4 text-center text-sm text-muted-foreground">or</div>
