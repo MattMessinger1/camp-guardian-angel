@@ -11,22 +11,23 @@ export default defineConfig({
   // globalSetup removed - was causing vitest symbol conflicts
   use: {
     headless: false,
-    baseURL: 'http://localhost:4173',
+    baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   globalTeardown: undefined, // Prevent vitest teardown hooks
-  webServer: {
-    command: 'npm run build && npx serve -s dist -l 4173',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60000,
-    env: {
-      NODE_ENV: 'playwright-test',
-      VITEST: 'false',
-    }
-  },
+  // webServer disabled - using manual dev server
+  // webServer: {
+  //   command: 'npm run build && npx serve -s dist -l 4173',
+  //   url: 'http://localhost:4173',
+  //   reuseExistingServer: !process.env.CI,
+  //   timeout: 60000,
+  //   env: {
+  //     NODE_ENV: 'playwright-test',
+  //     VITEST: 'false',
+  //   }
+  // },
   projects: [
     { 
       name: 'chromium',
