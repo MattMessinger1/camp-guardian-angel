@@ -217,15 +217,12 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
               )}
             </div>
             
-            <div className="ml-6 flex flex-col items-end gap-2">
-              <Badge variant="secondary" className="text-xs">
-                {Math.round(result.confidence * 100)}% match
-              </Badge>
+            <div className="ml-6 flex flex-col items-start">
               <Button 
                 onClick={() => onRegister(result.sessionId)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
               >
-                Register
+                Get ready for signup
               </Button>
             </div>
           </div>
