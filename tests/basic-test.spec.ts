@@ -1,6 +1,8 @@
 import { test } from '@playwright/test';
 
-test('basic test - just checking if Playwright starts', async () => {
+test('basic test - now with navigation', async ({ page }) => {
   console.log('✅ Playwright started successfully!');
-  console.log('This test does nothing - just verifies Playwright works');
+  console.log('Now testing navigation to http://localhost:8080/');
+  await page.goto('http://localhost:8080/');
+  console.log('✅ Navigation successful!');
 });
