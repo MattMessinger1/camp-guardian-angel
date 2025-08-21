@@ -1,9 +1,4 @@
-// Cache-busting test component to verify routing works
-const CACHE_BUSTER = Date.now();
-console.log(`🔍 TestDebug component loaded - Cache buster: ${CACHE_BUSTER}`);
-
 export default function TestDebug() {
-  console.log(`🔍 TestDebug component rendered - Cache buster: ${CACHE_BUSTER}`);
   
   return (
     <div style={{
@@ -31,10 +26,7 @@ export default function TestDebug() {
         textAlign: 'center'
       }}>
         <p style={{margin: '0', fontSize: '0.9rem'}}>
-          Cache Buster: {CACHE_BUSTER}
-        </p>
-        <p style={{margin: '10px 0 0 0', fontSize: '0.9rem'}}>
-          Loaded at: {new Date().toLocaleTimeString()}
+          Test route is working correctly!
         </p>
       </div>
     </div>

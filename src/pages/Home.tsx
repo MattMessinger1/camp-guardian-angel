@@ -12,15 +12,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { PaymentMethodBanner } from '@/components/PaymentMethodBanner'
 
-// EXTREME CACHE BUSTER - Force complete re-render
-const EXTREME_CACHE_BUSTER = `CB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-console.log(`🏠 EXTREME CACHE BUST - Home component loaded: ${EXTREME_CACHE_BUSTER}`);
-
-// Force DOM to recognize this as a completely new component
-window.location.hash = `#cache-bust-${Date.now()}`;
-
 const HomePage = () => {
-  console.log(`🏠 HomePage rendering with cache buster: ${EXTREME_CACHE_BUSTER}`);
   const { user, loading } = useAuth()
   const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
     threshold: 0.3,
@@ -49,8 +41,6 @@ const HomePage = () => {
     )
   }
 
-  // Debug log to verify component rendering
-  console.log('HomePage component rendering:', { user: !!user, loading })
 
   return (
     <div className="min-h-screen">
@@ -290,7 +280,7 @@ const HomePage = () => {
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold mb-4">Demo & Testing</h2>
             <p className="text-muted-foreground">
-              Explore our testing tools and UI improvements - EXTREME UPDATE: {EXTREME_CACHE_BUSTER}
+              Explore our testing tools and UI improvements
             </p>
           </div>
           
@@ -302,10 +292,10 @@ const HomePage = () => {
             >
               <div className="text-6xl mb-4 animate-bounce">🚨</div>
               <h3 className="font-black text-2xl mb-3 text-red-900 uppercase tracking-wide">
-                TEST DEBUG ROUTE - {Math.floor(Date.now() / 1000)}
+                TEST DEBUG ROUTE
               </h3>
               <p className="text-lg text-red-800 font-bold">
-                CLICK HERE TO TEST ROUTING! Updated: {new Date().toLocaleTimeString()}
+                CLICK HERE TO TEST ROUTING!
               </p>
             </Link>
 
