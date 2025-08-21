@@ -20,7 +20,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/inter": "^5.2.6",
     "@hookform/resolvers": "^3.10.0",
-    "@playwright/test": "^1.55.0",
+    
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -77,6 +77,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.55.0",
+
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
