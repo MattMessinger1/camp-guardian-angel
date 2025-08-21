@@ -7,41 +7,51 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  // globalSetup removed - was causing vitest symbol conflicts
+  reporter: 'line',
+  
+  // Complete isolation - no global setup, no teardown
+  globalSetup: undefined,
+  globalTeardown: undefined,
+  
   use: {
     headless: false,
-    baseURL: 'http://localhost:4173',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  globalTeardown: undefined, // Prevent vitest teardown hooks
+  
+  // Use static file server instead of Vite to eliminate all Node module contamination
   webServer: {
-    command: 'npm run build && npx serve -s dist -l 4173',
-    url: 'http://localhost:4173',
+    command: 'npm run build && npx serve -s dist -l 3000',
+    url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 60000,
+    timeout: 120000,
     env: {
+      // Completely isolate from vitest
       NODE_ENV: 'playwright-test',
       VITEST: 'false',
+      JEST_WORKER_ID: undefined,
+      NODE_OPTIONS: '--no-experimental-loader'
     }
   },
+  
   projects: [
     { 
-      name: 'chromium',
+      name: 'chromium-clean',
       use: {
         browserName: 'chromium',
       },
       testMatch: '**/*.spec.ts',
       testIgnore: [
-        '**/unit/**', 
+        '**/unit/**',
         '**/node_modules/**',
-        '**/src/**/*.{test,spec}.ts', // Exclude vitest unit tests
+        '**/src/**/*.{test,spec}.ts',
         '**/*.unit.ts',
         '**/vitest/**',
         '**/vi/**',
-        '**/*vitest*'
+        '**/*vitest*',
+        '**/*jest*'
       ],
     },
   ],
