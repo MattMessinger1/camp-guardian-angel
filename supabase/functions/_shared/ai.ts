@@ -3,7 +3,7 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 // Zod schemas for types
 export const ParsedIntentSchema = z.object({
-  campNames: z.array(z.string()),
+  campNames: z.array(z.string()).optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   zip: z.string().optional(),
