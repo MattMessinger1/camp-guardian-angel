@@ -66,21 +66,9 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
     const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
     console.log('Search terms:', searchTerms);
     
-    // Build search conditions for multiple terms
-    const buildSearchConditions = (terms: string[]) => {
-      const conditions: string[] = [];
-      
-      // For each term, search across name, location, and provider
-      for (const term of terms) {
-        conditions.push(`name.ilike.%${term}%`);
-        conditions.push(`location_city.ilike.%${term}%`);
-        conditions.push(`location_state.ilike.%${term}%`);
-      }
-      
-      return conditions.join(',');
-    };
+    const results: SearchResult[] = [];
 
-    // Search sessions with enhanced multi-term matching
+    // Search sessions with provider names included
     const { data: sessionResults, error: sessionError } = await supabase
       .from('sessions')
       .select(`
@@ -98,14 +86,11 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
         providers!inner(name),
         activities(id, name)
       `)
-      .or(buildSearchConditions(searchTerms))
-      .limit(limit * 2); // Get more results for better filtering
+      .limit(limit * 3); // Get more results to filter through
 
-    if (sessionError) {
-      console.error('Session search error:', sessionError);
-    }
+    console.log('Session results count:', sessionResults?.length || 0);
 
-    // Search activities with enhanced matching
+    // Search activities 
     const { data: activityResults, error: activityError } = await supabase
       .from('activities')
       .select(`
@@ -128,17 +113,15 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
           providers!inner(name)
         )
       `)
-      .or(searchTerms.map(term => `name.ilike.%${term}%`).join(','))
       .limit(limit);
 
-    if (activityError && !activityResults) {
+    if (activityError) {
       console.error('Activity search error:', activityError);
     }
 
-    const results: SearchResult[] = [];
-
-    // Process session results
+    // Process session results - now filter client-side for multi-term matches
     if (sessionResults) {
+      console.log('Processing session results:', sessionResults.length);
       for (const session of sessionResults) {
         const confidence = calculateEnhancedMatchConfidence(
           searchTerms, 
@@ -147,41 +130,46 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
           session.location_state,
           session.providers?.name
         );
-        const reasoning = generateEnhancedReasoning(
-          searchTerms, 
-          session.name, 
-          session.location_city, 
-          session.location_state,
-          session.providers?.name
-        );
         
-        results.push({
-          sessionId: session.id,
-          campName: session.name || 'Camp Session',
-          providerName: session.providers?.name || 'Camp Provider',
-          location: session.location_city ? {
-            city: session.location_city,
-            state: session.location_state || ''
-          } : undefined,
-          registrationOpensAt: session.registration_open_at,
-          sessionDates: session.start_at && session.end_at ? {
-            start: session.start_at,
-            end: session.end_at
-          } : undefined,
-          capacity: session.capacity,
-          price: session.price_min ? parseFloat(session.price_min) : undefined,
-          ageRange: session.age_min && session.age_max ? {
-            min: session.age_min,
-            max: session.age_max
-          } : undefined,
-          confidence,
-          reasoning
-        });
+        // Only include results that have some relevance (confidence > 0.1)
+        if (confidence > 0.1) {
+          const reasoning = generateEnhancedReasoning(
+            searchTerms, 
+            session.name, 
+            session.location_city, 
+            session.location_state,
+            session.providers?.name
+          );
+          
+          results.push({
+            sessionId: session.id,
+            campName: session.name || 'Camp Session',
+            providerName: session.providers?.name || 'Camp Provider',
+            location: session.location_city ? {
+              city: session.location_city,
+              state: session.location_state || ''
+            } : undefined,
+            registrationOpensAt: session.registration_open_at,
+            sessionDates: session.start_at && session.end_at ? {
+              start: session.start_at,
+              end: session.end_at
+            } : undefined,
+            capacity: session.capacity,
+            price: session.price_min ? parseFloat(session.price_min) : undefined,
+            ageRange: session.age_min && session.age_max ? {
+              min: session.age_min,
+              max: session.age_max
+            } : undefined,
+            confidence,
+            reasoning
+          });
+        }
       }
     }
 
     // Process activity results (flatten sessions from activities)
     if (activityResults) {
+      console.log('Processing activity results:', activityResults.length);
       for (const activity of activityResults) {
         if (activity.sessions && activity.sessions.length > 0) {
           for (const session of activity.sessions) {
@@ -192,36 +180,40 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
               session.location_state,
               session.providers?.name
             );
-            const reasoning = generateEnhancedReasoning(
-              searchTerms, 
-              activity.name, 
-              session.location_city, 
-              session.location_state,
-              session.providers?.name
-            );
             
-            results.push({
-              sessionId: session.id,
-              campName: activity.name,
-              providerName: session.providers?.name || 'Camp Provider',
-              location: session.location_city ? {
-                city: session.location_city,
-                state: session.location_state || ''
-              } : undefined,
-              registrationOpensAt: session.registration_open_at,
-              sessionDates: session.start_at && session.end_at ? {
-                start: session.start_at,
-                end: session.end_at
-              } : undefined,
-              capacity: session.capacity,
-              price: session.price_min ? parseFloat(session.price_min) : undefined,
-              ageRange: session.age_min && session.age_max ? {
-                min: session.age_min,
-                max: session.age_max
-              } : undefined,
-              confidence,
-              reasoning
-            });
+            // Only include results that have some relevance
+            if (confidence > 0.1) {
+              const reasoning = generateEnhancedReasoning(
+                searchTerms, 
+                activity.name, 
+                session.location_city, 
+                session.location_state,
+                session.providers?.name
+              );
+              
+              results.push({
+                sessionId: session.id,
+                campName: activity.name,
+                providerName: session.providers?.name || 'Camp Provider',
+                location: session.location_city ? {
+                  city: session.location_city,
+                  state: session.location_state || ''
+                } : undefined,
+                registrationOpensAt: session.registration_open_at,
+                sessionDates: session.start_at && session.end_at ? {
+                  start: session.start_at,
+                  end: session.end_at
+                } : undefined,
+                capacity: session.capacity,
+                price: session.price_min ? parseFloat(session.price_min) : undefined,
+                ageRange: session.age_min && session.age_max ? {
+                  min: session.age_min,
+                  max: session.age_max
+                } : undefined,
+                confidence,
+                reasoning
+              });
+            }
           }
         }
       }
@@ -232,9 +224,13 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
       index === self.findIndex(r => r.sessionId === result.sessionId)
     );
 
-    return uniqueResults
+    const sortedResults = uniqueResults
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, limit);
+
+    console.log(`Found ${sortedResults.length} unique results after filtering`);
+    
+    return sortedResults;
 
   } catch (error) {
     console.error('Fast search error:', error);
