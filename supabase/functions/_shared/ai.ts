@@ -94,13 +94,12 @@ Examples:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-5-2025-08-07',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: query.trim() }
         ],
-        temperature: 0.1,
-        max_tokens: 500,
+        max_completion_tokens: 500,
         response_format: { type: 'json_object' }
       }),
     });
