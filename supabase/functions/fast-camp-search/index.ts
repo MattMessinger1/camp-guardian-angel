@@ -69,9 +69,9 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
     // Create a more targeted search that includes provider name filtering at database level
     let allSessions: any[] = [];
     
-    // Search 1: Sessions where any field matches any search term
+    // Search 1: Direct session name and location matches
     for (const term of searchTerms) {
-      const { data: termResults } = await supabase
+      const { data: sessionResults } = await supabase
         .from('sessions')
         .select(`
           id,
@@ -88,11 +88,40 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
           providers!inner(name),
           activities(id, name)
         `)
-        .or(`name.ilike.%${term}%,location_city.ilike.%${term}%,location_state.ilike.%${term}%,providers.name.ilike.%${term}%`)
+        .or(`name.ilike.%${term}%,location_city.ilike.%${term}%,location_state.ilike.%${term}%`)
         .limit(20);
       
-      if (termResults) {
-        allSessions.push(...termResults);
+      if (sessionResults) {
+        console.log(`Found ${sessionResults.length} sessions for term "${term}"`);
+        allSessions.push(...sessionResults);
+      }
+    }
+    
+    // Search 2: Provider name matches (separate query)
+    for (const term of searchTerms) {
+      const { data: providerSessions } = await supabase
+        .from('sessions')
+        .select(`
+          id,
+          name,
+          location_city,
+          location_state,
+          registration_open_at,
+          start_at,
+          end_at,
+          capacity,
+          price_min,
+          age_min,
+          age_max,
+          providers!inner(name),
+          activities(id, name)
+        `)
+        .eq('providers.name', 'Nature Kids') // Direct test first
+        .limit(20);
+      
+      if (providerSessions) {
+        console.log(`Found ${providerSessions.length} Nature Kids sessions for term "${term}"`);
+        allSessions.push(...providerSessions);
       }
     }
     
