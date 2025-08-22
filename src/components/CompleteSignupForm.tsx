@@ -600,7 +600,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-lg font-semibold">
                 <Mail className="h-5 w-5" />
-                Account Information
+                Signup Assist -- Account Information
               </div>
               
               <div className="grid gap-4">
