@@ -200,6 +200,57 @@ export type Database = {
         }
         Relationships: []
       }
+      browser_sessions: {
+        Row: {
+          browser_id: string
+          camp_provider_id: string | null
+          closed_at: string | null
+          compliance_status: string
+          created_at: string
+          current_url: string | null
+          error_count: number
+          id: string
+          last_activity: string
+          metadata: Json | null
+          parent_id: string | null
+          session_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          browser_id: string
+          camp_provider_id?: string | null
+          closed_at?: string | null
+          compliance_status?: string
+          created_at?: string
+          current_url?: string | null
+          error_count?: number
+          id?: string
+          last_activity?: string
+          metadata?: Json | null
+          parent_id?: string | null
+          session_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          browser_id?: string
+          camp_provider_id?: string | null
+          closed_at?: string | null
+          compliance_status?: string
+          created_at?: string
+          current_url?: string | null
+          error_count?: number
+          id?: string
+          last_activity?: string
+          metadata?: Json | null
+          parent_id?: string | null
+          session_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       camp_locations: {
         Row: {
           address: string | null
@@ -246,6 +297,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      camp_provider_partnerships: {
+        Row: {
+          api_endpoint: string | null
+          contact_email: string | null
+          created_at: string
+          hostname: string
+          id: string
+          last_contact: string | null
+          notes: string | null
+          organization_name: string | null
+          partnership_type: string | null
+          provider_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          api_endpoint?: string | null
+          contact_email?: string | null
+          created_at?: string
+          hostname: string
+          id?: string
+          last_contact?: string | null
+          notes?: string | null
+          organization_name?: string | null
+          partnership_type?: string | null
+          provider_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          api_endpoint?: string | null
+          contact_email?: string | null
+          created_at?: string
+          hostname?: string
+          id?: string
+          last_contact?: string | null
+          notes?: string | null
+          organization_name?: string | null
+          partnership_type?: string | null
+          provider_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       camp_sources: {
         Row: {
@@ -3257,6 +3353,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tos_compliance_cache: {
+        Row: {
+          analysis_result: Json
+          created_at: string
+          expires_at: string
+          hostname: string | null
+          id: string
+          url: string
+        }
+        Insert: {
+          analysis_result: Json
+          created_at?: string
+          expires_at: string
+          hostname?: string | null
+          id?: string
+          url: string
+        }
+        Update: {
+          analysis_result?: Json
+          created_at?: string
+          expires_at?: string
+          hostname?: string | null
+          id?: string
+          url?: string
+        }
+        Relationships: []
       }
       user_profiles: {
         Row: {
