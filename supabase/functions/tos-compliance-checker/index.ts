@@ -233,23 +233,39 @@ function identifyProviderType(hostname: string): string {
   return 'unknown';
 }
 
-async function checkPartnershipStatus(hostname: string, campProviderId?: string): Promise<string> {
+async function checkPartnershipStatus(hostname: string, campProviderId?: string): Promise<{
+  status: string;
+  partnershipType?: string;
+  confidence: number;
+  lastContact?: string;
+}> {
   try {
     // Check our partnership database
     const { data } = await supabase
       .from('camp_provider_partnerships')
-      .select('status, partnership_type')
+      .select('status, partnership_type, last_contact, confidence_score')
       .or(`hostname.eq.${hostname},provider_id.eq.${campProviderId}`)
-      .single();
+      .maybeSingle();
     
     if (data) {
-      return data.status; // 'partner', 'approved', 'pending', 'rejected'
+      return {
+        status: data.status,
+        partnershipType: data.partnership_type,
+        confidence: data.confidence_score || 0.8,
+        lastContact: data.last_contact
+      };
     }
     
-    return 'unknown';
+    return {
+      status: 'unknown',
+      confidence: 0.3
+    };
   } catch (error) {
     console.warn('Partnership status check failed:', error);
-    return 'unknown';
+    return {
+      status: 'unknown',
+      confidence: 0.2
+    };
   }
 }
 
@@ -361,7 +377,7 @@ function analyzeWithPatterns(tosContent: string): any {
 async function analyzeWithAI(tosContent: string, openaiApiKey: string): Promise<any> {
   try {
     // Truncate content to avoid token limits
-    const truncatedContent = tosContent.substring(0, 8000);
+    const truncatedContent = tosContent.substring(0, 12000);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -370,63 +386,119 @@ async function analyzeWithAI(tosContent: string, openaiApiKey: string): Promise<
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini-2025-08-07',
         messages: [
           {
             role: 'system',
-            content: `You are analyzing Terms of Service for camp/recreation providers to determine their policy on automated registration assistance. 
-            
-            Focus on:
-            1. Automation/bot policies
-            2. Registration assistance policies  
-            3. Third-party booking policies
-            4. Partner/API access policies
-            
-            Respond with JSON: {
+            content: `You are an expert AI assistant analyzing Terms of Service for camp and recreation providers to determine their policy regarding automated registration assistance tools.
+
+            Context: We help parents register their children for camps by automating form completion with explicit parent consent. We are NOT scraping data or doing unauthorized actions.
+
+            Analysis Framework:
+            1. RESTRICTIVE: Explicitly prohibits bots, automation, or third-party registration tools
+            2. NEUTRAL: No clear policy or standard legal language without specific restrictions
+            3. PERMISSIVE: Allows or encourages third-party tools, APIs, or partner integrations
+            4. CAMP-FRIENDLY: Consider that camps WANT registrations and typically welcome legitimate help
+
+            Key Areas to Analyze:
+            - Automated access policies
+            - Bot/scraping restrictions  
+            - Third-party booking/registration tools
+            - Partner/integration policies
+            - Registration assistance language
+            - API availability mentions
+            - Intent behind restrictions (anti-fraud vs anti-automation)
+
+            Confidence Scoring:
+            - 0.9-1.0: Extremely clear language either way
+            - 0.7-0.8: Clear indications with good context
+            - 0.5-0.6: Some indicators but ambiguous
+            - 0.3-0.4: Unclear or conflicting signals
+            - 0.1-0.2: Minimal or generic language
+
+            Response format (JSON only):
+            {
               "automationPolicy": "restrictive|neutral|permissive",
               "confidence": 0.0-1.0,
-              "summary": "brief explanation",
-              "keyFindings": ["finding1", "finding2"],
-              "recommendation": "proceed|manual_review|avoid"
+              "summary": "2-3 sentence explanation of the policy",
+              "keyFindings": ["specific quotes or policies found"],
+              "riskFactors": ["potential concerns"],
+              "positiveSignals": ["camp-friendly or permissive elements"],
+              "recommendation": "proceed|manual_review|avoid|seek_partnership",
+              "reasoning": "why this recommendation was made",
+              "complianceScore": 0.0-1.0
             }`
           },
           {
             role: 'user',
-            content: `Analyze this Terms of Service content:\n\n${truncatedContent}`
+            content: `Analyze these Terms of Service for a camp/recreation provider:
+
+URL Context: This appears to be from a camp or recreation provider website.
+
+Terms of Service Content:
+${truncatedContent}
+
+Please provide a thorough analysis focused on whether this organization would allow or restrict automated registration assistance tools used by parents.`
           }
         ],
-        max_tokens: 500,
-        temperature: 0.3
+        max_completion_tokens: 800,
+        temperature: 0.2
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0].message.content;
     
     try {
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      
+      // Validate and enhance the response
+      return {
+        automationPolicy: parsed.automationPolicy || 'neutral',
+        confidence: Math.min(1.0, Math.max(0.0, parsed.confidence || 0.5)),
+        summary: parsed.summary || 'AI analysis completed',
+        keyFindings: parsed.keyFindings || [],
+        riskFactors: parsed.riskFactors || [],
+        positiveSignals: parsed.positiveSignals || [],
+        recommendation: parsed.recommendation || 'manual_review',
+        reasoning: parsed.reasoning || 'Standard analysis applied',
+        complianceScore: Math.min(1.0, Math.max(0.0, parsed.complianceScore || 0.5)),
+        aiModel: 'gpt-5-mini-2025-08-07',
+        analysisDate: new Date().toISOString()
+      };
     } catch (parseError) {
       console.warn('Failed to parse AI response as JSON:', content);
       return {
         automationPolicy: 'neutral',
-        confidence: 0.5,
-        summary: content,
-        recommendation: 'manual_review'
+        confidence: 0.4,
+        summary: 'AI response parsing failed, manual review needed',
+        keyFindings: [],
+        riskFactors: ['AI response not properly formatted'],
+        recommendation: 'manual_review',
+        reasoning: 'Could not parse structured AI response',
+        complianceScore: 0.4,
+        error: parseError.message,
+        rawResponse: content.substring(0, 500)
       };
     }
     
   } catch (error) {
-    console.warn('AI TOS analysis failed:', error);
+    console.error('AI TOS analysis failed:', error);
     return {
       automationPolicy: 'unknown',
-      confidence: 0.3,
-      summary: 'AI analysis failed',
-      error: error.message,
-      recommendation: 'manual_review'
+      confidence: 0.2,
+      summary: 'AI analysis failed due to technical error',
+      keyFindings: [],
+      riskFactors: ['AI analysis unavailable'],
+      recommendation: 'manual_review',
+      reasoning: 'Technical failure in AI analysis',
+      complianceScore: 0.2,
+      error: error.message
     };
   }
 }
@@ -434,78 +506,197 @@ async function analyzeWithAI(tosContent: string, openaiApiKey: string): Promise<
 function calculateComplianceStatus(input: {
   robotsResult: any;
   providerType: string;
-  partnershipStatus: string;
+  partnershipStatus: any;
   tosAnalysis: any;
   hostname: string;
-}): { status: 'green' | 'yellow' | 'red'; reason: string; confidence: number; recommendation: string } {
+}): { status: 'green' | 'yellow' | 'red'; reason: string; confidence: number; recommendation: string; details: any } {
   
-  // RED: Definite blocks
+  const aiAnalysis = input.tosAnalysis?.aiAnalysis;
+  const patternAnalysis = input.tosAnalysis?.patternAnalysis;
+  
+  // Calculate composite confidence score
+  let compositeConfidence = 0.5;
+  let confidenceFactors = [];
+  
+  if (aiAnalysis?.confidence) {
+    compositeConfidence = Math.max(compositeConfidence, aiAnalysis.confidence);
+    confidenceFactors.push(`AI: ${aiAnalysis.confidence}`);
+  }
+  
+  if (patternAnalysis?.confidence) {
+    compositeConfidence = Math.max(compositeConfidence, patternAnalysis.confidence * 0.8); // Pattern analysis weighted lower
+    confidenceFactors.push(`Pattern: ${patternAnalysis.confidence}`);
+  }
+  
+  if (input.partnershipStatus?.confidence) {
+    compositeConfidence = Math.max(compositeConfidence, input.partnershipStatus.confidence);
+    confidenceFactors.push(`Partnership: ${input.partnershipStatus.confidence}`);
+  }
+  
+  // RED: Definite blocks (High confidence restrictions)
   if (!input.robotsResult.allowed) {
     return {
       status: 'red',
-      reason: 'Robots.txt explicitly disallows access',
-      confidence: 0.9,
-      recommendation: 'Do not proceed - seek partnership or manual registration'
+      reason: 'Robots.txt explicitly disallows automated access',
+      confidence: 0.95,
+      recommendation: 'Do not proceed - seek official API or partnership channel',
+      details: {
+        primaryFactor: 'robots_txt_block',
+        robotsAllowed: false,
+        confidenceFactors
+      }
     };
   }
   
-  if (input.partnershipStatus === 'rejected') {
+  if (input.partnershipStatus?.status === 'rejected') {
     return {
       status: 'red',
-      reason: 'Partnership request was rejected',
-      confidence: 0.95,
-      recommendation: 'Do not proceed - respect rejection'
+      reason: 'Partnership request was previously rejected',
+      confidence: 0.98,
+      recommendation: 'Do not proceed - respect previous rejection decision',
+      details: {
+        primaryFactor: 'partnership_rejected',
+        partnershipStatus: input.partnershipStatus.status,
+        confidenceFactors
+      }
     };
   }
   
-  if (input.tosAnalysis?.aiAnalysis?.recommendation === 'avoid' || 
-      (input.tosAnalysis?.patternAnalysis?.policy === 'restrictive' && 
-       input.tosAnalysis?.patternAnalysis?.confidence > 0.7)) {
+  // AI recommends avoiding AND high confidence
+  if (aiAnalysis?.recommendation === 'avoid' && aiAnalysis?.confidence > 0.7) {
     return {
       status: 'red',
-      reason: 'Terms of service clearly prohibit automated access',
-      confidence: input.tosAnalysis.aiAnalysis?.confidence || input.tosAnalysis.patternAnalysis?.confidence || 0.8,
-      recommendation: 'Do not proceed - seek official API or partnership'
+      reason: 'AI analysis indicates Terms of Service clearly prohibit automated registration tools',
+      confidence: aiAnalysis.confidence,
+      recommendation: 'Do not proceed - seek official API or direct partnership',
+      details: {
+        primaryFactor: 'ai_analysis_restrictive',
+        aiSummary: aiAnalysis.summary,
+        keyFindings: aiAnalysis.keyFindings,
+        riskFactors: aiAnalysis.riskFactors,
+        confidenceFactors
+      }
     };
   }
   
-  // GREEN: Definite approvals
-  if (input.partnershipStatus === 'partner' || input.partnershipStatus === 'approved') {
+  // Pattern analysis shows strong restriction
+  if (patternAnalysis?.policy === 'restrictive' && patternAnalysis?.confidence > 0.8) {
+    return {
+      status: 'red',
+      reason: 'Pattern analysis detected strong anti-automation language in Terms of Service',
+      confidence: patternAnalysis.confidence,
+      recommendation: 'Do not proceed - terms explicitly restrict automated tools',
+      details: {
+        primaryFactor: 'pattern_analysis_restrictive',
+        patternSummary: patternAnalysis.summary,
+        restrictiveMatches: patternAnalysis.restrictiveMatches,
+        confidenceFactors
+      }
+    };
+  }
+  
+  // GREEN: Definite approvals (High confidence permissions)
+  if (input.partnershipStatus?.status === 'partner' || input.partnershipStatus?.status === 'approved') {
     return {
       status: 'green',
-      reason: 'Official partnership or approval exists',
-      confidence: 0.95,
-      recommendation: 'Proceed with confidence'
+      reason: 'Official partnership or explicit approval exists',
+      confidence: 0.98,
+      recommendation: 'Proceed with full confidence - partnership authorized',
+      details: {
+        primaryFactor: 'official_partnership',
+        partnershipType: input.partnershipStatus.partnershipType,
+        lastContact: input.partnershipStatus.lastContact,
+        confidenceFactors
+      }
     };
   }
   
-  if (input.tosAnalysis?.aiAnalysis?.recommendation === 'proceed' ||
-      (input.tosAnalysis?.patternAnalysis?.policy === 'permissive' && 
-       input.tosAnalysis?.patternAnalysis?.confidence > 0.6)) {
+  // AI strongly recommends proceeding
+  if (aiAnalysis?.recommendation === 'proceed' && aiAnalysis?.confidence > 0.7) {
     return {
       status: 'green',
-      reason: 'Terms of service appear to allow automated registration assistance',
-      confidence: input.tosAnalysis.aiAnalysis?.confidence || input.tosAnalysis.patternAnalysis?.confidence || 0.7,
-      recommendation: 'Proceed with standard compliance monitoring'
+      reason: 'AI analysis indicates Terms of Service allow automated registration assistance',
+      confidence: aiAnalysis.confidence,
+      recommendation: 'Proceed with standard compliance monitoring',
+      details: {
+        primaryFactor: 'ai_analysis_permissive',
+        aiSummary: aiAnalysis.summary,
+        positiveSignals: aiAnalysis.positiveSignals,
+        complianceScore: aiAnalysis.complianceScore,
+        confidenceFactors
+      }
     };
   }
   
-  // Known camp provider with neutral/unknown TOS
-  if (input.providerType !== 'unknown' && input.providerType !== 'camp_provider') {
+  // Known camp provider platform with permissive patterns
+  if (input.providerType !== 'unknown' && input.providerType !== 'camp_provider' && 
+      patternAnalysis?.policy === 'permissive') {
     return {
       status: 'green',
-      reason: `Known camp provider (${input.providerType}) with no explicit restrictions`,
-      confidence: 0.75,
-      recommendation: 'Proceed with enhanced monitoring and partnership outreach'
+      reason: `Known camp provider (${input.providerType}) with permissive automation policy`,
+      confidence: Math.min(0.85, compositeConfidence + 0.15),
+      recommendation: 'Proceed with enhanced monitoring and partnership outreach',
+      details: {
+        primaryFactor: 'known_provider_permissive',
+        providerType: input.providerType,
+        patternAnalysis: patternAnalysis.summary,
+        confidenceFactors
+      }
     };
   }
   
-  // YELLOW: Needs review
+  // YELLOW: Needs human review (Medium confidence or mixed signals)
+  
+  // AI suggests manual review or partnership
+  if (aiAnalysis?.recommendation === 'manual_review' || aiAnalysis?.recommendation === 'seek_partnership') {
+    return {
+      status: 'yellow',
+      reason: 'AI analysis suggests human review needed for nuanced Terms of Service',
+      confidence: aiAnalysis?.confidence || 0.6,
+      recommendation: 'Manual review recommended - consider proactive partnership outreach',
+      details: {
+        primaryFactor: 'ai_suggests_review',
+        aiSummary: aiAnalysis?.summary,
+        reasoning: aiAnalysis?.reasoning,
+        keyFindings: aiAnalysis?.keyFindings,
+        riskFactors: aiAnalysis?.riskFactors,
+        confidenceFactors
+      }
+    };
+  }
+  
+  // Known camp provider with neutral/unclear TOS
+  if (input.providerType !== 'unknown') {
+    return {
+      status: 'yellow',
+      reason: `Camp provider (${input.providerType}) with unclear automation policy`,
+      confidence: Math.max(0.6, compositeConfidence),
+      recommendation: 'Proceed cautiously with enhanced monitoring and partnership outreach',
+      details: {
+        primaryFactor: 'known_provider_unclear',
+        providerType: input.providerType,
+        tosAnalysis: tosAnalysis?.analysis || 'Neutral or unclear policy',
+        confidenceFactors
+      }
+    };
+  }
+  
+  // Default: Insufficient information
   return {
     status: 'yellow',
-    reason: 'Insufficient information or neutral TOS policy',
-    confidence: 0.5,
-    recommendation: 'Manual review recommended - consider partnership outreach'
+    reason: 'Insufficient information to make definitive compliance determination',
+    confidence: compositeConfidence,
+    recommendation: 'Manual review strongly recommended - gather more information or seek partnership',
+    details: {
+      primaryFactor: 'insufficient_information',
+      availableData: {
+        robotsAllowed: input.robotsResult.allowed,
+        tosFound: !!input.tosAnalysis?.found,
+        aiAnalysisAvailable: !!aiAnalysis,
+        partnershipKnown: input.partnershipStatus?.status !== 'unknown'
+      },
+      confidenceFactors
+    }
   };
 }
 
@@ -516,7 +707,7 @@ async function getCachedAnalysis(url: string): Promise<TOSAnalysisResult | null>
       .select('*')
       .eq('url', url)
       .gte('expires_at', new Date().toISOString())
-      .single();
+      .maybeSingle();
     
     if (data) {
       return data.analysis_result;
