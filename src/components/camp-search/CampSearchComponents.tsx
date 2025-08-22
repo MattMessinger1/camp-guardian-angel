@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Search, ExternalLink, Calendar, Users, MapPin, Loader2 } from 'lucide-react';
+import { Search, Calendar, Users, MapPin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CampLinkIngestModal } from './CampLinkIngestModal';
 import { ClarifyingQuestionsCard } from './ClarifyingQuestionsCard';
 
 interface SearchResult {
@@ -51,7 +50,6 @@ export const CampSearchBox: React.FC<CampSearchBoxProps> = ({
   initialQuery = '' 
 }) => {
   const [query, setQuery] = useState(initialQuery);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -59,20 +57,6 @@ export const CampSearchBox: React.FC<CampSearchBoxProps> = ({
     if (query.trim()) {
       onSearch(query.trim());
     }
-  };
-
-  const handleIngestSuccess = (campName: string) => {
-    setQuery(campName);
-    setIsModalOpen(false);
-    // Auto-search after a brief delay to allow index refresh
-    setTimeout(() => {
-      onSearch(campName);
-    }, 2000);
-    
-    toast({
-      title: "Camp source added!",
-      description: "Searching for sessions...",
-    });
   };
 
   // Use effect to auto-search when initialQuery changes
@@ -106,24 +90,6 @@ export const CampSearchBox: React.FC<CampSearchBoxProps> = ({
           )}
         </Button>
       </form>
-      
-      <div className="flex justify-center">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setIsModalOpen(true)}
-          disabled={isLoading}
-        >
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Paste a camp link
-        </Button>
-      </div>
-
-      <CampLinkIngestModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleIngestSuccess}
-      />
     </div>
   );
 };
@@ -141,7 +107,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
           <div className="text-muted-foreground">
             <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg mb-2">No camps found</p>
-            <p className="text-sm">Try a different search term or add a camp link to expand our database.</p>
+            <p className="text-sm">Try a different search term or location.</p>
           </div>
         </CardContent>
       </Card>
