@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
@@ -12,6 +13,7 @@ import { PaymentMethodBanner } from '@/components/PaymentMethodBanner'
 
 const HomePage = () => {
   const { user, loading } = useAuth()
+  const navigate = useNavigate()
   const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
     threshold: 0.3,
     freezeOnceVisible: true
@@ -104,9 +106,9 @@ const HomePage = () => {
     }
   }, []);
 
-  const handleRegister = (sessionId) => {
+  const handleRegister = (sessionId: string) => {
     // Navigate to signup page with sessionId for requirements completion
-    window.location.href = `/signup?sessionId=${sessionId}`;
+    navigate(`/signup?sessionId=${sessionId}`);
   };
 
   useEffect(() => {

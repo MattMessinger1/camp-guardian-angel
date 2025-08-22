@@ -149,8 +149,8 @@ const FindCamps: React.FC = () => {
       return;
     }
 
-    // Navigate to existing registration flow with session_id
-    navigate(`/sessions/${sessionId}`);
+    // Navigate to signup page with sessionId for requirements completion
+    navigate(`/signup?sessionId=${sessionId}`);
   };
 
   // Cleanup timeout on unmount
