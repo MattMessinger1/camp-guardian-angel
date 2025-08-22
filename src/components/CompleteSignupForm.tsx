@@ -311,6 +311,25 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
             : "Please check your email to verify your account."
         });
         
+        // If we have a sessionId, create a readiness assessment to link this session to the user
+        if (sessionId) {
+          try {
+            await supabase.from('readiness_assessments').insert({
+              user_id: authData.user.id,
+              session_id: sessionId,
+              assessment_data: {
+                signup_completed: true,
+                payment_method_added: hasPaymentMethod,
+                account_created: true,
+                children_count: children.length,
+                signup_timestamp: new Date().toISOString()
+              }
+            });
+          } catch (error) {
+            console.warn('Failed to create readiness assessment:', error);
+          }
+        }
+        
         onComplete(authData.user);
       }
     } catch (error: any) {

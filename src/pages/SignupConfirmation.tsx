@@ -170,12 +170,13 @@ export default function SignupConfirmation() {
   const statusInfo = getStatusInfo(status);
   const StatusIcon = statusInfo?.icon;
 
-  // Fetch ready signups for this user
+  // Fetch ready signups for this user - including the current session if provided
   const { data: readySignups } = useQuery({
-    queryKey: ['ready-signups', user?.id],
+    queryKey: ['ready-signups', user?.id, sessionId],
     queryFn: async () => {
       if (!user?.id) return [];
       
+      // Get sessions that are ready for signup (registration_open_at is null or in future)
       const { data, error } = await supabase
         .from('sessions')
         .select(`
@@ -187,11 +188,35 @@ export default function SignupConfirmation() {
             canonical_url
           )
         `)
-        .eq('registration_open_at', null) // Sessions ready for signup
+        .is('registration_open_at', null)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      
+      let sessions = data || [];
+      
+      // If we have a specific sessionId (from signup), make sure it's included
+      if (sessionId && !sessions.find(s => s.id === sessionId)) {
+        const { data: currentSession } = await supabase
+          .from('sessions')
+          .select(`
+            *,
+            activities (
+              name,
+              city,
+              state,
+              canonical_url
+            )
+          `)
+          .eq('id', sessionId)
+          .maybeSingle();
+        
+        if (currentSession) {
+          sessions = [currentSession, ...sessions];
+        }
+      }
+      
+      return sessions;
     },
     enabled: !!user?.id
   });
