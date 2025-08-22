@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ interface AuditData {
 
 export default function UIAuditSummary() {
   const [audits, setAudits] = useState<AuditData[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const savedAudits = JSON.parse(localStorage.getItem('ui-audits') || '[]');
@@ -98,7 +100,7 @@ export default function UIAuditSummary() {
                 <p className="text-muted-foreground mb-4">
                   Start auditing your pages to track UI improvements
                 </p>
-                <Button onClick={() => window.location.href = '/'}>
+                <Button onClick={() => navigate('/')}>
                   Go to Homepage
                 </Button>
               </CardContent>
@@ -135,7 +137,7 @@ export default function UIAuditSummary() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => window.location.href = audit.route + '?ui-audit=true'}
+                        onClick={() => navigate(audit.route + '?ui-audit=true')}
                       >
                         Continue Audit
                       </Button>

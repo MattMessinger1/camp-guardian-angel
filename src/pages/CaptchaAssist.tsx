@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, Navigate } from "react-router-dom";
+import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,7 @@ interface Session {
 export default function CaptchaAssist() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   
@@ -265,7 +266,7 @@ export default function CaptchaAssist() {
               <p className="text-red-600">{error}</p>
               <Button 
                 variant="outline" 
-                onClick={() => window.location.href = '/'}
+                onClick={() => navigate('/')}
                 className="mt-4"
               >
                 Return Home

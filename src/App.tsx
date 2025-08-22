@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { logger } from "@/lib/log";
 import HomePage from "./pages/Home";
 import ReservationHolds from "./pages/ReservationHolds";
 import ManualBackup from "./pages/ManualBackup";
@@ -46,14 +47,14 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 export default function App() {
-  console.log('🚀 App component rendering with routes');
+  logger.info('App component rendering with routes', { component: 'App' });
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/test-debug" element={(() => {
-            console.log('🎯 TestDebug route matched and rendering!');
+            logger.info('TestDebug route matched and rendering', { component: 'TestDebug' });
             return <TestDebug />;
           })()} />
           <Route path="/auth" element={<Auth />} />
@@ -65,7 +66,6 @@ export default function App() {
           <Route path="/sessions/:id" element={<SessionDetail />} />
           <Route path="/sessions/:id/signup" element={<SessionSignup />} />
           <Route path="/sessions/:id/ready-to-signup" element={<ReadyToSignup />} />
-          <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
           <Route path="/sessions/:sessionId/confirmation" element={<SignupConfirmation />} />
           <Route path="/account/history" element={<AccountHistory />} />
           <Route path="/approve/:token" element={<ApprovePage />} />

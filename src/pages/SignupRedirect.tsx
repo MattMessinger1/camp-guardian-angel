@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, ExternalLink } from "lucide-react";
@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function SignupRedirect() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionTitle, setSessionTitle] = useState<string>("");

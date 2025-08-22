@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { logger } from "@/lib/log"
 import { Search, Globe, Lock, DollarSign, Clock, User, HelpCircle, Handshake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver"
@@ -27,42 +28,53 @@ const HomePage = () => {
   const handleAISearch = useCallback(async (query) => {
     if (!query.trim()) return;
 
-    console.log('Search initiated for query:', query);
+    logger.info('Search initiated for query', { query, component: 'Home' });
     setIsSearchLoading(true);
 
     try {
       // Step 1: Try fast search first for high-intent users
-      console.log('Attempting fast search first...');
+      logger.info('Attempting fast search first', { component: 'Home' });
       const fastSearchResponse = await supabase.functions.invoke('fast-camp-search', {
         body: { query: query.trim(), limit: 10 }
       });
 
-      console.log('Fast search response:', fastSearchResponse);
+      logger.info('Fast search response received', { 
+        resultCount: fastSearchResponse?.data?.results?.length || 0,
+        duration: fastSearchResponse?.data?.duration_ms,
+        component: 'Home'
+      });
 
       if (fastSearchResponse.data?.success && fastSearchResponse.data?.results?.length > 0) {
         // Fast search found results - use them immediately
-        console.log(`Fast search found ${fastSearchResponse.data.results.length} results`);
+        logger.performance('Fast search completed successfully', 
+          fastSearchResponse.data.duration_ms, {
+            resultCount: fastSearchResponse.data.results.length,
+            component: 'Home'
+          });
         setSearchResults(fastSearchResponse.data.results);
-        console.log(`Fast search completed in ${fastSearchResponse.data.duration_ms}ms with ${fastSearchResponse.data.results.length} results`);
         return;
       }
 
       // Step 2: Fallback to AI search for complex/natural language queries
-      console.log('Fast search found no results, falling back to AI search...');
+      logger.info('Fast search found no results, falling back to AI search', { component: 'Home' });
       const aiSearchResponse = await supabase.functions.invoke('ai-camp-search', {
         body: { query: query.trim(), limit: 10 }
       });
 
-      console.log('AI search response:', aiSearchResponse);
+      logger.info('AI search response received', { 
+        success: aiSearchResponse?.data?.success,
+        resultCount: aiSearchResponse?.data?.results?.length || 0,
+        component: 'Home'
+      });
 
       if (aiSearchResponse.error) {
-        console.error('AI search error:', aiSearchResponse.error);
+        logger.error('AI search failed', { error: aiSearchResponse.error, component: 'Home' });
         throw new Error(aiSearchResponse.error.message || 'AI search failed');
       }
 
       const aiData = aiSearchResponse.data;
       if (!aiData.success) {
-        console.error('AI search failed:', aiData.error);
+        logger.error('AI search failed', { error: aiData.error, component: 'Home' });
         throw new Error(aiData.error || 'AI search failed');
       }
 
@@ -91,18 +103,21 @@ const HomePage = () => {
         reasoning: result.reasoning || 'AI match found'
       }));
 
-      console.log('Processed AI results:', results);
+      logger.info('Processed AI results', { resultCount: results.length, component: 'Home' });
       setSearchResults(results);
-      console.log(`AI search fallback completed with ${results.length} results`);
+      logger.performance('AI search fallback completed', 0, { 
+        resultCount: results.length, 
+        component: 'Home' 
+      });
       
     } catch (error) {
-      console.error('Search error:', error);
+      logger.error('Search error occurred', { error, component: 'Home' });
       setSearchResults([]);
       // Optional: Show a toast notification for errors
       // toast({ title: "Search Error", description: "Unable to search at this time.", variant: "destructive" });
     } finally {
       setIsSearchLoading(false);
-      console.log('Search completed, loading state reset');
+      logger.info('Search completed, loading state reset', { component: 'Home' });
     }
   }, []);
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ interface CompleteSignupFormProps {
 
 export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSignupFormProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Generate a unique key for this form session
   const formStorageKey = `signup-form-${sessionId || 'default'}`;

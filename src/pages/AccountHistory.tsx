@@ -60,12 +60,12 @@ export default function AccountHistory() {
           .order('created_at', { ascending: false });
         
         if (reservationsError) {
-          console.error('Reservations query error:', reservationsError);
+          logger.error('Reservations query error', { error: reservationsError, component: 'AccountHistory' });
           return [];
         }
 
         if (!reservations || reservations.length === 0) {
-          console.log('No reservations found for user');
+          logger.info('No reservations found for user', { userId: user?.id, component: 'AccountHistory' });
           return [];
         }
 

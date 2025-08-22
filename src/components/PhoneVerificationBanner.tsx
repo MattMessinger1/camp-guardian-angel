@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ interface UserProfile {
 
 export default function PhoneVerificationBanner() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -49,7 +51,7 @@ export default function PhoneVerificationBanner() {
   const shouldShowBanner = user && !loading && (!profile?.phone_verified) && !dismissed;
 
   const handleAddPhone = () => {
-    window.location.href = '/settings#phone';
+    navigate('/settings#phone');
   };
 
   const handleEmailFallback = () => {

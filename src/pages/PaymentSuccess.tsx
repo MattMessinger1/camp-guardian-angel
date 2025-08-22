@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { logger } from "@/lib/log";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +35,7 @@ export default function PaymentSuccess() {
   );
 
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [opening, setOpening] = useState(false);
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function PaymentSuccess() {
           body: { type: "activation", user_id: user.id } 
         });
       } catch (e) {
-        console.log("Activation email error:", e);
+        logger.warn('Activation email error', { error: e, component: 'PaymentSuccess' });
       }
     };
     
@@ -86,7 +89,7 @@ export default function PaymentSuccess() {
   const handleSkip = () => {
     // Hide banners for this session only; pages will still check if card is saved
     sessionStorage.setItem("hide_save_card_banner", "1");
-    window.location.href = "/sessions";
+    navigate("/sessions");
   };
 
   return (
