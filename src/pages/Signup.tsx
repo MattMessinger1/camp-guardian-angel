@@ -35,11 +35,7 @@ export default function Signup() {
   const sessionId = searchParams.get('sessionId');
 
   const handleComplete = (user: any) => {
-    if (sessionId) {
-      navigate(`/sessions/${sessionId}/ready-to-signup`, { replace: true });
-    } else {
-      navigate("/dashboard", { replace: true });
-    }
+    navigate(`/sessions/${sessionId}/ready-to-signup`, { replace: true });
   };
 
   return (
