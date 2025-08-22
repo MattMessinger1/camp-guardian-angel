@@ -63,7 +63,6 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
   const [loading, setLoading] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
   const [upfrontPaymentConsent, setUpfrontPaymentConsent] = useState(false);
-  const [successFeeConsent, setSuccessFeeConsent] = useState(false);
 
   const addChild = () => {
     if (children.length >= 5) {
@@ -216,11 +215,6 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
 
     if (!upfrontPaymentConsent) {
       toast({ title: "Payment consent required", description: "Please agree to the upfront payment terms." });
-      return;
-    }
-
-    if (!successFeeConsent) {
-      toast({ title: "Success fee consent required", description: "Please agree to the success fee terms." });
       return;
     }
 
@@ -480,9 +474,6 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               <div className="bg-muted/50 p-4 rounded-lg space-y-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold text-base">Activity Signup Payment</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    
-                  </p>
                 </div>
                 
                 <div className="flex items-start gap-3">
@@ -498,31 +489,6 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                     <div className="text-xs text-muted-foreground italic mt-1">
                       (This activity requires a payment upon signup. You'll pay the remaining balance directly on the camp provider's website after signup.)
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Success Fee Section */}
-              <div className="bg-muted/50 p-4 rounded-lg space-y-4">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-base">CampRush Service Fee</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    A $20 success fee applies only when we successfully register your child for camp. 
-                    No charge for unsuccessful attempts.
-                  </p>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Checkbox 
-                    id="successFeeConsent"
-                    checked={successFeeConsent}
-                    onCheckedChange={(checked) => setSuccessFeeConsent(checked === true)}
-                  />
-                  <div className="text-sm leading-relaxed">
-                    <Label htmlFor="successFeeConsent" className="cursor-pointer font-medium">
-                      I agree to pay the $20 CampRush service fee only if my child is successfully 
-                      registered for camp. No fee if registration is unsuccessful.
-                    </Label>
                   </div>
                 </div>
               </div>
