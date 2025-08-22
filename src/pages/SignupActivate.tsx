@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { logger } from "@/lib/log";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +45,7 @@ export default function SignupActivate() {
   );
 
   useEffect(() => {
-    console.log('debug:states', { authState, activationState, phase });
+    logger.info('SignupActivate state change', { authState, activationState, phase, component: 'SignupActivate' });
   }, [authState, activationState, phase]);
 
   const ok = searchParams.get("ok") === "1";
@@ -58,23 +59,23 @@ export default function SignupActivate() {
     const desc = activated ? "Your signup fee is confirmed." : "Complete a one-time $9 activation fee to unlock your dashboard.";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", desc);
-    console.log('SEO:update', { title, activated, desc });
+    logger.info('SEO updated for SignupActivate', { title, activated, description: desc, component: 'SignupActivate' });
   }, [title, activated]);
 
   const getActivationStatus = async (): Promise<boolean> => {
     try {
       setErrorMsg(null);
       setDetailedError(null);
-      console.log('activation-status:request');
+      logger.info('Checking activation status', { component: 'SignupActivate' });
       const { data, error } = await supabase.functions.invoke("activation-status");
       if (!error) {
         const activated = Boolean((data as any)?.activated);
-        console.log('activation-status:response', data, { activated });
+        logger.info('Activation status received', { activated, component: 'SignupActivate' });
         setActivated(activated);
         return activated;
       }
       // Fallback to direct query if function is unavailable or errors out
-      console.warn('activation-status:function_error -> fallback_query', error);
+      logger.warn('Activation status function error, using fallback query', { error, component: 'SignupActivate' });
       const { data: row, error: qError } = await supabase
         .from('payments')
         .select('id')
@@ -83,18 +84,18 @@ export default function SignupActivate() {
         .limit(1)
         .maybeSingle();
       if (qError) {
-        console.error('activation-status:fallback_query_error', qError);
+        logger.error('Activation status fallback query failed', { error: qError, component: 'SignupActivate' });
         setErrorMsg(qError.message);
         setPhase('error');
         setActivated(false);
         return false;
       }
       const activated = Boolean(row);
-      console.log('activation-status:fallback_result', { activated });
+      logger.info('Activation status fallback result', { activated, component: 'SignupActivate' });
       setActivated(activated);
       return activated;
     } catch (e: any) {
-      console.error('activation-status:exception', e);
+      logger.error('Activation status check failed', { error: e, component: 'SignupActivate' });
       setErrorMsg(e?.message ?? 'Unknown error');
       setPhase('error');
       return false;
@@ -110,15 +111,15 @@ export default function SignupActivate() {
 
       setPhase('creating_checkout');
       setDetailedError(null);
-      console.log('phase:creating_checkout');
-      console.log('Invoking create-payment function...');
+      logger.info('Creating payment checkout', { component: 'SignupActivate' });
+      logger.info('Invoking create-payment function', { component: 'SignupActivate' });
       
       const { data, error } = await supabase.functions.invoke("create-payment");
       
-      console.log('create-payment response:', { data, error });
+      logger.info('Create payment response received', { hasData: !!data, hasError: !!error, component: 'SignupActivate' });
       
       if (error) {
-        console.error('create-payment:error', error);
+        logger.error('Create payment function failed', { error, component: 'SignupActivate' });
         setPhase('error');
         setDetailedError(`Function error: ${error.message}`);
         toast({ title: "Payment error", description: error.message, variant: "destructive" });
@@ -127,7 +128,7 @@ export default function SignupActivate() {
       
       const url = (data as any)?.url as string | undefined;
       if (!url) {
-        console.error('create-payment:no_url_returned', data);
+        logger.error('No checkout URL returned from create-payment', { data, component: 'SignupActivate' });
         setPhase('error');
         setDetailedError('No checkout URL returned from Stripe');
         toast({ title: "Payment error", description: "No checkout URL returned.", variant: "destructive" });
@@ -135,11 +136,10 @@ export default function SignupActivate() {
       }
       
       setPhase('redirecting');
-      console.log('phase:redirecting', { url });
-      console.log('checkout url', url);
+      logger.info('Redirecting to Stripe checkout', { hasUrl: !!url, component: 'SignupActivate' });
       setCheckoutUrl(url);
       
-      console.log('Redirecting to Stripe Checkout...');
+      logger.info('Opening Stripe checkout', { component: 'SignupActivate' });
       // Open immediately to avoid popup blockers; fallback link remains visible
       if (window.top && window.top !== window.self) {
         window.open(url, '_blank', 'noopener,noreferrer');

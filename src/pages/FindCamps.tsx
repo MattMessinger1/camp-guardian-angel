@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { logger } from "@/lib/log";
 import { Target, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,7 +59,12 @@ const FindCamps: React.FC = () => {
     setLastQuery(query);
 
     try {
-      console.log('Performing search:', { query, additionalParams });
+      logger.info('Performing search', { 
+        query, 
+        city: additionalParams.city,
+        state: additionalParams.state,
+        component: 'FindCamps' 
+      });
 
       const searchPayload = {
         query: query.trim(),
@@ -80,7 +86,12 @@ const FindCamps: React.FC = () => {
         throw new Error(response.error || 'Search failed');
       }
 
-      console.log('Search response:', response);
+      logger.info('Search response received', {
+        success: !!response.success,
+        resultCount: response.results?.length || 0,
+        hasError: !response.success,
+        component: 'FindCamps'
+      });
 
       setSearchResults(response.results || []);
       setClarifyingQuestions(response.clarifying_questions || []);

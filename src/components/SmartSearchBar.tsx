@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button } from "@/components/ui/button"
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { logger } from "@/lib/log";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -18,7 +19,7 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({ className }) => 
     
     if (!query.trim()) return
 
-    console.log('SmartSearchBar: Navigating with query:', query)
+    logger.info('SmartSearchBar navigation', { query, component: 'SmartSearchBar' });
     // Navigate directly to results page - let the backend handle query parsing
     navigate(`/search/results?q=${encodeURIComponent(query)}`)
   }

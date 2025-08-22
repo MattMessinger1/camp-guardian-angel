@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { logger } from "@/lib/log";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -86,7 +87,10 @@ export function ComplianceMonitoringDashboard() {
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'compliance_audit' },
         (payload) => {
-          console.log('New compliance event:', payload);
+          logger.info('New compliance event received', { 
+            eventType: payload.new?.event_type,
+            component: 'ComplianceMonitoringDashboard' 
+          });
           handleRealtimeAlert(payload.new);
         }
       )
