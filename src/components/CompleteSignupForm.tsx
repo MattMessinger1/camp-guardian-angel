@@ -513,13 +513,8 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
           <CardTitle className="flex items-center gap-2 text-2xl">
             <User className="h-6 w-6" />
             Complete Your Signup
-            {sessionId && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                • AI-Optimized
-              </span>
-            )}
           </CardTitle>
-          <p className="text-muted-foreground text-sm mt-2">
+          <p className="text-muted-foreground text-sm mt-2 text-center">
             Enter info once, we'll save for future signups.
           </p>
           {requirementsError && (
