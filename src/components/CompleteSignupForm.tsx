@@ -31,6 +31,7 @@ interface SessionRequirements {
     email_required: boolean;
   };
   payment_required: boolean;
+  payment_amount?: number;
 }
 
 interface CompleteSignupFormProps {
@@ -135,7 +136,8 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               sms_required: data.communication_preferences?.sms_required || false,
               email_required: data.communication_preferences?.email_required || true
             },
-            payment_required: data.payment_required !== false // Default to true unless explicitly false
+            payment_required: data.payment_required !== false, // Default to true unless explicitly false
+            payment_amount: data.payment_amount
           };
 
           setRequirements(sessionReqs);
@@ -475,11 +477,15 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               {/* Upfront Payment Section */}
               <div className="bg-muted/50 p-4 rounded-lg space-y-4">
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-base">Camp Registration Payment</h4>
+                  <h4 className="font-semibold text-base">Activity Signup Payment</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Most camps require an upfront payment at registration (typically $75-$150). 
-                    This payment is due immediately when we successfully register your child. 
-                    You'll pay the remaining balance directly on the camp provider's website after registration.
+                    {requirements?.payment_amount ? (
+                      <>This activity requires a payment of ${requirements.payment_amount} immediately when we successfully register your child.</>
+                    ) : (
+                      <>This payment is due immediately when we successfully register your child.</>
+                    )}
+                    {" "}You'll pay the remaining balance directly on the camp provider's website after registration.
                   </p>
                 </div>
                 
