@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.tos-compliance-checker]
 verify_jwt = false
 
+[functions.tos-monitor]
+verify_jwt = false
+
 [functions.fast-camp-search]
 verify_jwt = false
 

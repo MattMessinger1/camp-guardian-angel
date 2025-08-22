@@ -301,6 +301,7 @@ export type Database = {
       camp_provider_partnerships: {
         Row: {
           api_endpoint: string | null
+          confidence_score: number | null
           contact_email: string | null
           created_at: string
           hostname: string
@@ -315,6 +316,7 @@ export type Database = {
         }
         Insert: {
           api_endpoint?: string | null
+          confidence_score?: number | null
           contact_email?: string | null
           created_at?: string
           hostname: string
@@ -329,6 +331,7 @@ export type Database = {
         }
         Update: {
           api_endpoint?: string | null
+          confidence_score?: number | null
           contact_email?: string | null
           created_at?: string
           hostname?: string
@@ -1161,6 +1164,65 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      partnership_interactions: {
+        Row: {
+          contact_email: string | null
+          contact_person: string | null
+          contact_role: string | null
+          created_at: string
+          created_by: string | null
+          documents_exchanged: string[] | null
+          follow_up_date: string | null
+          follow_up_required: boolean | null
+          id: string
+          interaction_date: string
+          interaction_summary: string
+          interaction_type: string
+          outcome: string | null
+          partnership_id: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_role?: string | null
+          created_at?: string
+          created_by?: string | null
+          documents_exchanged?: string[] | null
+          follow_up_date?: string | null
+          follow_up_required?: boolean | null
+          id?: string
+          interaction_date?: string
+          interaction_summary: string
+          interaction_type: string
+          outcome?: string | null
+          partnership_id: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_role?: string | null
+          created_at?: string
+          created_by?: string | null
+          documents_exchanged?: string[] | null
+          follow_up_date?: string | null
+          follow_up_required?: boolean | null
+          id?: string
+          interaction_date?: string
+          interaction_summary?: string
+          interaction_type?: string
+          outcome?: string | null
+          partnership_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnership_interactions_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "camp_provider_partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -3354,6 +3416,57 @@ export type Database = {
           },
         ]
       }
+      tos_change_log: {
+        Row: {
+          change_analysis: Json | null
+          change_detected_at: string
+          created_at: string
+          hostname: string
+          id: string
+          impact_on_automation: string | null
+          new_analysis: Json | null
+          previous_analysis: Json | null
+          recommended_action: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          significance: string | null
+          url: string
+        }
+        Insert: {
+          change_analysis?: Json | null
+          change_detected_at?: string
+          created_at?: string
+          hostname: string
+          id?: string
+          impact_on_automation?: string | null
+          new_analysis?: Json | null
+          previous_analysis?: Json | null
+          recommended_action?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          significance?: string | null
+          url: string
+        }
+        Update: {
+          change_analysis?: Json | null
+          change_detected_at?: string
+          created_at?: string
+          hostname?: string
+          id?: string
+          impact_on_automation?: string | null
+          new_analysis?: Json | null
+          previous_analysis?: Json | null
+          recommended_action?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          significance?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       tos_compliance_cache: {
         Row: {
           analysis_result: Json
@@ -3377,6 +3490,51 @@ export type Database = {
           expires_at?: string
           hostname?: string | null
           id?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      tos_monitoring_schedule: {
+        Row: {
+          created_at: string
+          error_count: number
+          frequency: string
+          hostname: string
+          id: string
+          last_change_detected: string | null
+          last_checked: string | null
+          metadata: Json | null
+          next_check: string
+          status: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number
+          frequency: string
+          hostname: string
+          id?: string
+          last_change_detected?: string | null
+          last_checked?: string | null
+          metadata?: Json | null
+          next_check: string
+          status?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          error_count?: number
+          frequency?: string
+          hostname?: string
+          id?: string
+          last_change_detected?: string | null
+          last_checked?: string | null
+          metadata?: Json | null
+          next_check?: string
+          status?: string
+          updated_at?: string
           url?: string
         }
         Relationships: []
@@ -3746,6 +3904,10 @@ export type Database = {
       calculate_communication_cadence: {
         Args: { days_until_signup: number }
         Returns: string
+      }
+      calculate_partnership_effectiveness: {
+        Args: { p_partnership_id: string }
+        Returns: number
       }
       calculate_pattern_effectiveness: {
         Args: { p_pattern_id: string }
