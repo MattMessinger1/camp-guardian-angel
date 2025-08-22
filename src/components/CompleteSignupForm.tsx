@@ -275,11 +275,14 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
       if (error) throw error;
 
       if (data?.url) {
-        // Save form data before redirecting
-        saveFormData();
-        
-        // Redirect to Stripe in same tab for better UX
-        window.location.href = data.url;
+        // Open Stripe setup in new tab (simpler, more reliable)
+        window.open(data.url, '_blank');
+        toast({
+          title: "Payment setup opened",
+          description: "Complete the payment setup in the new tab, then come back here and refresh."
+        });
+        // Set payment method to true immediately since we opened Stripe
+        setHasPaymentMethod(true);
       }
     } catch (error: any) {
       console.error('Payment setup error:', error);
