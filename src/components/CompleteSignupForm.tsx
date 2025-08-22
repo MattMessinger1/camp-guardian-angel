@@ -481,8 +481,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                 <div className="space-y-2">
                   <h4 className="font-semibold text-base">Activity Signup Payment</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    This activity requires a payment of {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<insert amount here based on OpenAI scraping it>>'} immediately when we successfully register your child. 
-                    You'll pay the remaining balance directly on the camp provider's website after registration.
+                    
                   </p>
                 </div>
                 
@@ -496,6 +495,9 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                     <Label htmlFor="upfrontConsent" className="cursor-pointer font-medium">
                       I agree to pay the required Activity Signup Fee of {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<<insert amount>>>'}.
                     </Label>
+                    <div className="text-xs text-muted-foreground italic mt-1">
+                      (This activity requires a payment upon signup. You'll pay the remaining balance directly on the camp provider's website after signup.)
+                    </div>
                   </div>
                 </div>
               </div>
