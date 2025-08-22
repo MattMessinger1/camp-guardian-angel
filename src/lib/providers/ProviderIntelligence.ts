@@ -8,7 +8,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { detectPlatform } from './index';
 
-export interface ProviderIntelligence {
+export interface ProviderIntelligenceData {
   providerId?: string;
   hostname: string;
   complianceStatus: 'green' | 'yellow' | 'red';
@@ -66,13 +66,13 @@ export interface AutomationRule {
 }
 
 export class ProviderIntelligence {
-  private intelligenceCache = new Map<string, ProviderIntelligence>();
+  private intelligenceCache = new Map<string, ProviderIntelligenceData>();
   private rulesCache = new Map<string, AutomationRule[]>();
 
   /**
    * Analyze provider and return intelligence profile
    */
-  async analyzeProvider(url: string): Promise<ProviderIntelligence> {
+  async analyzeProvider(url: string): Promise<ProviderIntelligenceData> {
     const hostname = this.extractHostname(url);
     
     // Check cache first
@@ -116,13 +116,27 @@ export class ProviderIntelligence {
       const { data, error } = await supabase
         .from('automation_rules')
         .select('*')
-        .eq('provider_id', providerId)
+        .eq('provider_hostname', providerId)
         .eq('enabled', true)
         .order('priority', { ascending: false });
 
       if (error) throw error;
 
-      const rules = data as AutomationRule[];
+      const rules = (data?.map(rule => ({
+        id: rule.id,
+        providerId: rule.provider_hostname,
+        ruleType: rule.rule_type,
+        condition: rule.condition,
+        action: rule.action,
+        priority: rule.priority,
+        successRate: rule.success_rate,
+        confidenceScore: rule.confidence_score,
+        parameters: rule.parameters as Record<string, any>,
+        enabled: rule.enabled,
+        createdAt: rule.created_at,
+        lastUsed: rule.last_used,
+        lastUpdated: rule.last_updated
+      })) as AutomationRule[]) || [];
       this.rulesCache.set(providerId, rules);
       return rules;
     } catch (error) {
@@ -196,7 +210,7 @@ export class ProviderIntelligence {
   /**
    * Get provider-specific configuration
    */
-  async getProviderConfig(url: string): Promise<ProviderIntelligence['config']> {
+  async getProviderConfig(url: string): Promise<ProviderIntelligenceData['config']> {
     const intelligence = await this.analyzeProvider(url);
     return intelligence.config;
   }
@@ -274,7 +288,7 @@ export class ProviderIntelligence {
   private async createIntelligenceProfile(
     url: string, 
     profile: any
-  ): Promise<ProviderIntelligence> {
+    ): Promise<ProviderIntelligenceData> {
     const hostname = this.extractHostname(url);
     
     // Run compliance check
@@ -316,9 +330,9 @@ export class ProviderIntelligence {
   }
 
   private async updateIntelligence(
-    existing: ProviderIntelligence, 
+    existing: ProviderIntelligenceData, 
     url: string
-  ): Promise<ProviderIntelligence> {
+  ): Promise<ProviderIntelligenceData> {
     // Re-check compliance if it's been more than 24 hours
     const lastCheck = new Date(existing.lastAnalyzed);
     const now = new Date();
@@ -381,7 +395,7 @@ export class ProviderIntelligence {
     }
   }
 
-  private async assessCapabilities(url: string, profile: any): Promise<ProviderIntelligence['capabilities']> {
+  private async assessCapabilities(url: string, profile: any): Promise<ProviderIntelligenceData['capabilities']> {
     // Default capabilities based on platform
     const baseCapabilities = {
       formAutomation: true,
@@ -401,14 +415,22 @@ export class ProviderIntelligence {
     return baseCapabilities;
   }
 
-  private async saveProviderIntelligence(intelligence: ProviderIntelligence): Promise<void> {
+  private async saveProviderIntelligence(intelligence: ProviderIntelligenceData): Promise<void> {
     try {
       const { error } = await supabase
         .from('provider_intelligence')
         .upsert({
           hostname: intelligence.hostname,
           provider_id: intelligence.providerId,
-          intelligence_data: intelligence,
+          intelligence_data: {
+            capabilities: intelligence.capabilities,
+            metrics: intelligence.metrics,
+            complianceNotes: intelligence.complianceNotes,
+            riskFactors: intelligence.riskFactors,
+            config: intelligence.config,
+            tosVersion: intelligence.tosVersion,
+            tosLastUpdated: intelligence.tosLastUpdated
+          },
           compliance_status: intelligence.complianceStatus,
           relationship_status: intelligence.relationshipStatus,
           confidence_score: intelligence.confidenceScore,
@@ -421,7 +443,7 @@ export class ProviderIntelligence {
     }
   }
 
-  private async loadProviderIntelligence(hostname: string): Promise<ProviderIntelligence | null> {
+  private async loadProviderIntelligence(hostname: string): Promise<ProviderIntelligenceData | null> {
     try {
       const { data, error } = await supabase
         .from('provider_intelligence')
@@ -430,7 +452,7 @@ export class ProviderIntelligence {
         .maybeSingle();
 
       if (error) throw error;
-      return data?.intelligence_data as ProviderIntelligence || null;
+      return (data?.intelligence_data as unknown as ProviderIntelligenceData) || null;
     } catch (error) {
       console.error('Failed to load provider intelligence:', error);
       return null;
@@ -445,13 +467,13 @@ export class ProviderIntelligence {
     }
   }
 
-  private isCacheValid(intelligence: ProviderIntelligence): boolean {
+  private isCacheValid(intelligence: ProviderIntelligenceData): boolean {
     const lastAnalyzed = new Date(intelligence.lastAnalyzed);
     const hoursSince = (Date.now() - lastAnalyzed.getTime()) / (1000 * 60 * 60);
     return hoursSince < 6; // Cache valid for 6 hours
   }
 
-  private getCapabilityForType(automationType: string): keyof ProviderIntelligence['capabilities'] {
+  private getCapabilityForType(automationType: string): keyof ProviderIntelligenceData['capabilities'] {
     switch (automationType) {
       case 'form_fill': return 'formAutomation';
       case 'captcha': return 'captchaPrevention';

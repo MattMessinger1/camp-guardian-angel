@@ -232,7 +232,7 @@ export class CaptchaHandler {
       const recoveryResult = await stateRecovery.detectAndRecover(sessionId, {
         errorType: 'captcha_resume_failed',
         errorMessage: error.message,
-        captchaContext: captchaEvent
+        lastKnownState: captchaEvent
       });
 
       return {

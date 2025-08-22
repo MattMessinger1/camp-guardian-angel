@@ -8,7 +8,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { StateSerializer } from './StateSerializer';
 import { StateRecovery } from './StateRecovery';
-import { ProviderIntelligence } from '../providers/ProviderIntelligence';
+import { ProviderIntelligence, ProviderIntelligenceData } from '../providers/ProviderIntelligence';
 
 export interface SessionState {
   id: string;
@@ -397,7 +397,7 @@ export class SessionStateManager {
           user_id: state.userId,
           provider_url: state.providerUrl,
           provider_id: state.providerId,
-          state_data: state,
+          state_data: JSON.parse(JSON.stringify(state)),
           expires_at: state.expiresAt,
           updated_at: state.updatedAt
         });
@@ -420,7 +420,7 @@ export class SessionStateManager {
       if (error) throw error;
       if (!data) return null;
 
-      return data.state_data as SessionState;
+      return JSON.parse(JSON.stringify(data.state_data)) as SessionState;
     } catch (error) {
       console.error('Failed to load session state:', error);
       return null;

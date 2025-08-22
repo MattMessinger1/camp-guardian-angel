@@ -806,6 +806,7 @@ export type Database = {
       }
       captcha_events: {
         Row: {
+          captcha_context: Json | null
           challenge_url: string | null
           created_at: string
           detected_at: string
@@ -823,6 +824,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          captcha_context?: Json | null
           challenge_url?: string | null
           created_at?: string
           detected_at?: string
@@ -840,6 +842,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          captcha_context?: Json | null
           challenge_url?: string | null
           created_at?: string
           detected_at?: string
@@ -1057,6 +1060,51 @@ export type Database = {
         }
         Relationships: []
       }
+      compliance_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          alert_type: string
+          auto_resolve: boolean | null
+          created_at: string
+          details: Json | null
+          escalation_level: number | null
+          id: string
+          message: string
+          provider: string
+          resolved_at: string | null
+          severity: string
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          alert_type: string
+          auto_resolve?: boolean | null
+          created_at?: string
+          details?: Json | null
+          escalation_level?: number | null
+          id?: string
+          message: string
+          provider: string
+          resolved_at?: string | null
+          severity: string
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          alert_type?: string
+          auto_resolve?: boolean | null
+          created_at?: string
+          details?: Json | null
+          escalation_level?: number | null
+          id?: string
+          message?: string
+          provider?: string
+          resolved_at?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       compliance_audit: {
         Row: {
           created_at: string | null
@@ -1067,6 +1115,7 @@ export type Database = {
           ip_address: unknown | null
           payload_summary: string | null
           reservation_id: string | null
+          retry_at: string | null
           session_id: string | null
           user_agent: string | null
           user_id: string | null
@@ -1080,6 +1129,7 @@ export type Database = {
           ip_address?: unknown | null
           payload_summary?: string | null
           reservation_id?: string | null
+          retry_at?: string | null
           session_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -1093,6 +1143,7 @@ export type Database = {
           ip_address?: unknown | null
           payload_summary?: string | null
           reservation_id?: string | null
+          retry_at?: string | null
           session_id?: string | null
           user_agent?: string | null
           user_id?: string | null

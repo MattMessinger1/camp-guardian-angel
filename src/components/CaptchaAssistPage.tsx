@@ -99,9 +99,9 @@ export function CaptchaAssistPage() {
         session_id: data.session_id,
         provider: data.provider,
         challenge_url: data.challenge_url,
-        captcha_type: data.meta?.captchaType || 'unknown',
-        difficulty: data.meta?.difficulty || 'medium',
-        queue_position: data.meta?.queuePosition,
+        captcha_type: (data.meta as any)?.captchaType || 'unknown',
+        difficulty: (data.meta as any)?.difficulty || 'medium',
+        queue_position: (data.meta as any)?.queuePosition,
         expires_at: data.expires_at,
         status: data.status
       });

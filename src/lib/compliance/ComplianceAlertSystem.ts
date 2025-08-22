@@ -401,10 +401,14 @@ export class ComplianceAlertSystem {
     }
 
     // Update alert status
-    await supabase
-      .from('compliance_alerts')
-      .update({ acknowledged: true, acknowledged_at: new Date().toISOString() })
-      .eq('id', alertId);
+    try {
+      await supabase
+        .from('compliance_alerts')
+        .update({ acknowledged: true, acknowledged_at: new Date().toISOString() })
+        .eq('id', alertId);
+    } catch (error) {
+      console.error('Failed to acknowledge alert:', error);
+    }
   }
 
   // Private helper methods
@@ -442,11 +446,11 @@ export class ComplianceAlertSystem {
         .from('provider_intelligence')
         .update({
           compliance_status: 'red',
-          intelligence_data: supabase.rpc('jsonb_set', {
-            target: 'intelligence_data',
-            path: '{automationDisabled}',
-            new_value: true
-          })
+          intelligence_data: {
+            automationDisabled: true,
+            disabledAt: new Date().toISOString(),
+            reason: reason
+          }
         })
         .eq('hostname', provider);
 

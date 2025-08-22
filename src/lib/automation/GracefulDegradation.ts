@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { providerIntelligence } from '../providers/ProviderIntelligence';
 import { sessionStateManager } from '../state/SessionStateManager';
 import { complianceAlertSystem } from '../compliance/ComplianceAlertSystem';
+import { stateRecovery } from '../state/StateRecovery';
 
 export interface DegradationScenario {
   type: 'tos_violation' | 'block_detected' | 'captcha_required' | 'provider_down' | 'manual_required';
@@ -534,11 +535,15 @@ export class GracefulDegradation {
     const retryAt = new Date(Date.now() + delayMinutes * 60 * 1000);
     
     await supabase.from('compliance_audit').insert({
+      event_type: 'RETRY_SCHEDULED',
+      event_data: {
+        scenario_type: scenario.type,
+        provider: scenario.provider,
+        retry_count: 1
+      },
+      payload_summary: `Retry scheduled for ${scenario.provider}`,
       session_id: sessionId,
-      retry_at: retryAt.toISOString(),
-      scenario_type: scenario.type,
-      provider: scenario.provider,
-      retry_count: 1
+      retry_at: retryAt.toISOString()
     });
   }
 
