@@ -63,6 +63,13 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
   const [consentGiven, setConsentGiven] = useState(false);
 
   const addChild = () => {
+    if (children.length >= 5) {
+      toast({ 
+        title: "Maximum children reached", 
+        description: "You can add up to 5 children per account. This prevents gaming and ensures fair access." 
+      });
+      return;
+    }
     setChildren([...children, { name: "", dob: "" }]);
   };
 
@@ -206,11 +213,11 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
       return;
     }
 
-    // Check for potential duplicates before creating account
+    // Check for potential duplicates and account limits before creating account
     try {
       const duplicateChecks = await Promise.all(
         children.map(async (child) => {
-          const { data, error } = await supabase.functions.invoke('detect-duplicates', {
+          const { data, error } = await supabase.functions.invoke('detect-child-duplicates', {
             body: {
               child_name: child.name.trim(),
               child_dob: child.dob
@@ -218,25 +225,23 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
           });
           
           if (error) {
-            console.warn('Duplicate check failed:', error);
+            console.warn('Child duplicate check failed:', error);
             return null;
           }
           
-          return data?.potential_duplicates?.length > 0 ? {
-            child: child.name,
-            duplicates: data.potential_duplicates
-          } : null;
+          return data;
         })
       );
 
-      const duplicates = duplicateChecks.filter(Boolean);
+      const duplicates = duplicateChecks.filter(result => result?.duplicate_found);
       if (duplicates.length > 0) {
-        const duplicateNames = duplicates.map(d => d.child).join(', ');
+        const duplicateNames = duplicates.map((_, index) => children[index].name).join(', ');
         toast({
-          title: "Potential duplicate detected",
-          description: `Similar children found for: ${duplicateNames}. Proceeding with enhanced verification.`,
-          variant: "default"
+          title: "Duplicate child detected",
+          description: `This child appears to already exist in our system: ${duplicateNames}. If this seems wrong, contact support.`,
+          variant: "destructive"
         });
+        return;
       }
     } catch (error) {
       console.warn('Duplicate detection failed, proceeding anyway:', error);
@@ -437,10 +442,11 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                   variant="outline"
                   size="sm"
                   onClick={addChild}
+                  disabled={children.length >= 5}
                   className="w-fit"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Another Child
+                  Add Another Child {children.length >= 5 && "(Max 5)"}
                 </Button>
               </div>
             </div>
