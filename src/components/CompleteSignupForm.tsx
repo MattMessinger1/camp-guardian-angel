@@ -42,6 +42,9 @@ interface CompleteSignupFormProps {
 export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSignupFormProps) {
   const { toast } = useToast();
   
+  // Generate a unique key for this form session
+  const formStorageKey = `signup-form-${sessionId || 'default'}`;
+  
   // Account info
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -88,6 +91,65 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
     );
     setChildren(updated);
   };
+
+  // Save form data to localStorage
+  const saveFormData = () => {
+    const formData = {
+      email,
+      password,
+      guardianName,
+      children,
+      hasPaymentMethod,
+      consentGiven,
+      upfrontPaymentConsent,
+      successFeeConsent,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(formStorageKey, JSON.stringify(formData));
+  };
+
+  // Restore form data from localStorage
+  const restoreFormData = () => {
+    try {
+      const saved = localStorage.getItem(formStorageKey);
+      if (saved) {
+        const formData = JSON.parse(saved);
+        // Only restore if saved within last 30 minutes
+        if (Date.now() - formData.timestamp < 30 * 60 * 1000) {
+          setEmail(formData.email || "");
+          setPassword(formData.password || "");
+          setGuardianName(formData.guardianName || "");
+          setChildren(formData.children || [{ name: "", dob: "" }]);
+          setHasPaymentMethod(formData.hasPaymentMethod || false);
+          setConsentGiven(formData.consentGiven || false);
+          setUpfrontPaymentConsent(formData.upfrontPaymentConsent || false);
+          setSuccessFeeConsent(formData.successFeeConsent || false);
+          
+          // Scroll to payment section if returning from Stripe
+          if (formData.hasPaymentMethod) {
+            setTimeout(() => {
+              const paymentSection = document.querySelector('[data-section="payment"]');
+              if (paymentSection) {
+                paymentSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 100);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to restore form data:', error);
+    }
+  };
+
+  // Auto-save form data when key fields change
+  useEffect(() => {
+    saveFormData();
+  }, [email, password, guardianName, children, hasPaymentMethod, consentGiven, upfrontPaymentConsent, successFeeConsent]);
+
+  // Restore form data on component mount
+  useEffect(() => {
+    restoreFormData();
+  }, []);
 
   // Load session-specific requirements with PHI blocking
   useEffect(() => {
@@ -199,13 +261,11 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
       if (error) throw error;
 
       if (data?.url) {
-        // Open Stripe setup in new tab
-        window.open(data.url, '_blank');
-        toast({
-          title: "Payment setup opened",
-          description: "Complete the payment setup in the new tab, then come back here."
-        });
-        setHasPaymentMethod(true);
+        // Save form data before redirecting
+        saveFormData();
+        
+        // Redirect to Stripe in same tab for better UX
+        window.location.href = data.url;
       }
     } catch (error: any) {
       console.error('Payment setup error:', error);
@@ -337,6 +397,9 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
             console.warn('Failed to create readiness assessment:', error);
           }
         }
+        
+        // Clear saved form data on successful signup
+        localStorage.removeItem(formStorageKey);
         
         onComplete(authData.user);
       }
@@ -519,7 +582,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
             <Separator />
 
             {/* Payment Information */}
-            <div className="space-y-6">
+            <div className="space-y-6" data-section="payment">
               <div className="flex items-center gap-2 text-lg font-semibold">
                 <CreditCard className="h-5 w-5" />
                 Payment Information
