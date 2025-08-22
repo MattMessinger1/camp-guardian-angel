@@ -164,7 +164,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
   const handleAddPaymentMethod = async () => {
     setPaymentLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-payment-setup');
+      const { data, error } = await supabase.functions.invoke('create-setup-session');
 
       if (error) throw error;
 
