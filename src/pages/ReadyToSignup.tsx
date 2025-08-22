@@ -26,7 +26,7 @@ import {
 import { RequirementsNotification } from '@/components/RequirementsNotification';
 import { SignupPreparationGuide } from '@/components/SignupPreparationGuide';
 import { SetSignupTimeForm } from '@/components/SetSignupTimeForm';
-import { useSimpleReadiness } from '@/hooks/useSimpleReadiness';
+import { useSmartReadiness } from '@/hooks/useSmartReadiness';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -77,8 +77,8 @@ export default function ReadyToSignup() {
     enabled: !!sessionId
   });
 
-  // Use simple readiness assessment
-  const { assessment, isLoading: assessmentLoading } = useSimpleReadiness(sessionData);
+  // Use AI-powered readiness assessment
+  const { assessment, isLoading: assessmentLoading } = useSmartReadiness(sessionId || '', sessionData);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -209,59 +209,49 @@ export default function ReadyToSignup() {
           />
         )}
 
-        {/* Readiness Score */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Readiness Score</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">{assessment.readinessScore}%</span>
-              <Badge 
-                variant={
-                  assessment.overallStatus === 'ready' ? 'default' :
-                  assessment.overallStatus === 'needs_preparation' ? 'secondary' : 
-                  'destructive'
-                }
-              >
-                {assessment.overallStatus.replace('_', ' ').toUpperCase()}
-              </Badge>
-            </div>
-            <Progress value={assessment.readinessScore} className="w-full" />
-            <p className="text-sm text-muted-foreground">
-              {assessment.overallStatus === 'ready' && "You're all set for registration!"}
-              {assessment.overallStatus === 'needs_preparation' && "A few items need attention before you're ready."}
-              {assessment.overallStatus === 'missing_critical_info' && "Critical information is missing for registration."}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Checklist */}
+        {/* Readiness Checklist */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
-              Readiness Checklist
+              What You Need to Do
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {assessment.checklist.map((item, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg border">
-                  {getStatusIcon(item.status)}
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{item.item}</span>
-                      <Badge variant={getPriorityColor(item.priority) as any}>
-                        {item.priority}
-                      </Badge>
+            {assessment.checklist.some(item => item.status !== 'complete') ? (
+              <div className="space-y-4">
+                {assessment.checklist
+                  .filter(item => item.status !== 'complete')
+                  .map((item, index) => (
+                    <div key={index} className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30">
+                      {getStatusIcon(item.status)}
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-lg">{item.item}</span>
+                          <Badge variant={getPriorityColor(item.priority) as any}>
+                            {item.priority} priority
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground">{item.description}</p>
+                        <div className="text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded">
+                          {item.category}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                    <span className="text-xs text-muted-foreground">{item.category}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
+                <h3 className="text-lg font-semibold mb-2">You're All Set!</h3>
+                <p className="text-muted-foreground">
+                  You've completed all the necessary preparations for signup. 
+                  {assessment.signupReadiness.canSignupNow 
+                    ? " You can proceed to signup now." 
+                    : " Just wait for the registration to open."}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
