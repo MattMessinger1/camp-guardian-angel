@@ -358,6 +358,54 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_rules: {
+        Row: {
+          action: string
+          condition: string
+          confidence_score: number | null
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          last_updated: string | null
+          last_used: string | null
+          parameters: Json | null
+          priority: number | null
+          provider_hostname: string
+          rule_type: string
+          success_rate: number | null
+        }
+        Insert: {
+          action: string
+          condition: string
+          confidence_score?: number | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          last_updated?: string | null
+          last_used?: string | null
+          parameters?: Json | null
+          priority?: number | null
+          provider_hostname: string
+          rule_type: string
+          success_rate?: number | null
+        }
+        Update: {
+          action?: string
+          condition?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          last_updated?: string | null
+          last_used?: string | null
+          parameters?: Json | null
+          priority?: number | null
+          provider_hostname?: string
+          rule_type?: string
+          success_rate?: number | null
+        }
+        Relationships: []
+      }
       billing_profiles: {
         Row: {
           created_at: string
@@ -1048,6 +1096,33 @@ export type Database = {
           session_id?: string | null
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      emergency_backups: {
+        Row: {
+          backup_data: string
+          backup_reason: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          session_id: string
+        }
+        Insert: {
+          backup_data: string
+          backup_reason: string
+          created_at?: string | null
+          expires_at: string
+          id: string
+          session_id: string
+        }
+        Update: {
+          backup_data?: string
+          backup_reason?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          session_id?: string
         }
         Relationships: []
       }
@@ -1775,6 +1850,42 @@ export type Database = {
           },
         ]
       }
+      provider_intelligence: {
+        Row: {
+          compliance_status: string
+          confidence_score: number | null
+          created_at: string | null
+          hostname: string
+          id: string
+          intelligence_data: Json
+          last_analyzed: string | null
+          provider_id: string | null
+          relationship_status: string
+        }
+        Insert: {
+          compliance_status: string
+          confidence_score?: number | null
+          created_at?: string | null
+          hostname: string
+          id?: string
+          intelligence_data: Json
+          last_analyzed?: string | null
+          provider_id?: string | null
+          relationship_status: string
+        }
+        Update: {
+          compliance_status?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          hostname?: string
+          id?: string
+          intelligence_data?: Json
+          last_analyzed?: string | null
+          provider_id?: string | null
+          relationship_status?: string
+        }
+        Relationships: []
+      }
       provider_profiles: {
         Row: {
           captcha_expected: boolean
@@ -2001,6 +2112,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      recovery_logs: {
+        Row: {
+          created_at: string | null
+          estimated_data_loss: number | null
+          id: string
+          next_steps: string[] | null
+          scenario_type: string
+          session_id: string
+          success: boolean
+          warnings: string[] | null
+        }
+        Insert: {
+          created_at?: string | null
+          estimated_data_loss?: number | null
+          id?: string
+          next_steps?: string[] | null
+          scenario_type: string
+          session_id: string
+          success: boolean
+          warnings?: string[] | null
+        }
+        Update: {
+          created_at?: string | null
+          estimated_data_loss?: number | null
+          id?: string
+          next_steps?: string[] | null
+          scenario_type?: string
+          session_id?: string
+          success?: boolean
+          warnings?: string[] | null
+        }
+        Relationships: []
       }
       registration_attempts: {
         Row: {
@@ -3032,6 +3176,33 @@ export type Database = {
           },
         ]
       }
+      session_checkpoints: {
+        Row: {
+          checkpoint_data: Json
+          created_at: string | null
+          id: string
+          queue_position: number | null
+          session_id: string
+          step_name: string
+        }
+        Insert: {
+          checkpoint_data: Json
+          created_at?: string | null
+          id?: string
+          queue_position?: number | null
+          session_id: string
+          step_name: string
+        }
+        Update: {
+          checkpoint_data?: Json
+          created_at?: string | null
+          id?: string
+          queue_position?: number | null
+          session_id?: string
+          step_name?: string
+        }
+        Relationships: []
+      }
       session_requirements: {
         Row: {
           confidence_level: string | null
@@ -3083,6 +3254,42 @@ export type Database = {
           source_urls?: string[] | null
           updated_at?: string | null
           verified_by_user_id?: string | null
+        }
+        Relationships: []
+      }
+      session_states: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          provider_id: string | null
+          provider_url: string
+          session_id: string
+          state_data: Json
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          provider_id?: string | null
+          provider_url: string
+          session_id: string
+          state_data: Json
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          provider_id?: string | null
+          provider_url?: string
+          session_id?: string
+          state_data?: Json
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
