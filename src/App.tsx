@@ -41,6 +41,7 @@ import SignupConfirmation from './pages/SignupConfirmation';
 import AccountHistory from './pages/AccountHistory';
 import ApprovePage from './pages/ApprovePage';
 import Operations from './pages/Operations';
+import ComplianceDashboard from './pages/ComplianceDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/account/history" element={<AccountHistory />} />
           <Route path="/approve/:token" element={<ApprovePage />} />
           <Route path="/operations" element={<ProtectedRoute><Operations /></ProtectedRoute>} />
+          <Route path="/compliance-dashboard" element={<ProtectedRoute><ComplianceDashboard /></ProtectedRoute>} />
           <Route path="/sessions/:id/edit" element={<SessionForm />} />
           <Route path="/children" element={<Children />} />
           <Route path="/settings" element={<Settings />} />
