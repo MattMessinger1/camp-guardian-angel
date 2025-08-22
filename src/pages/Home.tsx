@@ -212,7 +212,7 @@ const HomePage = () => {
                         style={{ 
                           fontSize: '20px', 
                           fontWeight: '700',
-                          maxWidth: '26ch',
+                          maxWidth: '34ch',
                           lineHeight: '1.3',
                           textWrap: 'balance'
                         }}
