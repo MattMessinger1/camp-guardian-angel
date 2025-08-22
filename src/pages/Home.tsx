@@ -137,11 +137,6 @@ const HomePage = () => {
           {user ? `Welcome, ${user.email}` : 'SignUpAssist'}
         </div>
         <div className="flex items-center gap-3">
-          <Link to={user ? "/dashboard" : "/login?redirect=/dashboard"}>
-            <Button variant="default" size="sm">
-              Return to signups in progress
-            </Button>
-          </Link>
           {user && (
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               Sign Out
@@ -267,6 +262,21 @@ const HomePage = () => {
             onSearch={handleAISearch}
             isLoading={isSearchLoading}
           />
+          
+          {/* Return to signups button - centered below search */}
+          {user && (
+            <div className="flex justify-center mt-6 pt-6 border-t border-border/50">
+              <Link to="/dashboard">
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  className="bg-background/80 backdrop-blur-sm hover:bg-background border-border hover:border-primary/50 text-foreground hover:text-primary transition-all duration-200"
+                >
+                  Return to signups in progress
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
