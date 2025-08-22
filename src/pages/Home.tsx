@@ -159,7 +159,7 @@ const HomePage = () => {
         <div className="relative z-10 mx-auto max-w-4xl">
           {/* HERO TEXT BLOCK */}
           <div className="hero-card">
-            <h1 className="hero-title">Get the spot<br />Without refreshing at midnight</h1>
+            <h1 className="hero-title">Get the spot<br />Skip refreshing at midnight</h1>
             <div className="hero-accent" aria-hidden="true"></div>
           </div>
         </div>
