@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -92,8 +92,8 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
     setChildren(updated);
   };
 
-  // Save form data to localStorage
-  const saveFormData = () => {
+  // Save form data to localStorage - memoized to prevent infinite re-renders
+  const saveFormData = useCallback(() => {
     const formData = {
       email,
       password,
@@ -105,11 +105,15 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
       successFeeConsent,
       timestamp: Date.now()
     };
-    localStorage.setItem(formStorageKey, JSON.stringify(formData));
-  };
+    try {
+      localStorage.setItem(formStorageKey, JSON.stringify(formData));
+    } catch (error) {
+      console.warn('Failed to save form data:', error);
+    }
+  }, [formStorageKey, email, password, guardianName, children, hasPaymentMethod, consentGiven, upfrontPaymentConsent, successFeeConsent]);
 
-  // Restore form data from localStorage
-  const restoreFormData = () => {
+  // Restore form data from localStorage - memoized and only runs once
+  const restoreFormData = useCallback(() => {
     try {
       const saved = localStorage.getItem(formStorageKey);
       if (saved) {
@@ -134,22 +138,32 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               }
             }, 100);
           }
+        } else {
+          // Clean up expired data
+          localStorage.removeItem(formStorageKey);
         }
       }
     } catch (error) {
       console.warn('Failed to restore form data:', error);
+      // Clean up corrupted data
+      localStorage.removeItem(formStorageKey);
     }
-  };
+  }, [formStorageKey]);
 
-  // Auto-save form data when key fields change
+  // Auto-save form data when key fields change - now properly memoized
   useEffect(() => {
-    saveFormData();
-  }, [email, password, guardianName, children, hasPaymentMethod, consentGiven, upfrontPaymentConsent, successFeeConsent]);
+    // Small delay to prevent excessive saves during rapid typing
+    const timeoutId = setTimeout(() => {
+      saveFormData();
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [saveFormData]);
 
-  // Restore form data on component mount
+  // Restore form data on component mount - only runs once
   useEffect(() => {
     restoreFormData();
-  }, []);
+  }, [restoreFormData]);
 
   // Load session-specific requirements with PHI blocking
   useEffect(() => {
