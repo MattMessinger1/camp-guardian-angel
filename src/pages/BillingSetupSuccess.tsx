@@ -93,6 +93,9 @@ export default function BillingSetupSuccess() {
           </p>
           <div className="space-y-2">
             <Button asChild className="w-full">
+              <Link to="/signup">Complete Your Signup</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
               <Link to="/dashboard">Go to Dashboard</Link>
             </Button>
           </div>
