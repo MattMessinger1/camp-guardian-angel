@@ -137,7 +137,9 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               email_required: data.communication_preferences?.email_required || true
             },
             payment_required: data.payment_required !== false, // Default to true unless explicitly false
-            payment_amount: data.payment_amount
+            payment_amount: data.discovery?.requirements?.deposit_amount_cents ? 
+              (data.discovery.requirements.deposit_amount_cents / 100).toFixed(0) : 
+              data.payment_amount
           };
 
           setRequirements(sessionReqs);
@@ -479,7 +481,6 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                 <div className="space-y-2">
                   <h4 className="font-semibold text-base">Activity Signup Payment</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Most camps require an upfront payment at registration (typically $75-$150). 
                     This activity requires a payment of {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<insert amount here based on OpenAI scraping it>>'} immediately when we successfully register your child. 
                     You'll pay the remaining balance directly on the camp provider's website after registration.
                   </p>
