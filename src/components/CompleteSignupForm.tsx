@@ -506,10 +506,6 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               <div className="bg-muted/50 p-4 rounded-lg space-y-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold text-base">CampRush Service Fee</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    A $20 success fee applies only when we successfully register your child for camp. 
-                    No charge for unsuccessful attempts.
-                  </p>
                 </div>
                 
                 <div className="flex items-start gap-3">
