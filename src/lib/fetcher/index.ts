@@ -13,3 +13,4 @@ export { publicDataFetcher } from './publicDataFetcher';
 export { robotsChecker } from './robotsChecker';
 export { rateLimiter } from './rateLimiter';
 export { isPublicMode, logPublicDataInfo } from '@/lib/config/publicMode';
+export { browserLifecycle } from '../browser/lifecycle';

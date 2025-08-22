@@ -183,4 +183,97 @@ class RobotsChecker {
   }
 }
 
-export const robotsChecker = new RobotsChecker();
+// Enhanced TOS Compliance Integration
+interface TOSComplianceResult {
+  status: 'green' | 'yellow' | 'red';
+  reason?: string;
+  confidence: number;
+  details?: any;
+  recommendation?: string;
+}
+
+class EnhancedRobotsChecker extends RobotsChecker {
+  async checkTOSCompliance(url: string, campProviderId?: string): Promise<TOSComplianceResult> {
+    try {
+      // First check basic robots.txt
+      const robotsResult = await this.isAllowed(url);
+      
+      if (!robotsResult.allowed) {
+        return {
+          status: 'red',
+          reason: robotsResult.reason || 'Robots.txt restriction',
+          confidence: 0.9,
+          recommendation: 'Seek official API or partnership'
+        };
+      }
+
+      // Enhanced TOS analysis via edge function
+      const response = await fetch('/api/tos-compliance-checker', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, campProviderId })
+      });
+
+      if (response.ok) {
+        const tosResult = await response.json();
+        return {
+          status: tosResult.status,
+          reason: tosResult.reason,
+          confidence: tosResult.confidence,
+          details: tosResult.details,
+          recommendation: tosResult.recommendation
+        };
+      }
+
+      // Fallback to basic compliance
+      return {
+        status: 'yellow',
+        reason: 'Unable to perform full TOS analysis',
+        confidence: 0.5,
+        recommendation: 'Manual review recommended'
+      };
+
+    } catch (error) {
+      console.error('TOS compliance check error:', error);
+      return {
+        status: 'yellow',
+        reason: 'TOS compliance check failed',
+        confidence: 0.3,
+        recommendation: 'Manual review required'
+      };
+    }
+  }
+
+  async getCampProviderRules(hostname: string): Promise<any> {
+    // Camp-specific automation rules
+    const campProviderRules = {
+      'active.com': {
+        allowedActions: ['view', 'register'],
+        restrictions: ['bulk_operations'],
+        preferredApproach: 'api',
+        apiAvailable: true
+      },
+      'campwise.com': {
+        allowedActions: ['view', 'register'],
+        restrictions: [],
+        preferredApproach: 'partnership',
+        apiAvailable: false
+      },
+      'ymca.org': {
+        allowedActions: ['view', 'register'],
+        restrictions: ['rapid_requests'],
+        preferredApproach: 'respectful_automation',
+        apiAvailable: false
+      }
+    };
+
+    return campProviderRules[hostname] || {
+      allowedActions: ['view'],
+      restrictions: ['unknown'],
+      preferredApproach: 'cautious',
+      apiAvailable: false
+    };
+  }
+}
+
+export const robotsChecker = new EnhancedRobotsChecker();
