@@ -175,7 +175,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
         setRequirements({
           required_fields: [
             { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Children Information" },
+            { field_name: "children", field_type: "array", required: true, label: "Person Attending Activity" },
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" }
           ],
@@ -191,7 +191,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
         setRequirements({
           required_fields: [
             { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Children Information" },
+            { field_name: "children", field_type: "array", required: true, label: "Person Attending Activity" },
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" }
           ],
@@ -217,7 +217,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
           const sessionReqs: SessionRequirements = {
             required_fields: [
               { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-              { field_name: "children", field_type: "array", required: true, label: "Children Information" },
+              { field_name: "children", field_type: "array", required: true, label: "Person Attending Activity" },
               { field_name: "email", field_type: "email", required: true, label: "Email Address" },
               { field_name: "password", field_type: "password", required: true, label: "Password" },
               // Add any additional fields from AI response (without PHI)
@@ -245,7 +245,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
         setRequirements({
           required_fields: [
             { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Children Information" },
+            { field_name: "children", field_type: "array", required: true, label: "Person Attending Activity" },
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" }
           ],
@@ -538,58 +538,11 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Account Information */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-lg font-semibold">
-                <Mail className="h-5 w-5" />
-                Account Information
-              </div>
-              
-              <div className="grid gap-4">
-                <div>
-                  <Label htmlFor="guardianName">Your Name (Guardian) *</Label>
-                  <Input 
-                    id="guardianName" 
-                    value={guardianName} 
-                    onChange={(e) => setGuardianName(e.target.value)}
-                    placeholder="Enter your full name"
-                    required 
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    required 
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="password">Password *</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Choose a secure password"
-                    required 
-                  />
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Children Information */}
+            {/* Person Attending Activity */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-lg font-semibold">
                 <Baby className="h-5 w-5" />
-                Children Information
+                Person Attending Activity
               </div>
               
               <div className="space-y-3">
@@ -638,6 +591,53 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                   <Plus className="h-4 w-4 mr-2" />
                   Add Another Child {children.length >= 5 && "(Max 5)"}
                 </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Account Information */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-lg font-semibold">
+                <Mail className="h-5 w-5" />
+                Account Information
+              </div>
+              
+              <div className="grid gap-4">
+                <div>
+                  <Label htmlFor="guardianName">Your Name (Guardian) *</Label>
+                  <Input 
+                    id="guardianName" 
+                    value={guardianName} 
+                    onChange={(e) => setGuardianName(e.target.value)}
+                    placeholder="Enter your full name"
+                    required 
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    required 
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="password">Password *</Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Choose a secure password"
+                    required 
+                  />
+                </div>
               </div>
             </div>
 
