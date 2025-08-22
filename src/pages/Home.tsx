@@ -174,7 +174,7 @@ const HomePage = () => {
               },
               {
                 stepNum: 2,
-                title: "2. We submit instantly<br/><span style='font-weight: 400;'>text you if action&nbsp;needed</span>", 
+                title: "2. We sign up for you the instant it opens<br/><span style='font-weight: 400;'>text you if action&nbsp;needed</span>", 
                 description: "",
               },
               {
