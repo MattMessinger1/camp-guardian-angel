@@ -494,7 +494,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                   />
                   <div className="text-sm leading-relaxed">
                     <Label htmlFor="upfrontConsent" className="cursor-pointer font-medium">
-                      I agree to pay the required Activity Signup Fee of {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<<insert amount>>>'} when CampRush successfully registers my child.
+                      I agree to pay the required Activity Signup Fee of {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<<insert amount>>>'}.
                     </Label>
                   </div>
                 </div>
