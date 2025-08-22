@@ -165,7 +165,7 @@ const HomePage = () => {
         <div className="mx-auto max-w-5xl" style={{ maxWidth: '1200px' }}>
           
           {/* Three Steps Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-20 md:gap-20">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 lg:gap-12 max-w-6xl mx-auto">
             {[
               {
                 stepNum: 1,
@@ -212,7 +212,7 @@ const HomePage = () => {
                         style={{ 
                           fontSize: '20px', 
                           fontWeight: '700',
-                          maxWidth: '34ch',
+                          maxWidth: '45ch',
                           lineHeight: '1.3',
                           textWrap: 'balance'
                         }}
