@@ -519,6 +519,9 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               </span>
             )}
           </CardTitle>
+          <p className="text-muted-foreground text-sm mt-2">
+            Enter info once, we'll save for future signups.
+          </p>
           {requirementsError && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
