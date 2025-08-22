@@ -480,12 +480,8 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                   <h4 className="font-semibold text-base">Activity Signup Payment</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Most camps require an upfront payment at registration (typically $75-$150). 
-                    {requirements?.payment_amount ? (
-                      <>This activity requires a payment of ${requirements.payment_amount} immediately when we successfully register your child.</>
-                    ) : (
-                      <>This payment is due immediately when we successfully register your child.</>
-                    )}
-                    {" "}You'll pay the remaining balance directly on the camp provider's website after registration.
+                    This activity requires a payment of {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<insert amount here based on OpenAI scraping it>>'} immediately when we successfully register your child. 
+                    You'll pay the remaining balance directly on the camp provider's website after registration.
                   </p>
                 </div>
                 
