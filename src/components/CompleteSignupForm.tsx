@@ -186,7 +186,15 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
   const handleAddPaymentMethod = async () => {
     setPaymentLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-setup-session');
+      // Construct return URL to come back to the signup page with sessionId
+      const currentUrl = new URL(window.location.href);
+      const returnUrl = sessionId 
+        ? `${currentUrl.origin}/signup?sessionId=${sessionId}`
+        : `${currentUrl.origin}/signup`;
+      
+      const { data, error } = await supabase.functions.invoke('create-setup-session', {
+        body: { return_url: returnUrl }
+      });
 
       if (error) throw error;
 

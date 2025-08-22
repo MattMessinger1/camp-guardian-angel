@@ -17,6 +17,10 @@ serve(async (req) => {
     const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
     if (!stripeSecret) throw new Error("Missing STRIPE_SECRET_KEY secret");
 
+    // Get optional return URL from request body
+    const body = await req.json().catch(() => ({}));
+    const returnUrl = body.return_url;
+
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "");
 
@@ -69,7 +73,7 @@ serve(async (req) => {
     }
 
     // Create a Checkout Session in setup mode to save a card
-    const successUrl = `${appBaseUrl}/billing/setup-success`;
+    const successUrl = returnUrl || `${appBaseUrl}/billing/setup-success`;
     const cancelUrl = `${appBaseUrl}/billing/setup-cancelled`;
     console.log("success_url:", successUrl);
     console.log("cancel_url:", cancelUrl);
