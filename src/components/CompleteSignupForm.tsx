@@ -424,11 +424,56 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      toast({
-        title: "Signup failed",
-        description: error.message || "Unable to create account",
-        variant: "destructive"
-      });
+      
+      // Handle existing user case
+      if (error.message === "User already registered" || error.code === "user_already_exists") {
+        toast({
+          title: "Account already exists",
+          description: "Signing you in with existing credentials...",
+        });
+        
+        // Try to sign in with the existing account
+        try {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (signInError) {
+            toast({
+              title: "Please check your password",
+              description: "An account exists with this email. Please enter the correct password or reset it.",
+              variant: "destructive"
+            });
+            return;
+          }
+          
+          if (signInData.user) {
+            toast({
+              title: "Signed in successfully!",
+              description: "Welcome back! Your account is ready."
+            });
+            
+            // Clear saved form data
+            localStorage.removeItem(formStorageKey);
+            onComplete(signInData.user);
+            return;
+          }
+        } catch (signInError: any) {
+          console.error('Sign in after existing user error:', signInError);
+          toast({
+            title: "Please sign in manually",
+            description: "An account exists with this email. Please go to the login page and sign in.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Signup failed",
+          description: error.message || "Unable to create account",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
