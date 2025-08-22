@@ -335,8 +335,8 @@ export default function ReadyToSignup() {
 
         {/* Action Buttons */}
         <div className="flex gap-4 justify-center">
-          <Button variant="outline" onClick={() => navigate(`/sessions/${sessionId}`)}>
-            Back to Session
+          <Button variant="outline" onClick={() => navigate(`/sessions/${sessionId}/confirmation`)}>
+            View Pending Signups
           </Button>
           <Button variant="secondary" onClick={() => window.location.reload()}>
             <RefreshCw className="w-4 h-4 mr-2" />
