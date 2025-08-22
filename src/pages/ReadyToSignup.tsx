@@ -43,6 +43,21 @@ export default function ReadyToSignup() {
     queryFn: async () => {
       if (!sessionId) throw new Error('Session ID required');
       
+      // Handle test session ID
+      if (sessionId === '11111111-2222-3333-4444-555555555555') {
+        return {
+          id: sessionId,
+          registration_open_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+          open_time_exact: true,
+          platform: 'Test Platform',
+          activities: {
+            name: 'Test Summer Camp',
+            city: 'Test City',
+            state: 'Test State'
+          }
+        };
+      }
+      
       const { data, error } = await supabase
         .from('sessions')
         .select(`
