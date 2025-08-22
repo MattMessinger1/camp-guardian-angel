@@ -39,6 +39,8 @@ import WorkingTest from './pages/WorkingTest';
 import ReadyToSignup from './pages/ReadyToSignup';
 import SignupConfirmation from './pages/SignupConfirmation';
 import AccountHistory from './pages/AccountHistory';
+import ApprovePage from './pages/ApprovePage';
+import Operations from './pages/Operations';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -65,6 +67,8 @@ export default function App() {
           <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
           <Route path="/sessions/:sessionId/confirmation" element={<SignupConfirmation />} />
           <Route path="/account/history" element={<AccountHistory />} />
+          <Route path="/approve/:token" element={<ApprovePage />} />
+          <Route path="/operations" element={<ProtectedRoute><Operations /></ProtectedRoute>} />
           <Route path="/sessions/:id/edit" element={<SessionForm />} />
           <Route path="/children" element={<Children />} />
           <Route path="/settings" element={<Settings />} />

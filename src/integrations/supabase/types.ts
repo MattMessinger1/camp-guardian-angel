@@ -113,6 +113,203 @@ export type Database = {
         }
         Relationships: []
       }
+      approval_audit_trail: {
+        Row: {
+          action_data: Json | null
+          action_type: string
+          actor_id: string | null
+          actor_type: string | null
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          new_state: string | null
+          previous_state: string | null
+          user_agent: string | null
+          workflow_id: string
+        }
+        Insert: {
+          action_data?: Json | null
+          action_type: string
+          actor_id?: string | null
+          actor_type?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          new_state?: string | null
+          previous_state?: string | null
+          user_agent?: string | null
+          workflow_id: string
+        }
+        Update: {
+          action_data?: Json | null
+          action_type?: string
+          actor_id?: string | null
+          actor_type?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          new_state?: string | null
+          previous_state?: string | null
+          user_agent?: string | null
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_audit_trail_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "approval_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_operations_metrics: {
+        Row: {
+          approval_rate: number | null
+          approved_workflows: number | null
+          avg_response_time_minutes: number | null
+          captcha_solving_count: number | null
+          created_at: string
+          declined_workflows: number | null
+          expired_workflows: number | null
+          form_completion_count: number | null
+          id: string
+          metric_date: string
+          notification_success_rate: number | null
+          payment_confirmation_count: number | null
+          pending_workflows: number | null
+          total_workflows: number | null
+        }
+        Insert: {
+          approval_rate?: number | null
+          approved_workflows?: number | null
+          avg_response_time_minutes?: number | null
+          captcha_solving_count?: number | null
+          created_at?: string
+          declined_workflows?: number | null
+          expired_workflows?: number | null
+          form_completion_count?: number | null
+          id?: string
+          metric_date: string
+          notification_success_rate?: number | null
+          payment_confirmation_count?: number | null
+          pending_workflows?: number | null
+          total_workflows?: number | null
+        }
+        Update: {
+          approval_rate?: number | null
+          approved_workflows?: number | null
+          avg_response_time_minutes?: number | null
+          captcha_solving_count?: number | null
+          created_at?: string
+          declined_workflows?: number | null
+          expired_workflows?: number | null
+          form_completion_count?: number | null
+          id?: string
+          metric_date?: string
+          notification_success_rate?: number | null
+          payment_confirmation_count?: number | null
+          pending_workflows?: number | null
+          total_workflows?: number | null
+        }
+        Relationships: []
+      }
+      approval_workflows: {
+        Row: {
+          approval_criteria: Json | null
+          approval_token: string | null
+          approved_at: string | null
+          approved_by: string | null
+          context_data: Json | null
+          created_at: string
+          decision_reason: string | null
+          declined_at: string | null
+          declined_by: string | null
+          description: string | null
+          expires_at: string
+          id: string
+          manual_override: boolean | null
+          notification_attempts: number | null
+          notification_method: string | null
+          notification_sent_at: string | null
+          override_at: string | null
+          override_by: string | null
+          override_reason: string | null
+          priority: string
+          reservation_id: string | null
+          secure_hash: string | null
+          session_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          workflow_type: string
+        }
+        Insert: {
+          approval_criteria?: Json | null
+          approval_token?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          context_data?: Json | null
+          created_at?: string
+          decision_reason?: string | null
+          declined_at?: string | null
+          declined_by?: string | null
+          description?: string | null
+          expires_at: string
+          id?: string
+          manual_override?: boolean | null
+          notification_attempts?: number | null
+          notification_method?: string | null
+          notification_sent_at?: string | null
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          priority?: string
+          reservation_id?: string | null
+          secure_hash?: string | null
+          session_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          workflow_type: string
+        }
+        Update: {
+          approval_criteria?: Json | null
+          approval_token?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          context_data?: Json | null
+          created_at?: string
+          decision_reason?: string | null
+          declined_at?: string | null
+          declined_by?: string | null
+          description?: string | null
+          expires_at?: string
+          id?: string
+          manual_override?: boolean | null
+          notification_attempts?: number | null
+          notification_method?: string | null
+          notification_sent_at?: string | null
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          priority?: string
+          reservation_id?: string | null
+          secure_hash?: string | null
+          session_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workflow_type?: string
+        }
+        Relationships: []
+      }
       attempt_events: {
         Row: {
           created_at: string
@@ -1132,6 +1329,60 @@ export type Database = {
           phone_e164?: string
           user_id?: string
           verified?: boolean
+        }
+        Relationships: []
+      }
+      parent_notification_preferences: {
+        Row: {
+          approval_timeout_minutes: number | null
+          auto_approve_captcha: boolean | null
+          auto_approve_form_completion: boolean | null
+          auto_approve_payment: boolean | null
+          created_at: string
+          email_enabled: boolean | null
+          id: string
+          primary_email: string | null
+          primary_phone: string | null
+          require_2fa: boolean | null
+          secondary_email: string | null
+          secondary_phone: string | null
+          sms_enabled: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approval_timeout_minutes?: number | null
+          auto_approve_captcha?: boolean | null
+          auto_approve_form_completion?: boolean | null
+          auto_approve_payment?: boolean | null
+          created_at?: string
+          email_enabled?: boolean | null
+          id?: string
+          primary_email?: string | null
+          primary_phone?: string | null
+          require_2fa?: boolean | null
+          secondary_email?: string | null
+          secondary_phone?: string | null
+          sms_enabled?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approval_timeout_minutes?: number | null
+          auto_approve_captcha?: boolean | null
+          auto_approve_form_completion?: boolean | null
+          auto_approve_payment?: boolean | null
+          created_at?: string
+          email_enabled?: boolean | null
+          id?: string
+          primary_email?: string | null
+          primary_phone?: string | null
+          require_2fa?: boolean | null
+          secondary_email?: string | null
+          secondary_phone?: string | null
+          sms_enabled?: boolean | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
