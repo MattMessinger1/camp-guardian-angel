@@ -549,11 +549,11 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                 {children.map((child, index) => (
                   <div key={index} className="flex gap-3 items-end">
                     <div className="flex-1">
-                      <Label>Child's Name *</Label>
+                      <Label>Participant Name *</Label>
                       <Input 
                         value={child.name} 
                         onChange={(e) => updateChild(index, "name", e.target.value)}
-                        placeholder="Enter child's name"
+                        placeholder="Enter participant's name"
                         required 
                       />
                     </div>
@@ -589,7 +589,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                   className="w-fit"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Another Child {children.length >= 5 && "(Max 5)"}
+                  Add Another Participant {children.length >= 5 && "(Max 5)"}
                 </Button>
               </div>
             </div>
