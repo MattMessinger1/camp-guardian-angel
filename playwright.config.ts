@@ -17,17 +17,12 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   globalTeardown: undefined, // Prevent vitest teardown hooks
-  // webServer disabled - using manual dev server
-  // webServer: {
-  //   command: 'npm run build && npx serve -s dist -l 4173',
-  //   url: 'http://localhost:4173',
-  //   reuseExistingServer: !process.env.CI,
-  //   timeout: 60000,
-  //   env: {
-  //     NODE_ENV: 'playwright-test',
-  //     VITEST: 'false',
-  //   }
-  // },
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:8080',
+    reuseExistingServer: true,
+    timeout: 60000,
+  },
   projects: [
     { 
       name: 'chromium',
