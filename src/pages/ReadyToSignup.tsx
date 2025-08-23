@@ -162,7 +162,11 @@ export default function ReadyToSignup() {
         )}
 
         {/* Medical Information Alert */}
-        {assessment.checklist.some(item => item.category?.toLowerCase().includes('medical') || item.item?.toLowerCase().includes('medical')) && (
+        {(assessment.checklist.some(item => item.category?.toLowerCase().includes('medical') || item.item?.toLowerCase().includes('medical')) ||
+          sessionData?.activities?.name?.toLowerCase().includes('medical') ||
+          sessionData?.activities?.name?.toLowerCase().includes('health') ||
+          sessionData?.activities?.name?.toLowerCase().includes('special needs') ||
+          sessionData?.platform?.toLowerCase().includes('healthcare')) && (
           <Alert className="border-red-200 bg-red-50">
             <AlertCircle className="w-4 h-4 text-red-600" />
             <AlertDescription className="text-red-800">
