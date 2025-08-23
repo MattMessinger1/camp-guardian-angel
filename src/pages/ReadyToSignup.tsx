@@ -24,6 +24,8 @@ import { SetSignupTimeForm } from '@/components/SetSignupTimeForm';
 import { useSmartReadiness } from '@/hooks/useSmartReadiness';
 import { getTestScenario, getAllTestSessionIds } from '@/lib/test-scenarios';
 import { TestCampSwitcher } from '@/components/TestCampSwitcher';
+import { BrowserAutomationStatus } from '@/components/BrowserAutomationStatus';
+import { useBrowserAutomation } from '@/hooks/useBrowserAutomation';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -67,6 +69,42 @@ export default function ReadyToSignup() {
 
   // Use AI-powered readiness assessment
   const { assessment, isLoading: assessmentLoading } = useSmartReadiness(sessionId || '', sessionData);
+  
+  // Browser automation for signup assistance
+  const { state: automationState, initializeSession, closeSession, reset } = useBrowserAutomation();
+  
+  const handleInitializeAutomation = async () => {
+    if (sessionData?.signup_url) {
+      try {
+        await initializeSession(sessionData.signup_url, sessionData.platform);
+        toast({
+          title: "Signup Assistant Ready",
+          description: "Your automated signup assistant has been prepared and is ready to help.",
+        });
+      } catch (error) {
+        toast({
+          title: "Assistant Setup Failed", 
+          description: "We couldn't prepare the signup assistant. You can still sign up manually.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+  
+  const handleProceedToSignup = () => {
+    if (sessionData?.signup_url && automationState.status === 'ready') {
+      // Navigate to automated signup flow with automation ready
+      navigate(`/sessions/${sessionId}/automated-signup`, {
+        state: { automationReady: true }
+      });
+    } else if (sessionData?.signup_url) {
+      // Navigate to regular signup URL
+      window.open(sessionData.signup_url, '_blank');
+    } else {
+      // Navigate to reservation modal if no direct signup URL
+      navigate(`/sessions/${sessionId}/signup`);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -265,6 +303,17 @@ export default function ReadyToSignup() {
           </CardContent>
         </Card>
 
+        {/* Browser Automation Assistant */}
+        {sessionData?.signup_url && (
+          <BrowserAutomationStatus
+            automationState={automationState}
+            signupUrl={sessionData.signup_url}
+            onInitialize={handleInitializeAutomation}
+            onReset={reset}
+            canProceedToSignup={assessment.signupReadiness.canSignupNow}
+          />
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-4 justify-center">
           <Button variant="outline" onClick={() => navigate(`/sessions/${sessionId}/confirmation`)}>
@@ -275,8 +324,11 @@ export default function ReadyToSignup() {
             Refresh Assessment
           </Button>
           {assessment.signupReadiness.canSignupNow && (
-            <Button onClick={() => navigate(`/sessions/${sessionId}/confirmation`)}>
-              View Locked & Loaded Signups
+            <Button 
+              onClick={handleProceedToSignup}
+              className="bg-gradient-to-r from-primary to-primary-glow hover:opacity-90"
+            >
+              {sessionData?.signup_url ? 'Proceed to Automated Signup' : 'View Locked & Loaded Signups'}
             </Button>
           )}
         </div>
