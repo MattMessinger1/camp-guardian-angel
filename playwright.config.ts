@@ -7,8 +7,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  // globalSetup removed - was causing vitest symbol conflicts
+  reporter: 'line',
+  
+  // Prevent Vitest symbol conflicts
+  globalSetup: undefined,
+  globalTeardown: undefined,
+  
   use: {
     headless: false,
     baseURL: 'http://localhost:8080',
@@ -16,20 +20,24 @@ export default defineConfig({
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  globalTeardown: undefined, // Prevent vitest teardown hooks
+  
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:8080',
     reuseExistingServer: true,
     timeout: 60000,
+    env: {
+      NODE_ENV: 'playwright-test',
+      VITEST: 'false',
+    }
   },
+  
   projects: [
     { 
       name: 'chromium',
       use: {
         browserName: 'chromium',
       },
-      // Simplified - just match all .spec.ts files in tests folder
       testMatch: 'tests/**/*.spec.ts',
     },
   ],
