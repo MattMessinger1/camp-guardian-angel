@@ -161,6 +161,19 @@ export default function ReadyToSignup() {
           />
         )}
 
+        {/* Registration Already Open Alert */}
+        {sessionData?.registration_open_at && new Date(sessionData.registration_open_at) <= new Date() && (
+          <Alert className="border-blue-200 bg-blue-50">
+            <AlertCircle className="w-4 h-4 text-blue-600" />
+            <AlertDescription className="text-blue-800">
+              💰 <strong>Save Money:</strong> Registration is already open! You can sign up directly with the provider to avoid service fees. 
+              {sessionData.signup_url && (
+                <span> Visit their registration page to register now.</span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Medical Information Alert */}
         {(assessment.checklist.some(item => item.category?.toLowerCase().includes('medical') || item.item?.toLowerCase().includes('medical')) ||
           sessionData?.activities?.name?.toLowerCase().includes('medical') ||
