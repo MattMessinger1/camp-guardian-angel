@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('homepage loads correctly', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('http://localhost:8080');
 
   // Expect a title "to contain" a substring.
   await expect(page).toHaveTitle(/SignUpAssist/);
@@ -11,7 +11,7 @@ test('homepage loads correctly', async ({ page }) => {
 });
 
 test('navigation works', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('http://localhost:8080');
   
   // Check that main elements are visible
   await expect(page.locator('text=You pre-load your info')).toBeVisible();
@@ -21,7 +21,7 @@ test('navigation works', async ({ page }) => {
 });
 
 test('search functionality is present', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('http://localhost:8080');
   
   // Check search input exists
   await expect(page.locator('input[placeholder*="Activity name"]')).toBeVisible();
