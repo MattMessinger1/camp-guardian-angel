@@ -14,13 +14,8 @@ import {
   CheckCircle, 
   AlertCircle, 
   Clock, 
-  Users, 
-  Calendar,
-  MapPin,
   CreditCard,
   Shield,
-  MessageSquare,
-  ArrowRight,
   RefreshCw
 } from 'lucide-react';
 import { RequirementsNotification } from '@/components/RequirementsNotification';
@@ -95,17 +90,6 @@ export default function ReadyToSignup() {
     }
   };
 
-  const getRecommendationIcon = (type: string) => {
-    switch (type) {
-      case 'action':
-        return <ArrowRight className="w-4 h-4" />;
-      case 'warning':
-        return <AlertCircle className="w-4 h-4" />;
-      default:
-        return <MessageSquare className="w-4 h-4" />;
-    }
-  };
-
   if (sessionLoading || assessmentLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
@@ -142,56 +126,37 @@ export default function ReadyToSignup() {
         <TestCampSwitcher />
         
         {/* Header Section */}
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Ready for Signup</h1>
-          <p className="text-muted-foreground">
-            Assessment for {sessionData?.activities?.name}
-          </p>
+          <div className="text-lg font-medium">{sessionData?.activities?.name}</div>
+          <div className="text-muted-foreground">
+            {sessionData?.activities?.city}, {sessionData?.activities?.state}
+          </div>
         </div>
 
-        {/* Session Info Card */}
+        {/* Signup Timing */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Session Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium">{sessionData?.activities?.name}</span>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <Clock className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">SIGNUP OPENS</span>
               </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-muted-foreground" />
-                <span>{sessionData?.activities?.city}, {sessionData?.activities?.state}</span>
+              <div className="text-2xl font-bold">
+                {sessionData?.registration_open_at 
+                  ? `${new Date(sessionData.registration_open_at).toLocaleDateString()} at ${new Date(sessionData.registration_open_at).toLocaleTimeString()}`
+                  : '⚠️ TIME NOT SET'
+                }
               </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-muted-foreground" />
-                <div className="flex flex-col">
-                  <span className="font-semibold">
-                    {sessionData?.registration_open_at 
-                      ? `${new Date(sessionData.registration_open_at).toLocaleDateString()} at ${new Date(sessionData.registration_open_at).toLocaleTimeString()}`
-                      : '⚠️ SIGNUP TIME NOT SET - Critical Issue!'
-                    }
-                  </span>
-                  {sessionData?.registration_open_at && (
-                    <span className="text-sm text-muted-foreground">
-                      {sessionData.open_time_exact ? '✅ Exact time confirmed' : '⏱️ Estimated (may change)'}
-                    </span>
-                  )}
-                  {!sessionData?.registration_open_at && (
-                    <span className="text-sm text-destructive">
-                      Contact provider for signup timing - this is required!
-                    </span>
-                  )}
+              {sessionData?.registration_open_at ? (
+                <div className="text-sm text-muted-foreground">
+                  {sessionData.open_time_exact ? '✅ Confirmed time' : '⏱️ Estimated time'}
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-muted-foreground" />
-                <span>Platform: {sessionData?.platform || 'Unknown'}</span>
-              </div>
+              ) : (
+                <div className="text-sm text-destructive">
+                  Contact provider for exact timing
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -250,38 +215,6 @@ export default function ReadyToSignup() {
             )}
           </CardContent>
         </Card>
-
-        {/* Recommendations */}
-        {assessment.recommendations.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Recommendations
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {assessment.recommendations.map((rec, index) => (
-                  <Alert key={index}>
-                    <div className="flex items-start gap-2">
-                      {getRecommendationIcon(rec.type)}
-                      <div className="flex-1">
-                        <h4 className="font-medium">{rec.title}</h4>
-                        <AlertDescription className="mt-1">
-                          {rec.message}
-                        </AlertDescription>
-                        <Badge variant="outline" className="mt-2">
-                          {rec.timeframe.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                    </div>
-                  </Alert>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Signup Readiness */}
         <Card>
