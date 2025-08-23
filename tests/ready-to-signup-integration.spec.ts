@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Ready to Signup - Integration Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Set up for integration tests
-    await page.goto('http://localhost:8080');
+    await page.goto('/');
     await page.waitForTimeout(2000);
   });
 
