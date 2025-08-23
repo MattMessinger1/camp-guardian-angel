@@ -125,11 +125,6 @@ export default function ReadyToSignup() {
         {/* Test Camp Switcher (only shows for test scenarios) */}
         <TestCampSwitcher />
         
-        {/* Header Section */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Ready for Signup</h1>
-        </div>
-
         {/* Signup Timing */}
         <Card>
           <CardContent className="pt-6">
