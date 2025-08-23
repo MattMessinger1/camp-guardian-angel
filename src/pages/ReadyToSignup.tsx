@@ -161,6 +161,16 @@ export default function ReadyToSignup() {
           />
         )}
 
+        {/* Medical Information Alert */}
+        {assessment.checklist.some(item => item.category?.toLowerCase().includes('medical') || item.item?.toLowerCase().includes('medical')) && (
+          <Alert className="border-red-200 bg-red-50">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              If medical information is required for signup, we can't support that signup. Please contact the provider directly.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Signup Readiness */}
         <Card>
           <CardHeader>
