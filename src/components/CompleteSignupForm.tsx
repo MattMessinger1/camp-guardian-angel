@@ -670,7 +670,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                   />
                   <div className="text-sm leading-relaxed">
                     <Label htmlFor="upfrontConsent" className="cursor-pointer font-medium">
-                      I agree to pay the Provider &lt;&lt;insert Payment required upon signup dollar amount / varies by activity&gt;&gt;&gt;.
+                      I agree to pay the Provider &lt;&lt;insert Payment required upon signup dollar amount / varies by activity&gt;&gt;&gt; *.
                     </Label>
                     <div className="text-xs text-muted-foreground italic mt-1">
                       (This activity requires a payment upon signup. You'll pay the remaining balance directly on the camp provider's website after signup.)
@@ -694,7 +694,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                   <div className="text-sm leading-relaxed">
                     <Label htmlFor="successFeeConsent" className="cursor-pointer font-medium">
                       I agree to pay the $20 Signup Success service fee only if my child is successfully 
-                      registered for camp. No fee if registration is unsuccessful.
+                       registered for camp. No fee if registration is unsuccessful. *
                     </Label>
                   </div>
                 </div>
@@ -743,9 +743,9 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                 <div className="text-sm leading-relaxed">
                   <Label htmlFor="consent" className="cursor-pointer">
                     I understand that CampRush may need to send me instant notifications during 
-                    camp registration (via SMS/email) to help with captcha solving or other quick 
-                    human verification steps. I agree to receive these time-sensitive communications 
-                    to ensure successful registration.
+                     camp registration (via SMS/email) to help with captcha solving or other quick 
+                     human verification steps. I agree to receive these time-sensitive communications 
+                     to ensure successful registration. *
                   </Label>
                 </div>
               </div>
