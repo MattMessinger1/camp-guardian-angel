@@ -206,20 +206,25 @@ class BrowserLifecycleManager {
     confidence: number;
   }> {
     try {
-      const { data, error } = await supabase.functions.invoke('tos-compliance-checker', {
-        body: { url, campProviderId }
+      const { data, error } = await supabase.functions.invoke('simple-tos-check', {
+        body: { url }
       });
 
       if (error) {
-        console.warn('Compliance check failed, defaulting to yellow:', error);
+        console.warn('Compliance check failed, defaulting to proceed with consent:', error);
         return {
           status: 'yellow',
-          reason: 'Unable to verify compliance',
+          reason: 'Unable to verify compliance - parent consent required',
           confidence: 0.5
         };
       }
 
-      return data;
+      // Convert simple result to expected format
+      return {
+        status: data.status,
+        reason: data.reason,
+        confidence: data.status === 'green' ? 0.9 : data.status === 'yellow' ? 0.6 : 0.1
+      };
     } catch (error) {
       console.error('Compliance check error:', error);
       return {

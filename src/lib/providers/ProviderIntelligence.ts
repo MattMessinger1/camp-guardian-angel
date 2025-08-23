@@ -360,12 +360,15 @@ export class ProviderIntelligence {
     confidence: number;
   }> {
     try {
-      const { data, error } = await supabase.functions.invoke('tos-compliance-checker', {
+      const { data, error } = await supabase.functions.invoke('simple-tos-check', {
         body: { url }
       });
 
       if (error) throw error;
-      return data;
+      return {
+        status: data.status,
+        confidence: data.status === 'green' ? 0.9 : data.status === 'yellow' ? 0.6 : 0.1
+      };
     } catch (error) {
       console.warn('Compliance check failed:', error);
       return {

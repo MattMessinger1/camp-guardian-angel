@@ -315,9 +315,9 @@ async function checkTosCompliance(url: string, campProviderId?: string): Promise
   confidence: number;
 }> {
   try {
-    // Call the TOS compliance checker
-    const response = await supabase.functions.invoke('tos-compliance-checker', {
-      body: { url, campProviderId }
+    // Call the simple TOS checker
+    const response = await supabase.functions.invoke('simple-tos-check', {
+      body: { url }
     });
 
     if (response.error) {
@@ -325,7 +325,12 @@ async function checkTosCompliance(url: string, campProviderId?: string): Promise
       return { status: 'yellow', reason: 'Unable to verify TOS compliance', confidence: 0.5 };
     }
 
-    return response.data;
+    // Convert simple result to expected format
+    return {
+      status: response.data.status,
+      reason: response.data.reason,
+      confidence: response.data.status === 'green' ? 0.9 : response.data.status === 'yellow' ? 0.6 : 0.1
+    };
   } catch (error) {
     console.error('TOS compliance check failed:', error);
     return { status: 'yellow', reason: 'TOS compliance check failed', confidence: 0.3 };
@@ -376,6 +381,7 @@ async function logComplianceEvent(request: any, result: any, level: string = 'in
       },
       payload_summary: `Browser automation ${request?.action || 'unknown'} - ${level}`
     });
-  } catch (error) {onsole.error('Failed to log compliance event:', error);
+  } catch (error) {
+    console.error('Failed to log compliance event:', error);
   }
 }

@@ -157,9 +157,9 @@ async function checkTOSChanges(urls: string[], openaiApiKey?: string): Promise<a
           );
         }
         
-        // Run full compliance analysis on the new TOS
-        const complianceResult = await supabase.functions.invoke('tos-compliance-checker', {
-          body: { url, forceRefresh: true }
+        // Run simple compliance check on the new TOS
+        const complianceResult = await supabase.functions.invoke('simple-tos-check', {
+          body: { url }
         });
         
         // Log the change event

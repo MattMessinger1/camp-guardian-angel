@@ -207,11 +207,11 @@ class EnhancedRobotsChecker extends RobotsChecker {
         };
       }
 
-      // Enhanced TOS analysis via edge function
-      const response = await fetch('/api/tos-compliance-checker', {
+      // Simple TOS check via edge function
+      const response = await fetch('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/simple-tos-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, campProviderId })
+        body: JSON.stringify({ url })
       });
 
       if (response.ok) {
@@ -219,9 +219,8 @@ class EnhancedRobotsChecker extends RobotsChecker {
         return {
           status: tosResult.status,
           reason: tosResult.reason,
-          confidence: tosResult.confidence,
-          details: tosResult.details,
-          recommendation: tosResult.recommendation
+          confidence: tosResult.status === 'green' ? 0.9 : tosResult.status === 'yellow' ? 0.6 : 0.1,
+          recommendation: tosResult.canProceed ? 'Proceed with registration' : 'Manual registration required'
         };
       }
 

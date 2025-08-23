@@ -3,7 +3,7 @@ project_id = "ezvwyfqtyanwnoyymhav"
 [functions.browser-automation]
 verify_jwt = true
 
-[functions.tos-compliance-checker]
+[functions.simple-tos-check]
 verify_jwt = false
 
 [functions.tos-monitor]
