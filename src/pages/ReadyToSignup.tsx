@@ -171,44 +171,29 @@ export default function ReadyToSignup() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
-              Signup Readiness
+              Your Status
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium">Can Signup Now:</span>
-                <p className="text-lg">
-                  {assessment.signupReadiness.canSignupNow ? (
-                    <span className="text-green-600 font-medium">✓ Yes</span>
-                  ) : (
-                    <span className="text-red-600 font-medium">✗ Not Ready</span>
-                  )}
-                </p>
-              </div>
-              <div>
-                <span className="text-sm font-medium">Estimated Signup Date:</span>
-                <p className="text-lg font-medium">{assessment.signupReadiness.estimatedSignupDate}</p>
+            <div className="text-center">
+              <div className="text-sm font-medium text-muted-foreground mb-2">READY TO SIGNUP?</div>
+              <div className="text-2xl font-bold">
+                {assessment.signupReadiness.canSignupNow ? (
+                  <span className="text-green-600">✓ Ready Now</span>
+                ) : (
+                  <span className="text-orange-600">⏳ Preparing</span>
+                )}
               </div>
             </div>
             
-            <Separator />
-            
-            <div className="space-y-2">
-              <span className="text-sm font-medium">Communication Plan:</span>
-              <Badge variant="outline">
-                {assessment.signupReadiness.communicationPlan.replace('_', ' ')}
-              </Badge>
-              
-              {assessment.signupReadiness.needsCaptchaPreparation && (
-                <Alert>
-                  <Shield className="w-4 h-4" />
-                  <AlertDescription>
-                    This session may require CAPTCHA completion during signup. We'll assist you when the time comes.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
+            {assessment.signupReadiness.needsCaptchaPreparation && (
+              <Alert>
+                <Shield className="w-4 h-4" />
+                <AlertDescription>
+                  CAPTCHA assistance will be provided during signup.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
 
