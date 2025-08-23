@@ -704,7 +704,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               <div className="bg-muted/50 p-4 rounded-lg space-y-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold text-base">Payment Method Setup</h4>
-                   <p className="text-sm text-muted-foreground leading-relaxed">
+                   <p className="text-sm leading-relaxed">
                       Your card will only be charged when we successfully complete a signup on your behalf.*
                    </p>
                 </div>
