@@ -7,6 +7,7 @@ import ManualBackup from "./pages/ManualBackup";
 import Login from "./pages/Login";
 import Auth from "./pages/Auth";
 import Signup from "./pages/Signup";
+import AutomatedSignupPage from "./pages/AutomatedSignupPage";
 import Dashboard from "./pages/Dashboard";
 import Sessions from "./pages/Sessions";
 import Children from "./pages/Children";
@@ -68,7 +69,7 @@ export default function App() {
           })()} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup" element={<AutomatedSignupPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/sessions" element={<ErrorBoundary><Sessions /></ErrorBoundary>} />
           <Route path="/sessions/new" element={<SessionForm />} />
