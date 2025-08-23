@@ -11,7 +11,7 @@ export default defineConfig({
   // globalSetup removed - was causing vitest symbol conflicts
   use: {
     headless: false,
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
