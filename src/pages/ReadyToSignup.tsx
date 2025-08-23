@@ -27,6 +27,8 @@ import { RequirementsNotification } from '@/components/RequirementsNotification'
 import { SignupPreparationGuide } from '@/components/SignupPreparationGuide';
 import { SetSignupTimeForm } from '@/components/SetSignupTimeForm';
 import { useSmartReadiness } from '@/hooks/useSmartReadiness';
+import { getTestScenario, getAllTestSessionIds } from '@/lib/test-scenarios';
+import { TestCampSwitcher } from '@/components/TestCampSwitcher';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -43,19 +45,10 @@ export default function ReadyToSignup() {
     queryFn: async () => {
       if (!sessionId) throw new Error('Session ID required');
       
-      // Handle test session ID
-      if (sessionId === '11111111-2222-3333-4444-555555555555') {
-        return {
-          id: sessionId,
-          registration_open_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-          open_time_exact: true,
-          platform: 'Test Platform',
-          activities: {
-            name: 'Test Summer Camp',
-            city: 'Test City',
-            state: 'Test State'
-          }
-        };
+      // Handle test session IDs
+      const testScenario = getTestScenario(sessionId);
+      if (testScenario) {
+        return testScenario.sessionData;
       }
       
       const { data, error } = await supabase
@@ -145,6 +138,9 @@ export default function ReadyToSignup() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* Test Camp Switcher (only shows for test scenarios) */}
+        <TestCampSwitcher />
+        
         {/* Header Section */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-bold tracking-tight">Ready for Signup</h1>
