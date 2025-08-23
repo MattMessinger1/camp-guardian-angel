@@ -705,8 +705,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                 <div className="space-y-2">
                   <h4 className="font-semibold text-base">Payment Method Setup</h4>
                    <p className="text-sm text-muted-foreground leading-relaxed">
-                     Add a payment method to enable automatic camp signups. Your card will only be 
-                     charged when we successfully complete a signup on your behalf.
+                      Your card will only be charged when we successfully complete a signup on your behalf.*
                    </p>
                 </div>
                 
