@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Trash2, CreditCard, User, Baby, Lock, Mail, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, CreditCard, User, Lock, Mail, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -175,7 +175,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
         setRequirements({
           required_fields: [
             { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Person Attending Activity" },
+            { field_name: "children", field_type: "array", required: true, label: "Participant" },
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" }
           ],
@@ -191,7 +191,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
         setRequirements({
           required_fields: [
             { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Person Attending Activity" },
+            { field_name: "children", field_type: "array", required: true, label: "Participant" },
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" }
           ],
@@ -217,7 +217,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
           const sessionReqs: SessionRequirements = {
             required_fields: [
               { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-              { field_name: "children", field_type: "array", required: true, label: "Person Attending Activity" },
+              { field_name: "children", field_type: "array", required: true, label: "Participant" },
               { field_name: "email", field_type: "email", required: true, label: "Email Address" },
               { field_name: "password", field_type: "password", required: true, label: "Password" },
               // Add any additional fields from AI response (without PHI)
@@ -245,7 +245,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
         setRequirements({
           required_fields: [
             { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Person Attending Activity" },
+            { field_name: "children", field_type: "array", required: true, label: "Participant" },
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" }
           ],
@@ -538,11 +538,11 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Person Attending Activity */}
+            {/* Participant */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-lg font-semibold">
-                <Baby className="h-5 w-5" />
-                Person Attending Activity
+                <User className="h-5 w-5" />
+                Participant
               </div>
               
               <div className="space-y-3">
