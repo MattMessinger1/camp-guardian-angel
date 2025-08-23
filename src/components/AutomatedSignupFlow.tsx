@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -24,7 +24,8 @@ interface SignupStep {
 }
 
 export function AutomatedSignupFlow() {
-  const { sessionId } = useParams();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('sessionId');
   const location = useLocation();
   const { toast } = useToast();
   
