@@ -682,7 +682,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
               {/* Success Fee Section */}
               <div className="bg-muted/50 p-4 rounded-lg space-y-4">
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-base">CampRush Service Fee</h4>
+                  <h4 className="font-semibold text-base">Signup Success Fee</h4>
                 </div>
                 
                 <div className="flex items-start gap-3">
@@ -693,7 +693,7 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
                   />
                   <div className="text-sm leading-relaxed">
                     <Label htmlFor="successFeeConsent" className="cursor-pointer font-medium">
-                      I agree to pay the $20 CampRush service fee only if my child is successfully 
+                      I agree to pay the $20 Signup Success service fee only if my child is successfully 
                       registered for camp. No fee if registration is unsuccessful.
                     </Label>
                   </div>
