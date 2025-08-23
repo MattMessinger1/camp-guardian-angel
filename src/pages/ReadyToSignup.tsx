@@ -128,10 +128,6 @@ export default function ReadyToSignup() {
         {/* Header Section */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Ready for Signup</h1>
-          <div className="text-lg font-medium">{sessionData?.activities?.name}</div>
-          <div className="text-muted-foreground">
-            {sessionData?.activities?.city}, {sessionData?.activities?.state}
-          </div>
         </div>
 
         {/* Signup Timing */}
@@ -169,52 +165,6 @@ export default function ReadyToSignup() {
             onSuccess={() => window.location.reload()}
           />
         )}
-
-        {/* Readiness Checklist */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              What You Need to Do
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {assessment.checklist.some(item => item.status !== 'complete') ? (
-              <div className="space-y-4">
-                {assessment.checklist
-                  .filter(item => item.status !== 'complete')
-                  .map((item, index) => (
-                    <div key={index} className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30">
-                      {getStatusIcon(item.status)}
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-lg">{item.item}</span>
-                          <Badge variant={getPriorityColor(item.priority) as any}>
-                            {item.priority} priority
-                          </Badge>
-                        </div>
-                        <p className="text-muted-foreground">{item.description}</p>
-                        <div className="text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded">
-                          {item.category}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
-                <h3 className="text-lg font-semibold mb-2">You're All Set!</h3>
-                <p className="text-muted-foreground">
-                  You've completed all the necessary preparations for signup. 
-                  {assessment.signupReadiness.canSignupNow 
-                    ? " You can proceed to signup now." 
-                    : " Just wait for the registration to open."}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Signup Readiness */}
         <Card>
@@ -259,6 +209,52 @@ export default function ReadyToSignup() {
                 </Alert>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Readiness Checklist */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              What You Need to Do
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {assessment.checklist.some(item => item.status !== 'complete') ? (
+              <div className="space-y-4">
+                {assessment.checklist
+                  .filter(item => item.status !== 'complete')
+                  .map((item, index) => (
+                    <div key={index} className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30">
+                      {getStatusIcon(item.status)}
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-lg">{item.item}</span>
+                          <Badge variant={getPriorityColor(item.priority) as any}>
+                            {item.priority} priority
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground">{item.description}</p>
+                        <div className="text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded">
+                          {item.category}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
+                <h3 className="text-lg font-semibold mb-2">You're All Set!</h3>
+                <p className="text-muted-foreground">
+                  You've completed all the necessary preparations for signup. 
+                  {assessment.signupReadiness.canSignupNow 
+                    ? " You can proceed to signup now." 
+                    : " Just wait for the registration to open."}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
