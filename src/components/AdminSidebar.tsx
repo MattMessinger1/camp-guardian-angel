@@ -29,6 +29,7 @@ const adminItems = [
   { title: "Operations", url: "/admin/operations", icon: Activity },
   { title: "Compliance", url: "/admin/compliance", icon: Shield },
   { title: "Observability", url: "/admin/observability", icon: Eye },
+  { title: "Production Monitor", url: "/admin/production", icon: Activity },
 ]
 
 const monitoringItems = [
@@ -36,6 +37,8 @@ const monitoringItems = [
   { title: "TOS Compliance", url: "/admin/tos-compliance", icon: Bell },
   { title: "Partnerships", url: "/admin/partnerships", icon: Users },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+  { title: "Transparency", url: "/admin/transparency", icon: Eye },
+  { title: "Bot Info", url: "/admin/bot-info", icon: Shield },
 ]
 
 export function AdminSidebar() {

@@ -46,6 +46,9 @@ import ComplianceDashboard from './pages/ComplianceDashboard';
 import AdminLayout from './pages/AdminLayout';
 import Partnerships from './pages/Partnerships';
 import Analytics from './pages/Analytics';
+import ProductionMonitoring from './pages/ProductionMonitoring';
+import TransparencyPage from './pages/TransparencyPage';
+import BotInfoPage from './pages/BotInfoPage';
 import CaptchaAssist from './pages/CaptchaAssist';
 import TOSCompliance from './pages/TOSCompliance';
 import ObservabilityPage from './pages/ObservabilityPage';
@@ -95,6 +98,9 @@ export default function App() {
             <Route path="observability" element={<ObservabilityPage />} />
             <Route path="partnerships" element={<Partnerships />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="production" element={<ProductionMonitoring />} />
+            <Route path="transparency" element={<TransparencyPage />} />
+            <Route path="bot-info" element={<BotInfoPage />} />
             <Route path="captcha-assist" element={<CaptchaAssist />} />
             <Route path="tos-compliance" element={<TOSCompliance />} />
           </Route>
