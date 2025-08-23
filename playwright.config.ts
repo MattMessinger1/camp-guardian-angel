@@ -27,8 +27,11 @@ export default defineConfig({
     reuseExistingServer: true,
     timeout: 60000,
     env: {
-      NODE_ENV: 'playwright-test',
+      NODE_ENV: 'e2e',
       VITEST: 'false',
+      JEST_WORKER_ID: '',
+      // Completely block vitest modules
+      NODE_OPTIONS: '--no-experimental-loader',
     }
   },
   

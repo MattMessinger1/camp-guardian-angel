@@ -19,12 +19,13 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Explicitly exclude vitest to prevent conflicts with Playwright
-  test: {
-    enabled: false,
+  // Completely prevent vitest loading during E2E tests
+  test: process.env.NODE_ENV === 'e2e' ? undefined : {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
   },
-  // Prevent vitest from being loaded in any mode
+  // Prevent vitest symbols from being defined during E2E
   define: {
-    'import.meta.vitest': false,
+    'import.meta.vitest': process.env.NODE_ENV === 'e2e' ? false : 'undefined',
   },
 }));
