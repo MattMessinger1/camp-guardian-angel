@@ -18,17 +18,6 @@ export interface EnvironmentConfig {
   SENDGRID_API_KEY: string;
   SENDGRID_FROM_EMAIL: string;
   
-  // VGS Configuration
-  VGS_VAULT_ID: string;
-  VGS_ENV: 'sandbox' | 'live';
-  VGS_COLLECT_PUBLIC_KEY: string;
-  VGS_INBOUND_HOST: string;
-  VGS_OUTBOUND_HOST: string;
-  VGS_PROXY_ENABLED: boolean;
-  VGS_PROXY_HOST: string;
-  VGS_PROXY_USERNAME: string;
-  VGS_PROXY_PASSWORD: string;
-  
   // Provider Configuration
   PROVIDER_MODE: 'mock' | 'live';
   PROVIDER_BASE_URL: string;
@@ -43,7 +32,6 @@ export interface EnvironmentConfig {
   
   // Feature Flags
   FEATURE_PROVIDER_AUTOMATION_SIMULATE: boolean;
-  VGS_BYPASS_MODE: boolean;
   PUBLIC_DATA_MODE: boolean;
   GEOCODE_ENABLED: boolean;
 }
@@ -120,63 +108,6 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     sensitive: false,
   },
   {
-    key: 'VGS_VAULT_ID',
-    required: false, // Made optional for bypass mode
-    description: 'VGS Vault ID for tokenizing sensitive child data',
-    sensitive: false,
-  },
-  {
-    key: 'VGS_ENV',
-    required: false, // Made optional for bypass mode
-    description: 'VGS environment (sandbox or live)',
-    sensitive: false,
-    defaultValue: 'sandbox',
-    validValues: ['sandbox', 'live'],
-  },
-  {
-    key: 'VGS_COLLECT_PUBLIC_KEY',
-    required: false, // Made optional for bypass mode
-    description: 'VGS Collect public key for frontend tokenization',
-    sensitive: false,
-  },
-  {
-    key: 'VGS_INBOUND_HOST',
-    required: false, // Made optional for bypass mode
-    description: 'VGS inbound proxy host for secure data collection',
-    sensitive: false,
-  },
-  {
-    key: 'VGS_OUTBOUND_HOST',
-    required: false, // Made optional for bypass mode
-    description: 'VGS outbound proxy host for secure data transmission',
-    sensitive: true,
-  },
-  {
-    key: 'VGS_PROXY_ENABLED',
-    required: false,
-    description: 'Enable VGS proxy for secure data transmission',
-    sensitive: false,
-    defaultValue: false,
-  },
-  {
-    key: 'VGS_PROXY_HOST',
-    required: false,
-    description: 'VGS proxy host URL',
-    sensitive: false,
-  },
-  {
-    key: 'VGS_PROXY_USERNAME',
-    required: false,
-    description: 'VGS proxy authentication username',
-    sensitive: true,
-  },
-  {
-    key: 'VGS_PROXY_PASSWORD',
-    required: false,
-    description: 'VGS proxy authentication password',
-    sensitive: true,
-  },
-  {
     key: 'PROVIDER_MODE',
     required: false,
     description: 'Provider integration mode (mock for development, live for production)',
@@ -224,13 +155,6 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     defaultValue: true,
   },
   {
-    key: 'VGS_BYPASS_MODE',
-    required: false,
-    description: 'Enable VGS bypass mode for development testing (SECURITY WARNING: DO NOT USE IN PRODUCTION)',
-    sensitive: false,
-    defaultValue: false,
-  },
-  {
     key: 'PUBLIC_DATA_MODE',
     required: false,
     description: 'Use public data sources for camp information - no private API connectors implemented',
@@ -261,8 +185,7 @@ export function validateEnvironment(context: 'browser' | 'server' = 'browser'): 
   const serverOnlyVars = [
     'SUPABASE_URL', 'SUPABASE_ANON_KEY', // Use NEXT_PUBLIC_ versions in browser
     'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'SENDGRID_API_KEY', 'SENDGRID_FROM_EMAIL',
-    'VGS_VAULT_ID', 'VGS_INBOUND_HOST', 'VGS_OUTBOUND_HOST', 'VGS_PROXY_HOST', 
-    'VGS_PROXY_USERNAME', 'VGS_PROXY_PASSWORD', 'CRYPTO_KEY_V1', 'APP_BASE_URL'
+    'CRYPTO_KEY_V1', 'APP_BASE_URL'
   ];
 
   for (const envVar of ENVIRONMENT_VARIABLES) {
@@ -288,7 +211,7 @@ export function validateEnvironment(context: 'browser' | 'server' = 'browser'): 
     }
     
     // Type conversion and validation
-    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'VGS_BYPASS_MODE' || envVar.key === 'VGS_PROXY_ENABLED' || envVar.key === 'PUBLIC_DATA_MODE' || envVar.key === 'GEOCODE_ENABLED') {
+    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'PUBLIC_DATA_MODE' || envVar.key === 'GEOCODE_ENABLED') {
       (config as any)[envVar.key] = value.toLowerCase() === 'true';
     } else if (envVar.key === 'CRYPTO_KEY_VERSION') {
       (config as any)[envVar.key] = parseInt(value, 10);

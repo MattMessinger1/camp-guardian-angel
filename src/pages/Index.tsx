@@ -103,7 +103,7 @@ const Index = () => {
                 Automated High-Demand Camp Registration for Kids 0–18
               </h1>
               <p className="text-lg text-muted-foreground">
-                Prefill once with VGS-tokenized PII. We place requests instantly when registrations open, apply your chosen priority, and handle payments via Stripe.
+                Prefill once with bank-grade encrypted PII. We place requests instantly when registrations open, apply your chosen priority, and handle payments via Stripe.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button asChild variant="hero" size="lg">
@@ -114,7 +114,7 @@ const Index = () => {
                 </Button>
               </div>
               <div className="flex gap-6 pt-2 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-2"><Shield className="opacity-80" /> VGS tokenization</span>
+                <span className="inline-flex items-center gap-2"><Shield className="opacity-80" /> AES-GCM encryption</span>
                 <span className="inline-flex items-center gap-2"><Zap className="opacity-80" /> Instant requests</span>
                 <span className="inline-flex items-center gap-2"><CalendarClock className="opacity-80" /> Tie-break by earliest request</span>
               </div>
@@ -142,7 +142,7 @@ const Index = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-muted-foreground">
-                Parents enter child info once; sensitive fields are tokenized via VGS so raw PII never touches our servers.
+                Parents enter child info once; sensitive fields are encrypted using bank-grade AES-GCM so raw PII never touches our servers.
               </CardContent>
             </Card>
             <Card className="surface-card">
@@ -206,7 +206,7 @@ const Index = () => {
           <div className="grid lg:grid-cols-2 gap-8 items-start">
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold">Prefill Child Info</h2>
-              <p className="text-muted-foreground">Demo UI – data entry fields shown for context. VGS tokenization & Stripe will be enabled after backend setup.</p>
+              <p className="text-muted-foreground">Demo UI – data entry fields shown for context. AES-GCM encryption & Stripe will be enabled after backend setup.</p>
               <Card className="surface-card">
                 <CardContent className="pt-6 space-y-4">
                   <div className="grid gap-2">
@@ -222,7 +222,7 @@ const Index = () => {
                     <Input id="notes" placeholder="Peanuts, asthma inhaler, etc." />
                   </div>
                   <div className="flex gap-3 pt-2">
-                    <Button variant="hero" size="lg" disabled title="Backend not connected yet">Tokenize with VGS</Button>
+                    <Button variant="hero" size="lg" disabled title="Backend not connected yet">Encrypt & Save</Button>
                     <Button variant="secondary" size="lg" disabled title="Backend not connected yet">Save profile</Button>
                   </div>
                 </CardContent>
@@ -263,7 +263,7 @@ const Index = () => {
                 name: 'How is my child’s data secured?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'Sensitive PII is tokenized using Very Good Security (VGS) so raw data never touches our servers.',
+                  text: 'Sensitive PII is encrypted using military-grade AES-GCM encryption so raw data never touches our servers.',
                 },
               },
               {

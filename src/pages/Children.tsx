@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
-import { VGS_ENV, VGS_VAULT_ID } from "@/config/vgs";
 import { useQuery } from "@tanstack/react-query";
+import { encryptSensitiveData } from "@/lib/security/encrypt";
 // Minimal SEO util
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -38,7 +39,7 @@ interface ChildRow {
 export default function Children() {
   useSEO(
     "Children | CampRush",
-    "Add and manage children securely with VGS tokenization.",
+    "Add and manage children securely with bank-grade encryption.",
     "/children"
   );
   const { user } = useAuth();
@@ -47,6 +48,8 @@ export default function Children() {
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState<Record<string, number>>({});
   const [limitCfg, setLimitCfg] = useState<{ count: number; week_tz: string }>({ count: 5, week_tz: 'America/Chicago' });
+  const [childName, setChildName] = useState("");
+  const [dob, setDob] = useState("");
 
   const { data: billing } = useQuery({
     queryKey: ["billing_profile"],
@@ -60,50 +63,6 @@ export default function Children() {
     },
     enabled: Boolean(user),
   });
-  const vgsReady = useMemo(() => Boolean(VGS_VAULT_ID), []);
-  const scriptLoadedRef = useRef(false);
-  const formRef = useRef<any>(null);
-
-  // Load VGS Collect script when vault configured
-  useEffect(() => {
-    if (!vgsReady || scriptLoadedRef.current) return;
-
-    const script = document.createElement("script");
-    script.src = "https://js.verygoodvault.com/vgs-collect/2.24.0/vgs-collect.js";
-    script.async = true;
-    script.onload = () => {
-      scriptLoadedRef.current = true;
-      try {
-        // @ts-ignore
-        const VGSCollect = (window as any).VGSCollect;
-        // @ts-ignore
-        const form = VGSCollect.create(VGS_VAULT_ID, VGS_ENV);
-
-        const nameField = form.field("#vgs-name", {
-          type: "text",
-          name: "child_name",
-          placeholder: "Child full name",
-          validations: ["required"],
-          css: { 'font-size': '14px', padding: '10px' }
-        });
-
-        const dobField = form.field("#vgs-dob", {
-          type: "text",
-          name: "dob",
-          placeholder: "YYYY-MM-DD",
-          validations: ["required", "valid_date"],
-          css: { 'font-size': '14px', padding: '10px' }
-        });
-
-        formRef.current = { form, nameField, dobField };
-      } catch (e) {
-        console.error(e);
-        toast({ title: "VGS init failed", description: "Check VGS vault config." });
-      }
-    };
-    script.onerror = () => toast({ title: "VGS script failed to load", description: "Please retry or check network." });
-    document.body.appendChild(script);
-  }, [vgsReady]);
 
   const fetchRows = async () => {
     const { data, error } = await supabase
@@ -154,48 +113,35 @@ export default function Children() {
     e.preventDefault();
     if (!user) return navigate("/login");
 
-    if (!vgsReady || !formRef.current) {
-      toast({
-        title: "VGS not configured",
-        description: "Add your VGS_VAULT_ID in src/config/vgs.ts to enable tokenization.",
-      });
+    if (!childName.trim() || !dob.trim()) {
+      toast({ title: "Missing information", description: "Please provide both name and date of birth." });
       return;
     }
 
     setLoading(true);
 
     try {
-      // Submit to VGS for tokenization. Endpoint path is ignored by VGS; use '/post'.
-      formRef.current.form.submit("/post", {}, async (status: number, data: any) => {
-        if (status >= 200 && status < 300) {
-          // Heuristic: try to pick any aliased field value as the token bundle
-          const tokenPayload = JSON.stringify(data?.data || data || {});
-          if (!tokenPayload || tokenPayload === "{}") {
-            setLoading(false);
-            toast({ title: "Tokenization failed", description: "VGS response empty. Check routes." });
-            return;
-          }
+      // Encrypt child information using our AES-GCM encryption
+      const childData = JSON.stringify({ name: childName.trim(), dob: dob.trim() });
+      const { encrypted } = await encryptSensitiveData(childData);
 
-        const { error } = await supabase.from("children_old").insert({
-          user_id: user.id,
-          info_token: tokenPayload,
-        } as any);
+      const { error } = await supabase.from("children_old").insert({
+        user_id: user.id,
+        info_token: encrypted,
+      } as any);
 
-          setLoading(false);
-          if (error) {
-            toast({ title: "Save failed", description: error.message });
-          } else {
-            toast({ title: "Saved", description: "Child profile token stored securely." });
-            fetchRows();
-          }
-        } else {
-          setLoading(false);
-          toast({ title: "Tokenization error", description: `Status ${status}` });
-        }
-      });
+      setLoading(false);
+      if (error) {
+        toast({ title: "Save failed", description: error.message });
+      } else {
+        toast({ title: "Saved", description: "Child profile encrypted and stored securely." });
+        setChildName("");
+        setDob("");
+        fetchRows();
+      }
     } catch (e: any) {
       setLoading(false);
-      toast({ title: "Unexpected error", description: e.message });
+      toast({ title: "Encryption error", description: e.message });
     }
   };
 
@@ -231,11 +177,6 @@ export default function Children() {
           </div>
         )}
 
-        {!vgsReady && (
-          <div className="surface-card p-4 text-sm text-muted-foreground">
-            VGS Collect not configured. Add your vault ID in src/config/vgs.ts to enable tokenization.
-          </div>
-        )}
 
         <Card className="surface-card">
           <CardHeader>
@@ -245,15 +186,25 @@ export default function Children() {
             <form className="grid gap-4" onSubmit={handleSubmit}>
               <div className="grid gap-2">
                 <label className="text-sm">Child full name</label>
-                {/* VGS will mount a secure input inside this container */}
-                <div id="vgs-name" className="border rounded-md h-10 px-3 flex items-center" />
+                <Input
+                  type="text"
+                  value={childName}
+                  onChange={(e) => setChildName(e.target.value)}
+                  placeholder="Enter child's full name"
+                  required
+                />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm">Date of birth (YYYY-MM-DD)</label>
-                <div id="vgs-dob" className="border rounded-md h-10 px-3 flex items-center" />
+                <label className="text-sm">Date of birth</label>
+                <Input
+                  type="date"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  required
+                />
               </div>
               <Button type="submit" variant="hero" disabled={loading}>
-                {loading ? "Saving..." : "Tokenize & Save"}
+                {loading ? "Encrypting & Saving..." : "Encrypt & Save"}
               </Button>
             </form>
           </CardContent>

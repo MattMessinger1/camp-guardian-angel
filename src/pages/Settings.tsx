@@ -305,9 +305,9 @@ export default function Settings() {
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">VGS Configuration</h3>
+              <h3 className="font-semibold mb-2">Encryption Configuration</h3>
               <p className="text-sm text-muted-foreground">
-                VGS_VAULT_ID and VGS_COLLECT_PUBLIC_KEY are required for secure child data tokenization
+                CRYPTO_KEY_V1 is required for secure child data encryption using AES-GCM.
               </p>
             </div>
           </CardContent>
@@ -352,7 +352,7 @@ export default function Settings() {
               rel="noopener noreferrer"
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted transition-colors"
             >
-              <span className="font-semibold">VGS Dashboard</span>
+              <span className="font-semibold">Encryption Setup</span>
               <span className="text-sm text-muted-foreground">→</span>
             </a>
           </CardContent>
