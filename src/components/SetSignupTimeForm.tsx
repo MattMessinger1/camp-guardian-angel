@@ -161,7 +161,7 @@ export function SetSignupTimeForm({ sessionId, sessionName, onSuccess }: SetSign
                 control={form.control}
                 name="time"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Signup Time (24-hour format)</FormLabel>
                     <FormControl>
                       <Input
