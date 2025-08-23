@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import PhoneVerificationBanner from "@/components/PhoneVerificationBanner";
-import { Eye, Clock, CheckCircle, XCircle, AlertCircle, Pause } from "lucide-react";
+import { Eye, Clock, CheckCircle, XCircle, AlertCircle, Pause, Settings } from "lucide-react";
 import { format } from "date-fns";
 
 interface Registration {
@@ -283,6 +283,12 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold">Registration Dashboard</h1>
           <p className="text-muted-foreground">Monitor your camp registration activity</p>
         </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/admin">
+            <Settings className="mr-2 h-4 w-4" />
+            Admin Panel
+          </Link>
+        </Button>
       </div>
 
       {/* Filters */}

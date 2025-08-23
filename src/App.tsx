@@ -43,6 +43,12 @@ import AccountHistory from './pages/AccountHistory';
 import ApprovePage from './pages/ApprovePage';
 import Operations from './pages/Operations';
 import ComplianceDashboard from './pages/ComplianceDashboard';
+import AdminLayout from './pages/AdminLayout';
+import Partnerships from './pages/Partnerships';
+import Analytics from './pages/Analytics';
+import CaptchaAssist from './pages/CaptchaAssist';
+import TOSCompliance from './pages/TOSCompliance';
+import ObservabilityPage from './pages/ObservabilityPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -69,8 +75,6 @@ export default function App() {
           <Route path="/sessions/:sessionId/confirmation" element={<SignupConfirmation />} />
           <Route path="/account/history" element={<AccountHistory />} />
           <Route path="/approve/:token" element={<ApprovePage />} />
-          <Route path="/operations" element={<ProtectedRoute><Operations /></ProtectedRoute>} />
-          <Route path="/compliance-dashboard" element={<ProtectedRoute><ComplianceDashboard /></ProtectedRoute>} />
           <Route path="/sessions/:id/edit" element={<SessionForm />} />
           <Route path="/children" element={<Children />} />
           <Route path="/settings" element={<Settings />} />
@@ -82,7 +86,27 @@ export default function App() {
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/reservation-holds" element={<ReservationHolds />} />
           <Route path="/manual-backup/:reservationId" element={<ManualBackup />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+          
+          {/* Admin Layout with Sidebar */}
+          <Route path="/admin/*" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="operations" element={<Operations />} />
+            <Route path="compliance" element={<ComplianceDashboard />} />
+            <Route path="observability" element={<ObservabilityPage />} />
+            <Route path="partnerships" element={<Partnerships />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="captcha-assist" element={<CaptchaAssist />} />
+            <Route path="tos-compliance" element={<TOSCompliance />} />
+          </Route>
+          
+          {/* Legacy standalone routes */}
+          <Route path="/operations" element={<ProtectedRoute><Operations /></ProtectedRoute>} />
+          <Route path="/compliance" element={<ProtectedRoute><ComplianceDashboard /></ProtectedRoute>} />
+          <Route path="/captcha-assist" element={<ProtectedRoute><CaptchaAssist /></ProtectedRoute>} />
+          <Route path="/tos-compliance" element={<ProtectedRoute><TOSCompliance /></ProtectedRoute>} />
+          <Route path="/observability" element={<ProtectedRoute><ObservabilityPage /></ProtectedRoute>} />
+          <Route path="/partnerships" element={<ProtectedRoute><Partnerships /></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           <Route path="/system" element={<SystemDashboard />} />
           <Route path="/health" element={<HealthCheck />} />
           <Route path="/sanity" element={<SanityCheck />} />
