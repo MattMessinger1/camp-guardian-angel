@@ -275,8 +275,8 @@ export default function ReadyToSignup() {
             Refresh Assessment
           </Button>
           {assessment.signupReadiness.canSignupNow && (
-            <Button onClick={() => navigate(`/sessions/${sessionId}/signup`)}>
-              Proceed to Signup
+            <Button onClick={() => navigate(`/sessions/${sessionId}/confirmation`)}>
+              View Locked & Loaded Signups
             </Button>
           )}
         </div>
