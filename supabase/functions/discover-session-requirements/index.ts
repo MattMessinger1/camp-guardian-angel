@@ -131,7 +131,37 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Discovery Strategy 2: Use defaults based on camp type and provider
+    // Discovery Strategy 2: Live form inspection using Browserbase + OpenAI
+    if (session.source_url) {
+      console.log(`[DISCOVER-REQUIREMENTS] Attempting live form inspection for URL: ${session.source_url}`);
+      
+      try {
+        const liveInspection = await performLiveFormInspection(session.source_url, session.id, shouldAvoidPHI);
+        
+        if (liveInspection.success) {
+          console.log(`[DISCOVER-REQUIREMENTS] Live inspection successful for session ${session_id}`);
+          
+          await upsertSessionRequirements(supabase, session_id, liveInspection.requirements, 'live_inspection', 'verified', [session.source_url], liveInspection.analysis_notes);
+
+          return new Response(JSON.stringify({
+            success: true,
+            discovery: {
+              method: 'live_inspection',
+              confidence: 'verified',
+              requirements: liveInspection.requirements,
+              needsVerification: false,
+              source: `Live form inspection (${new Date().toISOString()})`,
+              analysis: liveInspection.analysis_summary,
+              complexity_score: liveInspection.complexity_score
+            }
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      } catch (error) {
+        console.warn(`[DISCOVER-REQUIREMENTS] Live inspection failed, falling back to defaults:`, error);
+      }
+    }
+
+    // Discovery Strategy 3: Use defaults based on camp type and provider
     const { data: defaults } = await supabase
       .from("requirement_defaults")
       .select("*")
@@ -317,6 +347,159 @@ function isPHIDocument(document: string): boolean {
     document.toLowerCase().includes(phiDoc) || 
     phiDoc.includes(document.toLowerCase())
   );
+}
+
+// Live form inspection using Browserbase + OpenAI
+async function performLiveFormInspection(sourceUrl: string, sessionId: string, shouldAvoidPHI: boolean) {
+  try {
+    // Step 1: Use Browserbase to navigate to registration page and extract form data
+    const browserResponse = await fetch('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/browser-automation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+      },
+      body: JSON.stringify({
+        action: 'create',
+        metadata: {
+          purpose: 'form_inspection',
+          session_id: sessionId,
+          target_url: sourceUrl
+        }
+      })
+    });
+
+    if (!browserResponse.ok) {
+      throw new Error(`Browser automation failed: ${browserResponse.status}`);
+    }
+
+    const browserSession = await browserResponse.json();
+    const sessionId = browserSession.session_id;
+
+    // Navigate to the registration page
+    await fetch('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/browser-automation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+      },
+      body: JSON.stringify({
+        action: 'navigate',
+        session_id: sessionId,
+        url: sourceUrl
+      })
+    });
+
+    // Extract page data including forms
+    const extractResponse = await fetch('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/browser-automation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+      },
+      body: JSON.stringify({
+        action: 'extract',
+        session_id: sessionId,
+        extract_type: 'forms'
+      })
+    });
+
+    const pageData = await extractResponse.json();
+
+    // Close browser session
+    await fetch('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/browser-automation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+      },
+      body: JSON.stringify({
+        action: 'close',
+        session_id: sessionId
+      })
+    });
+
+    // Step 2: Use OpenAI to analyze the extracted form data
+    if (pageData.forms && pageData.forms.length > 0) {
+      const openaiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!openaiKey) {
+        throw new Error('OpenAI API key not configured');
+      }
+
+      const analysisPrompt = `
+Analyze this camp registration form and extract the requirements for parents to complete signup.
+
+Form HTML: ${JSON.stringify(pageData.forms[0], null, 2)}
+
+Focus on:
+1. Required fields for parent information
+2. Required fields for child information  
+3. Deposit/payment amounts (extract exact numbers)
+4. Required documents or uploads
+5. Complexity indicators (multi-step process, CAPTCHA likelihood)
+
+${shouldAvoidPHI ? 'IMPORTANT: Exclude any medical/health information fields (PHI) from requirements.' : ''}
+
+Return a JSON object with:
+{
+  "required_parent_fields": ["email", "phone", ...],
+  "required_child_fields": ["name", "dob", ...],
+  "deposit_amount_cents": 5000,
+  "required_documents": ["waiver", ...],
+  "complexity_score": 0.8,
+  "captcha_likelihood": 0.3,
+  "multi_step_process": true,
+  "analysis_summary": "Brief description of form complexity"
+}
+`;
+
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4.1-2025-04-14',
+          messages: [
+            { role: 'system', content: 'You are an expert at analyzing web forms for camp registration requirements. Return valid JSON only.' },
+            { role: 'user', content: analysisPrompt }
+          ],
+          max_completion_tokens: 1000
+        })
+      });
+
+      const openaiResult = await openaiResponse.json();
+      const analysis = JSON.parse(openaiResult.choices[0].message.content);
+
+      // Step 3: Structure the requirements for our system
+      const requirements = {
+        deposit_amount_cents: analysis.deposit_amount_cents || 5000,
+        required_parent_fields: analysis.required_parent_fields || ["email", "phone"],
+        required_child_fields: analysis.required_child_fields || ["name", "dob"],
+        required_documents: analysis.required_documents || ["waiver"],
+        custom_requirements: {
+          complexity_score: analysis.complexity_score || 0.5,
+          captcha_likelihood: analysis.captcha_likelihood || 0.2,
+          multi_step_process: analysis.multi_step_process || false
+        }
+      };
+
+      return {
+        success: true,
+        requirements,
+        analysis_summary: analysis.analysis_summary,
+        complexity_score: analysis.complexity_score,
+        analysis_notes: `Live form inspection completed at ${new Date().toISOString()}. Complexity: ${analysis.complexity_score}, CAPTCHA risk: ${analysis.captcha_likelihood}`
+      };
+    }
+
+    throw new Error('No forms found on registration page');
+
+  } catch (error) {
+    console.error('[LIVE-INSPECTION] Error:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 // Helper function to log HIPAA avoidance decisions
