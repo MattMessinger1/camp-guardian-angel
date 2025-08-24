@@ -209,26 +209,100 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
 
   console.log(`🚨 MOCK: Extracting data from session ${request.sessionId}`);
 
-  // MOCK: Return mock page data for camp registration
+  // MOCK: Return YMCA-specific page data for camp registration
   const mockPageData = {
-    title: 'YMCA Summer Camp Registration',
+    title: 'YMCA of Greater Seattle - Summer Camp Registration',
     url: request.url || 'https://www.ymcacamp.org/register',
+    provider: 'YMCA',
     forms: [{
-      id: 'registration-form',
-      action: '/submit-registration',
+      id: 'ymca-registration-form',
+      action: '/submit-ymca-registration',
       method: 'POST',
+      title: 'YMCA Camp Registration Form',
       fields: [
-        { name: 'parent_name', type: 'text', required: true },
-        { name: 'parent_email', type: 'email', required: true },
-        { name: 'parent_phone', type: 'tel', required: true },
-        { name: 'child_name', type: 'text', required: true },
-        { name: 'child_dob', type: 'date', required: true },
-        { name: 'emergency_contact', type: 'text', required: true },
+        { 
+          name: 'parent_guardian_name', 
+          type: 'text', 
+          required: true,
+          label: 'Parent/Guardian Full Name',
+          help: 'As it appears on your YMCA membership'
+        },
+        { 
+          name: 'ymca_member_id', 
+          type: 'text', 
+          required: false,
+          label: 'YMCA Member ID (Optional)',
+          help: 'Member discounts available'
+        },
+        { 
+          name: 'parent_email', 
+          type: 'email', 
+          required: true,
+          label: 'Primary Contact Email'
+        },
+        { 
+          name: 'parent_cell_phone', 
+          type: 'tel', 
+          required: true,
+          label: 'Cell Phone for Camp Updates'
+        },
+        { 
+          name: 'camper_first_name', 
+          type: 'text', 
+          required: true,
+          label: 'Camper\'s First Name'
+        },
+        { 
+          name: 'camper_last_name', 
+          type: 'text', 
+          required: true,
+          label: 'Camper\'s Last Name'
+        },
+        { 
+          name: 'camper_dob', 
+          type: 'date', 
+          required: true,
+          label: 'Camper\'s Date of Birth',
+          help: 'Used to determine age-appropriate activities'
+        },
+        { 
+          name: 'emergency_contact_name', 
+          type: 'text', 
+          required: true,
+          label: 'Emergency Contact Name'
+        },
+        { 
+          name: 'emergency_contact_phone', 
+          type: 'tel', 
+          required: true,
+          label: 'Emergency Contact Phone'
+        },
+        { 
+          name: 'medical_conditions', 
+          type: 'textarea', 
+          required: false,
+          label: 'Medical Conditions/Allergies',
+          help: 'Please list any conditions our staff should know about'
+        },
+        { 
+          name: 'swim_level', 
+          type: 'select', 
+          required: true,
+          label: 'Camper\'s Swimming Ability',
+          options: ['Non-swimmer', 'Beginner', 'Intermediate', 'Advanced'],
+          help: 'Required for YMCA water safety protocols'
+        }
       ]
     }],
-    availability: 'Available - 5 spots remaining',
-    pricing: '$250/week',
+    availability: 'Available - 8 spots remaining',
+    pricing: '$275/week (YMCA Members: $225/week)',
     dates: ['July 8-12, 2025', 'July 15-19, 2025'],
+    requirements: {
+      waiver: 'YMCA liability waiver required',
+      deposit: '$50 deposit required to hold spot',
+      medical_form: 'YMCA health form required before first day'
+    },
+    ymca_specific: true,
     mockResponse: true
   };
 
