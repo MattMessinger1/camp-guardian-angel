@@ -53,11 +53,18 @@ export default function AccountHistory() {
       if (!user) return [];
       
       try {
-        // First, try to get basic reservations data
+        // Get reservations data by joining with parents table to get user's reservations
         const { data: reservations, error: reservationsError } = await supabase
           .from('reservations')
-          .select('*')
-          .eq('user_id', user.id)
+          .select(`
+            *,
+            parents!inner(
+              id,
+              name,
+              user_id
+            )
+          `)
+          .eq('parents.user_id', user.id)
           .order('created_at', { ascending: false });
         
         if (reservationsError) {
