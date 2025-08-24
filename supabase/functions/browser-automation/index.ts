@@ -142,8 +142,9 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
   }
 
   let sessionData;
+  let responseText;
   try {
-    const responseText = await response.text();
+    responseText = await response.text();
     console.log('Browserbase response text:', responseText);
     console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     sessionData = JSON.parse(responseText);
