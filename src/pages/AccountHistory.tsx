@@ -46,6 +46,12 @@ export default function AccountHistory() {
   const [selectedTiming, setSelectedTiming] = useState<SignupHistoryRow | null>(null);
   const [isTimingModalOpen, setIsTimingModalOpen] = useState(false);
 
+  console.log('🔍 AccountHistory: Component rendered');
+  console.log('👤 AccountHistory: User auth state:', { user: !!user, userId: user?.id });
+  
+  // Add a visible debug section
+  const showDebugInfo = true;
+
   // Fetch user's signup history with comprehensive data
   const { data: signupHistory, isLoading, error } = useQuery({
     queryKey: ['user-signup-history', user?.id],
@@ -244,6 +250,20 @@ export default function AccountHistory() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
+        
+        {/* Debug Info - Remove this later */}
+        {showDebugInfo && (
+          <div className="bg-yellow-100 border border-yellow-400 rounded p-4 mb-4">
+            <h3 className="font-bold text-yellow-800">Debug Info:</h3>
+            <p>User authenticated: {user ? 'Yes' : 'No'}</p>
+            <p>User ID: {user?.id || 'None'}</p>
+            <p>Data loading: {isLoading ? 'Yes' : 'No'}</p>
+            <p>Error: {error ? 'Yes' : 'No'}</p>
+            <p>History records: {signupHistory?.length || 0}</p>
+            {error && <p className="text-red-600">Error details: {error.toString()}</p>}
+          </div>
+        )}
+        
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
