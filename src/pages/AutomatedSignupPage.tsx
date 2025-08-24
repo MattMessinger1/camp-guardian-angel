@@ -55,12 +55,7 @@ export default function AutomatedSignupPage() {
           automationUrl = data.discovery.source;
           console.log('✅ Using discovery source URL for automation:', automationUrl);
         } else {
-          console.log('❌ Discovery source not usable:', {
-            hasSource: !!data?.discovery?.source,
-            isString: typeof data?.discovery?.source === 'string',
-            isNotGeneric: data?.discovery?.source !== "Generic camp requirements (needs verification)",
-            startsWithHttp: data?.discovery?.source?.startsWith?.('http')
-          });
+          console.log('ℹ️ Discovery source is metadata, not URL - falling back to session source_url');
         }
         
         // If no valid discovery source, get the session's signup URL
