@@ -107,6 +107,13 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
     }
   }
 
+  const projectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
+  if (!projectId) {
+    throw new Error('BROWSERBASE_PROJECT_ID not configured');
+  }
+
+  console.log('Creating session with project ID:', projectId);
+
   const response = await fetch('https://www.browserbase.com/v1/sessions', {
     method: 'POST',
     headers: {
@@ -114,18 +121,29 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      projectId: Deno.env.get('BROWSERBASE_PROJECT_ID'),
+      projectId,
       keepAlive: true,
       timeout: 300000, // 5 minutes
     }),
   });
 
+  console.log('Browserbase response status:', response.status);
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to create browser session: ${errorText}`);
+    console.error('Browserbase error response:', errorText);
+    throw new Error(`Failed to create browser session (${response.status}): ${errorText}`);
   }
 
-  const sessionData = await response.json();
+  let sessionData;
+  try {
+    const responseText = await response.text();
+    console.log('Browserbase response:', responseText);
+    sessionData = JSON.parse(responseText);
+  } catch (parseError) {
+    console.error('Failed to parse Browserbase response:', parseError);
+    throw new Error('Invalid JSON response from Browserbase API');
+  }
   
   const browserSession: BrowserSession = {
     id: sessionData.id,

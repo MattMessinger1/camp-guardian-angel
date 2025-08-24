@@ -33,14 +33,17 @@ export default function AutomatedSignupPage() {
           body: { session_id: sessionId }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Requirements discovery error:', error);
+          throw error;
+        }
         
         console.log('Session requirements discovered:', data);
         setRequirements(data);
 
-        // Auto-initialize browser automation after requirements are loaded
-        if (data?.discovery?.source) {
-          console.log('Auto-initializing browser automation...');
+        // Only auto-initialize if we have a valid source URL and no existing errors
+        if (data?.discovery?.source && typeof data.discovery.source === 'string' && data.discovery.source !== "Generic camp requirements (needs verification)") {
+          console.log('Auto-initializing browser automation for URL:', data.discovery.source);
           try {
             await initializeSession(data.discovery.source, data.provider_id);
             console.log('Browser automation auto-initialized successfully');
@@ -48,9 +51,25 @@ export default function AutomatedSignupPage() {
             console.error('Auto-initialization failed:', autoInitError);
             // Don't throw here, let the manual retry button handle it
           }
+        } else {
+          console.log('Skipping auto-initialization - no valid source URL or generic requirements');
         }
       } catch (error) {
         console.error('Error discovering session requirements:', error);
+        setRequirements({
+          discovery: {
+            method: 'fallback',
+            confidence: 'estimated',
+            requirements: {
+              required_parent_fields: ["email", "phone", "emergency_contact"],
+              required_child_fields: ["name", "dob"],
+              required_documents: ["waiver"],
+              custom_requirements: {}
+            },
+            needsVerification: true,
+            source: 'Fallback requirements due to discovery error'
+          }
+        });
       } finally {
         setLoadingRequirements(false);
       }
