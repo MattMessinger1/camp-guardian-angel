@@ -50,9 +50,17 @@ export default function AccountHistory() {
   const { data: signupHistory, isLoading, error } = useQuery({
     queryKey: ['user-signup-history', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      console.log('AccountHistory: User object:', user);
+      console.log('AccountHistory: User ID:', user?.id);
+      
+      if (!user) {
+        console.log('AccountHistory: No user found, returning empty array');
+        return [];
+      }
       
       try {
+        console.log('AccountHistory: Starting query for user:', user.id);
+        
         // Get reservations data by joining with parents table to get user's reservations
         const { data: reservations, error: reservationsError } = await supabase
           .from('reservations')
@@ -66,6 +74,8 @@ export default function AccountHistory() {
           `)
           .eq('parents.user_id', user.id)
           .order('created_at', { ascending: false });
+        
+        console.log('AccountHistory: Query result:', { data: reservations, error: reservationsError });
         
         if (reservationsError) {
           logger.error('Reservations query error', { error: reservationsError, component: 'AccountHistory' });
