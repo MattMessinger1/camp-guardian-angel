@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { logger } from "@/lib/log";
@@ -49,8 +49,28 @@ export default function AccountHistory() {
   console.log('🔍 AccountHistory: Component rendered');
   console.log('👤 AccountHistory: User auth state:', { user: !!user, userId: user?.id });
   
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+    }
+  }, [user, navigate]);
+
+  // Don't render anything if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
+          <p className="text-muted-foreground mb-6">Please log in to view your signup history</p>
+          <Button onClick={() => navigate('/auth')}>Go to Login</Button>
+        </div>
+      </div>
+    );
+  }
+  
   // Add a visible debug section
-  const showDebugInfo = true;
+  const showDebugInfo = false;
 
   // Fetch user's signup history with comprehensive data
   const { data: signupHistory, isLoading, error } = useQuery({
