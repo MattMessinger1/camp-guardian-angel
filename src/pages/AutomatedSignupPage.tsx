@@ -44,46 +44,60 @@ export default function AutomatedSignupPage() {
         // Determine the best URL for browser automation
         let automationUrl = null;
         
+        console.log('🔍 Discovery data:', data?.discovery);
+        console.log('🔍 Discovery source:', data?.discovery?.source, typeof data?.discovery?.source);
+        
         // First try discovery source
         if (data?.discovery?.source && 
             typeof data.discovery.source === 'string' && 
             data.discovery.source !== "Generic camp requirements (needs verification)" &&
             data.discovery.source.startsWith('http')) {
           automationUrl = data.discovery.source;
-          console.log('Using discovery source URL for automation:', automationUrl);
+          console.log('✅ Using discovery source URL for automation:', automationUrl);
+        } else {
+          console.log('❌ Discovery source not usable:', {
+            hasSource: !!data?.discovery?.source,
+            isString: typeof data?.discovery?.source === 'string',
+            isNotGeneric: data?.discovery?.source !== "Generic camp requirements (needs verification)",
+            startsWithHttp: data?.discovery?.source?.startsWith?.('http')
+          });
         }
         
         // If no valid discovery source, get the session's signup URL
         if (!automationUrl && sessionId) {
           try {
-            console.log('Getting session signup URL for automation...');
-            const { data: sessionData } = await supabase
+            console.log('🔍 Getting session source_url for automation...');
+            const { data: sessionData, error } = await supabase
               .from('sessions')
               .select('source_url')
               .eq('id', sessionId)
               .maybeSingle();
             
+            console.log('📊 Session query result:', { sessionData, error });
+            
             if (sessionData?.source_url) {
               automationUrl = sessionData.source_url;
-              console.log('Using session source URL for automation:', automationUrl);
+              console.log('✅ Using session source URL for automation:', automationUrl);
+            } else {
+              console.log('❌ No source_url in session data');
             }
           } catch (sessionError) {
-            console.error('Failed to get session URL:', sessionError);
+            console.error('❌ Failed to get session URL:', sessionError);
           }
         }
         
         // Auto-initialize browser automation if we have a URL
         if (automationUrl) {
-          console.log('Auto-initializing browser automation for URL:', automationUrl);
+          console.log('🚀 Auto-initializing browser automation for URL:', automationUrl);
           try {
             await initializeSession(automationUrl, data.provider_id);
-            console.log('Browser automation auto-initialized successfully');
+            console.log('✅ Browser automation auto-initialized successfully');
           } catch (autoInitError) {
-            console.error('Auto-initialization failed:', autoInitError);
+            console.error('❌ Auto-initialization failed:', autoInitError);
             // Don't throw here, let the manual retry button handle it
           }
         } else {
-          console.log('No suitable URL found for auto-initialization - user will need to use manual controls');
+          console.log('⚠️ Skipping auto-initialization - no valid source URL or generic requirements');
         }
       } catch (error) {
         console.error('Error discovering session requirements:', error);
