@@ -222,6 +222,18 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             !fieldMappings[fieldName as keyof typeof fieldMappings]
           );
           
+          // Add additional requirements from the extracted form data
+          const additionalRequirements = [];
+          if (discoveredRequirements.pageData?.requirements) {
+            const reqs = discoveredRequirements.pageData.requirements;
+            if (reqs.waiver) additionalRequirements.push('YMCA liability waiver');
+            if (reqs.medical_form) additionalRequirements.push('Medical form (required before first day)');
+          }
+          // Add optional YMCA Member ID for potential discount
+          additionalRequirements.push('YMCA Member ID (optional - for member discount)');
+          
+          remainingFields = [...remainingFields, ...additionalRequirements];
+          
           console.log('✅ Signup fields available now:', signupFields);
           console.log('⏳ Remaining items required for full signup:', remainingFields);
           
@@ -243,7 +255,9 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             sms_required: discoveredRequirements.discovery?.requirements?.sms_required || false,
             email_required: true // Always require email for account
           },
-          payment_required: discoveredRequirements.discovery?.requirements?.payment_required !== false
+          payment_required: discoveredRequirements.discovery?.requirements?.payment_required !== false,
+          payment_amount: discoveredRequirements.discovery?.requirements?.deposit_amount_cents ? 
+            discoveredRequirements.discovery.requirements.deposit_amount_cents / 100 : undefined
         };
 
         console.log('✅ Camp-specific form requirements ready:', sessionReqs);
@@ -774,7 +788,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                   />
                   <div className="text-sm leading-relaxed">
                     <Label htmlFor="upfrontConsent" className="cursor-pointer font-medium">
-                      I agree to pay the Provider &lt;&lt;insert Payment required upon signup dollar amount / varies by activity&gt;&gt;&gt; *.
+                      I agree to pay the Provider {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<amount varies by activity>>'} *.
                     </Label>
                     <div className="text-xs text-muted-foreground italic mt-1">
                       (This activity requires a payment upon signup. You'll pay the remaining balance directly on the camp provider's website after signup.)
