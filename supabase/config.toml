@@ -138,3 +138,6 @@ verify_jwt = false
 [functions.test-browser-init]
 verify_jwt = false
 
+[functions.test-browserbase-direct]
+verify_jwt = false
+
