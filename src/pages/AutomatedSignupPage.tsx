@@ -272,19 +272,6 @@ export default function AutomatedSignupPage() {
           </Card>
         )}
         
-        {/* Browser Automation Status - shows live form discovery progress */}
-        <BrowserAutomationStatus 
-          automationState={state}
-          signupUrl={requirements?.discovery?.source || '#'}
-          onInitialize={() => {
-            if (requirements?.discovery?.source) {
-              initializeSession(requirements.discovery.source, requirements.provider_id).catch(console.error);
-            }
-          }}
-          onReset={reset}
-          canProceedToSignup={state.status === 'ready'}
-        />
-        
         {/* Requirements discovered - now show optimized signup form */}
         {requirements && (
           <CompleteSignupForm 
