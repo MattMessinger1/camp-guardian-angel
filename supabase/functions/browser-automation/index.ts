@@ -120,16 +120,15 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
   console.log('Creating session with project ID:', projectId);
   console.log('Using API key ending in:', apiKey.slice(-8));
 
-  const response = await fetch('https://www.browserbase.com/v1/sessions', {
+  const response = await fetch('https://api.browserbase.com/v1/sessions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
+      'X-BB-Api-Key': apiKey,
     },
     body: JSON.stringify({
       projectId,
-      keepAlive: true,
-      timeout: 300000, // 5 minutes
     }),
   });
 
