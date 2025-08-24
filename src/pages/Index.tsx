@@ -237,6 +237,27 @@ const Index = () => {
                   <p>• Fairness caps will be introduced later.</p>
                 </CardContent>
               </Card>
+              
+              <Card className="surface-card border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-lg">YMCA Summer Adventure Camp</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Price:</span>
+                    <span className="text-lg font-semibold">$190</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Availability:</span>
+                    <span className="text-green-600 flex items-center gap-1">
+                      ✅ Open for Registration
+                    </span>
+                  </div>
+                  <div className="bg-primary/5 p-3 rounded-lg border border-primary/20">
+                    <p className="text-sm">🤖 <strong>Automated Signup Ready:</strong> Our system will help you complete registration quickly and accurately.</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>
