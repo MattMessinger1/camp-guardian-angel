@@ -41,18 +41,49 @@ export default function AutomatedSignupPage() {
         console.log('Session requirements discovered:', data);
         setRequirements(data);
 
-        // Only auto-initialize if we have a valid source URL and no existing errors
-        if (data?.discovery?.source && typeof data.discovery.source === 'string' && data.discovery.source !== "Generic camp requirements (needs verification)") {
-          console.log('Auto-initializing browser automation for URL:', data.discovery.source);
+        // Determine the best URL for browser automation
+        let automationUrl = null;
+        
+        // First try discovery source
+        if (data?.discovery?.source && 
+            typeof data.discovery.source === 'string' && 
+            data.discovery.source !== "Generic camp requirements (needs verification)" &&
+            data.discovery.source.startsWith('http')) {
+          automationUrl = data.discovery.source;
+          console.log('Using discovery source URL for automation:', automationUrl);
+        }
+        
+        // If no valid discovery source, get the session's signup URL
+        if (!automationUrl && sessionId) {
           try {
-            await initializeSession(data.discovery.source, data.provider_id);
+            console.log('Getting session signup URL for automation...');
+            const { data: sessionData } = await supabase
+              .from('sessions')
+              .select('source_url')
+              .eq('id', sessionId)
+              .maybeSingle();
+            
+            if (sessionData?.source_url) {
+              automationUrl = sessionData.source_url;
+              console.log('Using session source URL for automation:', automationUrl);
+            }
+          } catch (sessionError) {
+            console.error('Failed to get session URL:', sessionError);
+          }
+        }
+        
+        // Auto-initialize browser automation if we have a URL
+        if (automationUrl) {
+          console.log('Auto-initializing browser automation for URL:', automationUrl);
+          try {
+            await initializeSession(automationUrl, data.provider_id);
             console.log('Browser automation auto-initialized successfully');
           } catch (autoInitError) {
             console.error('Auto-initialization failed:', autoInitError);
             // Don't throw here, let the manual retry button handle it
           }
         } else {
-          console.log('Skipping auto-initialization - no valid source URL or generic requirements');
+          console.log('No suitable URL found for auto-initialization - user will need to use manual controls');
         }
       } catch (error) {
         console.error('Error discovering session requirements:', error);
