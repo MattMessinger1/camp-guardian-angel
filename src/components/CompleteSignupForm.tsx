@@ -65,6 +65,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
   const [requirements, setRequirements] = useState<SessionRequirements | null>(null);
   const [loadingRequirements, setLoadingRequirements] = useState(false);
   const [requirementsError, setRequirementsError] = useState<string | null>(null);
+  const [remainingFields, setRemainingFields] = useState<string[]>([]);
   
   // Form state
   const [loading, setLoading] = useState(false);
@@ -176,46 +177,56 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
       if (discoveredRequirements) {
         console.log('📋 Using discovered requirements:', discoveredRequirements);
         
-        // Extract only signup/reservation fields (not full registration) and block PHI
+        // Extract signup fields from discovery requirements structure
         let signupFields = [];
-        if (discoveredRequirements.pageData?.forms?.[0]?.fields) {
-          const allFields = discoveredRequirements.pageData.forms[0].fields;
-          const phiBlockedFields = discoveredRequirements.discovery?.phi_blocked_fields || [];
-          
-          // Define signup-only fields (not full registration)
-          const signupOnlyFields = [
-            'parent_guardian_name', 'guardian_name', 'parent_name',
-            'ymca_member_id', 'member_id', 'membership_number',
-            'camper_first_name', 'child_first_name', 'first_name',
-            'camper_last_name', 'child_last_name', 'last_name', 
-            'camper_dob', 'child_dob', 'date_of_birth', 'birthdate',
-            'emergency_contact_name', 'emergency_name',
-            'emergency_contact_phone', 'emergency_phone',
-            'swim_level', 'swimming_ability'
+        let remainingFields = [];
+        
+        const discoveryReqs = discoveredRequirements.discovery?.requirements;
+        if (discoveryReqs) {
+          const allRequiredFields = [
+            ...(discoveryReqs.required_parent_fields || []),
+            ...(discoveryReqs.required_child_fields || [])
           ];
           
-          signupFields = allFields
-            .filter((field: any) => {
-              const fieldName = field.name?.toLowerCase() || '';
-              // Only include signup fields, exclude PHI and full registration fields
-              const isSignupField = signupOnlyFields.some(allowed => fieldName.includes(allowed));
-              const isPhiBlocked = phiBlockedFields.includes(field.name);
-              const isMedicalField = fieldName.includes('medical') || fieldName.includes('allerg') || 
-                                   fieldName.includes('condition') || fieldName.includes('medication');
-              
-              return isSignupField && !isPhiBlocked && !isMedicalField;
-            })
-            .map((field: any) => ({
-              field_name: field.name,
-              field_type: field.type,
-              required: field.required || false,
-              label: field.label || field.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-              help_text: field.help,
-              options: field.options
-            }));
+          console.log('📋 All required fields from YMCA:', allRequiredFields);
           
-          console.log('🎯 Signup-only fields (PHI filtered):', signupFields);
-          console.log('🚫 PHI blocked fields:', phiBlockedFields);
+          // Map to our form field structure - only non-PHI signup fields
+          const fieldMappings: Record<string, { type: string; label: string; options?: string[] }> = {
+            parent_guardian_name: { type: 'text', label: 'Parent/Guardian Name' },
+            parent_email: { type: 'email', label: 'Parent Email' },
+            parent_cell_phone: { type: 'tel', label: 'Parent Phone' },
+            camper_first_name: { type: 'text', label: 'Camper First Name' },
+            camper_last_name: { type: 'text', label: 'Camper Last Name' },
+            camper_dob: { type: 'date', label: 'Camper Date of Birth' },
+            emergency_contact_name: { type: 'text', label: 'Emergency Contact Name' },
+            emergency_contact_phone: { type: 'tel', label: 'Emergency Contact Phone' },
+            swim_level: { type: 'select', label: 'Swimming Level', options: ['Beginner', 'Intermediate', 'Advanced'] }
+          };
+          
+          // Create signup fields for available mappings
+          signupFields = allRequiredFields
+            .filter(fieldName => fieldMappings[fieldName as keyof typeof fieldMappings])
+            .map(fieldName => {
+              const mapping = fieldMappings[fieldName as keyof typeof fieldMappings];
+              return {
+                field_name: fieldName,
+                field_type: mapping.type,
+                required: true,
+                label: mapping.label,
+                ...(mapping.options && { options: mapping.options })
+              };
+            });
+          
+          // Identify remaining fields not yet supported (for future features)
+          remainingFields = allRequiredFields.filter(fieldName => 
+            !fieldMappings[fieldName as keyof typeof fieldMappings]
+          );
+          
+          console.log('✅ Signup fields available now:', signupFields);
+          console.log('⏳ Remaining items required for full signup:', remainingFields);
+          
+          // Set the remaining fields state
+          setRemainingFields(remainingFields);
         }
 
         // Convert to our requirements format with camp-specific fields
@@ -661,11 +672,33 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                         ))}
                       </ul>
                     </div>
-                  )}
-                </div>
-                <Separator />
-              </>
-            )}
+                   )}
+                   
+                   {remainingFields.length > 0 && (
+                     <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                       <h4 className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                         <AlertCircle className="h-4 w-4" />
+                         Remaining Items Required for Full Signup
+                       </h4>
+                       <p className="text-sm text-amber-800 mb-3">
+                         The following items will be collected during the confirmation process or on our Pending Signups page:
+                       </p>
+                       <ul className="text-sm text-amber-800 space-y-1">
+                         {remainingFields.map((fieldName: string) => (
+                           <li key={fieldName} className="flex items-center gap-2">
+                             • <span className="capitalize">{fieldName.replace(/_/g, ' ')}</span>
+                           </li>
+                         ))}
+                       </ul>
+                       <p className="text-xs text-amber-700 mt-3 italic">
+                         These items are not required to start the signup process but may be needed before final registration.
+                       </p>
+                     </div>
+                    )}
+                 </div>
+                 <Separator />
+               </>
+             )}
 
             {/* Account Information */}
             <div className="space-y-4">
