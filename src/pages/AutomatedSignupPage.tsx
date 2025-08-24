@@ -121,7 +121,7 @@ export default function AutomatedSignupPage() {
     };
 
     discoverRequirements();
-  }, [sessionId, initializeSession]);
+  }, [sessionId]); // Remove initializeSession from dependencies
 
   if (!sessionId) {
     return (
