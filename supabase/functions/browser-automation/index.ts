@@ -41,8 +41,11 @@ serve(async (req) => {
   try {
     const browserbaseApiKey = Deno.env.get('BROWSERBASE_API_KEY');
     if (!browserbaseApiKey) {
+      console.error('BROWSERBASE_API_KEY not found in environment variables');
+      console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(key => key.includes('BROWSER')));
       throw new Error('BROWSERBASE_API_KEY not configured');
     }
+    console.log('API key found, length:', browserbaseApiKey.length);
 
     const requestData: BrowserSessionRequest = await req.json();
     console.log('Browser automation request:', { 
@@ -109,10 +112,13 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
 
   const projectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
   if (!projectId) {
+    console.error('BROWSERBASE_PROJECT_ID not found in environment variables');
+    console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(key => key.includes('BROWSER')));
     throw new Error('BROWSERBASE_PROJECT_ID not configured');
   }
 
   console.log('Creating session with project ID:', projectId);
+  console.log('Using API key ending in:', apiKey.slice(-8));
 
   const response = await fetch('https://www.browserbase.com/v1/sessions', {
     method: 'POST',
