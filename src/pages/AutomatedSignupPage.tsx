@@ -284,6 +284,7 @@ export default function AutomatedSignupPage() {
         {requirements && (
           <CompleteSignupForm 
             sessionId={sessionId}
+            discoveredRequirements={requirements}
             onComplete={(user) => {
               console.log('Signup completed:', user);
               // Navigate to success or next step

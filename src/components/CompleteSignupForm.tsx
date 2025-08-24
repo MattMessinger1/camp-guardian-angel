@@ -37,10 +37,11 @@ interface SessionRequirements {
 
 interface CompleteSignupFormProps {
   sessionId?: string | null;
+  discoveredRequirements?: any;
   onComplete: (user: any) => void;
 }
 
-export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSignupFormProps) {
+export default function CompleteSignupForm({ sessionId, discoveredRequirements, onComplete }: CompleteSignupFormProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -169,97 +170,61 @@ export default function CompleteSignupForm({ sessionId, onComplete }: CompleteSi
 
   // Load session-specific requirements with PHI blocking
   useEffect(() => {
-    const loadRequirements = async () => {
-      // Test bypass - check for test parameter
-      if (window.location.search.includes('test=true')) {
-        setRequirements({
-          required_fields: [
-            { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Participant" },
-            { field_name: "email", field_type: "email", required: true, label: "Email Address" },
-            { field_name: "password", field_type: "password", required: true, label: "Password" }
-          ],
-          phi_blocked_fields: [],
-          communication_preferences: { sms_required: false, email_required: true },
-          payment_required: true
-        });
-        return;
-      }
-      
-      if (!sessionId) {
-        // Default requirements for general signup
-        setRequirements({
-          required_fields: [
-            { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Participant" },
-            { field_name: "email", field_type: "email", required: true, label: "Email Address" },
-            { field_name: "password", field_type: "password", required: true, label: "Password" }
-          ],
-          phi_blocked_fields: [],
-          communication_preferences: { sms_required: false, email_required: true },
-          payment_required: true
-        });
-        return;
-      }
-
-      setLoadingRequirements(true);
-      setRequirementsError(null);
-
-      try {
-        const { data, error } = await supabase.functions.invoke('discover-session-requirements', {
-          body: { session_id: sessionId }
-        });
-
-        if (error) throw error;
-
-        if (data) {
-          // Convert AI response to our requirements format
-          const sessionReqs: SessionRequirements = {
-            required_fields: [
-              { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-              { field_name: "children", field_type: "array", required: true, label: "Participant" },
-              { field_name: "email", field_type: "email", required: true, label: "Email Address" },
-              { field_name: "password", field_type: "password", required: true, label: "Password" },
-              // Add any additional fields from AI response (without PHI)
-              ...(data.required_fields || []).filter((field: any) => 
-                !data.phi_blocked_fields?.includes(field.field_name)
-              )
-            ],
-            phi_blocked_fields: data.phi_blocked_fields || [],
-            communication_preferences: {
-              sms_required: data.communication_preferences?.sms_required || false,
-              email_required: data.communication_preferences?.email_required || true
-            },
-            payment_required: data.payment_required !== false, // Default to true unless explicitly false
-            payment_amount: data.discovery?.requirements?.deposit_amount_cents ? 
-              (data.discovery.requirements.deposit_amount_cents / 100).toFixed(0) : 
-              data.payment_amount
-          };
-
-          setRequirements(sessionReqs);
+    const loadRequirements = () => {
+      // Use passed discoveredRequirements instead of calling API again
+      if (discoveredRequirements) {
+        console.log('📋 Using discovered YMCA requirements:', discoveredRequirements);
+        
+        // Extract YMCA-specific fields from mock browser data
+        let ymcaFields = [];
+        if (discoveredRequirements.pageData?.forms?.[0]?.fields) {
+          ymcaFields = discoveredRequirements.pageData.forms[0].fields.map((field: any) => ({
+            field_name: field.name,
+            field_type: field.type,
+            required: field.required || false,
+            label: field.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+          }));
         }
-      } catch (error: any) {
-        console.error('Error loading session requirements:', error);
-        setRequirementsError(error.message || 'Failed to load session requirements');
-        // Fallback to default requirements
-        setRequirements({
+
+        // Convert to our requirements format with YMCA-specific fields
+        const sessionReqs: SessionRequirements = {
           required_fields: [
-            { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-            { field_name: "children", field_type: "array", required: true, label: "Participant" },
+            // Core account fields (always needed)
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
-            { field_name: "password", field_type: "password", required: true, label: "Password" }
+            { field_name: "password", field_type: "password", required: true, label: "Password" },
+            // Add YMCA-specific fields
+            ...ymcaFields
           ],
-          phi_blocked_fields: [],
-          communication_preferences: { sms_required: false, email_required: true },
-          payment_required: true
-        });
-      } finally {
-        setLoadingRequirements(false);
+          phi_blocked_fields: discoveredRequirements.discovery?.phi_blocked_fields || [],
+          communication_preferences: {
+            sms_required: discoveredRequirements.discovery?.requirements?.sms_required || false,
+            email_required: true // Always require email for account
+          },
+          payment_required: discoveredRequirements.discovery?.requirements?.payment_required !== false
+        };
+
+        console.log('✅ YMCA form requirements ready:', sessionReqs);
+        setRequirements(sessionReqs);
+        return;
       }
+
+      // Fallback if no discovered requirements
+      console.log('ℹ️ No discovered requirements, using defaults');
+      setRequirements({
+        required_fields: [
+          { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
+          { field_name: "children", field_type: "array", required: true, label: "Participant" },
+          { field_name: "email", field_type: "email", required: true, label: "Email Address" },
+          { field_name: "password", field_type: "password", required: true, label: "Password" }
+        ],
+        phi_blocked_fields: [],
+        communication_preferences: { sms_required: false, email_required: true },
+        payment_required: true
+      });
     };
 
     loadRequirements();
-  }, [sessionId]);
+  }, [discoveredRequirements]);
 
   const handleAddPaymentMethod = async () => {
     setPaymentLoading(true);
