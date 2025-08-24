@@ -19,7 +19,7 @@ export default function AutomatedSignupPage() {
   const [requirements, setRequirements] = React.useState(null);
   const [loadingRequirements, setLoadingRequirements] = React.useState(true);
 
-  // Load session requirements using our new enhanced discovery
+  // Load session requirements and auto-initialize browser automation
   React.useEffect(() => {
     const discoverRequirements = async () => {
       if (!sessionId) {
@@ -37,6 +37,18 @@ export default function AutomatedSignupPage() {
         
         console.log('Session requirements discovered:', data);
         setRequirements(data);
+
+        // Auto-initialize browser automation after requirements are loaded
+        if (data?.discovery?.source) {
+          console.log('Auto-initializing browser automation...');
+          try {
+            await initializeSession(data.discovery.source, data.provider_id);
+            console.log('Browser automation auto-initialized successfully');
+          } catch (autoInitError) {
+            console.error('Auto-initialization failed:', autoInitError);
+            // Don't throw here, let the manual retry button handle it
+          }
+        }
       } catch (error) {
         console.error('Error discovering session requirements:', error);
       } finally {
@@ -45,7 +57,7 @@ export default function AutomatedSignupPage() {
     };
 
     discoverRequirements();
-  }, [sessionId]);
+  }, [sessionId, initializeSession]);
 
   if (!sessionId) {
     return (
@@ -67,12 +79,12 @@ export default function AutomatedSignupPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin" />
-              Analyzing session requirements with AI...
+              Preparing automated signup assistant...
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              Using Browserbase and OpenAI to discover live signup requirements and optimize for speed and accuracy.
+              Discovering session requirements and initializing browser automation for fast, accurate signup.
             </p>
           </CardContent>
         </Card>
