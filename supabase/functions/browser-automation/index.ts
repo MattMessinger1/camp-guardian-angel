@@ -144,11 +144,13 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
   let sessionData;
   try {
     const responseText = await response.text();
-    console.log('Browserbase response:', responseText);
+    console.log('Browserbase response text:', responseText);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     sessionData = JSON.parse(responseText);
   } catch (parseError) {
     console.error('Failed to parse Browserbase response:', parseError);
-    throw new Error('Invalid JSON response from Browserbase API');
+    console.error('Raw response text:', responseText);
+    throw new Error(`Invalid JSON response from Browserbase API: ${parseError.message}. Response: ${responseText?.substring(0, 200)}`);
   }
   
   const browserSession: BrowserSession = {
