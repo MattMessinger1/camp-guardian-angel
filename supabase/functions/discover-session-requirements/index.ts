@@ -361,6 +361,7 @@ async function performLiveFormInspection(sourceUrl: string, sessionId: string, s
       },
       body: JSON.stringify({
         action: 'create',
+        url: sourceUrl,
         metadata: {
           purpose: 'form_inspection',
           session_id: sessionId,
@@ -374,7 +375,7 @@ async function performLiveFormInspection(sourceUrl: string, sessionId: string, s
     }
 
     const browserSession = await browserResponse.json();
-    const sessionId = browserSession.session_id;
+    const browserSessionId = browserSession.id;
 
     // Navigate to the registration page
     await fetch('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/browser-automation', {
@@ -385,7 +386,7 @@ async function performLiveFormInspection(sourceUrl: string, sessionId: string, s
       },
       body: JSON.stringify({
         action: 'navigate',
-        session_id: sessionId,
+        sessionId: browserSessionId,
         url: sourceUrl
       })
     });
@@ -399,8 +400,7 @@ async function performLiveFormInspection(sourceUrl: string, sessionId: string, s
       },
       body: JSON.stringify({
         action: 'extract',
-        session_id: sessionId,
-        extract_type: 'forms'
+        sessionId: browserSessionId
       })
     });
 
@@ -415,7 +415,7 @@ async function performLiveFormInspection(sourceUrl: string, sessionId: string, s
       },
       body: JSON.stringify({
         action: 'close',
-        session_id: sessionId
+        sessionId: browserSessionId
       })
     });
 
