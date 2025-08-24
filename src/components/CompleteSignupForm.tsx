@@ -176,10 +176,10 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
       if (discoveredRequirements) {
         console.log('📋 Using discovered requirements:', discoveredRequirements);
         
-        // Extract YMCA-specific fields from discovered requirements
-        let ymcaFields = [];
+        // Extract fields from browser automation pageData
+        let campSpecificFields = [];
         if (discoveredRequirements.pageData?.forms?.[0]?.fields) {
-          ymcaFields = discoveredRequirements.pageData.forms[0].fields.map((field: any) => ({
+          campSpecificFields = discoveredRequirements.pageData.forms[0].fields.map((field: any) => ({
             field_name: field.name,
             field_type: field.type,
             required: field.required || false,
@@ -187,16 +187,17 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             help_text: field.help,
             options: field.options
           }));
+          console.log('🎯 YMCA-specific fields extracted:', campSpecificFields);
         }
 
-        // Convert to our requirements format with YMCA-specific fields
+        // Convert to our requirements format with camp-specific fields
         const sessionReqs: SessionRequirements = {
           required_fields: [
             // Core account fields (always needed)
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" },
-            // Add YMCA-specific fields
-            ...ymcaFields
+            // Add camp-specific fields
+            ...campSpecificFields
           ],
           phi_blocked_fields: discoveredRequirements.discovery?.phi_blocked_fields || [],
           communication_preferences: {
@@ -206,7 +207,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
           payment_required: discoveredRequirements.discovery?.requirements?.payment_required !== false
         };
 
-        console.log('✅ YMCA form requirements ready:', sessionReqs);
+        console.log('✅ Camp-specific form requirements ready:', sessionReqs);
         setRequirements(sessionReqs);
         return;
       }
@@ -569,7 +570,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-lg font-semibold">
                     <User className="h-5 w-5" />
-                    {discoveredRequirements?.pageData?.provider === 'YMCA' ? 'YMCA Camp Requirements' : 'Camp-Specific Requirements'}
+                    {discoveredRequirements?.pageData?.provider === 'YMCA' ? 'YMCA-Specific Requirements' : 'Camp Requirements'}
                   </div>
                   {discoveredRequirements?.pageData?.provider === 'YMCA' && (
                     <Alert>
@@ -623,7 +624,9 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                   
                   {discoveredRequirements?.pageData?.requirements && (
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h4 className="font-semibold text-blue-900 mb-2">Additional YMCA Requirements:</h4>
+                      <h4 className="font-semibold text-blue-900 mb-2">
+                        {discoveredRequirements?.pageData?.provider === 'YMCA' ? 'Additional YMCA Requirements:' : 'Additional Requirements:'}
+                      </h4>
                       <ul className="text-sm text-blue-800 space-y-1">
                         {Object.entries(discoveredRequirements.pageData.requirements).map(([key, value]) => (
                           <li key={key}>• {value as string}</li>
