@@ -634,6 +634,83 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
 
             <Separator />
 
+            {/* YMCA-Specific Requirements */}
+            {requirements?.required_fields.some(field => 
+              !['email', 'password', 'guardian_name', 'children'].includes(field.field_name)
+            ) && (
+              <>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <User className="h-5 w-5" />
+                    {discoveredRequirements?.pageData?.provider === 'YMCA' ? 'YMCA-Specific Requirements' : 'Camp Requirements'}
+                  </div>
+                  {discoveredRequirements?.pageData?.provider === 'YMCA' && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        These fields are required by YMCA for camp registration and safety protocols.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <div className="grid gap-4">
+                    {requirements.required_fields
+                      .filter(field => !['email', 'password', 'guardian_name', 'children'].includes(field.field_name))
+                      .map((field) => (
+                        <div key={field.field_name}>
+                          <Label htmlFor={field.field_name}>
+                            {field.label} {field.required && '*'}
+                          </Label>
+                          {field.help_text && (
+                            <p className="text-xs text-muted-foreground mt-1">{field.help_text}</p>
+                          )}
+                          {field.field_type === 'select' && field.options ? (
+                            <select 
+                              id={field.field_name}
+                              className="w-full px-3 py-2 border border-input bg-background rounded-md"
+                              required={field.required}
+                            >
+                              <option value="">Select {field.label}</option>
+                              {field.options.map((option: string) => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          ) : field.field_type === 'textarea' ? (
+                            <textarea
+                              id={field.field_name}
+                              className="w-full px-3 py-2 border border-input bg-background rounded-md min-h-[80px]"
+                              placeholder={`Enter ${field.label.toLowerCase()}`}
+                              required={field.required}
+                            />
+                          ) : (
+                            <Input 
+                              id={field.field_name}
+                              type={field.field_type}
+                              placeholder={`Enter ${field.label.toLowerCase()}`}
+                              required={field.required}
+                            />
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                  
+                  {discoveredRequirements?.pageData?.requirements && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-semibold text-blue-900 mb-2">
+                        {discoveredRequirements?.pageData?.provider === 'YMCA' ? 'Additional YMCA Requirements:' : 'Additional Requirements:'}
+                      </h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        {Object.entries(discoveredRequirements.pageData.requirements).map(([key, value]) => (
+                          <li key={key}>• {value as string}</li>
+                        ))}
+                      </ul>
+                    </div>
+                   )}
+                   
+                 </div>
+                 <Separator />
+               </>
+             )}
 
             {/* Account Information */}
             <div className="space-y-4">
