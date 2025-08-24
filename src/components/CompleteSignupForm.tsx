@@ -322,43 +322,62 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🚀 Form submit clicked!');
+    console.log('📊 Current form state:', {
+      guardianName,
+      children,
+      hasPaymentMethod,
+      upfrontPaymentConsent,
+      successFeeConsent,
+      consentGiven,
+      loading
+    });
 
     // Test bypass - add ?test=true to URL to skip form validation
     if (window.location.search.includes('test=true')) {
+      console.log('🧪 Test mode activated, bypassing validation');
       onComplete({ id: 'test-user' });
       return;
     }
 
     // Validation
     if (!guardianName.trim()) {
+      console.log('❌ Validation failed: Missing guardian name');
       toast({ title: "Missing information", description: "Please enter your name." });
       return;
     }
 
     if (children.some(child => !child.name.trim() || !child.dob)) {
+      console.log('❌ Validation failed: Missing child information');
       toast({ title: "Missing information", description: "Please fill in all child names and birth dates." });
       return;
     }
 
     if (!hasPaymentMethod) {
+      console.log('❌ Validation failed: Missing payment method');
       toast({ title: "Payment method required", description: "Please add a payment method to complete signup." });
       return;
     }
 
     if (!upfrontPaymentConsent) {
+      console.log('❌ Validation failed: Missing upfront payment consent');
       toast({ title: "Payment consent required", description: "Please agree to the upfront payment terms." });
       return;
     }
 
     if (!successFeeConsent) {
+      console.log('❌ Validation failed: Missing success fee consent');
       toast({ title: "Success fee consent required", description: "Please agree to the success fee terms." });
       return;
     }
 
     if (!consentGiven) {
+      console.log('❌ Validation failed: Missing general consent');
       toast({ title: "Consent required", description: "Please agree to receive signup assistance." });
       return;
     }
+
+    console.log('✅ All validations passed, proceeding with account creation');
 
     // Check for potential duplicates and account limits before creating account
     try {
@@ -688,27 +707,6 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                     </div>
                    )}
                    
-                   {remainingFields.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
-                        <h4 className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          Additional Signup Information
-                        </h4>
-                        <p className="text-sm text-amber-800 mb-3">
-                          The following information is required for signup and will be collected during the automated process:
-                        </p>
-                        <ul className="text-sm text-amber-800 space-y-1">
-                          {remainingFields.map((fieldName: string) => (
-                            <li key={fieldName} className="flex items-center gap-2">
-                              • <span className="capitalize">{fieldName.replace(/_/g, ' ')}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="text-xs text-amber-700 mt-3 italic">
-                          Full registration details and document requirements will be handled directly with the camp provider.
-                        </p>
-                      </div>
-                    )}
                  </div>
                  <Separator />
                </>
