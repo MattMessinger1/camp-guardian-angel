@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { 
   CheckCircle, 
   XCircle, 
@@ -16,60 +15,11 @@ import {
   MessageSquare,
   Users,
   Calendar,
-  MapPin
+  MapPin,
+  DollarSign
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { detectPlatform } from '@/lib/providers/index';
-
-// Component to handle async text verification status
-const TextVerificationStatus = ({ canonicalUrl }: { canonicalUrl: string | null }) => {
-  const [status, setStatus] = useState<string>('Loading...');
-
-  useEffect(() => {
-    const checkStatus = async () => {
-      if (!canonicalUrl) {
-        setStatus('Unknown');
-        return;
-      }
-      
-      try {
-        const profile = await detectPlatform(canonicalUrl);
-        if (!profile) {
-          setStatus('Unknown');
-          return;
-        }
-        
-        const needsVerification = profile.captcha_expected || profile.login_type !== 'none';
-        setStatus(needsVerification ? 'Yes' : 'No');
-      } catch (error) {
-        console.error('Error detecting platform:', error);
-        setStatus('Unknown');
-      }
-    };
-
-    checkStatus();
-  }, [canonicalUrl]);
-
-  const getBadgeProps = (status: string) => {
-    switch (status) {
-      case 'Yes':
-        return { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' };
-      case 'No':
-        return { variant: 'secondary' as const, className: 'bg-green-100 text-green-800' };
-      default:
-        return { variant: 'outline' as const };
-    }
-  };
-
-  const badgeProps = getBadgeProps(status);
-
-  return (
-    <Badge {...badgeProps}>
-      {status}
-    </Badge>
-  );
-};
 
 export default function SignupConfirmation() {
   const params = useParams<{ sessionId?: string }>();
@@ -79,7 +29,7 @@ export default function SignupConfirmation() {
   
   const sessionId = params.sessionId;
   const attemptId = searchParams.get('attempt');
-  const status = searchParams.get('status') || 'unknown';
+  const status = searchParams.get('status') || 'ready';
 
   // Fetch session details
   const { data: sessionData } = useQuery({
@@ -133,7 +83,7 @@ export default function SignupConfirmation() {
           bgColor: 'bg-green-50',
           borderColor: 'border-green-200',
           title: 'Registration Successful!',
-          description: 'Your registration has been completed successfully.'
+          description: 'Your camp registration has been completed successfully.'
         };
       case 'failed':
         return {
@@ -151,7 +101,7 @@ export default function SignupConfirmation() {
           bgColor: 'bg-yellow-50',
           borderColor: 'border-yellow-200',
           title: 'CAPTCHA Required',
-          description: 'Please complete the CAPTCHA challenge to continue.'
+          description: 'Please complete the CAPTCHA challenge to continue your registration.'
         };
       case 'queue':
         return {
@@ -159,158 +109,31 @@ export default function SignupConfirmation() {
           color: 'text-blue-600',
           bgColor: 'bg-blue-50',
           borderColor: 'border-blue-200',
-          title: 'Joined Queue',
+          title: 'Added to Queue',
           description: 'You have been added to the registration queue.'
         };
       default:
-        return null; // Don't show unknown status
+        return {
+          icon: CheckCircle,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          title: 'Ready for Signup!',
+          description: 'You\'re all set! We\'ll handle the signup when registration opens.'
+        };
     }
   };
 
   const statusInfo = getStatusInfo(status);
-  const StatusIcon = statusInfo?.icon;
+  const StatusIcon = statusInfo.icon;
 
-  // Fetch ready signups for this user - including the current session if provided
-  const { data: readySignups } = useQuery({
-    queryKey: ['ready-signups', user?.id, sessionId],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      // Get sessions that are ready for signup (registration_open_at is null or in future)
-      const { data, error } = await supabase
-        .from('sessions')
-        .select(`
-          *,
-          activities (
-            name,
-            city,
-            state,
-            canonical_url
-          )
-        `)
-        .is('registration_open_at', null)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      let sessions = data || [];
-      
-      // If we have a specific sessionId (from signup), make sure it's included
-      if (sessionId && !sessions.find(s => s.id === sessionId)) {
-        const { data: currentSession } = await supabase
-          .from('sessions')
-          .select(`
-            *,
-            activities (
-              name,
-              city,
-              state,
-              canonical_url
-            )
-          `)
-          .eq('id', sessionId)
-          .maybeSingle();
-        
-        if (currentSession) {
-          sessions = [currentSession, ...sessions];
-        }
-      }
-      
-      return sessions;
-    },
-    enabled: !!user?.id
-  });
-
-  // Don't render status card if no status info
-  if (!statusInfo) {
+  if (!sessionData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-3xl font-bold tracking-tight">Pending Signups</h1>
-            <p className="text-lg text-muted-foreground">
-              You can skip the midnight hovering -- you're ready for signup.
-            </p>
-          </div>
-
-        {/* Ready Signups Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ready for Signup</CardTitle>
-          </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3 font-medium">Camp Name</th>
-                      <th className="text-left p-3 font-medium">Session</th>
-                      <th className="text-left p-3 font-medium">Signup Date/Time</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-left p-3 font-medium">Text verification required at signup day/time?</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {readySignups?.map((session) => (
-                      <tr key={session.id} className="border-b hover:bg-muted/50">
-                        <td className="p-3">
-                          <div>
-                            <div className="font-medium">{session.activities?.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {session.activities?.city}, {session.activities?.state}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="text-sm">
-                            {session.start_date && new Date(session.start_date).toLocaleDateString()} - 
-                            {session.end_date && new Date(session.end_date).toLocaleDateString()}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Ages {session.age_min}-{session.age_max}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="text-sm">
-                            {session.registration_open_at 
-                              ? new Date(session.registration_open_at).toLocaleString()
-                              : 'TBD'
-                            }
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            Ready for Signup
-                          </Badge>
-                        </td>
-                        <td className="p-3">
-                          <TextVerificationStatus canonicalUrl={session.activities?.canonical_url} />
-                        </td>
-                      </tr>
-                    )) || (
-                      <tr>
-                        <td colSpan={5} className="p-6 text-center text-muted-foreground">
-                          No sessions ready for signup yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* View Signup History Button */}
-          <div className="flex justify-center">
-            <Button 
-              variant="outline"
-              onClick={() => navigate('/account/history')}
-              className="flex items-center gap-2"
-            >
-              <MessageSquare className="w-4 h-4" />
-              View Signup History
-            </Button>
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center py-12">
+            <Clock className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading session details...</p>
           </div>
         </div>
       </div>
@@ -319,177 +142,151 @@ export default function SignupConfirmation() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-3xl font-bold tracking-tight">Pending Signups</h1>
-          <p className="text-lg text-muted-foreground">
-            You can skip the midnight hovering -- you're ready for signup.
-          </p>
-        </div>
-
-        {/* Ready Signups Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ready for Signup</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium">Camp Name</th>
-                    <th className="text-left p-3 font-medium">Session</th>
-                    <th className="text-left p-3 font-medium">Signup Date/Time</th>
-                    <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium">Text verification required at signup day/time?</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {readySignups?.map((session) => (
-                    <tr key={session.id} className="border-b hover:bg-muted/50">
-                      <td className="p-3">
-                        <div>
-                          <div className="font-medium">{session.activities?.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {session.activities?.city}, {session.activities?.state}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="text-sm">
-                          {session.start_date && new Date(session.start_date).toLocaleDateString()} - 
-                          {session.end_date && new Date(session.end_date).toLocaleDateString()}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Ages {session.age_min}-{session.age_max}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="text-sm">
-                          {session.registration_open_at 
-                            ? new Date(session.registration_open_at).toLocaleString()
-                            : 'TBD'
-                          }
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="secondary" className="bg-green-100 text-green-800">
-                          Ready for Signup
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <TextVerificationStatus canonicalUrl={session.activities?.canonical_url} />
-                      </td>
-                    </tr>
-                  )) || (
-                    <tr>
-                      <td colSpan={5} className="p-6 text-center text-muted-foreground">
-                        No sessions ready for signup yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* View Signup History Button */}
-        <div className="flex justify-center">
-          <Button 
-            variant="outline"
-            onClick={() => navigate('/account/history')}
-            className="flex items-center gap-2"
-          >
-            <MessageSquare className="w-4 h-4" />
-            View Signup History
-          </Button>
-        </div>
-
-        {/* Status Card */}
+      <div className="max-w-2xl mx-auto space-y-6">
+        
+        {/* Main Status Card */}
         <Card className={`${statusInfo.bgColor} ${statusInfo.borderColor} border-2`}>
           <CardHeader className="text-center">
             <div className="mx-auto w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4">
               <StatusIcon className={`w-8 h-8 ${statusInfo.color}`} />
             </div>
-            <CardTitle className={statusInfo.color}>{statusInfo.title}</CardTitle>
+            <CardTitle className={`${statusInfo.color} text-2xl`}>{statusInfo.title}</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">{statusInfo.description}</p>
+            <p className="text-lg text-muted-foreground">{statusInfo.description}</p>
             
-            {attemptData && (
-              <div className="space-y-2">
-                {attemptData.failure_reason && (
-                  <Alert>
-                    <AlertTriangle className="w-4 h-4" />
-                    <AlertDescription>
-                      <strong>Reason:</strong> {attemptData.failure_reason}
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                {attemptData.metadata && (
-                  <div className="text-sm text-muted-foreground">
-                    <p><strong>Attempt Time:</strong> {new Date(attemptData.created_at).toLocaleString()}</p>
-                    {attemptData.latency_ms && (
-                      <p><strong>Response Time:</strong> {attemptData.latency_ms}ms</p>
-                    )}
+            {attemptData && attemptData.failure_reason && (
+              <Alert>
+                <AlertTriangle className="w-4 h-4" />
+                <AlertDescription>
+                  <strong>Reason:</strong> {attemptData.failure_reason}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Camp Details Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Camp Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <Users className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">{sessionData.activities?.name || 'YMCA Summer Adventure Camp'}</p>
+                  {sessionData.activities?.city && sessionData.activities?.state && (
+                    <p className="text-sm text-muted-foreground">
+                      {sessionData.activities.city}, {sessionData.activities.state}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">Session Dates</p>
+                  <p className="text-sm text-muted-foreground">
+                    {sessionData.start_at || sessionData.end_at 
+                      ? `${sessionData.start_at ? new Date(sessionData.start_at).toLocaleDateString() : 'TBD'} - ${sessionData.end_at ? new Date(sessionData.end_at).toLocaleDateString() : 'TBD'}`
+                      : 'July 8-12, 2025 (Week 1)'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <DollarSign className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">Fee Required at Signup</p>
+                  <p className="text-sm text-muted-foreground">$50 (Deposit)</p>
+                </div>
+              </div>
+
+              {sessionData.platform && (
+                <div className="pt-2">
+                  <Badge variant="outline">{sessionData.platform}</Badge>
+                  {sessionData.spots_available && (
+                    <Badge variant="secondary" className="ml-2">{sessionData.spots_available} spots available</Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* What's Next */}
+        <Card>
+          <CardHeader>
+            <CardTitle>What's Next?</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {status === 'success' && (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-green-600">Registration Complete!</p>
+                    <p className="text-sm text-muted-foreground">
+                      You should receive a confirmation email shortly. Check your account for payment receipt and camp details.
+                    </p>
                   </div>
-                )}
+                </div>
+              </div>
+            )}
+            
+            {(status === 'ready' || !status || status === 'unknown') && (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium">You're Ready for Signup!</p>
+                    <p className="text-sm text-muted-foreground">
+                      All required information has been collected. We'll handle the signup process when registration opens.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="w-5 h-5 text-blue-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium">Stay Available for Text Verification</p>
+                    <p className="text-sm text-muted-foreground">
+                      If CAPTCHA challenges appear, we'll send you a quick text for assistance.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {status === 'failed' && (
+              <div>
+                <p className="text-red-600 font-medium">Registration was unsuccessful</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Review the error details above and try again when you're ready.
+                </p>
+              </div>
+            )}
+            
+            {status === 'captcha' && (
+              <div>
+                <p className="text-yellow-600 font-medium">CAPTCHA challenge detected</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  We'll send you a text message to help complete the CAPTCHA challenge.
+                </p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Session Details */}
-        {sessionData && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Session Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-medium">{sessionData.activities?.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                  <span>{sessionData.activities?.city}, {sessionData.activities?.state}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <span>
-                    {sessionData.start_date && new Date(sessionData.start_date).toLocaleDateString()} - 
-                    {sessionData.end_date && new Date(sessionData.end_date).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{sessionData.platform}</Badge>
-                  {sessionData.spots_available && (
-                    <Badge variant="secondary">{sessionData.spots_available} spots</Badge>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(`/sessions/${sessionId}`)}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Session
-          </Button>
-          
+        <div className="flex flex-col gap-3">
           {status === 'failed' && (
             <Button 
               onClick={() => navigate(`/sessions/${sessionId}/ready-to-signup`)}
@@ -501,58 +298,22 @@ export default function SignupConfirmation() {
           )}
           
           <Button 
-            variant="secondary"
-            onClick={() => navigate('/account/history')}
+            variant="outline"
+            onClick={() => navigate('/pending-signups')}
             className="flex items-center gap-2"
           >
             <MessageSquare className="w-4 h-4" />
-            View Signup History
+            View All Pending Signups
+          </Button>
+          
+          <Button 
+            variant="secondary"
+            onClick={() => navigate('/find-camps')}
+            className="flex items-center gap-2"
+          >
+            Add Another Camp
           </Button>
         </div>
-
-        {/* Next Steps */}
-        <Card>
-          <CardHeader>
-            <CardTitle>What's Next?</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {status === 'success' && (
-              <div>
-                <p className="text-green-600 font-medium">✅ Registration completed successfully!</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  You should receive a confirmation email shortly. Check your account history for details.
-                </p>
-              </div>
-            )}
-            
-            {status === 'failed' && (
-              <div>
-                <p className="text-red-600 font-medium">❌ Registration was unsuccessful</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Review the error details above and try again. Check your readiness assessment for tips.
-                </p>
-              </div>
-            )}
-            
-            {status === 'captcha' && (
-              <div>
-                <p className="text-yellow-600 font-medium">🔒 CAPTCHA challenge detected</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Complete the CAPTCHA challenge to proceed with registration.
-                </p>
-              </div>
-            )}
-            
-            {status === 'queue' && (
-              <div>
-                <p className="text-blue-600 font-medium">⏳ Added to registration queue</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  You'll be notified when it's your turn to register.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
