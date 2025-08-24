@@ -247,7 +247,12 @@ export default function AutomatedSignupPage() {
                 
                 <div>
                   <span className="font-medium text-muted-foreground">Fee Required at Signup:</span>
-                  <p>$190 (Full Payment)</p>
+                  <p>
+                    {requirements?.discovery?.requirements?.deposit_amount_cents 
+                      ? `$${requirements.discovery.requirements.deposit_amount_cents / 100} (Deposit)`
+                      : '$50 (Deposit)'
+                    }
+                  </p>
                 </div>
                 
                 {sessionDetails.availability_status && (
