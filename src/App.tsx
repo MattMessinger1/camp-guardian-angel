@@ -144,7 +144,7 @@ export default function App() {
             <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
             <Route path="/sessions/:sessionId/signup-submitted" element={<SignupSubmitted />} />
             <Route path="/pending-signups" element={<PendingSignups />} />
-            <Route path="/signup-confirmation" element={<SignupConfirmation />} />
+            <Route path="/signup-confirmation/:sessionId" element={<SignupConfirmation />} />
             <Route path="/account-history" element={<AccountHistory />} />
             <Route path="/approve" element={<ApprovePage />} />
             <Route path="/operations" element={<Operations />} />
