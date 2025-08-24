@@ -245,6 +245,11 @@ export default function AutomatedSignupPage() {
                   </div>
                 )}
                 
+                <div>
+                  <span className="font-medium text-muted-foreground">Fee Required at Signup:</span>
+                  <p>$190 (Full Payment)</p>
+                </div>
+                
                 {sessionDetails.availability_status && (
                   <div>
                     <span className="font-medium text-muted-foreground">Availability:</span>
