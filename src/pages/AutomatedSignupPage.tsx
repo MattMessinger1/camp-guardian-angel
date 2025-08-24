@@ -11,6 +11,10 @@ import { Loader2 } from 'lucide-react';
 export default function AutomatedSignupPage() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('sessionId');
+  
+  // Debug logging to help identify routing issues
+  console.log('AutomatedSignupPage loaded with sessionId:', sessionId);
+  console.log('Full search params:', Object.fromEntries(searchParams));
   const { state, initializeSession, reset } = useBrowserAutomation();
   const [requirements, setRequirements] = React.useState(null);
   const [loadingRequirements, setLoadingRequirements] = React.useState(true);
