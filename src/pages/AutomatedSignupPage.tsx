@@ -224,6 +224,14 @@ export default function AutomatedSignupPage() {
                   </div>
                 )}
                 
+                {/* Show example session dates for YMCA camp when actual dates are not available */}
+                {!sessionDetails.start_at && !sessionDetails.end_at && sessionDetails.title?.includes('YMCA') && (
+                  <div>
+                    <span className="font-medium text-muted-foreground">Session Dates:</span>
+                    <p>July 8-12, 2025 (Week 1)</p>
+                  </div>
+                )}
+                
                 {(sessionDetails.age_min || sessionDetails.age_max) && (
                   <div>
                     <span className="font-medium text-muted-foreground">Ages:</span>
