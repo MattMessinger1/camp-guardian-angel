@@ -59,38 +59,102 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 export default function App() {
   console.log('🚀 App component is rendering!');
   
-  // Add basic route debugging
   const currentPath = window.location.pathname;
   const currentSearch = window.location.search;
   console.log('📍 Current path:', currentPath);
   console.log('📍 Current search:', currentSearch);
   
   return (
-    <div style={{ padding: '20px', backgroundColor: '#f0f0f0', minHeight: '100vh' }}>
-      <h1 style={{ color: 'red', fontSize: '24px' }}>ROUTING DEBUG MODE</h1>
-      <p>Current URL: {window.location.href}</p>
-      <p>Path: {currentPath}</p>
-      <p>Search: {currentSearch}</p>
-      
-      <AuthProvider>
-        <BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <ErrorBoundary>
           <Routes>
-            <Route path="/" element={
-              <div style={{ padding: '10px', border: '2px solid green' }}>
-                <h2>HOME PAGE WORKING</h2>
-                <a href="/signup?sessionId=test">Test Signup Link</a>
-              </div>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/signup" element={<AutomatedSignupPage />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Signup />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
             } />
-            <Route path="/signup" element={
-              <div style={{ padding: '10px', border: '2px solid blue' }}>
-                <h2>SIGNUP PAGE WORKING!</h2>
-                <p>Session ID: {new URLSearchParams(window.location.search).get('sessionId')}</p>
-              </div>
+            <Route path="/sessions" element={
+              <ProtectedRoute>
+                <Sessions />
+              </ProtectedRoute>
             } />
-            <Route path="*" element={<div>404 - Page not found</div>} />
+            <Route path="/children" element={
+              <ProtectedRoute>
+                <Children />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            } />
+            <Route path="/find-camps" element={
+              <ProtectedRoute>
+                <FindCamps />
+              </ProtectedRoute>
+            } />
+            <Route path="/session/:sessionId" element={
+              <ProtectedRoute>
+                <SessionDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/session/:sessionId/signup" element={
+              <ProtectedRoute>
+                <SessionSignup />
+              </ProtectedRoute>
+            } />
+            <Route path="/session/new" element={
+              <ProtectedRoute>
+                <SessionForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/billing" element={
+              <ProtectedRoute>
+                <Billing />
+              </ProtectedRoute>
+            } />
+            <Route path="/billing/success" element={<BillingSetupSuccess />} />
+            <Route path="/billing/cancelled" element={<BillingSetupCancelled />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/admin/*" element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            } />
+            <Route path="/health" element={<HealthCheck />} />
+            <Route path="/sanity" element={<SanityCheck />} />
+            <Route path="/test-env" element={<TestEnvironment />} />
+            <Route path="/diagnostics" element={<Diagnostics />} />
+            <Route path="/search-test" element={<SearchTest />} />
+            <Route path="/ui-audit" element={<UIAuditSummary />} />
+            <Route path="/ui-showcase" element={<UIShowcase />} />
+            <Route path="/readiness" element={<Readiness />} />
+            <Route path="/test-debug" element={<TestDebug />} />
+            <Route path="/working-test" element={<WorkingTest />} />
+            <Route path="/ready-to-signup" element={<ReadyToSignup />} />
+            <Route path="/signup-confirmation" element={<SignupConfirmation />} />
+            <Route path="/account-history" element={<AccountHistory />} />
+            <Route path="/approve" element={<ApprovePage />} />
+            <Route path="/operations" element={<Operations />} />
+            <Route path="/compliance" element={<ComplianceDashboard />} />
+            <Route path="/partnerships" element={<Partnerships />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/production-monitoring" element={<ProductionMonitoring />} />
+            <Route path="/transparency" element={<TransparencyPage />} />
+            <Route path="/bot-info" element={<BotInfoPage />} />
+            <Route path="/captcha-assist" element={<CaptchaAssist />} />
+            <Route path="/tos-compliance" element={<TOSCompliance />} />
+            <Route path="/observability" element={<ObservabilityPage />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </div>
+        </ErrorBoundary>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
