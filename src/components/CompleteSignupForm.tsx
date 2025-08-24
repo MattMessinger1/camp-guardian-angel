@@ -173,7 +173,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     const loadRequirements = () => {
       // Use passed discoveredRequirements instead of calling API again
       if (discoveredRequirements) {
-        console.log('📋 Using discovered YMCA requirements:', discoveredRequirements);
+        console.log('📋 Using discovered requirements:', discoveredRequirements);
         
         // Extract YMCA-specific fields from mock browser data
         let ymcaFields = [];
@@ -475,13 +475,10 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl surface-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <User className="h-6 w-6" />
-            Complete Your Signup
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <User className="h-5 w-5" />
+            Required Information
           </CardTitle>
-          <p className="text-muted-foreground text-sm mt-2 text-center">
-            Enter info once, we'll save for future signups.
-          </p>
           {requirementsError && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
