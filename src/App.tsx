@@ -69,7 +69,10 @@ export default function App() {
           })()} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<AutomatedSignupPage />} />
+          <Route path="/signup" element={(() => {
+            console.log('AutomatedSignupPage route matched!');
+            return <AutomatedSignupPage />;
+          })()} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/sessions" element={<ErrorBoundary><Sessions /></ErrorBoundary>} />
           <Route path="/sessions/new" element={<SessionForm />} />
