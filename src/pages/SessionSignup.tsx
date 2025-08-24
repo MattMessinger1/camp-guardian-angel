@@ -471,8 +471,8 @@ export default function SessionSignup() {
         description: "Proceeding to readiness assessment...",
       });
       
-      // Redirect to Ready for Signup assessment page
-      navigate(`/sessions/${sessionId}/ready-to-signup`);
+      // Redirect to Signup Submitted confirmation page
+      navigate(`/sessions/${sessionId}/signup-submitted`);
       
     } catch (error) {
       console.error('Error processing signup:', error);

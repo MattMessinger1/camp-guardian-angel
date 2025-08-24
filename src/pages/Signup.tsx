@@ -37,7 +37,7 @@ export default function Signup() {
   const handleComplete = (user: any) => {
     // For testing - use a fixed test session ID when sessionId is the literal string
     const testSessionId = sessionId === '{sessionId}' ? '11111111-2222-3333-4444-555555555555' : sessionId;
-    navigate(`/sessions/${testSessionId}/ready-to-signup`, { replace: true });
+    navigate(`/sessions/${testSessionId}/signup-submitted`, { replace: true });
   };
 
   return (

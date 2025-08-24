@@ -40,6 +40,8 @@ import TestDebug from './pages/TestDebug';
 import WorkingTest from './pages/WorkingTest';
 import ReadyToSignup from './pages/ReadyToSignup';
 import SignupConfirmation from './pages/SignupConfirmation';
+import SignupSubmitted from './pages/SignupSubmitted';
+import PendingSignups from './pages/PendingSignups';
 import AccountHistory from './pages/AccountHistory';
 import ApprovePage from './pages/ApprovePage';
 import Operations from './pages/Operations';
@@ -139,6 +141,9 @@ export default function App() {
             <Route path="/test-debug" element={<TestDebug />} />
             <Route path="/working-test" element={<WorkingTest />} />
             <Route path="/ready-to-signup" element={<ReadyToSignup />} />
+            <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
+            <Route path="/sessions/:sessionId/signup-submitted" element={<SignupSubmitted />} />
+            <Route path="/pending-signups" element={<PendingSignups />} />
             <Route path="/signup-confirmation" element={<SignupConfirmation />} />
             <Route path="/account-history" element={<AccountHistory />} />
             <Route path="/approve" element={<ApprovePage />} />
