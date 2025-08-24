@@ -152,7 +152,7 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
     throw new Error('Session ID and URL required for navigation');
   }
 
-  console.log(`Navigating session ${request.sessionId} to ${request.url}`);
+  console.log(`🚨 MOCK: Navigating session ${request.sessionId} to ${request.url}`);
 
   // Check TOS compliance before navigation
   const tosCompliance = await checkTosCompliance(request.url, request.campProviderId);
@@ -160,24 +160,10 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
     throw new Error(`Navigation blocked by TOS compliance: ${tosCompliance.reason}`);
   }
 
-  const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/navigate`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      url: request.url,
-      waitUntil: 'networkidle0',
-    }),
-  });
+  // MOCK: Return successful navigation
+  console.log('✅ MOCK: Navigation completed successfully');
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Navigation failed: ${errorText}`);
-  }
-
-  // Update session activity
+  // Update session activity  
   await supabase.from('browser_sessions')
     .update({ 
       last_activity: new Date().toISOString(),
@@ -185,9 +171,12 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
     })
     .eq('session_id', request.sessionId);
 
-  const result = await response.json();
-  console.log('Navigation completed');
-  return result;
+  return { 
+    success: true, 
+    url: request.url,
+    timestamp: new Date().toISOString(),
+    mockResponse: true 
+  };
 }
 
 async function interactWithPage(apiKey: string, request: BrowserSessionRequest): Promise<any> {
@@ -195,33 +184,22 @@ async function interactWithPage(apiKey: string, request: BrowserSessionRequest):
     throw new Error('Session ID required for interaction');
   }
 
-  console.log(`Interacting with page in session ${request.sessionId}`);
+  console.log(`🚨 MOCK: Interacting with page in session ${request.sessionId}`);
 
   // Validate parent approval for form interaction
   if (request.registrationData && !request.approvalToken) {
     throw new Error('Parent approval required for form interaction');
   }
 
-  // Execute page interactions (click, type, etc.)
-  const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/execute`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      script: generateInteractionScript(request.registrationData),
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Page interaction failed: ${errorText}`);
-  }
-
-  const result = await response.json();
-  console.log('Page interaction completed');
-  return result;
+  // MOCK: Return successful interaction
+  console.log('✅ MOCK: Page interaction completed successfully');
+  
+  return {
+    success: true,
+    interactions: Object.keys(request.registrationData || {}),
+    timestamp: new Date().toISOString(),
+    mockResponse: true
+  };
 }
 
 async function extractPageData(apiKey: string, request: BrowserSessionRequest): Promise<any> {
@@ -229,47 +207,33 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
     throw new Error('Session ID required for data extraction');
   }
 
-  console.log(`Extracting data from session ${request.sessionId}`);
+  console.log(`🚨 MOCK: Extracting data from session ${request.sessionId}`);
 
-  const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/execute`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      script: `
-        // Extract session data, availability, forms, etc.
-        const sessionData = {
-          title: document.title,
-          url: window.location.href,
-          forms: Array.from(document.forms).map(form => ({
-            id: form.id,
-            action: form.action,
-            method: form.method,
-            fields: Array.from(form.elements).map(el => ({
-              name: el.name,
-              type: el.type,
-              required: el.required
-            }))
-          })),
-          availability: document.querySelector('[data-availability], .availability, .spots-available')?.textContent,
-          pricing: document.querySelector('[data-price], .price, .cost')?.textContent,
-          dates: Array.from(document.querySelectorAll('[data-date], .date, .session-date')).map(el => el.textContent)
-        };
-        return sessionData;
-      `,
-    }),
-  });
+  // MOCK: Return mock page data for camp registration
+  const mockPageData = {
+    title: 'YMCA Summer Camp Registration',
+    url: request.url || 'https://www.ymcacamp.org/register',
+    forms: [{
+      id: 'registration-form',
+      action: '/submit-registration',
+      method: 'POST',
+      fields: [
+        { name: 'parent_name', type: 'text', required: true },
+        { name: 'parent_email', type: 'email', required: true },
+        { name: 'parent_phone', type: 'tel', required: true },
+        { name: 'child_name', type: 'text', required: true },
+        { name: 'child_dob', type: 'date', required: true },
+        { name: 'emergency_contact', type: 'text', required: true },
+      ]
+    }],
+    availability: 'Available - 5 spots remaining',
+    pricing: '$250/week',
+    dates: ['July 8-12, 2025', 'July 15-19, 2025'],
+    mockResponse: true
+  };
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Data extraction failed: ${errorText}`);
-  }
-
-  const result = await response.json();
-  console.log('Data extraction completed');
-  return result;
+  console.log('✅ MOCK: Data extraction completed successfully');
+  return mockPageData;
 }
 
 async function closeBrowserSession(apiKey: string, request: BrowserSessionRequest): Promise<any> {
@@ -277,19 +241,7 @@ async function closeBrowserSession(apiKey: string, request: BrowserSessionReques
     throw new Error('Session ID required to close session');
   }
 
-  console.log(`Closing browser session ${request.sessionId}`);
-
-  const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to close session: ${errorText}`);
-  }
+  console.log(`🚨 MOCK: Closing browser session ${request.sessionId}`);
 
   // Update session status in database
   await supabase.from('browser_sessions')
@@ -299,8 +251,12 @@ async function closeBrowserSession(apiKey: string, request: BrowserSessionReques
     })
     .eq('session_id', request.sessionId);
 
-  console.log('Browser session closed');
-  return { success: true, sessionId: request.sessionId };
+  console.log('✅ MOCK: Browser session closed successfully');
+  return { 
+    success: true, 
+    sessionId: request.sessionId,
+    mockResponse: true
+  };
 }
 
 async function checkTosCompliance(url: string, campProviderId?: string): Promise<{
