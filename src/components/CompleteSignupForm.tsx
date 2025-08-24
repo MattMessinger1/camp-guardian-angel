@@ -176,18 +176,46 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
       if (discoveredRequirements) {
         console.log('📋 Using discovered requirements:', discoveredRequirements);
         
-        // Extract fields from browser automation pageData
-        let campSpecificFields = [];
+        // Extract only signup/reservation fields (not full registration) and block PHI
+        let signupFields = [];
         if (discoveredRequirements.pageData?.forms?.[0]?.fields) {
-          campSpecificFields = discoveredRequirements.pageData.forms[0].fields.map((field: any) => ({
-            field_name: field.name,
-            field_type: field.type,
-            required: field.required || false,
-            label: field.label || field.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-            help_text: field.help,
-            options: field.options
-          }));
-          console.log('🎯 YMCA-specific fields extracted:', campSpecificFields);
+          const allFields = discoveredRequirements.pageData.forms[0].fields;
+          const phiBlockedFields = discoveredRequirements.discovery?.phi_blocked_fields || [];
+          
+          // Define signup-only fields (not full registration)
+          const signupOnlyFields = [
+            'parent_guardian_name', 'guardian_name', 'parent_name',
+            'ymca_member_id', 'member_id', 'membership_number',
+            'camper_first_name', 'child_first_name', 'first_name',
+            'camper_last_name', 'child_last_name', 'last_name', 
+            'camper_dob', 'child_dob', 'date_of_birth', 'birthdate',
+            'emergency_contact_name', 'emergency_name',
+            'emergency_contact_phone', 'emergency_phone',
+            'swim_level', 'swimming_ability'
+          ];
+          
+          signupFields = allFields
+            .filter((field: any) => {
+              const fieldName = field.name?.toLowerCase() || '';
+              // Only include signup fields, exclude PHI and full registration fields
+              const isSignupField = signupOnlyFields.some(allowed => fieldName.includes(allowed));
+              const isPhiBlocked = phiBlockedFields.includes(field.name);
+              const isMedicalField = fieldName.includes('medical') || fieldName.includes('allerg') || 
+                                   fieldName.includes('condition') || fieldName.includes('medication');
+              
+              return isSignupField && !isPhiBlocked && !isMedicalField;
+            })
+            .map((field: any) => ({
+              field_name: field.name,
+              field_type: field.type,
+              required: field.required || false,
+              label: field.label || field.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+              help_text: field.help,
+              options: field.options
+            }));
+          
+          console.log('🎯 Signup-only fields (PHI filtered):', signupFields);
+          console.log('🚫 PHI blocked fields:', phiBlockedFields);
         }
 
         // Convert to our requirements format with camp-specific fields
@@ -196,8 +224,8 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             // Core account fields (always needed)
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" },
-            // Add camp-specific fields
-            ...campSpecificFields
+            // Add signup-specific fields (PHI filtered)
+            ...signupFields
           ],
           phi_blocked_fields: discoveredRequirements.discovery?.phi_blocked_fields || [],
           communication_preferences: {
