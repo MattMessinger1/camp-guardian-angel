@@ -18,6 +18,38 @@ export default function AutomatedSignupPage() {
   const { state, initializeSession, reset } = useBrowserAutomation();
   const [requirements, setRequirements] = React.useState(null);
   const [loadingRequirements, setLoadingRequirements] = React.useState(true);
+  const [sessionDetails, setSessionDetails] = React.useState(null);
+
+  // Fetch session details to show camp-specific information
+  React.useEffect(() => {
+    if (!sessionId) return;
+    
+    const fetchSessionDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('sessions')
+          .select(`
+            id, title, name, source_url, signup_url,
+            start_at, end_at, location, location_city, location_state,
+            age_min, age_max, price_min, price_max,
+            capacity, spots_available, availability_status
+          `)
+          .eq('id', sessionId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching session details:', error);
+        } else if (data) {
+          setSessionDetails(data);
+          console.log('📋 Session details loaded:', data);
+        }
+      } catch (error) {
+        console.error('Error loading session details:', error);
+      }
+    };
+
+    fetchSessionDetails();
+  }, [sessionId]);
 
   // Load session requirements and auto-initialize browser automation
   React.useEffect(() => {
@@ -154,6 +186,87 @@ export default function AutomatedSignupPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
       <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* Camp Information Card - Show YMCA specific details */}
+        {sessionDetails && (
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                {sessionDetails.title || sessionDetails.name || 'Camp Session'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4 text-sm">
+                {sessionDetails.location && (
+                  <div>
+                    <span className="font-medium text-muted-foreground">Location:</span>
+                    <p>{sessionDetails.location}</p>
+                    {sessionDetails.location_city && sessionDetails.location_state && (
+                      <p className="text-muted-foreground">{sessionDetails.location_city}, {sessionDetails.location_state}</p>
+                    )}
+                  </div>
+                )}
+                
+                {(sessionDetails.start_at || sessionDetails.end_at) && (
+                  <div>
+                    <span className="font-medium text-muted-foreground">Dates:</span>
+                    <p>
+                      {sessionDetails.start_at && new Date(sessionDetails.start_at).toLocaleDateString()} 
+                      {sessionDetails.start_at && sessionDetails.end_at && ' - '}
+                      {sessionDetails.end_at && new Date(sessionDetails.end_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+                
+                {(sessionDetails.age_min || sessionDetails.age_max) && (
+                  <div>
+                    <span className="font-medium text-muted-foreground">Ages:</span>
+                    <p>
+                      {sessionDetails.age_min && `${sessionDetails.age_min}+`}
+                      {sessionDetails.age_min && sessionDetails.age_max && ' - '}
+                      {sessionDetails.age_max && `${sessionDetails.age_max} years`}
+                    </p>
+                  </div>
+                )}
+                
+                {(sessionDetails.price_min || sessionDetails.price_max) && (
+                  <div>
+                    <span className="font-medium text-muted-foreground">Price:</span>
+                    <p>
+                      {sessionDetails.price_min && `$${sessionDetails.price_min}`}
+                      {sessionDetails.price_min && sessionDetails.price_max && sessionDetails.price_min !== sessionDetails.price_max && ` - $${sessionDetails.price_max}`}
+                    </p>
+                  </div>
+                )}
+                
+                {sessionDetails.availability_status && (
+                  <div>
+                    <span className="font-medium text-muted-foreground">Availability:</span>
+                    <p className={`${sessionDetails.availability_status === 'open' ? 'text-green-600' : 'text-orange-600'}`}>
+                      {sessionDetails.availability_status === 'open' ? '✅ Open for Registration' : '⏳ Limited Availability'}
+                    </p>
+                  </div>
+                )}
+                
+                {sessionDetails.spots_available && (
+                  <div>
+                    <span className="font-medium text-muted-foreground">Spots Available:</span>
+                    <p>{sessionDetails.spots_available} remaining</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-muted/50 p-3 rounded-lg border">
+                <p className="text-sm">
+                  <span className="font-medium">🤖 Automated Signup Ready:</span> 
+                  <span className="text-muted-foreground"> Our system will help you complete registration quickly and accurately.</span>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {/* Browser Automation Status - shows live form discovery progress */}
         <BrowserAutomationStatus 
           automationState={state}
