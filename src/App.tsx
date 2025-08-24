@@ -70,8 +70,13 @@ export default function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={(() => {
-            console.log('AutomatedSignupPage route matched!');
-            return <AutomatedSignupPage />;
+            console.log('Signup route matched!');
+            return (
+              <div style={{ padding: '20px' }}>
+                <h1>Signup Route Test</h1>
+                <p>Route is working! Session ID: {new URLSearchParams(window.location.search).get('sessionId')}</p>
+              </div>
+            );
           })()} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/sessions" element={<ErrorBoundary><Sessions /></ErrorBoundary>} />
