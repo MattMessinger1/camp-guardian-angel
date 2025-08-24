@@ -716,10 +716,10 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-lg font-semibold">
                 <Mail className="h-5 w-5" />
-                Participant / Guardian Information
+                Password / Account Set Up
               </div>
               <p className="text-muted-foreground text-sm">
-                This will set up your Signup Assist account
+                Signup Assist account required for us to help you sign up.
               </p>
               
               <div className="grid gap-4">
