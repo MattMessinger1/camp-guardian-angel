@@ -135,18 +135,24 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
 
   console.log('Browserbase response status:', response.status);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Browserbase error response:', errorText);
-    throw new Error(`Failed to create browser session (${response.status}): ${errorText}`);
-  }
-
-  let sessionData;
   let responseText;
   try {
     responseText = await response.text();
-    console.log('Browserbase response text:', responseText);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+  } catch (textError) {
+    console.error('Failed to read response text:', textError);
+    throw new Error('Failed to read Browserbase response');
+  }
+
+  console.log('Browserbase response text:', responseText);
+  console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+  if (!response.ok) {
+    console.error('Browserbase error response:', responseText);
+    throw new Error(`Failed to create browser session (${response.status}): ${responseText}`);
+  }
+
+  let sessionData;
+  try {
     sessionData = JSON.parse(responseText);
   } catch (parseError) {
     console.error('Failed to parse Browserbase response:', parseError);
