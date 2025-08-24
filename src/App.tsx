@@ -71,6 +71,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/signup" element={<AutomatedSignupPage />} />
+            <Route path="/automated-signup" element={<AutomatedSignupPage />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Signup />} />
