@@ -719,33 +719,10 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                 Password / Account Set Up
               </div>
               <p className="text-muted-foreground text-sm">
-                Signup Assist account required for us to help you sign up.
+                Signup Assist account required.
               </p>
               
               <div className="grid gap-4">
-                <div>
-                  <Label htmlFor="guardianName">Your Name (Guardian) *</Label>
-                  <Input 
-                    id="guardianName" 
-                    value={guardianName} 
-                    onChange={(e) => setGuardianName(e.target.value)}
-                    placeholder="Enter your full name"
-                    required 
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    required 
-                  />
-                </div>
-                
                 <div>
                   <Label htmlFor="password">Password *</Label>
                   <Input 
