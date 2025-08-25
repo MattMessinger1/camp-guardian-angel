@@ -27,7 +27,13 @@ import { TestCampSwitcher } from '@/components/TestCampSwitcher';
 import { BrowserAutomationStatus } from '@/components/BrowserAutomationStatus';
 import { useBrowserAutomation } from '@/hooks/useBrowserAutomation';
 
-export default function ReadyToSignup() {
+// TEMPORARY: Import minimal version for debugging
+import ReadyToSignupMinimal from './ReadyToSignupMinimal';
+
+// Export minimal version to isolate spinning issues
+export default ReadyToSignupMinimal;
+
+function ReadyToSignupOriginal() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
