@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 import { getTestScenario } from '@/lib/test-scenarios';
 
 export default function ReadyToSignupMinimal() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const sessionId = params.id || params.sessionId;
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [signupTime, setSignupTime] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   console.log('🔍 ReadyToSignupMinimal rendering, sessionId:', sessionId);
 
@@ -39,6 +46,41 @@ export default function ReadyToSignupMinimal() {
     enabled: !!sessionId,
     staleTime: 30000, // Cache for 30 seconds to prevent excessive refetching
   });
+
+  const handleSetSignupTime = async () => {
+    if (!signupTime || !sessionId) return;
+    
+    try {
+      setIsUpdating(true);
+      console.log('🔍 Setting signup time:', signupTime);
+      
+      const { error } = await supabase
+        .from('sessions')
+        .update({ registration_open_at: signupTime })
+        .eq('id', sessionId);
+      
+      if (error) throw error;
+      
+      // Invalidate query to refetch data
+      await queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+      
+      toast({
+        title: "Signup time updated!",
+        description: `Registration opens at ${new Date(signupTime).toLocaleString()}`,
+      });
+      
+      console.log('🔍 Successfully updated signup time');
+    } catch (error) {
+      console.error('🔍 Error setting signup time:', error);
+      toast({
+        title: "Failed to update",
+        description: "Could not set the signup time. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -85,7 +127,27 @@ export default function ReadyToSignupMinimal() {
                     </p>
                   </div>
                 ) : (
-                  <p className="text-yellow-600 font-medium">⏳ No signup time set</p>
+                  <div className="space-y-3">
+                    <p className="text-yellow-600 font-medium">⏳ No signup time set</p>
+                    
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium mb-1">Set Signup Time</label>
+                        <Input
+                          type="datetime-local"
+                          value={signupTime}
+                          onChange={(e) => setSignupTime(e.target.value)}
+                          min={new Date().toISOString().slice(0, 16)}
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleSetSignupTime}
+                        disabled={!signupTime || isUpdating}
+                      >
+                        {isUpdating ? 'Setting...' : 'Set Time'}
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
 
