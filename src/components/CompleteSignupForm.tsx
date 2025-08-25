@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Trash2, CreditCard, User, Lock, Mail, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getTestScenario } from "@/lib/test-scenarios";
 
 interface Child {
   name: string;
@@ -173,6 +174,53 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
   // Load session-specific requirements with PHI blocking
   useEffect(() => {
     const loadRequirements = () => {
+      // Check if this is a test scenario first
+      const testScenario = sessionId ? getTestScenario(sessionId) : null;
+      
+      if (testScenario) {
+        console.log('🧪 Using test scenario:', testScenario.name);
+        
+        // Create requirements from test scenario
+        const testRequirements: SessionRequirements = {
+          required_fields: [
+            // Core account fields
+            { field_name: "email", field_type: "email", required: true, label: "Email Address" },
+            { field_name: "password", field_type: "password", required: true, label: "Password" },
+            { field_name: "guardian_name", field_type: "text", required: true, label: "Parent/Guardian Name" },
+            
+            // Add test scenario specific fields
+            ...(testScenario.requirements?.required_parent_fields || []).map(field => ({
+              field_name: field,
+              field_type: field.includes('email') ? 'email' : field.includes('phone') ? 'tel' : 'text',
+              required: true,
+              label: field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+            })),
+            
+            ...(testScenario.requirements?.required_child_fields || []).map(field => ({
+              field_name: field,
+              field_type: field === 'dob' ? 'date' : 'text',
+              required: true,
+              label: field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+            }))
+          ],
+          phi_blocked_fields: [],
+          communication_preferences: {
+            sms_required: true,
+            email_required: true
+          },
+          payment_required: !!testScenario.requirements?.deposit_amount_cents,
+          payment_amount: testScenario.requirements?.deposit_amount_cents ? 
+            testScenario.requirements.deposit_amount_cents / 100 : undefined
+        };
+        
+        console.log('💰 Test scenario payment amount:', testRequirements.payment_amount);
+        
+        setRequirements(testRequirements);
+        setRemainingFields(testScenario.requirements?.required_documents || []);
+        setLoadingRequirements(false);
+        return;
+      }
+
       // Use passed discoveredRequirements instead of calling API again
       if (discoveredRequirements) {
         console.log('📋 Using discovered requirements:', discoveredRequirements);
@@ -761,14 +809,17 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                     checked={upfrontPaymentConsent}
                     onCheckedChange={(checked) => setUpfrontPaymentConsent(checked === true)}
                   />
-                  <div className="text-sm leading-relaxed">
-                    <Label htmlFor="upfrontConsent" className="cursor-pointer font-medium">
-                      I agree to pay the Provider {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<amount varies by activity>>'} *.
-                    </Label>
-                    <div className="text-xs text-muted-foreground italic mt-1">
-                      (This activity requires a payment upon signup. You'll pay the remaining balance directly on the camp provider's website after signup.)
-                    </div>
-                  </div>
+                   <div className="text-sm leading-relaxed">
+                     <Label htmlFor="upfrontConsent" className="cursor-pointer font-medium">
+                       I agree to pay the Provider {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<amount varies by activity>>'} *.
+                     </Label>
+                     <div className="text-xs text-muted-foreground italic mt-1">
+                       {sessionId && getTestScenario(sessionId) ? 
+                         `(Test scenario: ${getTestScenario(sessionId)?.name} - ${requirements?.payment_amount ? `$${requirements.payment_amount} deposit` : 'no deposit'} required)` :
+                         '(This activity requires a payment upon signup. You\'ll pay the remaining balance directly on the camp provider\'s website after signup.)'
+                       }
+                     </div>
+                   </div>
                 </div>
               </div>
 

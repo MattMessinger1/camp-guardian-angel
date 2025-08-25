@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import CompleteSignupForm from "@/components/CompleteSignupForm";
+import { TestCampSwitcher } from "@/components/TestCampSwitcher";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -41,9 +42,12 @@ export default function Signup() {
   };
 
   return (
-    <CompleteSignupForm 
-      sessionId={sessionId}
-      onComplete={handleComplete}
-    />
+    <div className="space-y-6">
+      <TestCampSwitcher mode="signup" />
+      <CompleteSignupForm 
+        sessionId={sessionId}
+        onComplete={handleComplete}
+      />
+    </div>
   );
 }

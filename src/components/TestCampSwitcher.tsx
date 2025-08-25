@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,12 +9,16 @@ import { Clock, MapPin, DollarSign, Users } from 'lucide-react';
 
 interface TestCampSwitcherProps {
   className?: string;
+  mode?: 'ready-to-signup' | 'signup'; // New prop to determine navigation behavior
 }
 
-export function TestCampSwitcher({ className }: TestCampSwitcherProps) {
+export function TestCampSwitcher({ className, mode = 'ready-to-signup' }: TestCampSwitcherProps) {
   const navigate = useNavigate();
   const params = useParams();
-  const currentSessionId = params.id || params.sessionId;
+  const [searchParams] = useSearchParams();
+  
+  // Get sessionId from either route params or search params
+  const currentSessionId = params.id || params.sessionId || searchParams.get('sessionId');
   
   const currentScenario = Object.values(TEST_CAMP_SCENARIOS).find(
     scenario => scenario.sessionData.id === currentSessionId
@@ -23,7 +27,11 @@ export function TestCampSwitcher({ className }: TestCampSwitcherProps) {
   const handleScenarioChange = (scenarioId: string) => {
     const scenario = TEST_CAMP_SCENARIOS[scenarioId];
     if (scenario) {
-      navigate(`/sessions/${scenario.sessionData.id}/ready-to-signup`);
+      if (mode === 'signup') {
+        navigate(`/signup?sessionId=${scenario.sessionData.id}`);
+      } else {
+        navigate(`/sessions/${scenario.sessionData.id}/ready-to-signup`);
+      }
     }
   };
 
