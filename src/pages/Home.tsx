@@ -289,7 +289,7 @@ const HomePage = () => {
                   size="lg"
                   className="bg-background/80 backdrop-blur-sm hover:bg-background border-border hover:border-primary/50 text-foreground hover:text-primary transition-all duration-200"
                 >
-                  View current / past signups
+                  View pending / past signups
                 </Button>
               </Link>
             </div>
