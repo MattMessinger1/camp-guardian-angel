@@ -125,10 +125,12 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
       },
       {
         category: 'Profile Information',
-        item: 'Basic profile complete',
+        item: 'Name for registration',
         status: user?.user_metadata?.full_name ? 'complete' : 'needs_attention',
-        priority: 'medium',
-        description: user?.user_metadata?.full_name ? 'Profile information is complete' : 'Please complete your profile information'
+        priority: 'low',
+        description: user?.user_metadata?.full_name 
+          ? 'Your name is ready for registration forms' 
+          : 'Optional: Add your full name to speed up registration form filling'
       }
     ];
 
