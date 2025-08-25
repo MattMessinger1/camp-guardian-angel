@@ -41,32 +41,47 @@ interface SignupHistoryRow {
 
 export default function AccountHistory() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading } = useAuth(); // Add loading state
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTiming, setSelectedTiming] = useState<SignupHistoryRow | null>(null);
   const [isTimingModalOpen, setIsTimingModalOpen] = useState(false);
 
   console.log('🔍 AccountHistory: Component rendered');
-  console.log('👤 AccountHistory: User auth state:', { user: !!user, userId: user?.id });
+  console.log('👤 AccountHistory: Auth state:', { user: !!user, userId: user?.id, loading });
   
-  // Redirect to auth if not logged in - but only for unauthenticated users
+  // Redirect to auth if not logged in - but wait for loading to complete
   useEffect(() => {
-    console.log('🔄 AccountHistory: useEffect checking auth state:', { user: !!user, userId: user?.id });
-    if (user === null) { // Only redirect if explicitly null, not if user is undefined/loading
-      console.log('❌ AccountHistory: No user, redirecting to auth');
+    console.log('🔄 AccountHistory: useEffect checking auth state:', { user: !!user, userId: user?.id, loading });
+    if (!loading && !user) { // Only redirect if not loading AND no user
+      console.log('❌ AccountHistory: No user and not loading, redirecting to auth');
       navigate('/auth');
     } else if (user) {
       console.log('✅ AccountHistory: User authenticated, staying on page');
+    } else if (loading) {
+      console.log('⏳ AccountHistory: Still loading auth state...');
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
 
   // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth required state if not authenticated (and not loading)
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Checking Authentication...</h2>
-          <p className="text-muted-foreground">Please wait...</p>
+          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
+          <p className="text-muted-foreground mb-6">Redirecting to login...</p>
         </div>
       </div>
     );
