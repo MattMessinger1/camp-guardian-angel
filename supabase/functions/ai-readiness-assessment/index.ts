@@ -121,12 +121,12 @@ Focus on practical readiness factors like:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: 'You are an expert assistant for camp and activity registration preparation. Provide practical, actionable assessments.' },
           { role: 'user', content: prompt }
         ],
-        max_completion_tokens: 2000,
+        max_tokens: 2000,
         response_format: { type: "json_object" }
       }),
     });
@@ -138,7 +138,26 @@ Focus on practical readiness factors like:
     }
 
     const data = await response.json();
-    const assessment = JSON.parse(data.choices[0].message.content);
+    
+    // Check if response has the expected structure
+    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+      console.error('Unexpected OpenAI response structure:', JSON.stringify(data));
+      throw new Error('Invalid response from OpenAI API');
+    }
+    
+    const contentString = data.choices[0].message.content.trim();
+    if (!contentString) {
+      throw new Error('Empty response content from OpenAI API');
+    }
+    
+    let assessment;
+    try {
+      assessment = JSON.parse(contentString);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response as JSON:', contentString);
+      console.error('Parse error:', parseError);
+      throw new Error('Invalid JSON response from OpenAI API');
+    }
 
     // Store the assessment in database
     const { error: insertError } = await supabase
