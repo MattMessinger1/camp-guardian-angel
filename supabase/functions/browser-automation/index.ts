@@ -100,51 +100,106 @@ serve(async (req) => {
 });
 
 async function createBrowserSession(apiKey: string, request: BrowserSessionRequest): Promise<BrowserSession> {
-  console.log('Creating new browser session...');
+  console.log('🎯 REAL YMCA TEST: Creating browser session for YMCA registration');
   
-  // Check TOS compliance first
+  // Enhanced TOS compliance check with YMCA-specific logging
   if (request.url) {
     const tosCompliance = await checkTosCompliance(request.url, request.campProviderId);
+    await logYMCATestEvent('tos_compliance_check', {
+      url: request.url,
+      status: tosCompliance.status,
+      reason: tosCompliance.reason,
+      campProviderId: request.campProviderId
+    });
+    
     if (tosCompliance.status === 'red') {
       throw new Error(`TOS compliance check failed: ${tosCompliance.reason}`);
     }
   }
 
-  // TEMPORARY: Mock browser session until we fix Browserbase API endpoint
-  console.log('🚨 TEMPORARY: Using mock browser session due to API endpoint issues');
-  console.log('URL for automation:', request.url);
-  
-  // Generate a mock session that allows the signup flow to continue
-  const mockSessionData = {
-    id: `mock-session-${Date.now()}`,
-    url: request.url || 'https://example.com',
-    status: 'RUNNING'
-  };
-  
-  const browserSession: BrowserSession = {
-    id: mockSessionData.id,
-    browserId: mockSessionData.id,
-    status: 'active',
-    campProviderId: request.campProviderId,
-    parentId: request.parentId,
-    createdAt: new Date().toISOString(),
-    lastActivity: new Date().toISOString(),
-    complianceStatus: 'approved'
-  };
+  try {
+    // Real Browserbase API call
+    console.log('📡 Calling real Browserbase API to create session...');
+    
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
+    if (!browserbaseProjectId) {
+      throw new Error('BROWSERBASE_PROJECT_ID not configured');
+    }
 
-  // Store session in database
-  await supabase.from('browser_sessions').insert({
-    session_id: browserSession.id,
-    browser_id: browserSession.browserId,
-    status: browserSession.status,
-    camp_provider_id: browserSession.campProviderId,
-    parent_id: browserSession.parentId,
-    compliance_status: browserSession.complianceStatus,
-    metadata: { mockSession: mockSessionData }
-  });
+    const response = await fetch('https://www.browserbase.com/v1/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        projectId: browserbaseProjectId,
+        browserSettings: {
+          viewport: { width: 1920, height: 1080 },
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+          }
+        }
+      }),
+    });
 
-  console.log('Browser session created:', browserSession.id);
-  return browserSession;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Browserbase API error:', response.status, errorText);
+      throw new Error(`Browserbase session creation failed: ${response.status} ${errorText}`);
+    }
+
+    const sessionData = await response.json();
+    console.log('✅ Real Browserbase session created:', sessionData.id);
+    
+    const browserSession: BrowserSession = {
+      id: sessionData.id,
+      browserId: sessionData.id,
+      status: sessionData.status === 'RUNNING' ? 'active' : 'idle',
+      campProviderId: request.campProviderId,
+      parentId: request.parentId,
+      createdAt: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+      complianceStatus: 'approved'
+    };
+
+    // Store session in database with real session data
+    await supabase.from('browser_sessions').insert({
+      session_id: browserSession.id,
+      browser_id: browserSession.browserId,
+      status: browserSession.status,
+      camp_provider_id: browserSession.campProviderId,
+      parent_id: browserSession.parentId,
+      compliance_status: browserSession.complianceStatus,
+      metadata: { 
+        realSession: sessionData,
+        browserbaseUrl: sessionData.connectUrl,
+        testType: 'YMCA_REAL_TEST'
+      }
+    });
+
+    await logYMCATestEvent('browser_session_created', {
+      sessionId: browserSession.id,
+      browserbaseUrl: sessionData.connectUrl,
+      parentId: request.parentId,
+      campProviderId: request.campProviderId
+    });
+
+    console.log('🎯 YMCA Test: Real browser session created and logged');
+    return browserSession;
+    
+  } catch (error) {
+    console.error('❌ YMCA Test: Failed to create real browser session:', error);
+    
+    await logYMCATestEvent('browser_session_error', {
+      error: error.message,
+      parentId: request.parentId,
+      campProviderId: request.campProviderId,
+      url: request.url
+    });
+    
+    throw error;
+  }
 }
 
 async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Promise<any> {
@@ -152,31 +207,82 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
     throw new Error('Session ID and URL required for navigation');
   }
 
-  console.log(`🚨 MOCK: Navigating session ${request.sessionId} to ${request.url}`);
+  console.log(`🎯 YMCA Test: Navigating real browser session ${request.sessionId} to ${request.url}`);
 
-  // Check TOS compliance before navigation
+  // Enhanced TOS compliance check for YMCA
   const tosCompliance = await checkTosCompliance(request.url, request.campProviderId);
   if (tosCompliance.status === 'red') {
+    await logYMCATestEvent('navigation_blocked', {
+      sessionId: request.sessionId,
+      url: request.url,
+      reason: tosCompliance.reason
+    });
     throw new Error(`Navigation blocked by TOS compliance: ${tosCompliance.reason}`);
   }
 
-  // MOCK: Return successful navigation
-  console.log('✅ MOCK: Navigation completed successfully');
+  try {
+    // Real Browserbase navigation
+    const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/actions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'navigate',
+        url: request.url
+      }),
+    });
 
-  // Update session activity  
-  await supabase.from('browser_sessions')
-    .update({ 
-      last_activity: new Date().toISOString(),
-      current_url: request.url 
-    })
-    .eq('session_id', request.sessionId);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Browserbase navigation error:', response.status, errorText);
+      
+      await logYMCATestEvent('navigation_error', {
+        sessionId: request.sessionId,
+        url: request.url,
+        error: `${response.status}: ${errorText}`
+      });
+      
+      throw new Error(`Navigation failed: ${response.status} ${errorText}`);
+    }
 
-  return { 
-    success: true, 
-    url: request.url,
-    timestamp: new Date().toISOString(),
-    mockResponse: true 
-  };
+    const result = await response.json();
+    console.log('✅ YMCA Test: Real navigation completed successfully');
+
+    // Update session activity  
+    await supabase.from('browser_sessions')
+      .update({ 
+        last_activity: new Date().toISOString(),
+        current_url: request.url 
+      })
+      .eq('session_id', request.sessionId);
+
+    await logYMCATestEvent('navigation_success', {
+      sessionId: request.sessionId,
+      url: request.url,
+      pageTitle: result.title || 'Unknown'
+    });
+
+    return { 
+      success: true, 
+      url: request.url,
+      timestamp: new Date().toISOString(),
+      pageTitle: result.title,
+      realResponse: true 
+    };
+
+  } catch (error) {
+    console.error('❌ YMCA Test: Navigation failed:', error);
+    
+    await logYMCATestEvent('navigation_error', {
+      sessionId: request.sessionId,
+      url: request.url,
+      error: error.message
+    });
+    
+    throw error;
+  }
 }
 
 async function interactWithPage(apiKey: string, request: BrowserSessionRequest): Promise<any> {
@@ -184,22 +290,75 @@ async function interactWithPage(apiKey: string, request: BrowserSessionRequest):
     throw new Error('Session ID required for interaction');
   }
 
-  console.log(`🚨 MOCK: Interacting with page in session ${request.sessionId}`);
+  console.log(`🎯 YMCA Test: Real form interaction in session ${request.sessionId}`);
 
   // Validate parent approval for form interaction
   if (request.registrationData && !request.approvalToken) {
+    await logYMCATestEvent('parent_approval_missing', {
+      sessionId: request.sessionId,
+      hasRegistrationData: !!request.registrationData
+    });
     throw new Error('Parent approval required for form interaction');
   }
 
-  // MOCK: Return successful interaction
-  console.log('✅ MOCK: Page interaction completed successfully');
-  
-  return {
-    success: true,
-    interactions: Object.keys(request.registrationData || {}),
-    timestamp: new Date().toISOString(),
-    mockResponse: true
-  };
+  try {
+    // Generate safe form interaction script
+    const interactionScript = generateInteractionScript(request.registrationData);
+    
+    // Real Browserbase form interaction
+    const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/actions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'evaluate',
+        script: interactionScript
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Browserbase form interaction error:', response.status, errorText);
+      
+      await logYMCATestEvent('form_interaction_error', {
+        sessionId: request.sessionId,
+        error: `${response.status}: ${errorText}`,
+        fieldsCount: Object.keys(request.registrationData || {}).length
+      });
+      
+      throw new Error(`Form interaction failed: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ YMCA Test: Real form interaction completed successfully');
+
+    await logYMCATestEvent('form_interaction_success', {
+      sessionId: request.sessionId,
+      fieldsInteracted: Object.keys(request.registrationData || {}),
+      approvalToken: !!request.approvalToken
+    });
+    
+    return {
+      success: true,
+      interactions: Object.keys(request.registrationData || {}),
+      timestamp: new Date().toISOString(),
+      realResponse: true,
+      parentApprovalVerified: !!request.approvalToken
+    };
+
+  } catch (error) {
+    console.error('❌ YMCA Test: Form interaction failed:', error);
+    
+    await logYMCATestEvent('form_interaction_error', {
+      sessionId: request.sessionId,
+      error: error.message,
+      fieldsCount: Object.keys(request.registrationData || {}).length
+    });
+    
+    throw error;
+  }
 }
 
 async function extractPageData(apiKey: string, request: BrowserSessionRequest): Promise<any> {
@@ -207,107 +366,115 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
     throw new Error('Session ID required for data extraction');
   }
 
-  console.log(`🚨 MOCK: Extracting data from session ${request.sessionId}`);
+  console.log(`🎯 YMCA Test: Extracting real page data from session ${request.sessionId}`);
 
-  // MOCK: Return YMCA-specific page data for camp registration
-  const mockPageData = {
-    title: 'YMCA of Greater Seattle - Summer Camp Registration',
-    url: request.url || 'https://www.ymcacamp.org/register',
-    provider: 'YMCA',
-    forms: [{
-      id: 'ymca-registration-form',
-      action: '/submit-ymca-registration',
+  try {
+    // Real page data extraction using Browserbase
+    const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/actions`, {
       method: 'POST',
-      title: 'YMCA Camp Registration Form',
-      fields: [
-        { 
-          name: 'parent_guardian_name', 
-          type: 'text', 
-          required: true,
-          label: 'Parent/Guardian Full Name',
-          help: 'As it appears on your YMCA membership'
-        },
-        { 
-          name: 'ymca_member_id', 
-          type: 'text', 
-          required: false,
-          label: 'YMCA Member ID (Optional)',
-          help: 'Member discounts available'
-        },
-        { 
-          name: 'parent_email', 
-          type: 'email', 
-          required: true,
-          label: 'Primary Contact Email'
-        },
-        { 
-          name: 'parent_cell_phone', 
-          type: 'tel', 
-          required: true,
-          label: 'Cell Phone for Camp Updates'
-        },
-        { 
-          name: 'camper_first_name', 
-          type: 'text', 
-          required: true,
-          label: 'Camper\'s First Name'
-        },
-        { 
-          name: 'camper_last_name', 
-          type: 'text', 
-          required: true,
-          label: 'Camper\'s Last Name'
-        },
-        { 
-          name: 'camper_dob', 
-          type: 'date', 
-          required: true,
-          label: 'Camper\'s Date of Birth',
-          help: 'Used to determine age-appropriate activities'
-        },
-        { 
-          name: 'emergency_contact_name', 
-          type: 'text', 
-          required: true,
-          label: 'Emergency Contact Name'
-        },
-        { 
-          name: 'emergency_contact_phone', 
-          type: 'tel', 
-          required: true,
-          label: 'Emergency Contact Phone'
-        },
-        { 
-          name: 'medical_conditions', 
-          type: 'textarea', 
-          required: false,
-          label: 'Medical Conditions/Allergies',
-          help: 'Please list any conditions our staff should know about'
-        },
-        { 
-          name: 'swim_level', 
-          type: 'select', 
-          required: true,
-          label: 'Camper\'s Swimming Ability',
-          options: ['Non-swimmer', 'Beginner', 'Intermediate', 'Advanced'],
-          help: 'Required for YMCA water safety protocols'
-        }
-      ]
-    }],
-    availability: 'Available - 8 spots remaining',
-    pricing: '$275/week (YMCA Members: $225/week)',
-    dates: ['July 8-12, 2025', 'July 15-19, 2025'],
-    requirements: {
-      waiver: 'YMCA liability waiver required',
-      deposit: '$50 deposit required to hold spot',
-      medical_form: 'YMCA health form required before first day'
-    },
-    ymca_specific: true,
-    mockResponse: true
-  };
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'evaluate',
+        script: `
+          (() => {
+            const pageData = {
+              title: document.title,
+              url: window.location.href,
+              forms: [],
+              text: document.body.innerText.substring(0, 2000) // First 2k chars for analysis
+            };
+            
+            // Extract forms
+            const forms = document.querySelectorAll('form');
+            forms.forEach((form, index) => {
+              const formData = {
+                id: form.id || 'form-' + index,
+                action: form.action,
+                method: form.method || 'GET',
+                fields: []
+              };
+              
+              // Extract form fields
+              const inputs = form.querySelectorAll('input, select, textarea');
+              inputs.forEach(input => {
+                if (input.type !== 'submit' && input.type !== 'button') {
+                  const label = form.querySelector('label[for="' + input.id + '"]') || 
+                               input.closest('label') ||
+                               input.parentElement.querySelector('label');
+                  
+                  formData.fields.push({
+                    name: input.name,
+                    type: input.type || input.tagName.toLowerCase(),
+                    required: input.required,
+                    label: label ? label.textContent.trim() : input.placeholder || input.name,
+                    value: input.value,
+                    options: input.tagName === 'SELECT' ? 
+                      Array.from(input.options).map(opt => opt.text) : undefined
+                  });
+                }
+              });
+              
+              if (formData.fields.length > 0) {
+                pageData.forms.push(formData);
+              }
+            });
+            
+            return pageData;
+          })();
+        `
+      }),
+    });
 
-  console.log('✅ MOCK: Data extraction completed successfully');
-  return mockPageData;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Browserbase data extraction error:', response.status, errorText);
+      
+      await logYMCATestEvent('extraction_error', {
+        sessionId: request.sessionId,
+        error: `${response.status}: ${errorText}`
+      });
+      
+      throw new Error(`Data extraction failed: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+    const pageData = result.result;
+    
+    console.log('✅ YMCA Test: Real page data extraction completed');
+    console.log('Page title:', pageData.title);
+    console.log('Forms found:', pageData.forms.length);
+
+    // Enhanced data for YMCA-specific processing
+    const enhancedData = {
+      ...pageData,
+      provider: pageData.title.toLowerCase().includes('ymca') ? 'YMCA' : 'Unknown',
+      extractedAt: new Date().toISOString(),
+      realExtraction: true,
+      testType: 'YMCA_REAL_TEST'
+    };
+
+    await logYMCATestEvent('extraction_success', {
+      sessionId: request.sessionId,
+      pageTitle: pageData.title,
+      formsFound: pageData.forms.length,
+      url: pageData.url
+    });
+
+    return enhancedData;
+
+  } catch (error) {
+    console.error('❌ YMCA Test: Data extraction failed:', error);
+    
+    await logYMCATestEvent('extraction_error', {
+      sessionId: request.sessionId,
+      error: error.message
+    });
+    
+    throw error;
+  }
 }
 
 async function closeBrowserSession(apiKey: string, request: BrowserSessionRequest): Promise<any> {
@@ -315,22 +482,69 @@ async function closeBrowserSession(apiKey: string, request: BrowserSessionReques
     throw new Error('Session ID required to close session');
   }
 
-  console.log(`🚨 MOCK: Closing browser session ${request.sessionId}`);
+  console.log(`🎯 YMCA Test: Closing real browser session ${request.sessionId}`);
 
-  // Update session status in database
-  await supabase.from('browser_sessions')
-    .update({ 
-      status: 'closed',
-      closed_at: new Date().toISOString()
-    })
-    .eq('session_id', request.sessionId);
+  try {
+    // Real Browserbase session closure
+    const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      }
+    });
 
-  console.log('✅ MOCK: Browser session closed successfully');
-  return { 
-    success: true, 
-    sessionId: request.sessionId,
-    mockResponse: true
-  };
+    // Note: Browserbase may return 404 if session already closed, which is OK
+    if (!response.ok && response.status !== 404) {
+      const errorText = await response.text();
+      console.warn('Browserbase session close warning:', response.status, errorText);
+      
+      await logYMCATestEvent('session_close_warning', {
+        sessionId: request.sessionId,
+        status: response.status,
+        message: errorText
+      });
+    }
+
+    // Update session status in database
+    await supabase.from('browser_sessions')
+      .update({ 
+        status: 'closed',
+        closed_at: new Date().toISOString()
+      })
+      .eq('session_id', request.sessionId);
+
+    await logYMCATestEvent('session_closed', {
+      sessionId: request.sessionId,
+      closedAt: new Date().toISOString()
+    });
+
+    console.log('✅ YMCA Test: Real browser session closed successfully');
+    return { 
+      success: true, 
+      sessionId: request.sessionId,
+      realResponse: true,
+      closedAt: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('❌ YMCA Test: Session close error:', error);
+    
+    await logYMCATestEvent('session_close_error', {
+      sessionId: request.sessionId,
+      error: error.message
+    });
+    
+    // Still update database status even if API call failed
+    await supabase.from('browser_sessions')
+      .update({ 
+        status: 'error',
+        closed_at: new Date().toISOString()
+      })
+      .eq('session_id', request.sessionId);
+    
+    throw error;
+  }
 }
 
 async function checkTosCompliance(url: string, campProviderId?: string): Promise<{
@@ -408,4 +622,46 @@ async function logComplianceEvent(request: any, result: any, level: string = 'in
   } catch (error) {
     console.error('Failed to log compliance event:', error);
   }
+}
+
+/**
+ * Enhanced logging specifically for YMCA real testing
+ */
+async function logYMCATestEvent(eventType: string, eventData: any): Promise<void> {
+  try {
+    const logEntry = {
+      event_type: 'YMCA_REAL_TEST',
+      event_data: {
+        testEvent: eventType,
+        ...eventData,
+        timestamp: new Date().toISOString(),
+        testPhase: 'SINGLE_REGISTRATION_TEST',
+        businessHours: isBusinessHours(),
+        realAutomation: true
+      },
+      payload_summary: `YMCA Real Test: ${eventType}`,
+      user_id: eventData.parentId || null
+    };
+
+    await supabase.from('compliance_audit').insert(logEntry);
+    
+    // Also log to observability for real-time monitoring
+    console.log('📊 YMCA_TEST_EVENT:', JSON.stringify(logEntry, null, 2));
+    
+  } catch (error) {
+    console.error('❌ Failed to log YMCA test event:', error);
+  }
+}
+
+/**
+ * Check if current time is during business hours (9 AM - 5 PM Pacific)
+ */
+function isBusinessHours(): boolean {
+  const now = new Date();
+  const pacificTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+  const hour = pacificTime.getHours();
+  const day = pacificTime.getDay();
+  
+  // Monday-Friday, 9 AM - 5 PM Pacific
+  return day >= 1 && day <= 5 && hour >= 9 && hour < 17;
 }
