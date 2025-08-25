@@ -386,13 +386,13 @@ export default function AccountHistory() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'success':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Success</Badge>;
+        return <Badge variant="default" className="bg-green-100 text-green-800">Successful signup completed</Badge>;
       case 'failed':
-        return <Badge variant="destructive">Failed</Badge>;
+        return <Badge variant="destructive">Failed Signup</Badge>;
       case 'ready_for_signup':
         return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Ready for Signup</Badge>;
       default:
-        return <Badge variant="secondary">Pending</Badge>;
+        return <Badge variant="secondary">Pending - Action Required</Badge>;
     }
   };
 
