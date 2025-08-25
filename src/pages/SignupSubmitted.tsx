@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getTestScenario } from '@/lib/test-scenarios';
 import { 
   CheckCircle, 
   AlertCircle, 
@@ -27,15 +28,19 @@ export default function SignupSubmitted() {
   const sessionId = params.sessionId;
   const [emailSent, setEmailSent] = useState(false);
 
-  // Validate session ID format
+  // Validate session ID format (UUID or test scenario ID)
   const isValidUUID = (str: string | undefined): boolean => {
     if (!str) return false;
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
   };
 
+  // Check if it's a test scenario
+  const testScenario = sessionId ? getTestScenario(sessionId) : null;
+  const isValidSession = sessionId && (isValidUUID(sessionId) || testScenario);
+
   // Handle invalid session ID
-  if (!sessionId || sessionId === '...' || !isValidUUID(sessionId)) {
+  if (!sessionId || sessionId === '...' || sessionId === 'null' || !isValidSession) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
         <div className="max-w-4xl mx-auto">
@@ -53,12 +58,28 @@ export default function SignupSubmitted() {
     );
   }
   
-  // Fetch session details
+  // Fetch session details or use test scenario
   const { data: sessionData, isLoading } = useQuery({
     queryKey: ['session', sessionId],
     queryFn: async () => {
       if (!sessionId) throw new Error('Session ID required');
       
+      // If it's a test scenario, return mock data
+      if (testScenario) {
+        return {
+          id: testScenario.sessionData.id,
+          registration_open_at: testScenario.sessionData.registration_open_at,
+          start_date: null,
+          end_date: null,
+          activities: {
+            name: testScenario.sessionData.activities.name,
+            city: testScenario.sessionData.activities.city,
+            state: testScenario.sessionData.activities.state
+          }
+        };
+      }
+      
+      // Otherwise fetch from database
       const { data, error } = await supabase
         .from('sessions')
         .select(`
