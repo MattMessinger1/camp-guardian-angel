@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, RefreshCw, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { BrowserbaseDebugger } from '@/components/BrowserbaseDebugger';
 
 interface DiagnosticResult {
   timestamp: string;
@@ -79,9 +80,9 @@ export default function Diagnostics() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Supabase Diagnostics</h1>
+            <h1 className="text-3xl font-bold text-foreground">System Diagnostics</h1>
             <p className="text-muted-foreground mt-2">
-              Comprehensive connectivity and permission testing for your Supabase database
+              Comprehensive testing for Supabase database and browser automation systems
             </p>
           </div>
           <Button 
@@ -240,6 +241,11 @@ export default function Diagnostics() {
             </div>
           </div>
         )}
+
+        {/* Browser Automation Testing */}
+        <div className="border-t pt-8">
+          <BrowserbaseDebugger />
+        </div>
       </div>
     </div>
   );
