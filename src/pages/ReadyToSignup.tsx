@@ -165,21 +165,20 @@ export default function ReadyToSignup() {
     }
   };
 
-  if (sessionLoading || assessmentLoading) {
+  // Show loading while session data is being fetched
+  if (sessionLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center py-12">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-            <h2 className="text-xl font-semibold mb-2">Analyzing Your Readiness</h2>
-            <p className="text-muted-foreground">Reviewing your information and preparing a personalized assessment...</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading session information...</p>
         </div>
       </div>
     );
   }
 
-  if (sessionError || !sessionData || !assessment) {
+  // Show error if session data couldn't be loaded
+  if (sessionError || !sessionId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
         <div className="max-w-4xl mx-auto">
@@ -189,6 +188,18 @@ export default function ReadyToSignup() {
             <p className="text-muted-foreground mb-4">We couldn't load the session information.</p>
             <Button onClick={() => navigate('/sessions')}>Back to Sessions</Button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while assessment is being calculated (should be very fast)
+  if (!sessionData || !assessment) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Preparing readiness assessment...</p>
         </div>
       </div>
     );
