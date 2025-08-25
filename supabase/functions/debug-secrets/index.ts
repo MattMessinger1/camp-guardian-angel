@@ -11,59 +11,31 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔍 Listing all environment variables...');
+    console.log('🔍 Simple secrets check...');
     
-    // Get all environment variables
-    const allEnvVars = Deno.env.toObject();
-    const browserRelated = Object.keys(allEnvVars).filter(key => 
-      key.includes('BROWSER') || key.includes('browser')
-    );
-    
-    // Check specific values
+    // Just check the two specific keys we need
     const apiKey = Deno.env.get('BROWSERBASE_API_KEY');
     const projectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
     
-    console.log('All env keys:', Object.keys(allEnvVars).length);
-    console.log('Browser-related keys:', browserRelated);
-    console.log('API Key raw value:', JSON.stringify(apiKey));
-    console.log('Project ID raw value:', JSON.stringify(projectId));
+    console.log('API Key found:', !!apiKey);
+    console.log('API Key length:', apiKey?.length || 0);
+    console.log('Project ID found:', !!projectId);
     
-    // Check for variations of the key name
-    const variations = [
-      'BROWSERBASE_API_KEY',
-      'browserbase_api_key', 
-      'BROWSERBASE_APIKEY',
-      'BROWSER_BASE_API_KEY'
-    ];
-    
-    const keyTests: Record<string, any> = {};
-    variations.forEach(variation => {
-      keyTests[variation] = Deno.env.get(variation);
-    });
-    
-    const result = {
+    return new Response(JSON.stringify({
       success: true,
-      totalEnvVars: Object.keys(allEnvVars).length,
-      browserRelatedKeys: browserRelated,
-      keyVariationTests: keyTests,
-      apiKeyFound: !!apiKey,
-      apiKeyLength: apiKey?.length || 0,
-      projectIdFound: !!projectId,
-      projectIdValue: projectId,
+      apiKeyExists: !!apiKey,
+      apiKeyLength: apiKey?.length || 0,  
+      projectIdExists: !!projectId,
+      projectIdLength: projectId?.length || 0,
       timestamp: new Date().toISOString()
-    };
-    
-    console.log('Final result:', JSON.stringify(result, null, 2));
-    
-    return new Response(JSON.stringify(result), {
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
     
   } catch (error) {
-    console.error('Error in debug function:', error);
+    console.error('Error:', error);
     return new Response(JSON.stringify({ 
       error: error.message,
-      stack: error.stack,
       timestamp: new Date().toISOString()
     }), {
       status: 500,
