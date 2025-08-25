@@ -39,6 +39,7 @@ import Readiness from './pages/Readiness';
 import TestDebug from './pages/TestDebug';
 import WorkingTest from './pages/WorkingTest';
 import ReadyToSignup from './pages/ReadyToSignup';
+import YMCATest from './pages/YMCATest';
 
 import SignupSubmitted from './pages/SignupSubmitted';
 import PendingSignups from './pages/PendingSignups';
@@ -120,6 +121,11 @@ export default function App() {
             <Route path="/billing" element={
               <ProtectedRoute>
                 <Billing />
+              </ProtectedRoute>
+            } />
+            <Route path="/ymca-test" element={
+              <ProtectedRoute>
+                <YMCATest />
               </ProtectedRoute>
             } />
             <Route path="/billing/success" element={<BillingSetupSuccess />} />
