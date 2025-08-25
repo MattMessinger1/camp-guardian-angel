@@ -282,10 +282,7 @@ export default function ReadyToSignup() {
                 <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
                 <h3 className="text-lg font-semibold mb-2">You're All Set!</h3>
                 <p className="text-muted-foreground">
-                  You've completed all the necessary preparations for signup. 
-                  {assessment.signupReadiness.canSignupNow 
-                    ? " You can proceed to signup now." 
-                    : " Just wait for the registration to open."}
+                  You've given yourself the best chance to get the spot you want! Our system handles the signup and you won't need to hover. We'll contact you as soon as we know about your spot!
                 </p>
               </div>
             )}
