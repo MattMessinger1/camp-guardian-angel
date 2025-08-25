@@ -13,7 +13,6 @@ import {
   CheckCircle, 
   AlertCircle, 
   Clock, 
-  Mail,
   MessageSquare,
   Calendar,
   MapPin
@@ -26,7 +25,6 @@ export default function SignupSubmitted() {
   const { toast } = useToast();
   
   const sessionId = params.sessionId;
-  const [emailSent, setEmailSent] = useState(false);
 
   // Validate session ID format (UUID or test scenario ID)
   const isValidUUID = (str: string | undefined): boolean => {
@@ -99,43 +97,6 @@ export default function SignupSubmitted() {
     enabled: !!sessionId
   });
 
-  // Send confirmation email
-  useEffect(() => {
-    const sendConfirmationEmail = async () => {
-      if (!sessionData || !user || emailSent) return;
-      
-      try {
-        await supabase.functions.invoke('send-email-sendgrid', {
-          body: {
-            to: user.email,
-            subject: `Signup Submitted: ${sessionData.activities?.name}`,
-            html: `
-              <h2>Your signup has been submitted!</h2>
-              <p>Hi ${user.user_metadata?.guardian_name || 'there'},</p>
-              <p>We've received your signup request for <strong>${sessionData.activities?.name}</strong>.</p>
-              
-              <h3>Session Details:</h3>
-              <ul>
-                <li><strong>Camp:</strong> ${sessionData.activities?.name}</li>
-                <li><strong>Location:</strong> ${sessionData.activities?.city}, ${sessionData.activities?.state}</li>
-                <li><strong>Session Dates:</strong> ${sessionData.start_date ? new Date(sessionData.start_date).toLocaleDateString() : 'TBD'} - ${sessionData.end_date ? new Date(sessionData.end_date).toLocaleDateString() : 'TBD'}</li>
-                <li><strong>Signup Time:</strong> ${sessionData.registration_open_at ? new Date(sessionData.registration_open_at).toLocaleString() : 'TBD'}</li>
-              </ul>
-              
-              <p>You can view your pending signups anytime at: <a href="${window.location.origin}/pending-signups">View Pending Signups</a></p>
-              
-              <p>Best regards,<br>CampRush Team</p>
-            `
-          }
-        });
-        setEmailSent(true);
-      } catch (error) {
-        console.error('Failed to send confirmation email:', error);
-      }
-    };
-
-    sendConfirmationEmail();
-  }, [sessionData, user, emailSent]);
 
   if (isLoading) {
     return (
@@ -182,15 +143,6 @@ export default function SignupSubmitted() {
             <p className="text-lg text-muted-foreground">
               Your signup for <strong>{sessionData.activities?.name}</strong> has been submitted and processed.
             </p>
-            
-            {emailSent && (
-              <Alert>
-                <Mail className="w-4 h-4" />
-                <AlertDescription>
-                  A confirmation email has been sent to {user?.email}
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
 
@@ -266,16 +218,6 @@ export default function SignupSubmitted() {
                   <p className="font-medium">Be Ready for Text Verification</p>
                   <p className="text-sm text-muted-foreground">
                     If CAPTCHA challenges appear during signup, we'll send you a quick text message for assistance.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Mail className="w-5 h-5 text-purple-500 mt-0.5" />
-                <div>
-                  <p className="font-medium">Email Updates</p>
-                  <p className="text-sm text-muted-foreground">
-                    You'll receive email notifications about your signup status and any actions needed.
                   </p>
                 </div>
               </div>
