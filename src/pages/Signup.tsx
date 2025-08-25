@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import CompleteSignupForm from "@/components/CompleteSignupForm";
 import { TestCampSwitcher } from "@/components/TestCampSwitcher";
+import { TEST_CAMP_SCENARIOS } from "@/lib/test-scenarios";
 
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
@@ -33,7 +34,12 @@ export default function Signup() {
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const sessionId = searchParams.get('sessionId');
+  const rawSessionId = searchParams.get('sessionId');
+  
+  // If no sessionId or invalid sessionId, default to first test scenario
+  const sessionId = rawSessionId && rawSessionId !== '${sessionId}' ? 
+    rawSessionId : 
+    Object.values(TEST_CAMP_SCENARIOS)[0].sessionData.id;
 
   const handleComplete = (user: any) => {
     // For testing - use a fixed test session ID when sessionId is the literal string
