@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { logger } from "@/lib/log";
 import HomePage from "./pages/Home";
@@ -146,6 +146,8 @@ export default function App() {
             <Route path="/pending-signups" element={<PendingSignups />} />
             <Route path="/signup-confirmation/:sessionId" element={<SignupConfirmation />} />
             <Route path="/account-history" element={<AccountHistory />} />
+            <Route path="/accounthistory" element={<Navigate to="/account-history" replace />} />
+            <Route path="/signuphistory" element={<Navigate to="/account-history" replace />} />
             <Route path="/approve" element={<ApprovePage />} />
             <Route path="/operations" element={<Operations />} />
             <Route path="/compliance" element={<ComplianceDashboard />} />

@@ -312,21 +312,27 @@ export default function AccountHistory() {
   });
 
   // Handle canceling a pending signup
-  const handleCancelSignup = async (sessionId: string) => {
+  const handleCancelSignup = async (reservationId: string) => {
     if (!confirm('Are you sure you want to cancel this signup? This action cannot be undone.')) {
       return;
     }
 
     try {
-      // For now, we'll just remove it from the pending list
-      // In a real app, you'd want to update a status or remove from a tracking table
-      console.log('Canceling signup for session:', sessionId);
-      
-      // Refetch data to update the list
-      // In the future, this should make an API call to actually cancel the signup
-      
-      // For now, show a success message (you might want to implement a proper notification system)
-      alert('Signup canceled successfully');
+      // Update the reservation status to failed (cancelled)
+      const { error } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'failed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reservationId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Refetch the data to update the UI
+      window.location.reload();
       
     } catch (error) {
       console.error('Error canceling signup:', error);
@@ -500,8 +506,8 @@ export default function AccountHistory() {
                     <th className="text-left py-3 px-4 font-semibold">Session</th>
                     <th className="text-left py-3 px-4 font-semibold">Signup Date/Time</th>
                     <th className="text-left py-3 px-4 font-semibold">Status</th>
-                    <th className="text-left py-3 px-4 font-semibold">Text Verification</th>
                     <th className="text-left py-3 px-4 font-semibold">Actions</th>
+                    <th className="text-left py-3 px-4 font-semibold">How Did We Perform?</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -544,46 +550,59 @@ export default function AccountHistory() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          {row.status === 'ready_for_signup' && row.canonicalUrl ? (
-                            <TextVerificationStatus canonicalUrl={row.canonicalUrl} />
-                          ) : row.status !== 'ready_for_signup' ? (
-                            <Badge variant="outline">N/A</Badge>
-                          ) : (
-                            <Badge variant="outline">Unknown</Badge>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col gap-2">
                             {row.status === 'ready_for_signup' ? (
                               <>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
-                                >
-                                  View Details
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleCancelSignup(row.sessionId!)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
+                                  >
+                                    View Details
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleCancelSignup(row.id)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Cancel
+                                  </Button>
+                                </div>
+                                {row.canonicalUrl && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <span className="text-muted-foreground">Text Verification:</span>
+                                    <TextVerificationStatus canonicalUrl={row.canonicalUrl} />
+                                  </div>
+                                )}
                               </>
                             ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleTimingReport(row)}
-                                className="flex items-center gap-2"
-                              >
-                                <BarChart3 className="w-4 h-4" />
-                                View Report
-                              </Button>
+                              <div className="text-sm text-muted-foreground">
+                                {row.status === 'success' ? 'Completed successfully' : 
+                                 row.status === 'failed' ? 'Registration failed' : 
+                                 'Processing...'}
+                              </div>
                             )}
                           </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          {(row.status === 'success' || row.status === 'failed') ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleTimingReport(row)}
+                              className="flex items-center gap-2"
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                              View Report
+                            </Button>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              {row.status === 'ready_for_signup' ? 'Pending signup' : 'Not available'}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))
