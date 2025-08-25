@@ -600,7 +600,7 @@ export default function AccountHistory() {
                             </Button>
                           ) : (
                             <div className="text-sm text-muted-foreground">
-                              {row.status === 'ready_for_signup' ? 'Pending signup' : 'Not available'}
+                              TBD - We're staying ready!
                             </div>
                           )}
                         </td>
