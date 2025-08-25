@@ -186,30 +186,7 @@ const ManageColumn = ({
   navigate: (path: string) => void;
   handleCancelSignup: (id: string) => void;
 }) => {
-  if (row.status === 'ready_for_signup') {
-    return (
-      <div className="flex items-center gap-2">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
-        >
-          View Details
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCancelSignup(row.id)}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-        >
-          <Trash2 className="w-4 h-4" />
-          Cancel
-        </Button>
-      </div>
-    );
-  }
-
-  if (row.status === 'pending') {
+  if (row.status === 'ready_for_signup' || row.status === 'pending') {
     return (
       <Button
         variant="ghost"
@@ -630,8 +607,8 @@ export default function AccountHistory() {
                     <th className="text-left py-3 px-4 font-semibold">Signup Date/Time</th>
                     <th className="text-left py-3 px-4 font-semibold">Status</th>
                     <th className="text-left py-3 px-4 font-semibold">Actions Required</th>
-                    <th className="text-left py-3 px-4 font-semibold">How Did We Perform?</th>
                     <th className="text-left py-3 px-4 font-semibold">Manage</th>
+                    <th className="text-left py-3 px-4 font-semibold">How Did We Perform?</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -677,6 +654,13 @@ export default function AccountHistory() {
                           <ActionsList row={row} />
                         </td>
                         <td className="py-3 px-4">
+                          <ManageColumn 
+                            row={row} 
+                            navigate={navigate} 
+                            handleCancelSignup={handleCancelSignup} 
+                          />
+                        </td>
+                        <td className="py-3 px-4">
                           {(row.status === 'success' || row.status === 'failed') ? (
                             <Button
                               variant="outline"
@@ -692,13 +676,6 @@ export default function AccountHistory() {
                               TBD - We're staying ready!
                             </div>
                           )}
-                        </td>
-                        <td className="py-3 px-4">
-                          <ManageColumn 
-                            row={row} 
-                            navigate={navigate} 
-                            handleCancelSignup={handleCancelSignup} 
-                          />
                         </td>
                       </tr>
                     ))
