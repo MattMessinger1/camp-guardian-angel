@@ -56,14 +56,13 @@ export default function AccountHistory() {
     }
   }, [user, navigate]);
 
-  // Don't render anything if not authenticated
+  // Show loading state while checking authentication
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-          <p className="text-muted-foreground mb-6">Please log in to view your signup history</p>
-          <Button onClick={() => navigate('/auth')}>Go to Login</Button>
+          <h2 className="text-2xl font-bold mb-4">Checking Authentication...</h2>
+          <p className="text-muted-foreground">Please wait...</p>
         </div>
       </div>
     );
