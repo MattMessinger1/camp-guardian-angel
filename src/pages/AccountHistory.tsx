@@ -49,10 +49,14 @@ export default function AccountHistory() {
   console.log('🔍 AccountHistory: Component rendered');
   console.log('👤 AccountHistory: User auth state:', { user: !!user, userId: user?.id });
   
-  // Redirect to auth if not logged in
+  // Redirect to auth if not logged in - but only for unauthenticated users
   useEffect(() => {
-    if (!user) {
+    console.log('🔄 AccountHistory: useEffect checking auth state:', { user: !!user, userId: user?.id });
+    if (user === null) { // Only redirect if explicitly null, not if user is undefined/loading
+      console.log('❌ AccountHistory: No user, redirecting to auth');
       navigate('/auth');
+    } else if (user) {
+      console.log('✅ AccountHistory: User authenticated, staying on page');
     }
   }, [user, navigate]);
 
