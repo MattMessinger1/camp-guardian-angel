@@ -118,13 +118,28 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
   }
 
   try {
-    // Real Browserbase API call
+    // Real Browserbase API call with enhanced debugging
     console.log('📡 Calling real Browserbase API to create session...');
+    console.log('🔑 API Key length:', apiKey.length);
+    console.log('🔑 API Key prefix:', apiKey.substring(0, 10) + '...');
     
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
     if (!browserbaseProjectId) {
       throw new Error('BROWSERBASE_PROJECT_ID not configured');
     }
+    console.log('🆔 Project ID:', browserbaseProjectId);
+
+    const requestBody = {
+      projectId: browserbaseProjectId,
+      browserSettings: {
+        viewport: { width: 1920, height: 1080 },
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
+      }
+    };
+    
+    console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
 
     const response = await fetch('https://www.browserbase.com/v1/sessions', {
       method: 'POST',
@@ -132,24 +147,48 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        projectId: browserbaseProjectId,
-        browserSettings: {
-          viewport: { width: 1920, height: 1080 },
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-          }
-        }
-      }),
+      body: JSON.stringify(requestBody),
     });
 
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response status text:', response.statusText);
+    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+
+    const responseText = await response.text();
+    console.log('📥 Response body (first 500 chars):', responseText.substring(0, 500));
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Browserbase API error:', response.status, errorText);
-      throw new Error(`Browserbase session creation failed: ${response.status} ${errorText}`);
+      console.error('❌ Browserbase API error:', response.status, response.statusText);
+      console.error('❌ Full response:', responseText);
+      
+      await logYMCATestEvent('browserbase_api_error', {
+        status: response.status,
+        statusText: response.statusText,
+        response: responseText.substring(0, 1000),
+        apiKeyLength: apiKey.length,
+        projectId: browserbaseProjectId,
+        url: 'https://www.browserbase.com/v1/sessions'
+      });
+      
+      throw new Error(`Browserbase API returned ${response.status} ${response.statusText}: ${responseText.substring(0, 200)}`);
     }
 
-    const sessionData = await response.json();
+    let sessionData;
+    try {
+      sessionData = JSON.parse(responseText);
+      console.log('✅ Successfully parsed session data:', sessionData);
+    } catch (parseError) {
+      console.error('❌ Failed to parse Browserbase response as JSON:', parseError);
+      console.error('❌ Raw response:', responseText);
+      
+      await logYMCATestEvent('json_parse_error', {
+        parseError: parseError.message,
+        responseText: responseText.substring(0, 1000),
+        responseLength: responseText.length
+      });
+      
+      throw new Error(`Browserbase returned non-JSON response: ${responseText.substring(0, 100)}`);
+    }
     console.log('✅ Real Browserbase session created:', sessionData.id);
     
     const browserSession: BrowserSession = {
