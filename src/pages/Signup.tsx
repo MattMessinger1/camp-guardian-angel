@@ -38,7 +38,14 @@ export default function Signup() {
   const handleComplete = (user: any) => {
     // For testing - use a fixed test session ID when sessionId is the literal string
     const testSessionId = sessionId === '{sessionId}' ? '11111111-2222-3333-4444-555555555555' : sessionId;
-    navigate(`/sessions/${testSessionId}/signup-submitted`, { replace: true });
+    
+    // Only navigate if we have a valid session ID
+    if (testSessionId && testSessionId !== 'null') {
+      navigate(`/sessions/${testSessionId}/signup-submitted`, { replace: true });
+    } else {
+      // Fallback to account history if no valid session ID
+      navigate('/account-history', { replace: true });
+    }
   };
 
   return (
