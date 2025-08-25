@@ -104,7 +104,80 @@ const TextVerificationStatus = ({ canonicalUrl }: { canonicalUrl: string | null 
 };
 
 // Component to show specific actions required
-const ActionsList = ({ 
+const ActionsList = ({ row }: { row: SignupHistoryRow }) => {
+  const [actions, setActions] = React.useState<string[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const determineActions = async () => {
+      const requiredActions: string[] = [];
+      
+      if (row.status === 'pending') {
+        // Check if signup time is missing or needs refinement
+        if (!row.registrationOpenAt || row.registrationOpenAt === row.signupDateTime) {
+          requiredActions.push('Enter the exact signup date/time');
+        }
+        
+        // Check if text verification or login is needed
+        if (row.canonicalUrl) {
+          try {
+            const profile = await detectPlatform(row.canonicalUrl);
+            if (profile) {
+              if (profile.captcha_expected) {
+                requiredActions.push('Be ready for a text at signup time');
+              }
+              if (profile.login_type !== 'none') {
+                requiredActions.push('Create an account for Provider\'s website');
+              }
+            }
+          } catch (error) {
+            console.error('Error detecting platform for actions:', error);
+          }
+        }
+      }
+      
+      setActions(requiredActions);
+      setLoading(false);
+    };
+
+    determineActions();
+  }, [row.canonicalUrl, row.registrationOpenAt, row.signupDateTime, row.status]);
+
+  if (loading && row.status === 'pending') {
+    return <div className="text-xs text-muted-foreground">Checking...</div>;
+  }
+
+  if (row.status === 'success') {
+    return <div className="text-sm text-muted-foreground">N/A</div>;
+  }
+
+  if (row.status === 'failed') {
+    return <div className="text-sm text-muted-foreground">N/A</div>;
+  }
+
+  if (row.status === 'ready_for_signup') {
+    return <div className="text-sm text-green-600">Nothing for you to do!</div>;
+  }
+
+  // For pending status - show specific actions
+  if (actions.length === 0) {
+    return <div className="text-sm text-muted-foreground">Processing...</div>;
+  }
+
+  return (
+    <div className="space-y-1">
+      {actions.map((action, index) => (
+        <div key={index} className="text-xs text-orange-600 flex items-start gap-1">
+          <span className="text-orange-500 mt-0.5">•</span>
+          <span>{action}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Component to handle manage actions (buttons)
+const ManageColumn = ({ 
   row, 
   navigate, 
   handleCancelSignup 
@@ -113,42 +186,44 @@ const ActionsList = ({
   navigate: (path: string) => void;
   handleCancelSignup: (id: string) => void;
 }) => {
-  if (row.status === 'success') {
-    return <div className="text-sm text-muted-foreground">N/A</div>;
-  }
-
   if (row.status === 'ready_for_signup') {
     return (
-      <div className="space-y-2">
-        <div className="text-sm text-green-600">Nothing for you to do!</div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
-          >
-            View Details
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCancelSignup(row.id)}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            Cancel
-          </Button>
-        </div>
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
+        >
+          View Details
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleCancelSignup(row.id)}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="w-4 h-4" />
+          Cancel
+        </Button>
       </div>
     );
   }
 
-  if (row.status === 'failed') {
-    return <div className="text-sm text-muted-foreground">N/A</div>;
+  if (row.status === 'pending') {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => handleCancelSignup(row.id)}
+        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+      >
+        <Trash2 className="w-4 h-4" />
+        Cancel
+      </Button>
+    );
   }
 
-  // For pending status
-  return <div className="text-sm text-muted-foreground">Processing...</div>;
+  return <div className="text-sm text-muted-foreground">-</div>;
 };
 
 export default function AccountHistory() {
@@ -556,6 +631,7 @@ export default function AccountHistory() {
                     <th className="text-left py-3 px-4 font-semibold">Status</th>
                     <th className="text-left py-3 px-4 font-semibold">Actions Required</th>
                     <th className="text-left py-3 px-4 font-semibold">How Did We Perform?</th>
+                    <th className="text-left py-3 px-4 font-semibold">Manage</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -598,11 +674,7 @@ export default function AccountHistory() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <ActionsList 
-                            row={row} 
-                            navigate={navigate} 
-                            handleCancelSignup={handleCancelSignup} 
-                          />
+                          <ActionsList row={row} />
                         </td>
                         <td className="py-3 px-4">
                           {(row.status === 'success' || row.status === 'failed') ? (
@@ -621,11 +693,18 @@ export default function AccountHistory() {
                             </div>
                           )}
                         </td>
+                        <td className="py-3 px-4">
+                          <ManageColumn 
+                            row={row} 
+                            navigate={navigate} 
+                            handleCancelSignup={handleCancelSignup} 
+                          />
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="text-center py-12">
+                      <td colSpan={7} className="text-center py-12">
                         <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                         <h3 className="text-lg font-semibold mb-2">No Camp Signups</h3>
                         <p className="text-muted-foreground mb-4">
