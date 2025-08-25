@@ -132,13 +132,6 @@ export function TestCampSwitcher({ className }: TestCampSwitcherProps) {
           >
             Back to Sessions
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => window.location.reload()}
-          >
-            Refresh Page
-          </Button>
         </div>
       </CardContent>
     </Card>
