@@ -45,26 +45,16 @@ export default function AccountHistory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTiming, setSelectedTiming] = useState<SignupHistoryRow | null>(null);
   const [isTimingModalOpen, setIsTimingModalOpen] = useState(false);
-  const hasNavigatedRef = useRef(false); // Prevent multiple navigation calls
 
-  console.log('🔍 AccountHistory: Component rendered');
+  console.log('🔍 AccountHistory: Component rendered - ISOLATED TEST');
   console.log('👤 AccountHistory: Auth state:', { user: !!user, userId: user?.id, loading });
   
-  // Redirect to auth if not logged in - but wait for loading to complete
-  useEffect(() => {
-    console.log('🔄 AccountHistory: useEffect checking auth state:', { user: !!user, userId: user?.id, loading, hasNavigated: hasNavigatedRef.current });
-    
-    if (!loading && !user && !hasNavigatedRef.current) { 
-      console.log('❌ AccountHistory: No user and not loading, redirecting to auth');
-      hasNavigatedRef.current = true; // Mark that we've navigated
-      navigate('/auth');
-    } else if (user) {
-      console.log('✅ AccountHistory: User authenticated, staying on page');
-      hasNavigatedRef.current = false; // Reset navigation flag
-    } else if (loading) {
-      console.log('⏳ AccountHistory: Still loading auth state...');
-    }
-  }, [user, loading]); // Remove navigate from dependencies to prevent loops
+  // TEMPORARILY DISABLE ALL NAVIGATION - just show what happens
+  // useEffect(() => {
+  //   // Navigation logic disabled for testing
+  // }, []);
+
+  console.log('🧪 ISOLATION TEST: No navigation logic active');
 
   // Show loading state while checking authentication
   if (loading) {
