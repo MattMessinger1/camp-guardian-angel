@@ -267,14 +267,8 @@ export default function ReadyToSignup() {
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-lg">{item.item}</span>
-                          <Badge variant={getPriorityColor(item.priority) as any}>
-                            {item.priority} priority
-                          </Badge>
                         </div>
                         <p className="text-muted-foreground">{item.description}</p>
-                        <div className="text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded">
-                          {item.category}
-                        </div>
                       </div>
                     </div>
                   ))}
