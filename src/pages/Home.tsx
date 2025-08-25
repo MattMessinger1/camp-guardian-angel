@@ -283,13 +283,13 @@ const HomePage = () => {
           {/* Return to signups button - centered below search */}
           {user && (
             <div className="flex justify-center mt-6 pt-6 border-t border-border/50">
-              <Link to="/dashboard">
+              <Link to="/account-history">
                 <Button 
                   variant="outline" 
                   size="lg"
                   className="bg-background/80 backdrop-blur-sm hover:bg-background border-border hover:border-primary/50 text-foreground hover:text-primary transition-all duration-200"
                 >
-                  Return to signups in progress
+                  View current / past signups
                 </Button>
               </Link>
             </div>
