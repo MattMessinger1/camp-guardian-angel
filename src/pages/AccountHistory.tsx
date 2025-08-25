@@ -215,7 +215,7 @@ export default function AccountHistory() {
 
   // CRITICAL: ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
   // Fetch user's signup history with comprehensive data + pending signups - ALWAYS call this hook
-  const { data: signupHistory, isLoading, error } = useQuery({
+  const { data: signupHistory, isLoading, error, refetch } = useQuery({
     queryKey: ['user-signup-history', user?.id],
     queryFn: async () => {
       console.log('AccountHistory: User object:', user);
@@ -410,6 +410,89 @@ export default function AccountHistory() {
     },
     enabled: !!user
   });
+
+  // Real-time subscriptions for dynamic updates
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log('🔄 Setting up real-time subscriptions for user:', user.id);
+
+    // Subscribe to reservation changes
+    const reservationChannel = supabase
+      .channel(`reservations-${user.id}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'reservations',
+          filter: `parents.user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Reservation change detected:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to attempt events for real-time signup progress
+    const attemptChannel = supabase
+      .channel(`attempt-events-${user.id}`)
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public', 
+          table: 'attempt_events'
+        },
+        (payload) => {
+          console.log('🔄 Attempt event detected:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to CAPTCHA events for real-time assistance updates
+    const captchaChannel = supabase
+      .channel(`captcha-events-${user.id}`)
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'captcha_events',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 CAPTCHA event detected:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to browser session updates
+    const browserChannel = supabase
+      .channel(`browser-sessions-${user.id}`)
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'browser_sessions',
+          filter: `parent_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Browser session update detected:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      console.log('🧹 Cleaning up real-time subscriptions');
+      reservationChannel.unsubscribe();
+      attemptChannel.unsubscribe();
+      captchaChannel.unsubscribe();
+      browserChannel.unsubscribe();
+    };
+  }, [user?.id, refetch]);
 
   // Handle canceling a pending signup
   const handleCancelSignup = async (reservationId: string) => {
