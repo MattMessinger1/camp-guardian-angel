@@ -143,19 +143,28 @@ export default function AccountHistory() {
           .eq('parents.user_id', user.id)
           .order('created_at', { ascending: false });
         
-        // Get pending signups (sessions ready for signup)
+        // Get pending signups (reservations that are still waiting for registration to open)
         const { data: pendingSessions, error: pendingError } = await supabase
-          .from('sessions')
+          .from('reservations')
           .select(`
             *,
-            activities (
+            sessions (
+              *,
+              activities (
+                name,
+                city,
+                state,
+                canonical_url
+              )
+            ),
+            parents!inner(
+              id,
               name,
-              city,
-              state,
-              canonical_url
+              user_id
             )
           `)
-          .or('registration_open_at.is.null,registration_open_at.gt.now()')
+          .eq('parents.user_id', user.id)
+          .eq('status', 'pending')
           .order('created_at', { ascending: false });
         
         console.log('AccountHistory: Query results:', { 
@@ -260,26 +269,33 @@ export default function AccountHistory() {
           allData.push(...enrichedReservations);
         }
 
-        // Process pending sessions
+        // Process pending sessions (reservations that haven't been completed yet)
         if (pendingSessions && pendingSessions.length > 0) {
-          const pendingData: SignupHistoryRow[] = pendingSessions.map((session: any) => ({
-            id: session.id,
-            sessionId: session.id,
-            campName: session.activities?.name || 'Unknown Camp',
-            sessionTitle: `${session.start_date && session.end_date 
-              ? `${new Date(session.start_date).toLocaleDateString()} - ${new Date(session.end_date).toLocaleDateString()}`
-              : 'Dates TBD'
-            }`,
-            signupDateTime: session.registration_open_at || session.created_at,
-            status: 'ready_for_signup' as const,
-            state: 'ready_for_signup',
-            registrationOpenAt: session.registration_open_at,
-            canonicalUrl: session.activities?.canonical_url,
-            location: session.activities ? `${session.activities.city}, ${session.activities.state}` : undefined,
-            ageRange: `Ages ${session.age_min}-${session.age_max}`,
-            // Additional info requirements could be determined here
-            additionalInfoRequired: undefined // TODO: Implement logic to determine required info
-          }));
+          const pendingData: SignupHistoryRow[] = pendingSessions.map((reservation: any) => {
+            const session = reservation.sessions;
+            
+            // Determine if this is ready for signup or still pending
+            const isReadyForSignup = session?.registration_open_at && new Date(session.registration_open_at) > new Date();
+            
+            return {
+              id: reservation.id,
+              sessionId: session?.id,
+              campName: session?.activities?.name || 'Unknown Camp',
+              sessionTitle: session ? `${session.start_date && session.end_date 
+                ? `${new Date(session.start_date).toLocaleDateString()} - ${new Date(session.end_date).toLocaleDateString()}`
+                : 'Dates TBD'
+              }` : 'Session Details TBD',
+              signupDateTime: session?.registration_open_at || reservation.created_at,
+              status: isReadyForSignup ? ('ready_for_signup' as const) : ('pending' as const),
+              state: reservation.status || 'pending',
+              registrationOpenAt: session?.registration_open_at,
+              canonicalUrl: session?.activities?.canonical_url,
+              location: session?.activities ? `${session.activities.city}, ${session.activities.state}` : undefined,
+              ageRange: session ? `Ages ${session.age_min}-${session.age_max}` : undefined,
+              // Additional info requirements could be determined here
+              additionalInfoRequired: undefined // TODO: Implement logic to determine required info
+            };
+          });
           allData.push(...pendingData);
         }
 
