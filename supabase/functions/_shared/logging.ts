@@ -3,7 +3,7 @@
  * Reuse this instead of creating new logging patterns
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
+import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2.54.0';
 
 export function getSupabaseClient() {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
