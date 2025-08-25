@@ -21,19 +21,13 @@ import {
 import { RequirementsNotification } from '@/components/RequirementsNotification';
 import { SignupPreparationGuide } from '@/components/SignupPreparationGuide';
 import { SetSignupTimeForm } from '@/components/SetSignupTimeForm';
-import { useSmartReadiness } from '@/hooks/useSmartReadiness';
 import { getTestScenario, getAllTestSessionIds } from '@/lib/test-scenarios';
 import { TestCampSwitcher } from '@/components/TestCampSwitcher';
 import { BrowserAutomationStatus } from '@/components/BrowserAutomationStatus';
 import { useBrowserAutomation } from '@/hooks/useBrowserAutomation';
 
-// TEMPORARY: Import minimal version for debugging
-import ReadyToSignupMinimal from './ReadyToSignupMinimal';
-
-// Export minimal version to isolate spinning issues
-export default ReadyToSignupMinimal;
-
-function ReadyToSignupOriginal() {
+// Export the original ReadyToSignup with simplified assessment
+export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -74,8 +68,44 @@ function ReadyToSignupOriginal() {
     enabled: !!sessionId
   });
 
-  // Use AI-powered readiness assessment
-  const { assessment, isLoading: assessmentLoading } = useSmartReadiness(sessionId || '', sessionData);
+  // Use simple fallback assessment instead of the problematic useSmartReadiness
+  const assessment = React.useMemo(() => {
+    if (!sessionData) return null;
+    
+    const hasSignupTime = !!sessionData.registration_open_at;
+    const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
+    const now = new Date();
+    const isSignupOpen = signupDate ? signupDate <= now : false;
+    
+    const checklist = [
+      {
+        category: 'Registration Timing',
+        item: hasSignupTime ? 'Signup time confirmed' : 'Signup time needed',
+        status: hasSignupTime ? 'complete' : 'needs_attention',
+        priority: 'high',
+        description: hasSignupTime 
+          ? `Registration ${isSignupOpen ? 'is open now' : 'opens soon'}`
+          : 'Set the registration time to continue'
+      }
+    ];
+    
+    const readinessScore = hasSignupTime ? 85 : 30;
+    
+    return {
+      readinessScore,
+      overallStatus: readinessScore >= 80 ? 'ready' : 'needs_preparation',
+      checklist,
+      recommendations: [],
+      signupReadiness: {
+        canSignupNow: isSignupOpen && readinessScore >= 60,
+        estimatedSignupDate: signupDate?.toISOString() || 'To be determined',
+        needsCaptchaPreparation: false,
+        communicationPlan: hasSignupTime ? 'reminder' : 'assistance_needed'
+      }
+    };
+  }, [sessionData?.registration_open_at]);
+  
+  const assessmentLoading = false;
   
   // Browser automation for signup assistance
   const { state: automationState, initializeSession, closeSession, reset } = useBrowserAutomation();
