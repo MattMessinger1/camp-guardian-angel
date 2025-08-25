@@ -166,8 +166,110 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
       return;
     }
 
-    generateAssessment();
-  }, [sessionId, user?.id, sessionData?.id, generateAssessment]);
+    // Directly run the assessment logic inline to avoid dependency loops
+    const runAssessment = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('Using fallback assessment to isolate AI function issues');
+        
+        // Inline assessment logic
+        const hasSignupTime = !!sessionData?.registration_open_at;
+        const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
+        const now = new Date();
+        const isSignupOpen = signupDate ? signupDate <= now : false;
+        const timeUntilSignup = signupDate ? signupDate.getTime() - now.getTime() : 0;
+        const hoursUntilSignup = Math.max(0, timeUntilSignup / (1000 * 60 * 60));
+        
+        const checklist: ChecklistItem[] = [
+          {
+            category: 'Session Information',
+            item: 'Session details confirmed',
+            status: 'complete',
+            priority: 'high',
+            description: `${sessionData?.activities?.name || 'Session'} in ${sessionData?.activities?.city || 'Unknown location'}`
+          },
+          {
+            category: 'Registration Timing',
+            item: hasSignupTime ? 'Signup time confirmed' : 'Signup time needed',
+            status: hasSignupTime ? 'complete' : 'needs_attention',
+            priority: 'high',
+            description: hasSignupTime 
+              ? `Registration ${isSignupOpen ? 'is open now' : `opens in ${Math.ceil(hoursUntilSignup)} hours`}`
+              : 'Contact the provider to confirm when registration opens'
+          },
+          {
+            category: 'Account Setup',
+            item: 'Email verified',
+            status: user?.email_confirmed_at ? 'complete' : 'needs_attention',
+            priority: 'medium',
+            description: user?.email_confirmed_at ? 'Your email is verified' : 'Please verify your email address'
+          },
+        ];
+
+        // Add platform-specific preparation
+        if (sessionData?.platform?.toLowerCase().includes('active')) {
+          checklist.push({
+            category: 'Technical Preparation',
+            item: 'CAPTCHA preparation',
+            status: 'incomplete',
+            priority: 'medium',
+            description: 'Be prepared to receive a text message at the exact signup time. This text will get us past the CAPTCHA challenge while holding your spot in line.'
+          });
+        }
+
+        // Calculate readiness score
+        const completedItems = checklist.filter(item => item.status === 'complete').length;
+        const totalItems = checklist.length;
+        const baseScore = (completedItems / totalItems) * 80;
+        const bonusScore = isSignupOpen ? 20 : (hasSignupTime ? 10 : 0);
+        const readinessScore = Math.min(100, Math.round(baseScore + bonusScore));
+
+        // Generate recommendations
+        const recommendations: Recommendation[] = [];
+        
+        if (!hasSignupTime) {
+          recommendations.push({
+            type: 'action',
+            title: 'Confirm Registration Time',
+            message: 'Contact the provider or check their website to confirm when registration opens.',
+            timeframe: 'immediate'
+          });
+        }
+
+        if (!user?.email_confirmed_at) {
+          recommendations.push({
+            type: 'warning',
+            title: 'Verify Your Email',
+            message: 'Please verify your email address before attempting to register.',
+            timeframe: 'before_signup'
+          });
+        }
+
+        const assessment: SmartAssessment = {
+          readinessScore,
+          overallStatus: readinessScore >= 80 ? 'ready' : readinessScore >= 50 ? 'needs_preparation' : 'missing_critical_info',
+          checklist,
+          recommendations,
+          signupReadiness: {
+            canSignupNow: isSignupOpen && readinessScore >= 60,
+            estimatedSignupDate: signupDate?.toISOString() || 'To be determined',
+            needsCaptchaPreparation: sessionData?.platform?.toLowerCase().includes('active') || false,
+            communicationPlan: hasSignupTime ? 'reminder' : 'assistance_needed'
+          }
+        };
+        
+        setAssessment(assessment);
+      } catch (err) {
+        console.error('Assessment error:', err);
+        setError(err instanceof Error ? err.message : 'Assessment failed');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    runAssessment();
+  }, [sessionId, user?.id, sessionData?.registration_open_at]);
 
   const refreshAssessment = React.useCallback(() => {
     generateAssessment();
