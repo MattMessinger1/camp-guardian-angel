@@ -238,8 +238,12 @@ export default function ReadyToSignup() {
             <div className="text-center">
               <div className="text-sm font-medium text-muted-foreground mb-2">READY TO SIGNUP?</div>
               <div className="text-2xl font-bold">
-                {assessment.signupReadiness.canSignupNow ? (
-                  <span className="text-green-600">✓ Ready Now</span>
+                {assessment.checklist.every(item => item.status === 'complete') ? (
+                  assessment.signupReadiness.canSignupNow ? (
+                    <span className="text-green-600">✓ Ready Now</span>
+                  ) : (
+                    <span className="text-blue-600">✓ All Set - Waiting for Registration</span>
+                  )
                 ) : (
                   <span className="text-orange-600">⏳ Preparing</span>
                 )}
