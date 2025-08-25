@@ -18,20 +18,11 @@ export function TestCampSwitcher({ className, mode = 'ready-to-signup' }: TestCa
   const [searchParams] = useSearchParams();
   
   // Get sessionId from either route params or search params
-  const rawSessionId = params.id || params.sessionId || searchParams.get('sessionId');
+  const currentSessionId = params.id || params.sessionId || searchParams.get('sessionId');
   
-  // Handle case where sessionId is the literal string "${sessionId}" or invalid
-  const currentSessionId = rawSessionId === '${sessionId}' || !rawSessionId ? null : rawSessionId;
-  
-  const currentScenario = currentSessionId ? 
-    Object.values(TEST_CAMP_SCENARIOS).find(scenario => scenario.sessionData.id === currentSessionId) : 
-    null;
-  
-  // Default to first scenario if none found
-  const selectedScenario = currentScenario || Object.values(TEST_CAMP_SCENARIOS)[0];
-  const selectedScenarioKey = Object.keys(TEST_CAMP_SCENARIOS).find(
-    key => TEST_CAMP_SCENARIOS[key] === selectedScenario
-  ) || Object.keys(TEST_CAMP_SCENARIOS)[0];
+  const currentScenario = Object.values(TEST_CAMP_SCENARIOS).find(
+    scenario => scenario.sessionData.id === currentSessionId
+  );
 
   const handleScenarioChange = (scenarioId: string) => {
     const scenario = TEST_CAMP_SCENARIOS[scenarioId];
@@ -75,10 +66,10 @@ export function TestCampSwitcher({ className, mode = 'ready-to-signup' }: TestCa
       <CardContent className="space-y-4">
         <div>
           <label className="text-sm font-medium mb-2 block">Switch Test Scenario:</label>
-            <Select
-              value={selectedScenarioKey}
-              onValueChange={handleScenarioChange}
-            >
+          <Select
+            value={currentScenario?.id || ''}
+            onValueChange={handleScenarioChange}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select a test scenario..." />
             </SelectTrigger>
@@ -92,49 +83,51 @@ export function TestCampSwitcher({ className, mode = 'ready-to-signup' }: TestCa
           </Select>
         </div>
 
-        <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium">{selectedScenario.name}</h4>
-            <Badge variant={getRegistrationStatus(selectedScenario).color}>
-              {getRegistrationStatus(selectedScenario).label}
-            </Badge>
-          </div>
-          
-          <p className="text-sm text-muted-foreground">
-            {selectedScenario.description}
-          </p>
-          
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              <span>{selectedScenario.sessionData.activities.city}, {selectedScenario.sessionData.activities.state}</span>
+        {currentScenario && (
+          <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">{currentScenario.name}</h4>
+              <Badge variant={getRegistrationStatus(currentScenario).color}>
+                {getRegistrationStatus(currentScenario).label}
+              </Badge>
             </div>
-            <div className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              <span>{selectedScenario.sessionData.platform}</span>
+            
+            <p className="text-sm text-muted-foreground">
+              {currentScenario.description}
+            </p>
+            
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                <span>{currentScenario.sessionData.activities.city}, {currentScenario.sessionData.activities.state}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                <span>{currentScenario.sessionData.platform}</span>
+              </div>
+              {currentScenario.sessionData.price_min && (
+                <div className="flex items-center gap-1">
+                  <DollarSign className="w-3 h-3" />
+                  <span>${currentScenario.sessionData.price_min}+</span>
+                </div>
+              )}
+              {currentScenario.sessionData.registration_open_at && (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span>{new Date(currentScenario.sessionData.registration_open_at).toLocaleTimeString()}</span>
+                </div>
+              )}
             </div>
-            {selectedScenario.sessionData.price_min && (
-              <div className="flex items-center gap-1">
-                <DollarSign className="w-3 h-3" />
-                <span>${selectedScenario.sessionData.price_min}+</span>
-              </div>
-            )}
-            {selectedScenario.sessionData.registration_open_at && (
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                <span>{new Date(selectedScenario.sessionData.registration_open_at).toLocaleTimeString()}</span>
-              </div>
-            )}
-          </div>
 
-          {selectedScenario.requirements && (
-            <div className="text-xs bg-background/50 p-2 rounded">
-              <div className="font-medium mb-1">Custom Requirements:</div>
-              <div>Deposit: ${selectedScenario.requirements.deposit_amount_cents / 100}</div>
-              <div>Documents: {selectedScenario.requirements.required_documents.join(', ')}</div>
-            </div>
-          )}
-        </div>
+            {currentScenario.requirements && (
+              <div className="text-xs bg-background/50 p-2 rounded">
+                <div className="font-medium mb-1">Custom Requirements:</div>
+                <div>Deposit: ${currentScenario.requirements.deposit_amount_cents / 100}</div>
+                <div>Documents: {currentScenario.requirements.required_documents.join(', ')}</div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-2">
           <Button 
