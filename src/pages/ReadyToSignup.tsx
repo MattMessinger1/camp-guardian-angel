@@ -178,7 +178,7 @@ export default function ReadyToSignup() {
   }
 
   // Show error if session data couldn't be loaded
-  if (sessionError || !sessionId) {
+  if (sessionError || !sessionId || !sessionData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
         <div className="max-w-4xl mx-auto">
@@ -193,16 +193,9 @@ export default function ReadyToSignup() {
     );
   }
 
-  // Show loading while assessment is being calculated (should be very fast)
-  if (!sessionData || !assessment) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Preparing readiness assessment...</p>
-        </div>
-      </div>
-    );
+  // At this point, sessionData exists, so assessment should also exist
+  if (!assessment) {
+    console.error('Assessment is null despite sessionData existing:', sessionData);
   }
 
   return (
