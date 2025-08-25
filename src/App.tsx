@@ -39,7 +39,7 @@ import Readiness from './pages/Readiness';
 import TestDebug from './pages/TestDebug';
 import WorkingTest from './pages/WorkingTest';
 import ReadyToSignup from './pages/ReadyToSignup';
-import SignupConfirmation from './pages/SignupConfirmation';
+
 import SignupSubmitted from './pages/SignupSubmitted';
 import PendingSignups from './pages/PendingSignups';
 import AccountHistory from './pages/AccountHistory';
@@ -144,7 +144,7 @@ export default function App() {
             <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
             <Route path="/sessions/:sessionId/signup-submitted" element={<SignupSubmitted />} />
             <Route path="/pending-signups" element={<PendingSignups />} />
-            <Route path="/signup-confirmation/:sessionId" element={<SignupConfirmation />} />
+            
             <Route path="/account-history" element={<AccountHistory />} />
             <Route path="/accounthistory" element={<Navigate to="/account-history" replace />} />
             <Route path="/signuphistory" element={<Navigate to="/account-history" replace />} />
