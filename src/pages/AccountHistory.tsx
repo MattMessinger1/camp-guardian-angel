@@ -113,92 +113,42 @@ const ActionsList = ({
   navigate: (path: string) => void;
   handleCancelSignup: (id: string) => void;
 }) => {
-  const [actions, setActions] = React.useState<string[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const determineActions = async () => {
-      const requiredActions: string[] = [];
-      
-      // Check if signup time is missing
-      if (!row.registrationOpenAt || row.registrationOpenAt === row.signupDateTime) {
-        requiredActions.push('Enter the exact signup date/time');
-      }
-      
-      // Check if text verification or login is needed
-      if (row.canonicalUrl) {
-        try {
-          const profile = await detectPlatform(row.canonicalUrl);
-          if (profile) {
-            if (profile.captcha_expected) {
-              requiredActions.push('Be ready for a text at signup time');
-            }
-            if (profile.login_type !== 'none') {
-              requiredActions.push('Create an account for Provider\'s website');
-            }
-          }
-        } catch (error) {
-          console.error('Error detecting platform for actions:', error);
-        }
-      }
-      
-      setActions(requiredActions);
-      setLoading(false);
-    };
-
-    if (row.status === 'ready_for_signup') {
-      determineActions();
-    } else {
-      setLoading(false);
-    }
-  }, [row.canonicalUrl, row.registrationOpenAt, row.signupDateTime, row.status]);
-
-  if (loading) {
-    return <div className="text-xs text-muted-foreground">Checking...</div>;
+  if (row.status === 'success') {
+    return <div className="text-sm text-muted-foreground">N/A</div>;
   }
 
-  if (row.status !== 'ready_for_signup') {
+  if (row.status === 'ready_for_signup') {
     return (
-      <div className="text-sm text-muted-foreground">
-        {row.status === 'success' ? 'All actions completed' : 
-         row.status === 'failed' ? 'No actions needed' : 
-         'Processing...'}
+      <div className="space-y-2">
+        <div className="text-sm text-green-600">Nothing for you to do!</div>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
+          >
+            View Details
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCancelSignup(row.id)}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            Cancel
+          </Button>
+        </div>
       </div>
     );
   }
 
-  if (actions.length === 0) {
-    return <div className="text-sm text-green-600">All ready!</div>;
+  if (row.status === 'failed') {
+    return <div className="text-sm text-muted-foreground">N/A</div>;
   }
 
-  return (
-    <div className="space-y-1">
-      {actions.map((action, index) => (
-        <div key={index} className="text-xs text-orange-600 flex items-start gap-1">
-          <span className="text-orange-500 mt-0.5">•</span>
-          <span>{action}</span>
-        </div>
-      ))}
-      <div className="mt-2 flex items-center gap-2">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
-        >
-          View Details
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCancelSignup(row.id)}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-        >
-          <Trash2 className="w-4 h-4" />
-          Cancel
-        </Button>
-      </div>
-    </div>
-  );
+  // For pending status
+  return <div className="text-sm text-muted-foreground">Processing...</div>;
 };
 
 export default function AccountHistory() {
