@@ -46,51 +46,6 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
     generateAssessment();
   }, [sessionId, user?.id, sessionData?.id]);
 
-  const generateAssessment = React.useCallback(async () => {
-    if (!sessionData || !user) return;
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Try to call the AI assessment
-      const assessmentData = {
-        sessionId,
-        userProfile: {
-          id: user.id || '',
-          email: user.email || '',
-          full_name: user.user_metadata?.full_name || 'Not provided'
-        },
-        formData: {
-          hasPaymentMethod: false,
-          phoneVerified: false,
-          profileComplete: !!user.user_metadata?.full_name,
-          emailVerified: !!user.email_confirmed_at
-        },
-        children: []
-      };
-
-      // Call the intelligent assessment function
-      const { data: result, error: assessmentError } = await supabase.functions.invoke('ai-readiness-assessment', {
-        body: assessmentData
-      });
-
-      if (assessmentError) {
-        throw new Error(assessmentError.message || 'Assessment failed');
-      }
-
-      setAssessment(result);
-    } catch (err) {
-      console.error('Smart assessment error:', err);
-      setError(err instanceof Error ? err.message : 'Assessment failed');
-      
-      // Fallback to enhanced assessment
-      setAssessment(createEnhancedFallbackAssessment());
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessionId, sessionData, user]);
-
   const createEnhancedFallbackAssessment = React.useCallback((): SmartAssessment => {
     const hasSignupTime = !!sessionData?.registration_open_at;
     const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
@@ -193,6 +148,26 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
       }
     };
   }, [sessionData, user]);
+
+  const generateAssessment = React.useCallback(async () => {
+    if (!sessionData || !user) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Temporarily skip AI assessment and use fallback directly
+      console.log('Using fallback assessment to isolate AI function issues');
+      setAssessment(createEnhancedFallbackAssessment());
+      
+    } catch (err) {
+      console.error('Assessment error:', err);
+      setError(err instanceof Error ? err.message : 'Assessment failed');
+      setAssessment(createEnhancedFallbackAssessment());
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sessionId, sessionData, user, createEnhancedFallbackAssessment]);
 
   const refreshAssessment = React.useCallback(() => {
     generateAssessment();
