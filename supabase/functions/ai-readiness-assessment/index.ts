@@ -13,7 +13,15 @@ serve(async (req) => {
   }
 
   try {
-    const { sessionId, userProfile, formData, children } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      throw new Error('Invalid request body - must be valid JSON');
+    }
+    
+    const { sessionId, userProfile, formData, children } = requestBody;
     
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
