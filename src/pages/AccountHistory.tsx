@@ -103,6 +103,104 @@ const TextVerificationStatus = ({ canonicalUrl }: { canonicalUrl: string | null 
   );
 };
 
+// Component to show specific actions required
+const ActionsList = ({ 
+  row, 
+  navigate, 
+  handleCancelSignup 
+}: { 
+  row: SignupHistoryRow;
+  navigate: (path: string) => void;
+  handleCancelSignup: (id: string) => void;
+}) => {
+  const [actions, setActions] = React.useState<string[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const determineActions = async () => {
+      const requiredActions: string[] = [];
+      
+      // Check if signup time is missing
+      if (!row.registrationOpenAt || row.registrationOpenAt === row.signupDateTime) {
+        requiredActions.push('Enter the exact signup date/time');
+      }
+      
+      // Check if text verification or login is needed
+      if (row.canonicalUrl) {
+        try {
+          const profile = await detectPlatform(row.canonicalUrl);
+          if (profile) {
+            if (profile.captcha_expected) {
+              requiredActions.push('Be ready for a text at signup time');
+            }
+            if (profile.login_type !== 'none') {
+              requiredActions.push('Create an account for Provider\'s website');
+            }
+          }
+        } catch (error) {
+          console.error('Error detecting platform for actions:', error);
+        }
+      }
+      
+      setActions(requiredActions);
+      setLoading(false);
+    };
+
+    if (row.status === 'ready_for_signup') {
+      determineActions();
+    } else {
+      setLoading(false);
+    }
+  }, [row.canonicalUrl, row.registrationOpenAt, row.signupDateTime, row.status]);
+
+  if (loading) {
+    return <div className="text-xs text-muted-foreground">Checking...</div>;
+  }
+
+  if (row.status !== 'ready_for_signup') {
+    return (
+      <div className="text-sm text-muted-foreground">
+        {row.status === 'success' ? 'All actions completed' : 
+         row.status === 'failed' ? 'No actions needed' : 
+         'Processing...'}
+      </div>
+    );
+  }
+
+  if (actions.length === 0) {
+    return <div className="text-sm text-green-600">All ready!</div>;
+  }
+
+  return (
+    <div className="space-y-1">
+      {actions.map((action, index) => (
+        <div key={index} className="text-xs text-orange-600 flex items-start gap-1">
+          <span className="text-orange-500 mt-0.5">•</span>
+          <span>{action}</span>
+        </div>
+      ))}
+      <div className="mt-2 flex items-center gap-2">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
+        >
+          View Details
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleCancelSignup(row.id)}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="w-4 h-4" />
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export default function AccountHistory() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -506,7 +604,7 @@ export default function AccountHistory() {
                     <th className="text-left py-3 px-4 font-semibold">Session</th>
                     <th className="text-left py-3 px-4 font-semibold">Signup Date/Time</th>
                     <th className="text-left py-3 px-4 font-semibold">Status</th>
-                    <th className="text-left py-3 px-4 font-semibold">Actions</th>
+                    <th className="text-left py-3 px-4 font-semibold">Actions Required</th>
                     <th className="text-left py-3 px-4 font-semibold">How Did We Perform?</th>
                   </tr>
                 </thead>
@@ -550,42 +648,11 @@ export default function AccountHistory() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex flex-col gap-2">
-                            {row.status === 'ready_for_signup' ? (
-                              <>
-                                <div className="flex items-center gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
-                                  >
-                                    View Details
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleCancelSignup(row.id)}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                    Cancel
-                                  </Button>
-                                </div>
-                                {row.canonicalUrl && (
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <span className="text-muted-foreground">Text Verification:</span>
-                                    <TextVerificationStatus canonicalUrl={row.canonicalUrl} />
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <div className="text-sm text-muted-foreground">
-                                {row.status === 'success' ? 'Completed successfully' : 
-                                 row.status === 'failed' ? 'Registration failed' : 
-                                 'Processing...'}
-                              </div>
-                            )}
-                          </div>
+                          <ActionsList 
+                            row={row} 
+                            navigate={navigate} 
+                            handleCancelSignup={handleCancelSignup} 
+                          />
                         </td>
                         <td className="py-3 px-4">
                           {(row.status === 'success' || row.status === 'failed') ? (
