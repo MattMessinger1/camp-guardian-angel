@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ export default function ReadyToSignup() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Extract sessionId from params
   const sessionId = params.id || params.sessionId;
@@ -195,7 +196,10 @@ export default function ReadyToSignup() {
           <SetSignupTimeForm
             sessionId={sessionId}
             sessionName={sessionData?.activities?.name || 'Session'}
-            onSuccess={() => window.location.reload()}
+            onSuccess={() => {
+              // Invalidate and refetch the session data instead of full page reload
+              queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+            }}
           />
         )}
 
