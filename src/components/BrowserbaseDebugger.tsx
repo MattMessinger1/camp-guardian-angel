@@ -17,6 +17,7 @@ export function BrowserbaseDebugger() {
   const [running, setRunning] = useState(false);
 
   const debugFunctions = [
+    'debug-secrets',
     'debug-browser-setup',
     'test-browser-init', 
     'test-browserbase-direct'
@@ -138,6 +139,7 @@ export function BrowserbaseDebugger() {
         </div>
 
         <div className="text-sm text-muted-foreground">
+          <p><strong>debug-secrets:</strong> Lists all environment variables and tests key variations</p>
           <p><strong>debug-browser-setup:</strong> Checks environment variables only</p>
           <p><strong>test-browser-init:</strong> Actually creates a Browserbase session</p>
           <p><strong>test-browserbase-direct:</strong> Direct API test with detailed logging</p>
