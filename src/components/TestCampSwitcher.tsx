@@ -48,10 +48,7 @@ export function TestCampSwitcher({ className }: TestCampSwitcherProps) {
     }
   };
 
-  // Only show in development or when a test session is already loaded
-  if (process.env.NODE_ENV === 'production' && !currentScenario) {
-    return null;
-  }
+  // Always show test scenarios dropdown for easy switching
 
   return (
     <Card className={className}>
