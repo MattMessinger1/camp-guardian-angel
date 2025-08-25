@@ -123,15 +123,6 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
         priority: 'medium',
         description: user?.email_confirmed_at ? 'Your email is verified' : 'Please verify your email address'
       },
-      {
-        category: 'Profile Information',
-        item: 'Name for registration',
-        status: user?.user_metadata?.full_name ? 'complete' : 'needs_attention',
-        priority: 'low',
-        description: user?.user_metadata?.full_name 
-          ? 'Your name is ready for registration forms' 
-          : 'Optional: Add your full name to speed up registration form filling'
-      }
     ];
 
     // Add platform-specific preparation
