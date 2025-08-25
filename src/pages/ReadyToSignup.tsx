@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { getTestScenario } from '@/lib/test-scenarios';
+import { TestCampSwitcher } from '@/components/TestCampSwitcher';
 import { AlertCircle, Clock, CheckCircle } from 'lucide-react';
 
 export default function ReadyToSignup() {
@@ -151,6 +152,9 @@ export default function ReadyToSignup() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Test Scenario Switcher */}
+        <TestCampSwitcher className="mb-6" />
 
         {/* Signup Time Status */}
         <Card>
