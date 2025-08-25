@@ -37,15 +37,6 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!sessionId || !sessionData || !user?.id) {
-      setIsLoading(false);
-      return;
-    }
-
-    generateAssessment();
-  }, [sessionId, user?.id, sessionData?.id]);
-
   const createEnhancedFallbackAssessment = React.useCallback((): SmartAssessment => {
     const hasSignupTime = !!sessionData?.registration_open_at;
     const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
@@ -168,6 +159,15 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
       setIsLoading(false);
     }
   }, [sessionId, sessionData, user, createEnhancedFallbackAssessment]);
+
+  useEffect(() => {
+    if (!sessionId || !sessionData || !user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    generateAssessment();
+  }, [sessionId, user?.id, sessionData?.id, generateAssessment]);
 
   const refreshAssessment = React.useCallback(() => {
     generateAssessment();

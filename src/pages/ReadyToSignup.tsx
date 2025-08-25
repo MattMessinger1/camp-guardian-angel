@@ -309,7 +309,12 @@ export default function ReadyToSignup() {
           <Button variant="outline" onClick={() => navigate('/pending-signups')}>
             View Pending Signups
           </Button>
-          <Button variant="secondary" onClick={() => window.location.reload()}>
+          <Button variant="secondary" onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+            // Force re-render of assessment
+            window.location.hash = Date.now().toString();
+            window.location.hash = '';
+          }}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh Assessment
           </Button>
