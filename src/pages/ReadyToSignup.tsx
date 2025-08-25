@@ -234,7 +234,7 @@ export default function ReadyToSignup() {
               Your Status
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="text-center">
               <div className="text-sm font-medium text-muted-foreground mb-2">READY TO SIGNUP?</div>
               <div className="text-2xl font-bold">
@@ -245,15 +245,6 @@ export default function ReadyToSignup() {
                 )}
               </div>
             </div>
-            
-            {assessment.signupReadiness.needsCaptchaPreparation && (
-              <Alert>
-                <Shield className="w-4 h-4" />
-                <AlertDescription>
-                  CAPTCHA assistance will be provided during signup.
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
 
