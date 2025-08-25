@@ -132,7 +132,7 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
         item: 'CAPTCHA preparation',
         status: 'incomplete',
         priority: 'medium',
-        description: 'Be prepared for CAPTCHA challenges during signup'
+        description: 'Be prepared to receive a text message at the exact signup time. This text will get us past the CAPTCHA challenge while holding your spot in line.'
       });
     }
 
