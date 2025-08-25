@@ -46,45 +46,11 @@ export default function AccountHistory() {
   const [selectedTiming, setSelectedTiming] = useState<SignupHistoryRow | null>(null);
   const [isTimingModalOpen, setIsTimingModalOpen] = useState(false);
 
-  console.log('🔍 AccountHistory: Component rendered - ISOLATED TEST');
+  console.log('🔍 AccountHistory: Component rendered - HOOK ISOLATION TEST');
   console.log('👤 AccountHistory: Auth state:', { user: !!user, userId: user?.id, loading });
-  
-  // TEMPORARILY DISABLE ALL NAVIGATION - just show what happens
-  // useEffect(() => {
-  //   // Navigation logic disabled for testing
-  // }, []);
 
-  console.log('🧪 ISOLATION TEST: No navigation logic active');
-
-  // Show loading state while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold mb-4">Loading...</h2>
-          <p className="text-muted-foreground">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show auth required state if not authenticated (and not loading)
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-          <p className="text-muted-foreground mb-6">Redirecting to login...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // Add a visible debug section
-  const showDebugInfo = false;
-
-  // Fetch user's signup history with comprehensive data
+  // CRITICAL: ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
+  // Fetch user's signup history with comprehensive data - ALWAYS call this hook
   const { data: signupHistory, isLoading, error } = useQuery({
     queryKey: ['user-signup-history', user?.id],
     queryFn: async () => {
@@ -216,6 +182,36 @@ export default function AccountHistory() {
     enabled: !!user
   });
 
+  // NOW all hooks are called - we can do conditional rendering
+  console.log('🔧 Hook isolation test: All hooks called, now checking conditions');
+  
+  // Show loading state while checking authentication
+  if (loading) {
+    console.log('⏳ Still loading auth state...');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth required state if not authenticated (and not loading)
+  if (!user) {
+    console.log('❌ No user found after loading complete');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
+          <p className="text-muted-foreground mb-6">Please login to view your history</p>
+        </div>
+      </div>
+    );
+  }
+
   const filteredHistory = signupHistory?.filter(row => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -282,19 +278,6 @@ export default function AccountHistory() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
-        
-        {/* Debug Info - Remove this later */}
-        {showDebugInfo && (
-          <div className="bg-yellow-100 border border-yellow-400 rounded p-4 mb-4">
-            <h3 className="font-bold text-yellow-800">Debug Info:</h3>
-            <p>User authenticated: {user ? 'Yes' : 'No'}</p>
-            <p>User ID: {user?.id || 'None'}</p>
-            <p>Data loading: {isLoading ? 'Yes' : 'No'}</p>
-            <p>Error: {error ? 'Yes' : 'No'}</p>
-            <p>History records: {signupHistory?.length || 0}</p>
-            {error && <p className="text-red-600">Error details: {error.toString()}</p>}
-          </div>
-        )}
         
         {/* Header */}
         <div className="flex items-center justify-between">
