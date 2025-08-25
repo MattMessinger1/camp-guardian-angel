@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { logger } from "@/lib/log";
@@ -41,26 +41,30 @@ interface SignupHistoryRow {
 
 export default function AccountHistory() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth(); // Add loading state
+  const { user, loading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTiming, setSelectedTiming] = useState<SignupHistoryRow | null>(null);
   const [isTimingModalOpen, setIsTimingModalOpen] = useState(false);
+  const hasNavigatedRef = useRef(false); // Prevent multiple navigation calls
 
   console.log('🔍 AccountHistory: Component rendered');
   console.log('👤 AccountHistory: Auth state:', { user: !!user, userId: user?.id, loading });
   
   // Redirect to auth if not logged in - but wait for loading to complete
   useEffect(() => {
-    console.log('🔄 AccountHistory: useEffect checking auth state:', { user: !!user, userId: user?.id, loading });
-    if (!loading && !user) { // Only redirect if not loading AND no user
+    console.log('🔄 AccountHistory: useEffect checking auth state:', { user: !!user, userId: user?.id, loading, hasNavigated: hasNavigatedRef.current });
+    
+    if (!loading && !user && !hasNavigatedRef.current) { 
       console.log('❌ AccountHistory: No user and not loading, redirecting to auth');
+      hasNavigatedRef.current = true; // Mark that we've navigated
       navigate('/auth');
     } else if (user) {
       console.log('✅ AccountHistory: User authenticated, staying on page');
+      hasNavigatedRef.current = false; // Reset navigation flag
     } else if (loading) {
       console.log('⏳ AccountHistory: Still loading auth state...');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading]); // Remove navigate from dependencies to prevent loops
 
   // Show loading state while checking authentication
   if (loading) {
