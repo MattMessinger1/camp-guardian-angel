@@ -42,8 +42,16 @@ export default function Signup() {
   };
 
   return (
-    <div className="space-y-6">
-      <TestCampSwitcher mode="signup" />
+    <div className="container max-w-4xl mx-auto p-6 space-y-6">
+      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+        <h2 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+          🧪 Test Environment
+        </h2>
+        <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+          Switch between different camp scenarios to test various signup flows and payment amounts.
+        </p>
+        <TestCampSwitcher mode="signup" />
+      </div>
       <CompleteSignupForm 
         sessionId={sessionId}
         onComplete={handleComplete}
