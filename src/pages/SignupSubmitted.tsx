@@ -26,6 +26,32 @@ export default function SignupSubmitted() {
   
   const sessionId = params.sessionId;
   const [emailSent, setEmailSent] = useState(false);
+
+  // Validate session ID format
+  const isValidUUID = (str: string | undefined): boolean => {
+    if (!str) return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
+  // Handle invalid session ID
+  if (!sessionId || sessionId === '...' || !isValidUUID(sessionId)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center py-12">
+            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+            <h2 className="text-xl font-semibold mb-2">Invalid Session</h2>
+            <p className="text-muted-foreground mb-6">The session ID provided is not valid.</p>
+            <div className="flex gap-4 justify-center">
+              <Button onClick={() => navigate('/')}>Return Home</Button>
+              <Button variant="outline" onClick={() => navigate('/account-history')}>View Account History</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   // Fetch session details
   const { data: sessionData, isLoading } = useQuery({
