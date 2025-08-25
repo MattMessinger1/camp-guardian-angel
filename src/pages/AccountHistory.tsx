@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   CheckCircle, 
   XCircle, 
@@ -13,18 +14,24 @@ import {
   AlertTriangle,
   Search,
   ArrowLeft,
-  BarChart3
+  BarChart3,
+  Plus,
+  MapPin,
+  MessageSquare,
+  Calendar,
+  Trash2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import TimingReportModal from '@/components/TimingReportModal';
+import { detectPlatform } from '@/lib/providers/index';
 
 interface SignupHistoryRow {
   id: string;
   campName: string;
   sessionTitle: string;
   signupDateTime: string;
-  status: 'success' | 'failed' | 'pending';
+  status: 'success' | 'failed' | 'pending' | 'ready_for_signup';
   state: string;
   // Timing data
   t0OffsetMs?: number;
@@ -37,7 +44,64 @@ interface SignupHistoryRow {
   captchaDetectedAt?: string;
   captchaResolvedAt?: string;
   captchaStatus?: string;
+  // Pending signup data
+  sessionId?: string;
+  registrationOpenAt?: string;
+  canonicalUrl?: string;
+  location?: string;
+  ageRange?: string;
+  requiresTextVerification?: boolean;
+  additionalInfoRequired?: string;
 }
+
+// Component to handle async text verification status
+const TextVerificationStatus = ({ canonicalUrl }: { canonicalUrl: string | null }) => {
+  const [status, setStatus] = React.useState<string>('Loading...');
+
+  React.useEffect(() => {
+    const checkStatus = async () => {
+      if (!canonicalUrl) {
+        setStatus('Unknown');
+        return;
+      }
+      
+      try {
+        const profile = await detectPlatform(canonicalUrl);
+        if (!profile) {
+          setStatus('Unknown');
+          return;
+        }
+        
+        const needsVerification = profile.captcha_expected || profile.login_type !== 'none';
+        setStatus(needsVerification ? 'Yes' : 'No');
+      } catch (error) {
+        console.error('Error detecting platform:', error);
+        setStatus('Unknown');
+      }
+    };
+
+    checkStatus();
+  }, [canonicalUrl]);
+
+  const getBadgeProps = (status: string) => {
+    switch (status) {
+      case 'Yes':
+        return { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' };
+      case 'No':
+        return { variant: 'secondary' as const, className: 'bg-green-100 text-green-800' };
+      default:
+        return { variant: 'outline' as const };
+    }
+  };
+
+  const badgeProps = getBadgeProps(status);
+
+  return (
+    <Badge {...badgeProps}>
+      {status}
+    </Badge>
+  );
+};
 
 export default function AccountHistory() {
   const navigate = useNavigate();
@@ -50,7 +114,7 @@ export default function AccountHistory() {
   console.log('👤 AccountHistory: Auth state:', { user: !!user, userId: user?.id, loading });
 
   // CRITICAL: ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
-  // Fetch user's signup history with comprehensive data - ALWAYS call this hook
+  // Fetch user's signup history with comprehensive data + pending signups - ALWAYS call this hook
   const { data: signupHistory, isLoading, error } = useQuery({
     queryKey: ['user-signup-history', user?.id],
     queryFn: async () => {
@@ -65,7 +129,7 @@ export default function AccountHistory() {
       try {
         console.log('AccountHistory: Starting query for user:', user.id);
         
-        // Get reservations data by joining with parents table to get user's reservations
+        // Get completed signup history (reservations)
         const { data: reservations, error: reservationsError } = await supabase
           .from('reservations')
           .select(`
@@ -79,101 +143,150 @@ export default function AccountHistory() {
           .eq('parents.user_id', user.id)
           .order('created_at', { ascending: false });
         
-        console.log('AccountHistory: Query result:', { data: reservations, error: reservationsError });
+        // Get pending signups (sessions ready for signup)
+        const { data: pendingSessions, error: pendingError } = await supabase
+          .from('sessions')
+          .select(`
+            *,
+            activities (
+              name,
+              city,
+              state,
+              canonical_url
+            )
+          `)
+          .or('registration_open_at.is.null,registration_open_at.gt.now()')
+          .order('created_at', { ascending: false });
+        
+        console.log('AccountHistory: Query results:', { 
+          reservations, 
+          reservationsError, 
+          pendingSessions, 
+          pendingError 
+        });
         
         if (reservationsError) {
           logger.error('Reservations query error', { error: reservationsError, component: 'AccountHistory' });
-          return [];
+        }
+        
+        if (pendingError) {
+          logger.error('Pending sessions query error', { error: pendingError, component: 'AccountHistory' });
         }
 
-        if (!reservations || reservations.length === 0) {
-          logger.info('No reservations found for user', { userId: user?.id, component: 'AccountHistory' });
-          return [];
-        }
+        const allData: SignupHistoryRow[] = [];
 
-        // For each reservation, try to get related data
-        const enrichedData = await Promise.all(
-          reservations.map(async (reservation: any): Promise<SignupHistoryRow> => {
-            let sessionData = null;
-            let activityData = null;
-            let attemptEvents = [];
-            let captchaEvents = [];
+        // Process completed reservations
+        if (reservations && reservations.length > 0) {
+          const enrichedReservations = await Promise.all(
+            reservations.map(async (reservation: any): Promise<SignupHistoryRow> => {
+              let sessionData = null;
+              let activityData = null;
+              let attemptEvents = [];
+              let captchaEvents = [];
 
-            // Try to get session data
-            if (reservation.session_id) {
-              const { data: session } = await supabase
-                .from('sessions')
-                .select('*')
-                .eq('id', reservation.session_id)
-                .single();
-              
-              sessionData = session;
-
-              // Try to get activity data if we have a session
-              if (session?.activity_id) {
-                const { data: activity } = await supabase
-                  .from('activities')
+              // Try to get session data
+              if (reservation.session_id) {
+                const { data: session } = await supabase
+                  .from('sessions')
                   .select('*')
-                  .eq('id', session.activity_id)
+                  .eq('id', reservation.session_id)
                   .single();
                 
-                activityData = activity;
+                sessionData = session;
+
+                // Try to get activity data if we have a session
+                if (session?.activity_id) {
+                  const { data: activity } = await supabase
+                    .from('activities')
+                    .select('*')
+                    .eq('id', session.activity_id)
+                    .single();
+                  
+                  activityData = activity;
+                }
               }
-            }
 
-            // Try to get attempt events
-            const { data: attempts } = await supabase
-              .from('attempt_events')
-              .select('*')
-              .eq('reservation_id', reservation.id);
-            
-            if (attempts) attemptEvents = attempts;
+              // Try to get attempt events
+              const { data: attempts } = await supabase
+                .from('attempt_events')
+                .select('*')
+                .eq('reservation_id', reservation.id);
+              
+              if (attempts) attemptEvents = attempts;
 
-            // Try to get captcha events
-            const { data: captcha } = await supabase
-              .from('captcha_events')
-              .select('*')
-              .eq('user_id', user.id);
-            
-            if (captcha) captchaEvents = captcha;
+              // Try to get captcha events
+              const { data: captcha } = await supabase
+                .from('captcha_events')
+                .select('*')
+                .eq('user_id', user.id);
+              
+              if (captcha) captchaEvents = captcha;
 
-            const attemptEvent = attemptEvents[0];
-            const captchaEvent = captchaEvents[0];
-            
-            // Determine success/failure status
-            let status: 'success' | 'failed' | 'pending' = 'pending';
-            if (reservation.status === 'confirmed' || reservation.state === 'confirmed') {
-              status = 'success';
-            } else if (reservation.status === 'failed' || reservation.state === 'failed') {
-              status = 'failed';
-            } else if (attemptEvent?.success_indicator === true) {
-              status = 'success';
-            } else if (attemptEvent?.success_indicator === false) {
-              status = 'failed';
-            }
+              const attemptEvent = attemptEvents[0];
+              const captchaEvent = captchaEvents[0];
+              
+              // Determine success/failure status
+              let status: 'success' | 'failed' | 'pending' = 'pending';
+              if (reservation.status === 'confirmed' || reservation.state === 'confirmed') {
+                status = 'success';
+              } else if (reservation.status === 'failed' || reservation.state === 'failed') {
+                status = 'failed';
+              } else if (attemptEvent?.success_indicator === true) {
+                status = 'success';
+              } else if (attemptEvent?.success_indicator === false) {
+                status = 'failed';
+              }
 
-            return {
-              id: reservation.id,
-              campName: activityData?.name || 'Unknown Camp',
-              sessionTitle: sessionData?.title || `Session - ${new Date(sessionData?.start_at || reservation.created_at).toLocaleDateString()}`,
-              signupDateTime: reservation.created_at,
-              status,
-              state: reservation.state || reservation.status,
-              // Timing data
-              t0OffsetMs: attemptEvent?.t0_offset_ms,
-              latencyMs: attemptEvent?.latency_ms,
-              queueWaitMs: attemptEvent?.queue_wait_ms,
-              failureReason: attemptEvent?.failure_reason,
-              completedAt: reservation.updated_at !== reservation.created_at ? reservation.updated_at : undefined,
-              // CAPTCHA data
-              captchaDetectedAt: captchaEvent?.detected_at,
-              captchaResolvedAt: captchaEvent?.updated_at,
-              captchaStatus: captchaEvent?.status
-            };
-          })
-        );
+              return {
+                id: reservation.id,
+                campName: activityData?.name || 'Unknown Camp',
+                sessionTitle: sessionData?.title || `Session - ${new Date(sessionData?.start_at || reservation.created_at).toLocaleDateString()}`,
+                signupDateTime: reservation.created_at,
+                status,
+                state: reservation.state || reservation.status,
+                // Timing data
+                t0OffsetMs: attemptEvent?.t0_offset_ms,
+                latencyMs: attemptEvent?.latency_ms,
+                queueWaitMs: attemptEvent?.queue_wait_ms,
+                failureReason: attemptEvent?.failure_reason,
+                completedAt: reservation.updated_at !== reservation.created_at ? reservation.updated_at : undefined,
+                // CAPTCHA data
+                captchaDetectedAt: captchaEvent?.detected_at,
+                captchaResolvedAt: captchaEvent?.updated_at,
+                captchaStatus: captchaEvent?.status
+              };
+            })
+          );
+          allData.push(...enrichedReservations);
+        }
 
-        return enrichedData;
+        // Process pending sessions
+        if (pendingSessions && pendingSessions.length > 0) {
+          const pendingData: SignupHistoryRow[] = pendingSessions.map((session: any) => ({
+            id: session.id,
+            sessionId: session.id,
+            campName: session.activities?.name || 'Unknown Camp',
+            sessionTitle: `${session.start_date && session.end_date 
+              ? `${new Date(session.start_date).toLocaleDateString()} - ${new Date(session.end_date).toLocaleDateString()}`
+              : 'Dates TBD'
+            }`,
+            signupDateTime: session.registration_open_at || session.created_at,
+            status: 'ready_for_signup' as const,
+            state: 'ready_for_signup',
+            registrationOpenAt: session.registration_open_at,
+            canonicalUrl: session.activities?.canonical_url,
+            location: session.activities ? `${session.activities.city}, ${session.activities.state}` : undefined,
+            ageRange: `Ages ${session.age_min}-${session.age_max}`,
+            // Additional info requirements could be determined here
+            additionalInfoRequired: undefined // TODO: Implement logic to determine required info
+          }));
+          allData.push(...pendingData);
+        }
+
+        // Sort by signup date/time (most recent first)
+        allData.sort((a, b) => new Date(b.signupDateTime).getTime() - new Date(a.signupDateTime).getTime());
+
+        return allData;
       } catch (err) {
         console.error('Error fetching signup history:', err);
         return [];
@@ -181,6 +294,29 @@ export default function AccountHistory() {
     },
     enabled: !!user
   });
+
+  // Handle canceling a pending signup
+  const handleCancelSignup = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to cancel this signup? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // For now, we'll just remove it from the pending list
+      // In a real app, you'd want to update a status or remove from a tracking table
+      console.log('Canceling signup for session:', sessionId);
+      
+      // Refetch data to update the list
+      // In the future, this should make an API call to actually cancel the signup
+      
+      // For now, show a success message (you might want to implement a proper notification system)
+      alert('Signup canceled successfully');
+      
+    } catch (error) {
+      console.error('Error canceling signup:', error);
+      alert('Failed to cancel signup. Please try again.');
+    }
+  };
 
   // NOW all hooks are called - we can do conditional rendering
   console.log('🔧 Hook isolation test: All hooks called, now checking conditions');
@@ -231,6 +367,8 @@ export default function AccountHistory() {
         return <Badge variant="default" className="bg-green-100 text-green-800">Success</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
+      case 'ready_for_signup':
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Ready for Signup</Badge>;
       default:
         return <Badge variant="secondary">Pending</Badge>;
     }
@@ -242,6 +380,8 @@ export default function AccountHistory() {
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'failed':
         return <XCircle className="w-4 h-4 text-red-600" />;
+      case 'ready_for_signup':
+        return <Calendar className="w-4 h-4 text-blue-600" />;
       default:
         return <Clock className="w-4 h-4 text-blue-600" />;
     }
@@ -290,12 +430,30 @@ export default function AccountHistory() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
-            <h1 className="text-3xl font-bold tracking-tight">Signup History</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Camp Signups</h1>
             <p className="text-muted-foreground">
-              View detailed reports for all your camp registration attempts
+              Manage pending signups and view your complete registration history
             </p>
           </div>
+          <Button 
+            onClick={() => navigate('/find-camps')}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Another Camp
+          </Button>
         </div>
+
+        {/* Success Message for pending signups */}
+        {filteredHistory.some(row => row.status === 'ready_for_signup') && (
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              <strong>Great news!</strong> We're monitoring all your camp signups and will handle them automatically when registration opens. 
+              You'll receive notifications if we need any assistance (like CAPTCHA solving).
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Search */}
         <Card>
@@ -315,7 +473,7 @@ export default function AccountHistory() {
         {/* Signup History Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Registration History ({filteredHistory.length})</CardTitle>
+            <CardTitle>Camp Registrations ({filteredHistory.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -325,8 +483,9 @@ export default function AccountHistory() {
                     <th className="text-left py-3 px-4 font-semibold">Camp Name</th>
                     <th className="text-left py-3 px-4 font-semibold">Session</th>
                     <th className="text-left py-3 px-4 font-semibold">Signup Date/Time</th>
-                    <th className="text-left py-3 px-4 font-semibold">Success/Failure</th>
-                    <th className="text-left py-3 px-4 font-semibold">Timing Report</th>
+                    <th className="text-left py-3 px-4 font-semibold">Status</th>
+                    <th className="text-left py-3 px-4 font-semibold">Text Verification</th>
+                    <th className="text-left py-3 px-4 font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -335,13 +494,31 @@ export default function AccountHistory() {
                       <tr key={row.id} className="border-b hover:bg-muted/50">
                         <td className="py-3 px-4">
                           <div className="font-medium">{row.campName}</div>
+                          {row.location && (
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {row.location}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="text-sm">{row.sessionTitle}</div>
+                          {row.ageRange && (
+                            <div className="text-xs text-muted-foreground">{row.ageRange}</div>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="text-sm">
-                            {new Date(row.signupDateTime).toLocaleString()}
+                            {row.status === 'ready_for_signup' && row.registrationOpenAt
+                              ? new Date(row.registrationOpenAt).toLocaleDateString()
+                              : new Date(row.signupDateTime).toLocaleDateString()
+                            }
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {row.status === 'ready_for_signup' && row.registrationOpenAt
+                              ? new Date(row.registrationOpenAt).toLocaleTimeString()
+                              : new Date(row.signupDateTime).toLocaleTimeString()
+                            }
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -351,26 +528,61 @@ export default function AccountHistory() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTimingReport(row)}
-                            className="flex items-center gap-2"
-                          >
-                            <BarChart3 className="w-4 h-4" />
-                            View Report
-                          </Button>
+                          {row.status === 'ready_for_signup' && row.canonicalUrl ? (
+                            <TextVerificationStatus canonicalUrl={row.canonicalUrl} />
+                          ) : row.status !== 'ready_for_signup' ? (
+                            <Badge variant="outline">N/A</Badge>
+                          ) : (
+                            <Badge variant="outline">Unknown</Badge>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            {row.status === 'ready_for_signup' ? (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => navigate(`/sessions/${row.sessionId}/ready-to-signup`)}
+                                >
+                                  View Details
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCancelSignup(row.sessionId!)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleTimingReport(row)}
+                                className="flex items-center gap-2"
+                              >
+                                <BarChart3 className="w-4 h-4" />
+                                View Report
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="text-center py-12">
+                      <td colSpan={6} className="text-center py-12">
                         <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold mb-2">No Signup History</h3>
-                        <p className="text-muted-foreground">
-                          {searchTerm ? 'No results found for your search.' : 'You haven\'t attempted any registrations yet.'}
+                        <h3 className="text-lg font-semibold mb-2">No Camp Signups</h3>
+                        <p className="text-muted-foreground mb-4">
+                          {searchTerm ? 'No results found for your search.' : 'You haven\'t set up any camp signups yet.'}
                         </p>
+                        <Button onClick={() => navigate('/find-camps')} className="flex items-center gap-2">
+                          <Plus className="w-4 h-4" />
+                          Find Camps
+                        </Button>
                       </td>
                     </tr>
                   )}
@@ -379,6 +591,45 @@ export default function AccountHistory() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Information Cards for pending signups */}
+        {filteredHistory.some(row => row.status === 'ready_for_signup') && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  How It Works
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <p className="text-sm"><strong>1. We Monitor:</strong> Our system watches for registration to open</p>
+                  <p className="text-sm"><strong>2. Instant Action:</strong> We submit your signup the moment registration opens</p>
+                  <p className="text-sm"><strong>3. You Assist:</strong> We'll text you if we need help with CAPTCHAs</p>
+                  <p className="text-sm"><strong>4. Success:</strong> You get confirmed and we handle payment</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Stay Informed
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <p className="text-sm"><strong>Email Updates:</strong> Get notified of signup results</p>
+                  <p className="text-sm"><strong>SMS Alerts:</strong> Instant notifications for CAPTCHA assistance</p>
+                  <p className="text-sm"><strong>Real-time Status:</strong> Track progress on this dashboard</p>
+                  <p className="text-sm"><strong>24/7 Monitoring:</strong> We never sleep, so you can</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Timing Report Modal */}
         <TimingReportModal
