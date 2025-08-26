@@ -100,11 +100,7 @@ export function CaptchaWorkflowTester() {
       
       if (data?.notification_method === 'sms' && data?.notification_details?.phone_masked) {
         addLog(`📱 SMS notification sent to ${data.notification_details.phone_masked}`);
-        if (data.notification_details.mock_sms) {
-          addLog('📋 MOCK SMS CONTENT:');
-          addLog(`   "${data.notification_details.sms_content}"`);
-          addLog('🔗 Click "Open Magic URL" to test the link!');
-        }
+        addLog('📱 Real SMS sent to your phone! Check your messages.');
       } else if (data?.notification_method === 'email') {
         addLog('📧 Email notification sent');
       }

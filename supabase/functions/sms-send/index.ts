@@ -7,8 +7,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID")!;
 const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-const TWILIO_MSID = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || "";
-const TWILIO_FROM = Deno.env.get("TWILIO_FROM_NUMBER") || "";
+const TWILIO_FROM = Deno.env.get("TWILIO_PHONE_NUMBER") || Deno.env.get("TWILIO_FROM_NUMBER") || "";
 
 function randomCode() { 
   return String(Math.floor(100000 + Math.random() * 900000)); 
@@ -18,14 +17,11 @@ async function sendSMS(to: string, body: string) {
   const creds = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
   const params = new URLSearchParams();
   
-  if (TWILIO_MSID) {
-    params.set("MessagingServiceSid", TWILIO_MSID);
-  } else {
-    params.set("From", TWILIO_FROM);
-  }
-  
+  params.set("From", TWILIO_FROM);
   params.set("To", to);
   params.set("Body", body);
+  
+  console.log(`[SMS-SEND] Sending SMS to ${to.slice(0, 3)}***${to.slice(-4)} from ${TWILIO_FROM}`);
   
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
     method: "POST",
@@ -37,7 +33,10 @@ async function sendSMS(to: string, body: string) {
   });
   
   const json = await res.json();
-  if (!res.ok) throw new Response(JSON.stringify(json), { status: res.status });
+  if (!res.ok) {
+    console.error('[SMS-SEND] Twilio error:', json);
+    throw new Error(`Twilio API error: ${json.message || 'Unknown error'}`);
+  }
   return json;
 }
 
@@ -47,7 +46,47 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { persistSession: false } });
   
   try {
-    const { reservation_id } = await req.json();
+    const body = await req.json();
+    
+    // Handle CAPTCHA notification SMS (new format)
+    if (body.user_id && body.to_phone_e164 && body.template_id) {
+      console.log(`[SMS-SEND] CAPTCHA notification SMS for user ${body.user_id}`);
+      
+      let smsBody = '';
+      if (body.template_id === 'captcha_assist') {
+        const provider = body.variables?.provider || 'Provider';
+        const session = body.variables?.session || 'Camp Session';
+        const magic_url = body.variables?.magic_url || '';
+        
+        smsBody = `🚨 CAPTCHA Help Needed for ${session}!\n\nYour child's registration at ${provider} needs your help to solve a CAPTCHA challenge.\n\nClick here to help: ${magic_url}\n\nExpires in 10 minutes. Camp Guardian Angel`;
+      }
+      
+      const smsResult = await sendSMS(body.to_phone_e164, smsBody);
+      
+      console.log(JSON.stringify({
+        type: 'captcha_sms_success',
+        user_id: body.user_id,
+        phone_masked: body.to_phone_e164.slice(0, 3) + "***" + body.to_phone_e164.slice(-4),
+        message_sid: smsResult.sid,
+        timestamp: new Date().toISOString()
+      }));
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message_sid: smsResult.sid,
+          delivered_to: body.to_phone_e164.slice(0, 3) + "***" + body.to_phone_e164.slice(-4)
+        }), 
+        { headers: { "Content-Type": "application/json" }}
+      );
+    }
+    
+    // Handle legacy reservation SMS (existing format)
+    const { reservation_id } = body;
+    
+    if (!reservation_id) {
+      throw new Error("Missing required parameters");
+    }
     
     console.log(JSON.stringify({
       type: 'sms_send_start',
@@ -102,13 +141,15 @@ serve(async (req) => {
   } catch (e: any) {
     console.log(JSON.stringify({
       type: 'sms_send_error',
-      reservation_id: req.json?.()?.reservation_id || 'unknown',
       error: e?.message || 'unknown_error',
       timestamp: new Date().toISOString()
     }));
     
     return new Response(
-      JSON.stringify({ error: e?.message ?? "sms_send_error" }), 
+      JSON.stringify({ 
+        success: false,
+        error: e?.message ?? "sms_send_error" 
+      }), 
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
