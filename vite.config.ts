@@ -19,13 +19,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Completely prevent vitest loading during E2E tests
-  test: process.env.NODE_ENV === 'e2e' ? undefined : {
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-  },
-  // Prevent vitest symbols from being defined during E2E
-  define: {
-    'import.meta.vitest': process.env.NODE_ENV === 'e2e' ? false : 'undefined',
-  },
 }));
