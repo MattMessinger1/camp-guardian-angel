@@ -130,20 +130,27 @@ export function ActiveNetworkTester() {
   };
 
   const testSignupFlow = async (session: any) => {
+    console.log('🚀 TEST SIGNUP CLICKED!');
+    console.log('Session data:', session);
+    
     try {
       console.log('Testing signup flow for ActiveNetwork session:', session);
       
       // Instead of triggering the actual automation, let's simulate the CAPTCHA workflow
-      toast.info('Simulating ActiveNetwork signup flow...');
+      toast.info('🚀 Starting ActiveNetwork signup simulation...');
       
       // Simulate finding a CAPTCHA during registration
       setTimeout(async () => {
         try {
+          console.log('🔍 Checking user session...');
           const { data: { session: userSession } } = await supabase.auth.getSession();
           if (!userSession) {
+            console.error('❌ No user session found');
             toast.error('Please log in to test the signup flow');
             return;
           }
+
+          console.log('✅ User session found:', userSession.user.id);
 
           // Add debugging logs
           console.log('=== CAPTCHA TEST DEBUG ===');
@@ -152,6 +159,8 @@ export function ActiveNetworkTester() {
           console.log('User ID:', userSession.user.id);
           console.log('Provider:', session.provider);
           console.log('Current URL:', window.location.href);
+          
+          console.log('🚀 Calling handle-captcha function...');
           
           // Simulate CAPTCHA detection by creating a captcha event
           const { data, error } = await supabase.functions.invoke('handle-captcha', {
@@ -169,7 +178,10 @@ export function ActiveNetworkTester() {
             },
           });
 
+          console.log('📡 Handle-captcha response:', { data, error });
+
           if (error) {
+            console.error('❌ Handle-captcha error:', error);
             throw error;
           }
 
@@ -182,20 +194,20 @@ export function ActiveNetworkTester() {
           toast.success('🤖 CAPTCHA detected during signup!');
           toast.info('📧 Email notification sent for human assistance');
           
-          console.log('CAPTCHA event created:', data);
+          console.log('✅ CAPTCHA event created successfully:', data);
         } catch (error: any) {
-          console.error('CAPTCHA simulation failed:', error);
+          console.error('❌ CAPTCHA simulation failed:', error);
           toast.error('CAPTCHA simulation failed: ' + error.message);
         }
       }, 2000); // Simulate 2 second delay for "automation"
 
-      toast.success('ActiveNetwork signup flow started!');
+      toast.success('🚀 ActiveNetwork signup flow started!');
       setSelectedSession({
         ...session,
         status: 'automating'
       });
     } catch (error: any) {
-      console.error('Signup flow test failed:', error);
+      console.error('❌ Signup flow test failed:', error);
       toast.error('Test failed: ' + error.message);
     }
   };
