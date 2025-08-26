@@ -55,7 +55,8 @@ import ProductionMonitoring from './pages/ProductionMonitoring';
 import TransparencyPage from './pages/TransparencyPage';
 import BotInfoPage from './pages/BotInfoPage';
 import CaptchaAssist from './pages/CaptchaAssist';
-import CaptchaWorkflowTest from './pages/CaptchaWorkflowTest';
+import CaptchaWorkflowTest from "@/pages/CaptchaWorkflowTest";
+import { CaptchaOptimizationPanel } from "@/components/CaptchaOptimizationPanel";
 import TOSCompliance from './pages/TOSCompliance';
 import ObservabilityPage from './pages/ObservabilityPage';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -170,7 +171,8 @@ export default function App() {
             <Route path="/transparency" element={<TransparencyPage />} />
             <Route path="/bot-info" element={<BotInfoPage />} />
             <Route path="/captcha-assist" element={<CaptchaAssist />} />
-            <Route path="/captcha-workflow-test" element={<CaptchaWorkflowTest />} />
+        <Route path="/captcha-workflow-test" element={<CaptchaWorkflowTest />} />
+        <Route path="/captcha-optimization" element={<div className="container mx-auto p-6"><CaptchaOptimizationPanel /></div>} />
             <Route path="/tos-compliance" element={<TOSCompliance />} />
             <Route path="/observability" element={<ObservabilityPage />} />
             <Route path="*" element={<NotFound />} />
