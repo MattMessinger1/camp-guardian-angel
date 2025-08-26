@@ -21,6 +21,10 @@ serve(async (req) => {
     const workingKey = browserbaseToken || browserbaseApiKey; // Prioritize TOKEN since KEY isn't saving
     
     console.log('Using key type:', browserbaseToken ? 'BROWSERBASE_TOKEN' : 'BROWSERBASE_KEY');
+    console.log('🔍 API Key first 10 chars:', workingKey?.substring(0, 10));
+    console.log('🔍 API Key last 4 chars:', workingKey?.substring(workingKey.length - 4));
+    console.log('🔍 API Key total length:', workingKey?.length);
+    console.log('🔍 Project ID:', browserbaseProjectId);
     console.log('✅ Credentials check passed');
     
     // Test basic Browserbase API call
@@ -39,6 +43,10 @@ serve(async (req) => {
     console.log('📡 Response headers:', Object.fromEntries(createSessionResponse.headers.entries()));
     
     const responseText = await createSessionResponse.text();
+    console.log('📡 Full response body:', responseText);
+    console.log('📡 Request details - URL:', 'https://api.browserbase.com/v1/sessions');
+    console.log('📡 Request details - Headers:', { 'Content-Type': 'application/json', 'X-BB-API-Key': `${workingKey?.substring(0,10)}...${workingKey?.substring(workingKey.length-4)}` });
+    console.log('📡 Request details - Body:', JSON.stringify({ projectId: browserbaseProjectId }));
     console.log('📡 Response body:', responseText);
 
     if (!createSessionResponse.ok) {
