@@ -119,6 +119,10 @@ serve(async (req) => {
         .eq('status', REGISTRATION_STATES.PENDING)
         .order('priority_opt_in', { ascending: false })
         .order('requested_at', { ascending: true });
+
+      if (regError) {
+        throw new Error(`Failed to load registrations: ${regError.message}`);
+      }
         
       // Load billing profiles separately and match by user_id
       if (pendingRegistrations && pendingRegistrations.length > 0) {
@@ -133,10 +137,6 @@ serve(async (req) => {
           const billing = billingProfiles?.find(bp => bp.user_id === reg.user_id);
           reg.billing_profiles = billing || null;
         }
-      }
-
-      if (regError) {
-        throw new Error(`Failed to load registrations: ${regError.message}`);
       }
 
       logEntry.activities.push({ 
