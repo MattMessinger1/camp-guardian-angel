@@ -1,5 +1,6 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
+import { CAPTCHA_STATES } from "../_shared/states.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,7 +54,9 @@ serve(async (req: Request) => {
       user_id, 
       registration_id, 
       session_id, 
-      provider 
+      provider,
+      challenge_url,
+      captcha_type 
     } = await req.json();
     
     if (!user_id || !session_id || !provider) {
@@ -71,7 +74,7 @@ serve(async (req: Request) => {
     // Generate secure resume token
     const resumeToken = generateSecureToken();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-    const magicUrl = `${appBaseUrl}/assist/captcha?token=${resumeToken}`;
+    const magicUrl = `${appBaseUrl}/captcha-assist?token=${resumeToken}`;
 
     // Create captcha event
     const { data: captchaEvent, error: captchaError } = await supabase
@@ -86,7 +89,11 @@ serve(async (req: Request) => {
         status: CAPTCHA_STATES.PENDING,
         resume_token: resumeToken,
         magic_url: magicUrl,
-        meta: { app_base_url: appBaseUrl }
+        challenge_url: challenge_url || `https://${provider}/captcha-challenge`,
+        captcha_context: {
+          captcha_type: captcha_type || 'recaptcha_v2',
+          app_base_url: appBaseUrl
+        }
       })
       .select()
       .single();
