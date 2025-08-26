@@ -245,6 +245,116 @@ export function CaptchaWorkflowTester() {
     }
   };
 
+  const testEmailNotification = async () => {
+    if (!sessionId) {
+      addLog('❌ Please select a session first');
+      toast.error('Please select a session to test with');
+      return;
+    }
+
+    try {
+      addLog('📧 Testing email notification workflow...');
+      
+      const { data: { session: userSession } } = await supabase.auth.getSession();
+      if (!userSession) {
+        toast.error('Please log in to test email notifications');
+        return;
+      }
+
+      // Generate a mock magic URL for testing
+      const mockMagicUrl = `https://ezvwyfqtyanwnoyymhav.supabase.co/captcha-assist?token=test-token-${Date.now()}`;
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes from now
+
+      addLog(`🎯 Testing session: ${sessionId}`);
+      addLog(`🏭 Provider: ${provider}`);
+      addLog(`📧 Sending email notification...`);
+
+      const { data, error } = await supabase.functions.invoke('send-email-sendgrid', {
+        body: {
+          type: 'captcha_required',
+          user_id: userSession.user.id,
+          session_id: sessionId,
+          magic_url: mockMagicUrl,
+          expires_at: expiresAt
+        }
+      });
+
+      if (error) {
+        addLog(`❌ Email test failed: ${error.message}`);
+        toast.error('Email notification test failed');
+        return;
+      }
+
+      addLog('✅ Email notification sent successfully!');
+      addLog(`📧 Check your email for the CAPTCHA assistance link`);
+      addLog(`🔗 Mock magic URL: ${mockMagicUrl.substring(0, 50)}...`);
+      addLog(`⏰ Link expires at: ${new Date(expiresAt).toLocaleTimeString()}`);
+      
+      // Store mock event for UI
+      setCaptchaEvent({
+        captcha_event_id: `mock-${Date.now()}`,
+        notification_method: 'email',
+        magic_url: mockMagicUrl,
+        expires_at: expiresAt,
+        resume_token: `mock-resume-${Date.now()}`
+      });
+
+      toast.success('Email notification test completed!');
+    } catch (error: any) {
+      addLog(`❌ Email test failed: ${error.message}`);
+      toast.error('Email notification test failed');
+    }
+  };
+
+  const simulateMockWorkflow = async () => {
+    if (!sessionId) {
+      addLog('❌ Please select a session first');
+      toast.error('Please select a session to test with');
+      return;
+    }
+
+    try {
+      addLog('🧪 Running mock CAPTCHA workflow (no SMS/email)...');
+      
+      const { data: { session: userSession } } = await supabase.auth.getSession();
+      if (!userSession) {
+        toast.error('Please log in to test workflows');
+        return;
+      }
+
+      addLog(`🎯 Mock session: ${sessionId}`);
+      addLog(`🏭 Mock provider: ${provider}`);
+      addLog('🤖 Simulating CAPTCHA detection...');
+      
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockMagicUrl = `https://ezvwyfqtyanwnoyymhav.supabase.co/captcha-assist?token=mock-${Date.now()}`;
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      
+      addLog('✅ CAPTCHA detection successful! (MOCK)');
+      addLog('📱 [MOCK] SMS would be sent to verified phone');
+      addLog('📧 [MOCK] Email fallback ready');
+      addLog(`🔗 Mock magic URL generated: ${mockMagicUrl.substring(0, 50)}...`);
+      addLog(`⏰ CAPTCHA expires at: ${new Date(expiresAt).toLocaleTimeString()}`);
+      addLog('🎭 This is a complete mock - no real notifications sent');
+      
+      // Store mock event for UI testing
+      setCaptchaEvent({
+        captcha_event_id: `mock-${Date.now()}`,
+        notification_method: 'mock',
+        magic_url: mockMagicUrl,
+        expires_at: expiresAt,
+        resume_token: `mock-resume-${Date.now()}`
+      });
+
+      toast.success('Mock CAPTCHA workflow completed!');
+    } catch (error: any) {
+      addLog(`❌ Mock workflow failed: ${error.message}`);
+      toast.error('Mock workflow test failed');
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <Card>
@@ -299,13 +409,27 @@ export function CaptchaWorkflowTester() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Button 
+              onClick={simulateMockWorkflow}
+              variant="default"
+              size="sm"
+            >
+              🧪 Mock Workflow (No SMS)
+            </Button>
+            <Button 
+              onClick={testEmailNotification}
+              variant="secondary"
+              size="sm"
+            >
+              📧 Test Email Only
+            </Button>
             <Button 
               onClick={debugSmsTest}
               variant="outline"
-              className="mb-2"
+              size="sm"
             >
-              🐛 Debug SMS Test
+              🐛 Debug SMS (A2P Pending)
             </Button>
           </div>
 
