@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mail, User, Settings, CheckCircle, XCircle } from 'lucide-react';
+import { Mail, User, Settings, CheckCircle, XCircle, Edit } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function EmailDebugger() {
   const { user } = useAuth();
   const [emailConfig, setEmailConfig] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [showEmailUpdate, setShowEmailUpdate] = useState(false);
 
   const checkEmailConfig = async () => {
     setIsLoading(true);
     try {
-      // This would be a function to check SendGrid config
-      // For now, let's just display the user's email
       console.log('Current user email:', user?.email);
       setEmailConfig({
         user_email: user?.email,
@@ -32,8 +36,35 @@ export function EmailDebugger() {
   useEffect(() => {
     if (user) {
       checkEmailConfig();
+      setNewEmail(user.email || '');
     }
   }, [user]);
+
+  const updateEmail = async () => {
+    if (!newEmail || newEmail === user?.email) {
+      toast.error('Please enter a different email address');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Email update requested! Check both your old and new email for confirmation links.');
+      setShowEmailUpdate(false);
+    } catch (error: any) {
+      console.error('Email update failed:', error);
+      toast.error(`Failed to update email: ${error.message}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const testEmailNotification = async () => {
     try {
@@ -47,6 +78,7 @@ export function EmailDebugger() {
       
       if (!sessionId) {
         console.error('No session available for testing');
+        toast.error('No test session available');
         return;
       }
 
@@ -68,11 +100,14 @@ export function EmailDebugger() {
 
       if (error) {
         console.error('Email test failed:', error);
+        toast.error('Email test failed');
       } else {
         console.log('Email test successful:', data);
+        toast.success('Test email sent! Check your inbox.');
       }
     } catch (error) {
       console.error('Email test error:', error);
+      toast.error('Email test failed');
     }
   };
 
@@ -81,10 +116,10 @@ export function EmailDebugger() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
-          Email Configuration Debug
+          Email Configuration
         </CardTitle>
         <CardDescription>
-          Check what email addresses are being used for notifications
+          Manage your account email and test notification delivery
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -92,10 +127,18 @@ export function EmailDebugger() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              <span className="font-medium">Your Account Email</span>
+              <span className="font-medium">Current Account Email</span>
             </div>
-            <div className="bg-muted p-3 rounded-lg">
+            <div className="bg-muted p-3 rounded-lg flex items-center justify-between">
               <code className="text-sm">{user?.email || 'Not logged in'}</code>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowEmailUpdate(!showEmailUpdate)}
+                className="p-1 h-auto"
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
             </div>
           </div>
           
@@ -119,6 +162,44 @@ export function EmailDebugger() {
             </div>
           </div>
         </div>
+
+        {showEmailUpdate && (
+          <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+            <div className="space-y-2">
+              <Label htmlFor="newEmail">New Email Address</Label>
+              <Input
+                id="newEmail"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="Enter your new email address"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={updateEmail}
+                disabled={isUpdating || !newEmail}
+                size="sm"
+              >
+                {isUpdating ? 'Updating...' : 'Update Email'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowEmailUpdate(false)}
+                size="sm"
+              >
+                Cancel
+              </Button>
+            </div>
+            <Alert>
+              <Mail className="h-4 w-4" />
+              <AlertDescription>
+                You'll receive confirmation emails at both your current and new email addresses. 
+                Click the confirmation link in your new email to complete the change.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         <Alert>
           <Mail className="h-4 w-4" />
