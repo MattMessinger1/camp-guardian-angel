@@ -257,14 +257,10 @@ export function CaptchaWorkflowTester() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button 
-              onClick={setupTestPhone}
-              variant="outline"
-              className="mb-2"
-            >
-              📱 Setup SMS Testing (+1-608-338-6377)
-            </Button>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+            <p className="text-green-800 text-sm">
+              📱 SMS Testing Ready: +1-608-338-6377 verified
+            </p>
           </div>
 
           <div className="flex gap-2">
