@@ -11,38 +11,42 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔍 Checking both working secrets...');
-    
-    // Check the working secret names - try both variations
-    const apiKey = Deno.env.get('BROWSERBASE_KEY');
-    const apiToken = Deno.env.get('BROWSERBASE_TOKEN');
+    const token = Deno.env.get('BROWSERBASE_TOKEN');
     const projectId = Deno.env.get('BROWSERBASE_PROJECT');
     
-    const workingKey = apiKey || apiToken;
+    console.log('🔍 Testing Browserbase API directly...');
+    console.log('Token exists:', !!token);
+    console.log('Project exists:', !!projectId);
     
-    console.log('API Key found:', !!apiKey);
-    console.log('API Key length:', apiKey?.length || 0);
-    console.log('API Token found:', !!apiToken);
-    console.log('API Token length:', apiToken?.length || 0);
-    console.log('Working key found:', !!workingKey);
-    console.log('Working key length:', workingKey?.length || 0);
-    console.log('Project ID found:', !!projectId);
-    console.log('Project ID length:', projectId?.length || 0);
+    if (!token || !projectId) {
+      return new Response(JSON.stringify({ 
+        error: `Missing credentials: token=${!!token}, project=${!!projectId}`,
+        tokenLength: token?.length || 0,
+        projectId: projectId || null
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('🔍 Making Browserbase API request...');
+    const response = await fetch('https://api.browserbase.com/v1/sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-BB-API-Key': token,
+      },
+      body: JSON.stringify({ projectId }),
+    });
+    
+    console.log('🔍 Response status:', response.status);
+    const responseText = await response.text();
+    console.log('🔍 Response body:', responseText);
     
     return new Response(JSON.stringify({
-      success: true,
-      apiKeyExists: !!apiKey,
-      apiKeyLength: apiKey?.length || 0,
-      apiKeyValue: apiKey ? `${apiKey.substring(0, 8)}...` : null,
-      tokenExists: !!apiToken,
-      tokenLength: apiToken?.length || 0,
-      tokenValue: apiToken ? `${apiToken.substring(0, 8)}...` : null,
-      workingKeyExists: !!workingKey,
-      workingKeyLength: workingKey?.length || 0,
-      projectIdExists: !!projectId,
-      projectIdLength: projectId?.length || 0,
-      projectIdValue: projectId,
-      bothSecretsReady: !!(workingKey && projectId),
+      success: response.ok,
+      status: response.status,
+      body: responseText,
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
