@@ -145,6 +145,13 @@ export function ActiveNetworkTester() {
             return;
           }
 
+          // Add debugging logs
+          console.log('=== CAPTCHA TEST DEBUG ===');
+          console.log('Session ID:', session.sessionId);
+          console.log('Session ID type:', typeof session.sessionId);
+          console.log('User ID:', userSession.user.id);
+          console.log('Provider:', session.provider);
+          
           // Simulate CAPTCHA detection by creating a captcha event
           const { data, error } = await supabase.functions.invoke('handle-captcha', {
             body: {
