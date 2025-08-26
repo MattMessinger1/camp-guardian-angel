@@ -49,12 +49,25 @@ serve(async (req: Request) => {
       );
     }
 
+    if (!userProfile) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'User profile not found', 
+          details: 'No user_profiles record exists for this user',
+          user_id: user.id,
+          suggestion: 'Create a user profile first with phone verification'
+        }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!userProfile?.phone_verified || !userProfile.phone_e164) {
       return new Response(
         JSON.stringify({ 
           error: 'Phone not verified', 
           profile: userProfile,
-          user_id: user.id
+          user_id: user.id,
+          suggestion: 'Complete phone verification process first'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
