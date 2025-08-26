@@ -34,7 +34,6 @@ export function PrewarmTestRunner() {
         .from('sessions')
         .insert({
           title: 'Pre-warm Test Camp Session',
-          description: 'Test session for pre-warm system validation',
           registration_open_at: openTime.toISOString(),
           open_time_exact: true, // Use precise timing
           capacity: 20,
@@ -42,7 +41,10 @@ export function PrewarmTestRunner() {
           age_max: 12,
           start_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Next week
           end_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000).toISOString(), // 4 hours later
-          provider_id: '00000000-0000-0000-0000-000000000001' // Test provider
+          provider_id: '00000000-0000-0000-0000-000000000001', // Test provider
+          high_demand: false,
+          upfront_fee_cents: 5000, // $50 test fee
+          location: 'Test Camp Location'
         })
         .select()
         .single();
