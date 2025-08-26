@@ -22,8 +22,40 @@ serve(async (req) => {
       throw new Error('Missing Browserbase credentials');
     }
 
-    // Test 1: Simple Browserbase API connectivity
-    console.log('📡 Test 1: Creating Browserbase session...');
+    // Test 1: List existing sessions first
+    console.log('📡 Test 1: Checking existing sessions...');
+    const listResponse = await fetch('https://api.browserbase.com/v1/sessions', {
+      method: 'GET',
+      headers: {
+        'X-BB-API-Key': apiKey,
+      },
+    });
+    
+    console.log('✅ List sessions status:', listResponse.status);
+    const listData = await listResponse.text();
+    console.log('📄 Existing sessions:', listData.substring(0, 200));
+    
+    let existingSessions = [];
+    if (listResponse.ok) {
+      try {
+        existingSessions = JSON.parse(listData);
+        console.log('🔍 Found', existingSessions.length, 'existing sessions');
+        
+        // Clean up any existing sessions
+        for (const session of existingSessions) {
+          console.log('🧹 Cleaning up session:', session.id);
+          await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
+            method: 'DELETE',
+            headers: { 'X-BB-API-Key': apiKey },
+          });
+        }
+      } catch (e) {
+        console.log('⚠️ Could not parse existing sessions:', e.message);
+      }
+    }
+
+    // Test 2: Create new session
+    console.log('📡 Test 2: Creating Browserbase session...');
     const createResponse = await fetch('https://api.browserbase.com/v1/sessions', {
       method: 'POST',
       headers: {
@@ -38,6 +70,19 @@ serve(async (req) => {
     console.log('📄 Session response:', sessionData.substring(0, 200));
     
     if (!createResponse.ok) {
+      // Handle rate limiting specifically
+      if (createResponse.status === 429) {
+        return new Response(JSON.stringify({
+          error: 'Rate limited - concurrent session limit reached',
+          details: sessionData,
+          test: 'ssl-isolation',
+          suggestion: 'Wait a moment and try again, or check if sessions are being properly cleaned up'
+        }), {
+          status: 200, // Return 200 so the UI can show this as a handled error
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       return new Response(JSON.stringify({
         error: `Session creation failed: ${createResponse.status}`,
         details: sessionData,
@@ -51,8 +96,8 @@ serve(async (req) => {
     const session = JSON.parse(sessionData);
     console.log('🗂️ Session ID:', session.id);
 
-    // Test 2: Navigation to YMCA website
-    console.log('📡 Test 2: Testing navigation...');
+    // Test 3: Navigation to YMCA website
+    console.log('📡 Test 3: Testing navigation...');
     const navResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
       method: 'PUT',
       headers: {
@@ -68,8 +113,8 @@ serve(async (req) => {
     const navData = await navResponse.text();
     console.log('📄 Navigation response:', navData.substring(0, 200));
     
-    // Test 3: Close session
-    console.log('📡 Test 3: Closing session...');
+    // Test 4: Close session
+    console.log('📡 Test 4: Closing session...');
     const closeResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
       method: 'DELETE',
       headers: {
@@ -82,6 +127,11 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       tests: {
+        existingSessions: {
+          status: listResponse.status,
+          ok: listResponse.ok,
+          count: existingSessions.length
+        },
         sessionCreation: {
           status: createResponse.status,
           ok: createResponse.ok
