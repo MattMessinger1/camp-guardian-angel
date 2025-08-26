@@ -44,10 +44,22 @@ serve(async (req) => {
         // Clean up any existing sessions
         for (const session of existingSessions) {
           console.log('🧹 Cleaning up session:', session.id);
-          await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
+          const deleteResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
             method: 'DELETE',
             headers: { 'X-BB-API-Key': apiKey },
           });
+          console.log('🗑️ Delete response:', deleteResponse.status);
+          
+          // Wait a moment between deletions to avoid overwhelming the API
+          if (existingSessions.length > 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+        
+        // Wait a moment after cleanup before creating new session
+        if (existingSessions.length > 0) {
+          console.log('⏳ Waiting for cleanup to complete...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       } catch (e) {
         console.log('⚠️ Could not parse existing sessions:', e.message);
@@ -72,11 +84,32 @@ serve(async (req) => {
     if (!createResponse.ok) {
       // Handle rate limiting specifically
       if (createResponse.status === 429) {
+        // Try one more cleanup attempt
+        console.log('🔄 Rate limited - attempting aggressive cleanup...');
+        const retryListResponse = await fetch('https://api.browserbase.com/v1/sessions', {
+          method: 'GET',
+          headers: { 'X-BB-API-Key': apiKey },
+        });
+        
+        if (retryListResponse.ok) {
+          const retrySessions = JSON.parse(await retryListResponse.text());
+          console.log('🔍 Found', retrySessions.length, 'sessions to cleanup');
+          
+          for (const session of retrySessions) {
+            console.log('🧹 Emergency cleanup:', session.id);
+            await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
+              method: 'DELETE',
+              headers: { 'X-BB-API-Key': apiKey },
+            });
+          }
+        }
+        
         return new Response(JSON.stringify({
           error: 'Rate limited - concurrent session limit reached',
           details: sessionData,
           test: 'ssl-isolation',
-          suggestion: 'Wait a moment and try again, or check if sessions are being properly cleaned up'
+          suggestion: 'Multiple sessions were found and cleaned up. Try running the test again in a few seconds.',
+          cleanedSessions: existingSessions.length
         }), {
           status: 200, // Return 200 so the UI can show this as a handled error
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
