@@ -83,46 +83,50 @@ serve(async (req: Request) => {
       
       // First create a test activity if it doesn't exist
       const testActivityId = crypto.randomUUID();
-      const { error: activityError } = await supabase
-        .from('activities')
-        .upsert({
-          id: testActivityId,
-          name: 'Test Activity',
-          city: 'Test City',
-          state: 'TX'
-        }, { 
-          onConflict: 'id',
-          ignoreDuplicates: true 
-        });
       
-      if (activityError) {
-        console.log('[HANDLE-CAPTCHA] Could not create test activity:', activityError);
-      }
-      
-      // Then create the test session
-      const { error: sessionError } = await supabase
-        .from('sessions')
-        .upsert({
-          id: session_id,
-          activity_id: testActivityId,
-          title: 'Test Session for CAPTCHA',
-          created_at: new Date().toISOString()
-        }, { 
-          onConflict: 'id',
-          ignoreDuplicates: true 
-        });
-      
-      if (sessionError) {
-        console.error('[HANDLE-CAPTCHA] Failed to create test session:', sessionError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to create test session', details: sessionError }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      } else {
-        console.log('[HANDLE-CAPTCHA] Test session created successfully');
+      try {
+        const { error: activityError } = await supabase
+          .from('activities')
+          .upsert({
+            id: testActivityId,
+            name: 'Test Activity for CAPTCHA',
+            city: 'Test City',
+            state: 'TX'
+          }, { 
+            onConflict: 'id',
+            ignoreDuplicates: true 
+          });
+        
+        if (activityError) {
+          console.error('[HANDLE-CAPTCHA] Activity creation failed:', activityError);
+        } else {
+          console.log('[HANDLE-CAPTCHA] Test activity created/exists:', testActivityId);
+        }
+        
+        // Then create the test session
+        const { error: sessionError } = await supabase
+          .from('sessions')
+          .upsert({
+            id: session_id,
+            activity_id: testActivityId,
+            title: 'Test Session for CAPTCHA',
+            created_at: new Date().toISOString()
+          }, { 
+            onConflict: 'id',
+            ignoreDuplicates: true 
+          });
+        
+        if (sessionError) {
+          console.error('[HANDLE-CAPTCHA] Session creation failed:', sessionError);
+          
+          // If session creation fails, continue anyway for test mode
+          console.log('[HANDLE-CAPTCHA] Continuing without session for test mode...');
+        } else {
+          console.log('[HANDLE-CAPTCHA] Test session created/exists successfully');
+        }
+      } catch (err) {
+        console.error('[HANDLE-CAPTCHA] Error in test setup:', err);
+        console.log('[HANDLE-CAPTCHA] Continuing with test anyway...');
       }
     }
 
