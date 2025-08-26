@@ -56,7 +56,8 @@ serve(async (req: Request) => {
       session_id, 
       provider,
       challenge_url,
-      captcha_type 
+      captcha_type,
+      test_mode 
     } = await req.json();
     
     if (!user_id || !session_id || !provider) {
@@ -76,6 +77,25 @@ serve(async (req: Request) => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
     const magicUrl = `${appBaseUrl}/captcha-assist?token=${resumeToken}`;
 
+    // For test mode, create a temporary session first if it doesn't exist
+    if (test_mode) {
+      const { error: sessionError } = await supabase
+        .from('sessions')
+        .upsert({
+          id: session_id,
+          activity_id: 'test-activity-id',
+          title: 'Test Session',
+          created_at: new Date().toISOString()
+        }, { 
+          onConflict: 'id',
+          ignoreDuplicates: true 
+        });
+      
+      if (sessionError) {
+        console.log('[HANDLE-CAPTCHA] Note: Could not create test session, proceeding anyway:', sessionError);
+      }
+    }
+
     // Create captcha event
     const { data: captchaEvent, error: captchaError } = await supabase
       .from('captcha_events')
@@ -92,7 +112,8 @@ serve(async (req: Request) => {
         challenge_url: challenge_url || `https://${provider}/captcha-challenge`,
         captcha_context: {
           captcha_type: captcha_type || 'recaptcha_v2',
-          app_base_url: appBaseUrl
+          app_base_url: appBaseUrl,
+          test_mode: test_mode || false
         }
       })
       .select()
