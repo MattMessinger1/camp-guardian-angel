@@ -56,6 +56,7 @@ import TransparencyPage from './pages/TransparencyPage';
 import BotInfoPage from './pages/BotInfoPage';
 import CaptchaAssist from './pages/CaptchaAssist';
 import CaptchaWorkflowTest from "@/pages/CaptchaWorkflowTest";
+import ActiveNetworkTest from "@/pages/ActiveNetworkTest";
 import { CaptchaOptimizationPanel } from "@/components/CaptchaOptimizationPanel";
 import TOSCompliance from './pages/TOSCompliance';
 import ObservabilityPage from './pages/ObservabilityPage';
@@ -172,6 +173,7 @@ export default function App() {
             <Route path="/bot-info" element={<BotInfoPage />} />
             <Route path="/captcha-assist" element={<CaptchaAssist />} />
         <Route path="/captcha-workflow-test" element={<CaptchaWorkflowTest />} />
+        <Route path="/activenetwork-test" element={<ActiveNetworkTest />} />
         <Route path="/captcha-optimization" element={<div className="container mx-auto p-6"><CaptchaOptimizationPanel /></div>} />
             <Route path="/tos-compliance" element={<TOSCompliance />} />
             <Route path="/observability" element={<ObservabilityPage />} />
