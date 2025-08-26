@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Trash2, CreditCard, User, Lock, Mail, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, CreditCard, User, Lock, Mail, Loader2, AlertCircle, Phone, Check, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getTestScenario } from "@/lib/test-scenarios";
@@ -62,6 +62,15 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
   const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   
+  // Phone verification for CAPTCHA SMS notifications
+  const [phone, setPhone] = useState("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneStep, setPhoneStep] = useState<"input" | "verify">("input");
+  const [otp, setOtp] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [needsPhoneVerification, setNeedsPhoneVerification] = useState(false);
+  
   // Dynamic requirements
   const [requirements, setRequirements] = useState<SessionRequirements | null>(null);
   const [loadingRequirements, setLoadingRequirements] = useState(false);
@@ -98,6 +107,127 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     setChildren(updated);
   };
 
+  // Phone formatting utilities
+  const formatPhoneDisplay = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+    }
+    if (digits.length === 10) {
+      return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    return phone;
+  };
+
+  const formatPhoneInput = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  };
+
+  // Phone verification handlers
+  const handleSendOtp = async () => {
+    if (!phone.trim()) return;
+
+    setSendingOtp(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // For signup flow, we might not have a session yet, so we'll create a temporary OTP
+      const { data, error } = await supabase.functions.invoke('send-otp', {
+        body: { 
+          phone: phone.trim(),
+          signup_mode: true // Indicate this is during signup
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to send verification code",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data?.error) {
+        toast({
+          title: "Error",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Code sent",
+        description: "Check your phone for the verification code",
+      });
+      setPhoneStep("verify");
+      setPhone(data.phone_e164 || phone);
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send verification code",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp.trim()) return;
+
+    setVerifyingOtp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-otp', {
+        body: { 
+          code: otp.trim(),
+          signup_mode: true // Indicate this is during signup
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to verify code",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data?.error) {
+        toast({
+          title: "Error",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Phone number verified successfully!",
+      });
+      
+      setPhoneVerified(true);
+      setPhoneStep("input");
+      setOtp("");
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      toast({
+        title: "Error",
+        description: "Failed to verify code",
+        variant: "destructive",
+      });
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
   // Save form data to localStorage - memoized to prevent infinite re-renders
   const saveFormData = useCallback(() => {
     const formData = {
@@ -106,6 +236,8 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
       guardianName,
       children,
       hasPaymentMethod,
+      phone,
+      phoneVerified,
       consentGiven,
       upfrontPaymentConsent,
       successFeeConsent,
@@ -116,7 +248,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     } catch (error) {
       console.warn('Failed to save form data:', error);
     }
-  }, [formStorageKey, email, password, guardianName, children, hasPaymentMethod, consentGiven, upfrontPaymentConsent, successFeeConsent]);
+  }, [formStorageKey, email, password, guardianName, children, hasPaymentMethod, phone, phoneVerified, consentGiven, upfrontPaymentConsent, successFeeConsent]);
 
   // Restore form data from localStorage - memoized and only runs once
   const restoreFormData = useCallback(() => {
@@ -131,6 +263,8 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
           setGuardianName(formData.guardianName || "");
           setChildren(formData.children || [{ name: "", dob: "" }]);
           setHasPaymentMethod(formData.hasPaymentMethod || false);
+          setPhone(formData.phone || "");
+          setPhoneVerified(formData.phoneVerified || false);
           setConsentGiven(formData.consentGiven || false);
           setUpfrontPaymentConsent(formData.upfrontPaymentConsent || false);
           setSuccessFeeConsent(formData.successFeeConsent || false);
@@ -217,6 +351,10 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
         
         setRequirements(testRequirements);
         setRemainingFields(testScenario.requirements?.required_documents || []);
+        
+        // Check if CAPTCHA handling might be needed (assume yes for automated scenarios)
+        setNeedsPhoneVerification(true);
+        
         setLoadingRequirements(false);
         return;
       }
@@ -310,6 +448,10 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
 
         console.log('✅ Camp-specific form requirements ready:', sessionReqs);
         setRequirements(sessionReqs);
+        
+        // Check if CAPTCHA handling might be needed (assume yes for automated sessions)
+        setNeedsPhoneVerification(!!sessionId);
+        
         return;
       }
 
@@ -407,6 +549,12 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
       return;
     }
 
+    if (needsPhoneVerification && !phoneVerified) {
+      console.log('❌ Validation failed: Phone not verified');
+      toast({ title: "Phone verification required", description: "Please verify your phone number for CAPTCHA notifications." });
+      return;
+    }
+
     if (!upfrontPaymentConsent) {
       console.log('❌ Validation failed: Missing upfront payment consent');
       toast({ title: "Payment consent required", description: "Please agree to the upfront payment terms." });
@@ -472,7 +620,9 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             guardian_name: guardianName,
-            children: children
+            children: children,
+            phone_e164: phoneVerified ? phone : null,
+            phone_verified: phoneVerified
           }
         }
       });
@@ -786,6 +936,134 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             </div>
 
             <Separator />
+
+            {/* Phone Verification for CAPTCHA (when needed) */}
+            {needsPhoneVerification && (
+              <>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <Phone className="h-5 w-5" />
+                    Phone Verification for SMS Notifications
+                  </div>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      This session may require CAPTCHA solving. Please verify your phone number to receive instant SMS notifications.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  {phoneVerified ? (
+                    <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+                      <div className="flex items-center gap-3">
+                        <Check className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="font-medium text-green-800">Phone Verified</p>
+                          <p className="text-sm text-green-600">
+                            {formatPhoneDisplay(phone)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {phoneStep === "input" ? (
+                        <>
+                          <div>
+                            <Label htmlFor="phone">Phone Number *</Label>
+                            <Input
+                              id="phone"
+                              type="tel"
+                              placeholder="(555) 123-4567"
+                              value={formatPhoneInput(phone)}
+                              onChange={(e) => setPhone(e.target.value)}
+                              disabled={sendingOtp}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              US/Canada numbers supported. Format: (555) 123-4567
+                            </p>
+                          </div>
+                          
+                          <Button
+                            type="button"
+                            onClick={handleSendOtp}
+                            disabled={!phone.trim() || sendingOtp}
+                            className="w-full"
+                          >
+                            {sendingOtp ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Sending Code...
+                              </>
+                            ) : (
+                              "Send Verification Code"
+                            )}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                            <p className="text-sm text-blue-800">
+                              Verification code sent to {formatPhoneDisplay(phone)}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="otp">6-Digit Verification Code *</Label>
+                            <Input
+                              id="otp"
+                              type="text"
+                              placeholder="123456"
+                              value={otp}
+                              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              disabled={verifyingOtp}
+                              maxLength={6}
+                            />
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              onClick={handleVerifyOtp}
+                              disabled={otp.length !== 6 || verifyingOtp}
+                              className="flex-1"
+                            >
+                              {verifyingOtp ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Verifying...
+                                </>
+                              ) : (
+                                "Verify Code"
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setPhoneStep("input")}
+                              disabled={verifyingOtp}
+                            >
+                              Back
+                            </Button>
+                          </div>
+                          
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleSendOtp}
+                            disabled={sendingOtp || verifyingOtp}
+                            className="w-full text-sm"
+                          >
+                            {sendingOtp ? "Sending..." : "Resend Code"}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+              </>
+            )}
 
             {/* Payment Information */}
             <div className="space-y-6" data-section="payment">
