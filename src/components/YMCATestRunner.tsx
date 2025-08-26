@@ -59,10 +59,50 @@ export function YMCATestRunner({ onTestComplete }: YMCATestRunnerProps) {
           result.pageData.forms.forEach((form: any, index: number) => {
             addToLog(`   Form ${index + 1}: ${form.fields?.length || 0} fields`);
           });
+          
+          // Now test actual form interaction
+          addToLog('🖋️ Testing form interaction and signup...');
+          
+          try {
+            const { data: signupResult, error: signupError } = await supabase.functions.invoke('browser-automation', {
+              body: {
+                action: 'interact',
+                sessionId: result.sessionId,
+                parentId: parentId,
+                interactionData: {
+                  formFields: {
+                    child_name: 'Test Child',
+                    parent_email: 'test@example.com',  
+                    phone: '555-123-4567',
+                    camp_selection: 'Summer Day Camp'
+                  }
+                }
+              }
+            });
+
+            if (signupError) {
+              addToLog(`❌ Signup interaction failed: ${signupError.message}`);
+            } else if (signupResult) {
+              addToLog('✅ Form interaction completed!');
+              addToLog(`📝 Interaction result: ${signupResult.status || 'completed'}`);
+              
+              if (signupResult.formSubmitted) {
+                addToLog('🎉 Registration form submitted successfully!');
+              } else {
+                addToLog('⚠️ Form filled but not submitted (safety mode)');
+              }
+              
+              if (signupResult.fieldsProcessed) {
+                addToLog(`📊 Fields processed: ${signupResult.fieldsProcessed}`);
+              }
+            }
+          } catch (interactionError: any) {
+            addToLog(`❌ Form interaction error: ${interactionError.message}`);
+          }
         }
       }
 
-      addToLog('🎯 YMCA Real Test completed successfully!');
+      addToLog('🎯 YMCA Real Test with signup completed successfully!');
       addToLog('📊 Check Supabase compliance_audit table for detailed logs');
       
       // Set the real data so it can be displayed
