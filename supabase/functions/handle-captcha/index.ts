@@ -50,6 +50,21 @@ serve(async (req: Request) => {
   }
 
   try {
+    let requestData;
+    try {
+      requestData = await req.json();
+      console.log(`[HANDLE-CAPTCHA] Request received:`, requestData);
+    } catch (jsonError) {
+      console.error(`[HANDLE-CAPTCHA] JSON parse error:`, jsonError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const { 
       user_id, 
       registration_id, 
@@ -58,7 +73,7 @@ serve(async (req: Request) => {
       challenge_url,
       captcha_type,
       test_mode 
-    } = await req.json();
+    } = requestData;
     
     console.log(`[HANDLE-CAPTCHA] Raw request data:`, { user_id, session_id, provider, test_mode });
     
