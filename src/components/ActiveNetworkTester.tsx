@@ -59,10 +59,10 @@ export function ActiveNetworkTester() {
       // If fast search fails, use mock sessions for demonstration
       console.log('Fast search failed or no results, showing mock sessions');
       
-      // Show some mock ActiveNetwork sessions for testing
+      // Show some mock ActiveNetwork sessions for testing with proper UUIDs
       const mockSessions = [
         {
-          sessionId: 'mock-swim-1',
+          sessionId: crypto.randomUUID(),
           name: 'Youth Swimming Lessons - Beginner',
           description: 'Learn basic swimming skills in a safe, fun environment. Ages 6-12.',
           price: 45,
@@ -72,7 +72,7 @@ export function ActiveNetworkTester() {
           start_at: '2024-09-15T10:00:00Z'
         },
         {
-          sessionId: 'mock-tennis-1',
+          sessionId: crypto.randomUUID(),
           name: 'Junior Tennis Camp',
           description: 'Summer tennis camp for kids ages 8-14. All skill levels welcome.',
           price: 120,
@@ -82,7 +82,7 @@ export function ActiveNetworkTester() {
           start_at: '2024-07-01T09:00:00Z'
         },
         {
-          sessionId: 'mock-art-1',
+          sessionId: crypto.randomUUID(),
           name: 'Creative Arts Workshop',
           description: 'Explore painting, drawing, and crafts. Perfect for young artists!',
           price: 35,
@@ -92,7 +92,7 @@ export function ActiveNetworkTester() {
           start_at: '2024-08-10T14:00:00Z'
         },
         {
-          sessionId: 'mock-soccer-1',
+          sessionId: crypto.randomUUID(),
           name: 'Youth Soccer League',
           description: 'Join our recreational soccer league for ages 7-12. No experience needed!',
           price: 65,
@@ -112,7 +112,7 @@ export function ActiveNetworkTester() {
       // Still show mock sessions even if everything fails
       const mockSessions = [
         {
-          sessionId: 'mock-swim-1',
+          sessionId: crypto.randomUUID(),
           name: 'Youth Swimming Lessons - Beginner',
           description: 'Learn basic swimming skills in a safe, fun environment. Ages 6-12.',
           price: 45,
