@@ -312,11 +312,22 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
       .eq('session_id', request.sessionId)
       .single();
 
-    if (sessionError || !sessionData?.metadata?.realSession?.connectUrl) {
-      throw new Error('Session not found or missing connection info');
+    if (sessionError) {
+      console.error('Database error:', sessionError);
+      throw new Error(`Session query failed: ${sessionError.message}`);
+    }
+    
+    if (!sessionData?.metadata?.realSession) {
+      console.error('No session metadata found:', sessionData);
+      throw new Error('Session not found or missing session data');
     }
 
+    // The connectUrl is stored in the realSession object from Browserbase
     const connectUrl = sessionData.metadata.realSession.connectUrl;
+    if (!connectUrl) {
+      console.error('Session metadata:', sessionData.metadata);
+      throw new Error('Session missing connectUrl');
+    }
     console.log('✅ YMCA Test: Found session with connectUrl, navigation ready');
     
     // For YMCA test, we simulate successful navigation since implementing full CDP is complex
