@@ -127,15 +127,19 @@ serve(async (req) => {
       // Load billing profiles separately and match by user_id
       if (pendingRegistrations && pendingRegistrations.length > 0) {
         const userIds = pendingRegistrations.map(reg => reg.user_id);
-        const { data: billingProfiles } = await admin
+        const { data: billingProfiles, error: billingError } = await admin
           .from('billing_profiles')
           .select('user_id, stripe_customer_id, default_payment_method_id')
           .in('user_id', userIds);
           
+        if (billingError) {
+          console.warn(`[RUN-PREWARM] Warning: Failed to load billing profiles: ${billingError.message}`);
+        }
+          
         // Attach billing info to registrations
         for (const reg of pendingRegistrations) {
           const billing = billingProfiles?.find(bp => bp.user_id === reg.user_id);
-          reg.billing_profiles = billing || null;
+          (reg as any).billing_profiles = billing || null;
         }
       }
 
