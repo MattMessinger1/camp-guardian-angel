@@ -141,3 +141,6 @@ verify_jwt = false
 [functions.test-browserbase-direct]
 verify_jwt = false
 
+[functions.test-browser-automation]
+verify_jwt = false
+
