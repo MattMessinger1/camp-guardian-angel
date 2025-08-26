@@ -46,6 +46,11 @@ export function EmailDebugger() {
       return;
     }
 
+    if (!newEmail.includes('@') || !newEmail.includes('.')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     setIsUpdating(true);
     try {
       const { error } = await supabase.auth.updateUser({
@@ -56,7 +61,8 @@ export function EmailDebugger() {
         throw error;
       }
 
-      toast.success('Email update requested! Check both your old and new email for confirmation links.');
+      toast.success('Email update initiated! Check BOTH email addresses for confirmation links.');
+      toast.info('Click the link in your NEW email to complete the change.', { duration: 8000 });
       setShowEmailUpdate(false);
     } catch (error: any) {
       console.error('Email update failed:', error);
@@ -194,8 +200,16 @@ export function EmailDebugger() {
             <Alert>
               <Mail className="h-4 w-4" />
               <AlertDescription>
-                You'll receive confirmation emails at both your current and new email addresses. 
-                Click the confirmation link in your new email to complete the change.
+                <div className="space-y-2">
+                  <strong>Email Update Process:</strong>
+                  <ol className="text-sm list-decimal list-inside space-y-1 ml-2">
+                    <li>Enter your new email: <code>matt.messinger@gmail.com</code></li>
+                    <li>Click "Update Email"</li>
+                    <li>Check BOTH email inboxes for confirmation emails</li>
+                    <li><strong>Click the link in your NEW email</strong> to complete the change</li>
+                    <li>After confirmation, test notifications with the button below</li>
+                  </ol>
+                </div>
               </AlertDescription>
             </Alert>
           </div>
@@ -220,6 +234,7 @@ export function EmailDebugger() {
             onClick={testEmailNotification}
             disabled={!user?.email}
             size="sm"
+            variant="secondary"
           >
             🧪 Send Test Email
           </Button>
@@ -232,6 +247,15 @@ export function EmailDebugger() {
             🔄 Refresh Config
           </Button>
         </div>
+
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>When to use "Send Test Email":</strong><br/>
+            Use this AFTER you've updated and confirmed your new email address. 
+            It will send a test CAPTCHA notification to your currently active email address.
+          </AlertDescription>
+        </Alert>
 
         <div className="text-xs text-muted-foreground">
           <strong>Current Configuration:</strong><br/>
