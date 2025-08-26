@@ -46,29 +46,41 @@ export function CaptchaWorkflowTester() {
           provider: provider,
           challenge_url: `https://${provider}/captcha-challenge`,
           captcha_type: 'recaptcha_v2'
-        }
+        },
+        headers: {
+          Authorization: `Bearer ${userSession.access_token}`,
+        },
       });
 
       if (error) {
+        console.error('CAPTCHA simulation error:', error);
         addLog(`❌ CAPTCHA handling failed: ${error.message}`);
-        toast.error('CAPTCHA workflow test failed');
+        toast.error(`CAPTCHA test failed: ${error.message}`);
         return;
       }
 
-      setCaptchaEvent(data);
-      addLog('✅ CAPTCHA event created successfully!');
-      addLog(`🔑 Event ID: ${data.captcha_event_id}`);
-      addLog(`📱 Notification method: ${data.notification_method}`);
-      addLog(`⏰ Expires: ${new Date(data.expires_at).toLocaleString()}`);
-      addLog(`🔗 Magic URL generated for parent assistance`);
-      
-      if (data.notification_method === 'sms' && data.notification_details?.phone_masked) {
-        addLog(`📱 SMS sent to: ${data.notification_details.phone_masked}`);
-      } else if (data.notification_method === 'email') {
-        addLog('📧 Email notification sent');
+      if (data?.error) {
+        console.error('CAPTCHA function returned error:', data.error);
+        addLog(`❌ CAPTCHA handling failed: ${data.error}`);
+        toast.error(`CAPTCHA test failed: ${data.error}`);
+        return;
       }
 
-      toast.success('CAPTCHA workflow initiated! Check notifications.');
+      console.log('CAPTCHA simulation response:', data);
+      addLog('✅ CAPTCHA detection successful!');
+      
+      if (data?.notification_method === 'sms' && data?.notification_details?.phone_masked) {
+        addLog(`📱 SMS notification sent to ${data.notification_details.phone_masked}`);
+      } else if (data?.notification_method === 'email') {
+        addLog('📧 Email notification sent');
+      }
+      
+      if (data?.magic_url) {
+        addLog(`🔗 Magic URL generated: ${data.magic_url.substring(0, 50)}...`);
+      }
+      
+      addLog(`⏰ CAPTCHA expires at: ${new Date(data.expires_at).toLocaleTimeString()}`);
+      toast.success('CAPTCHA simulation completed successfully!');
     } catch (error: any) {
       addLog(`❌ Test failed: ${error.message}`);
       toast.error('CAPTCHA workflow test failed');
