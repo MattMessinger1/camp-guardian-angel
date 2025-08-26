@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle, XCircle, RefreshCw, Eye, EyeOff } from "luc
 import { getEnvironmentStatus, ENVIRONMENT_VARIABLES } from "@/config/environment";
 import { supabase } from "@/integrations/supabase/client";
 import PhoneVerification from "@/components/PhoneVerification";
+import { EmailDebugger } from "@/components/EmailDebugger";
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
     document.title = title;
@@ -250,6 +251,9 @@ export default function Settings() {
 
         {/* Phone & SMS Verification */}
         <PhoneVerification />
+
+        {/* Email Configuration Debug */}
+        <EmailDebugger />
 
         {/* Environment Variables */}
         <Card>
