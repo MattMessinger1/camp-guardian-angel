@@ -15,7 +15,7 @@ export function BrowserbaseConnectionTest() {
     try {
       console.log('🧪 Testing Browserbase connection...');
       
-      const { data, error } = await supabase.functions.invoke('verify-browserbase', {
+      const { data, error } = await supabase.functions.invoke('diagnose-browserbase', {
         body: {}
       });
       
