@@ -95,6 +95,9 @@ export function CaptchaWorkflowTester() {
       console.log('CAPTCHA simulation response:', data);
       addLog('✅ CAPTCHA detection successful!');
       
+      // Store the captcha event for UI buttons
+      setCaptchaEvent(data);
+      
       if (data?.notification_method === 'sms' && data?.notification_details?.phone_masked) {
         addLog(`📱 SMS notification sent to ${data.notification_details.phone_masked}`);
       } else if (data?.notification_method === 'email') {
