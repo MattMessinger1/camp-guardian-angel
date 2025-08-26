@@ -260,6 +260,11 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
   }
 
   try {
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
+    if (!browserbaseProjectId) {
+      throw new Error('BROWSERBASE_PROJECT not configured for navigation');
+    }
+
     // Real Browserbase navigation
     const response = await fetch(`https://api.browserbase.com/v1/sessions/${request.sessionId}`, {
       method: 'POST',
@@ -268,6 +273,7 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        projectId: browserbaseProjectId,
         action: 'navigate',
         url: request.url
       }),
@@ -341,6 +347,11 @@ async function interactWithPage(apiKey: string, request: BrowserSessionRequest):
   }
 
   try {
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
+    if (!browserbaseProjectId) {
+      throw new Error('BROWSERBASE_PROJECT not configured for interaction');
+    }
+
     // Generate safe form interaction script
     const interactionScript = generateInteractionScript(request.registrationData);
     
@@ -352,6 +363,7 @@ async function interactWithPage(apiKey: string, request: BrowserSessionRequest):
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        projectId: browserbaseProjectId,
         action: 'evaluate',
         script: interactionScript
       }),
@@ -408,6 +420,11 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
   console.log(`🎯 YMCA Test: Extracting real page data from session ${request.sessionId}`);
 
   try {
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
+    if (!browserbaseProjectId) {
+      throw new Error('BROWSERBASE_PROJECT not configured for extraction');
+    }
+
     // Real page data extraction using Browserbase
     const response = await fetch(`https://api.browserbase.com/v1/sessions/${request.sessionId}`, {
       method: 'POST',
@@ -416,6 +433,7 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        projectId: browserbaseProjectId,
         action: 'evaluate',
         script: `
           (() => {
