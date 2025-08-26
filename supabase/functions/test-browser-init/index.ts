@@ -11,11 +11,10 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🧪 Testing browser automation initialization...');
-    
     const token = Deno.env.get('BROWSERBASE_TOKEN');
     const projectId = Deno.env.get('BROWSERBASE_PROJECT');
     
+    console.log('🔍 Testing Browserbase API directly...');
     console.log('Token exists:', !!token);
     console.log('Project exists:', !!projectId);
     
@@ -30,7 +29,7 @@ serve(async (req) => {
       });
     }
 
-    console.log('Making Browserbase API request...');
+    console.log('🔍 Making Browserbase API request...');
     const response = await fetch('https://api.browserbase.com/v1/sessions', {
       method: 'POST',
       headers: {
@@ -40,32 +39,23 @@ serve(async (req) => {
       body: JSON.stringify({ projectId }),
     });
     
-    console.log('Response status:', response.status);
+    console.log('🔍 Response status:', response.status);
     const responseText = await response.text();
-    console.log('Response body preview:', responseText.substring(0, 200));
-    
-    if (!response.ok) {
-      console.error('Session creation failed:', responseText);
-      throw new Error(`Failed to create session: ${responseText}`);
-    }
-
-    const sessionData = JSON.parse(responseText);
-    console.log('✅ Session created successfully:', sessionData.id);
+    console.log('🔍 Response body:', responseText);
     
     return new Response(JSON.stringify({
-      success: true,
-      message: 'Browser automation test successful',
-      sessionId: sessionData.id,
+      success: response.ok,
+      status: response.status,
+      body: responseText,
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
     
   } catch (error) {
-    console.error('❌ Browser automation test failed:', error);
+    console.error('Error:', error);
     return new Response(JSON.stringify({ 
       error: error.message,
-      stack: error.stack,
       timestamp: new Date().toISOString()
     }), {
       status: 500,
