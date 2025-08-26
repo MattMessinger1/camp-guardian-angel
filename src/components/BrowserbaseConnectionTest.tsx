@@ -15,7 +15,7 @@ export function BrowserbaseConnectionTest() {
     try {
       console.log('🧪 Testing Browserbase connection...');
       
-      const { data, error } = await supabase.functions.invoke('diagnose-browserbase', {
+      const { data, error } = await supabase.functions.invoke('test-browser-automation', {
         body: {}
       });
       
@@ -43,7 +43,7 @@ export function BrowserbaseConnectionTest() {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          🔧 Browserbase Connection Test
+          🔧 Browser Automation Test
           {result && (
             <Badge variant={result.success ? "default" : "destructive"}>
               {result.success ? "✅ Working" : "❌ Failed"}
@@ -53,7 +53,7 @@ export function BrowserbaseConnectionTest() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Test your Browserbase API credentials and connection
+          Test the browser-automation edge function and Browserbase integration
         </p>
         
         <Button 
@@ -61,7 +61,7 @@ export function BrowserbaseConnectionTest() {
           disabled={testing}
           className="w-full"
         >
-          {testing ? "Testing Connection..." : "Test Browserbase Connection"}
+          {testing ? "Testing Integration..." : "Test Browser Automation"}
         </Button>
         
         {result && (
@@ -74,10 +74,10 @@ export function BrowserbaseConnectionTest() {
         )}
         
         <div className="text-xs text-muted-foreground space-y-1">
+          <div>• Tests browser-automation edge function deployment</div>
           <div>• Tests BROWSERBASE_TOKEN environment variable</div>
           <div>• Tests BROWSERBASE_PROJECT environment variable</div>
-          <div>• Attempts to create and immediately cleanup a session</div>
-          <div>• Validates API connectivity and credentials</div>
+          <div>• Validates end-to-end integration</div>
         </div>
       </CardContent>
     </Card>
