@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useBrowserAutomation } from '@/hooks/useBrowserAutomation';
+import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, CheckCircle, Clock, Play, X } from 'lucide-react';
 
 interface YMCATestRunnerProps {
@@ -69,6 +70,30 @@ export function YMCATestRunner({ onTestComplete }: YMCATestRunnerProps) {
       console.error('YMCA Test failed:', error);
       addToLog(`❌ Test failed: ${error.message}`);
       addToLog('📊 Error logged to compliance_audit table');
+    } finally {
+      // ALWAYS cleanup after test regardless of success or failure
+      addToLog('🧹 Post-test cleanup: Cleaning up browser sessions...');
+      try {
+        // Use the cleanup action directly
+        const { error: cleanupError } = await supabase.functions.invoke('browser-automation', {
+          body: { action: 'cleanup' }
+        });
+        
+        if (cleanupError) {
+          addToLog(`⚠️ Cleanup warning: ${cleanupError.message}`);
+        } else {
+          addToLog('✅ Post-test cleanup completed successfully');
+        }
+        
+        // Also close the specific session if we have one
+        if (state.sessionId) {
+          await closeSession(state.sessionId);
+          addToLog('✅ Session closed via hook');
+        }
+      } catch (cleanupError: any) {
+        addToLog(`⚠️ Cleanup failed: ${cleanupError.message}`);
+        console.warn('Post-test cleanup failed:', cleanupError);
+      }
     }
   };
 

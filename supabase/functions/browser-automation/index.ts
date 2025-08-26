@@ -13,7 +13,7 @@ const supabase = createClient(
 );
 
 interface BrowserSessionRequest {
-  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close';
+  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup';
   sessionId?: string;
   url?: string;
   campProviderId?: string;
@@ -71,6 +71,9 @@ serve(async (req) => {
         break;
       case 'close':
         result = await closeBrowserSession(browserbaseApiKey, requestData);
+        break;
+      case 'cleanup':
+        result = await cleanupAllSessions(browserbaseApiKey);
         break;
       default:
         throw new Error(`Unknown action: ${requestData.action}`);
@@ -764,4 +767,92 @@ function isBusinessHours(): boolean {
   
   // Monday-Friday, 9 AM - 5 PM Pacific
   return day >= 1 && day <= 5 && hour >= 9 && hour < 17;
+}
+
+/**
+ * Cleanup all existing browser sessions - standalone cleanup action
+ */
+async function cleanupAllSessions(apiKey: string): Promise<any> {
+  console.log('🧹 CLEANUP: Starting comprehensive session cleanup...');
+  
+  try {
+    // List all existing sessions
+    const listResponse = await fetch('https://api.browserbase.com/v1/sessions', {
+      method: 'GET',
+      headers: {
+        'X-BB-API-Key': apiKey,
+      },
+    });
+    
+    if (!listResponse.ok) {
+      const errorText = await listResponse.text();
+      console.error('❌ Failed to list sessions for cleanup:', listResponse.status, errorText);
+      throw new Error(`Session listing failed: ${listResponse.status} ${errorText}`);
+    }
+
+    const existingSessions = await listResponse.json();
+    console.log('🔍 CLEANUP: Found', existingSessions.length, 'sessions to clean up');
+    
+    let cleanedCount = 0;
+    let failedCount = 0;
+    
+    // Clean up each session
+    for (const session of existingSessions) {
+      try {
+        console.log('🗑️ CLEANUP: Deleting session:', session.id);
+        const deleteResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
+          method: 'DELETE',
+          headers: { 'X-BB-API-Key': apiKey },
+        });
+        
+        if (deleteResponse.ok || deleteResponse.status === 404) {
+          cleanedCount++;
+          console.log('✅ CLEANUP: Successfully deleted session:', session.id);
+        } else {
+          failedCount++;
+          console.warn('⚠️ CLEANUP: Failed to delete session:', session.id, deleteResponse.status);
+        }
+        
+        // Wait between deletions to avoid overwhelming the API
+        if (existingSessions.length > 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      } catch (deleteError) {
+        failedCount++;
+        console.error('❌ CLEANUP: Error deleting session:', session.id, deleteError.message);
+      }
+    }
+    
+    // Final wait for cleanup to propagate
+    if (existingSessions.length > 0) {
+      console.log('⏳ CLEANUP: Waiting for cleanup to propagate...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
+    // Also cleanup database records of old sessions
+    try {
+      await supabase.from('browser_sessions')
+        .update({ status: 'cleaned' })
+        .neq('status', 'closed');
+      console.log('✅ CLEANUP: Database session records updated');
+    } catch (dbError) {
+      console.warn('⚠️ CLEANUP: Failed to update database records:', dbError.message);
+    }
+
+    const result = {
+      success: true,
+      totalFound: existingSessions.length,
+      cleaned: cleanedCount,
+      failed: failedCount,
+      timestamp: new Date().toISOString(),
+      message: `Cleanup completed: ${cleanedCount} cleaned, ${failedCount} failed`
+    };
+    
+    console.log('✅ CLEANUP: Session cleanup completed:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ CLEANUP: Comprehensive cleanup failed:', error);
+    throw new Error(`Session cleanup failed: ${error.message}`);
+  }
 }
