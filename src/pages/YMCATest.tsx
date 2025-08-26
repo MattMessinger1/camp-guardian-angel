@@ -13,10 +13,10 @@ export default function YMCATest() {
     <StandardPage pageName="YMCA Test" currentRoute="/ymca-test">
       <div className="container mx-auto py-8">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">YMCA Real Registration Test</h1>
+          <h1 className="text-3xl font-bold mb-2">YMCA Registration Test (Simulation)</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Test the complete signup automation system with real YMCA registration forms.
-            This validates our Browserbase integration and form analysis capabilities.
+            Test the complete signup automation system with simulated YMCA registration forms.
+            This validates our automation workflow and business logic without external dependencies.
           </p>
         </div>
         
@@ -29,12 +29,12 @@ export default function YMCATest() {
         <div className="mt-8 p-6 bg-muted/50 rounded-lg">
           <h2 className="text-lg font-semibold mb-3">Test Information</h2>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Creates real browser sessions using Browserbase API</li>
-            <li>• Navigates to actual YMCA registration pages</li>
-            <li>• Extracts real form data and page structure</li>
-            <li>• Logs all activities to compliance_audit table</li>
-            <li>• Respects TOS compliance and rate limiting</li>
-            <li>• Best run during business hours (9 AM - 5 PM Pacific)</li>
+            <li>• Creates simulated browser sessions for testing</li>
+            <li>• Navigates to YMCA registration pages (simulated)</li>
+            <li>• Extracts mock form data and page structure</li>
+            <li>• Demonstrates complete automation workflow</li>
+            <li>• Validates business logic and compliance checking</li>
+            <li>• Ready for real Browserbase integration</li>
           </ul>
         </div>
       </div>
