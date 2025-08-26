@@ -64,41 +64,49 @@ export function SSLTestRunner() {
             
             {results.success ? (
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span>Session Creation:</span>
-                  <Badge variant={results.tests.sessionCreation.ok ? "default" : "destructive"}>
-                    {results.tests.sessionCreation.status}
-                  </Badge>
-                </div>
+                {results.tests?.sessionCreation && (
+                  <div className="flex items-center gap-2">
+                    <span>Session Creation:</span>
+                    <Badge variant={results.tests.sessionCreation.ok ? "default" : "destructive"}>
+                      {results.tests.sessionCreation.status}
+                    </Badge>
+                  </div>
+                )}
                 
-                <div className="flex items-center gap-2">
-                  <span>Session Status:</span>
-                  <Badge variant={results.tests.sessionStatus.ok ? "default" : "destructive"}>
-                    {results.tests.sessionStatus.status}
-                  </Badge>
-                </div>
+                {results.tests?.sessionStatus && (
+                  <div className="flex items-center gap-2">
+                    <span>Session Status:</span>
+                    <Badge variant={results.tests.sessionStatus.ok ? "default" : "destructive"}>
+                      {results.tests.sessionStatus.status}
+                    </Badge>
+                  </div>
+                )}
                 
-                <div className="flex items-center gap-2">
-                  <span>Live URL Check:</span>
-                  <Badge variant={results.tests.liveUrl.ok ? "default" : "secondary"}>
-                    {results.tests.liveUrl.status}
-                  </Badge>
-                </div>
+                {results.tests?.liveUrl && (
+                  <div className="flex items-center gap-2">
+                    <span>Live URL Check:</span>
+                    <Badge variant={results.tests.liveUrl.ok ? "default" : "secondary"}>
+                      {results.tests.liveUrl.status}
+                    </Badge>
+                  </div>
+                )}
                 
-                <div className="flex items-center gap-2">
-                  <span>Session Close:</span>
-                  <Badge variant={results.tests.sessionClose.ok ? "default" : "destructive"}>
-                    {results.tests.sessionClose.status}
-                  </Badge>
-                </div>
+                {results.tests?.sessionClose && (
+                  <div className="flex items-center gap-2">
+                    <span>Session Close:</span>
+                    <Badge variant={results.tests.sessionClose.ok ? "default" : "destructive"}>
+                      {results.tests.sessionClose.status}
+                    </Badge>
+                  </div>
+                )}
 
-                {results.tests.sessionStatus.response && (
+                {results.tests?.sessionStatus?.response && (
                   <div className="p-2 bg-muted rounded text-xs">
                     <strong>Session Status:</strong> {results.tests.sessionStatus.response}
                   </div>
                 )}
                 
-                {results.tests.liveUrl.response && (
+                {results.tests?.liveUrl?.response && (
                   <div className="p-2 bg-muted rounded text-xs">
                     <strong>Live URL:</strong> {results.tests.liveUrl.response}
                   </div>
