@@ -248,19 +248,26 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
     };
 
     // Store session in database with real session data
-    await supabase.from('browser_sessions').insert({
+    const { error: insertError } = await supabase.from('browser_sessions').insert({
       session_id: browserSession.id,
       browser_id: browserSession.browserId,
       status: browserSession.status,
-      camp_provider_id: browserSession.campProviderId,
-      parent_id: browserSession.parentId,
+      camp_provider_id: null, // Test data - not a real UUID
+      parent_id: null, // Test data - not a real UUID
       compliance_status: browserSession.complianceStatus,
       metadata: { 
         realSession: sessionData,
         browserbaseUrl: sessionData.connectUrl,
-        testType: 'YMCA_REAL_TEST'
+        testType: 'YMCA_REAL_TEST',
+        testCampProviderId: request.campProviderId,
+        testParentId: request.parentId
       }
     });
+
+    if (insertError) {
+      console.error('❌ Database insert failed:', insertError);
+      throw new Error(`Failed to store session: ${insertError.message}`);
+    }
 
     await logYMCATestEvent('browser_session_created', {
       sessionId: browserSession.id,
