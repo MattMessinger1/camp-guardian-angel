@@ -79,12 +79,33 @@ serve(async (req: Request) => {
 
     // For test mode, create a temporary session first if it doesn't exist
     if (test_mode) {
+      console.log('[HANDLE-CAPTCHA] Test mode: Creating temporary session with ID:', session_id);
+      
+      // First create a test activity if it doesn't exist
+      const testActivityId = crypto.randomUUID();
+      const { error: activityError } = await supabase
+        .from('activities')
+        .upsert({
+          id: testActivityId,
+          name: 'Test Activity',
+          city: 'Test City',
+          state: 'TX'
+        }, { 
+          onConflict: 'id',
+          ignoreDuplicates: true 
+        });
+      
+      if (activityError) {
+        console.log('[HANDLE-CAPTCHA] Could not create test activity:', activityError);
+      }
+      
+      // Then create the test session
       const { error: sessionError } = await supabase
         .from('sessions')
         .upsert({
           id: session_id,
-          activity_id: 'test-activity-id',
-          title: 'Test Session',
+          activity_id: testActivityId,
+          title: 'Test Session for CAPTCHA',
           created_at: new Date().toISOString()
         }, { 
           onConflict: 'id',
@@ -92,7 +113,16 @@ serve(async (req: Request) => {
         });
       
       if (sessionError) {
-        console.log('[HANDLE-CAPTCHA] Note: Could not create test session, proceeding anyway:', sessionError);
+        console.error('[HANDLE-CAPTCHA] Failed to create test session:', sessionError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create test session', details: sessionError }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      } else {
+        console.log('[HANDLE-CAPTCHA] Test session created successfully');
       }
     }
 

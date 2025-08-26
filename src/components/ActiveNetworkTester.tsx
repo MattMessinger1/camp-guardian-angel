@@ -151,6 +151,7 @@ export function ActiveNetworkTester() {
           console.log('Session ID type:', typeof session.sessionId);
           console.log('User ID:', userSession.user.id);
           console.log('Provider:', session.provider);
+          console.log('Current URL:', window.location.href);
           
           // Simulate CAPTCHA detection by creating a captcha event
           const { data, error } = await supabase.functions.invoke('handle-captcha', {
