@@ -39,11 +39,11 @@ serve(async (req) => {
   }
 
   try {
-    const browserbaseApiKey = Deno.env.get('BROWSERBASE_API_KEY');
+    const browserbaseApiKey = Deno.env.get('BROWSERBASE_TOKEN');
     if (!browserbaseApiKey) {
-      console.error('BROWSERBASE_API_KEY not found in environment variables');
+      console.error('BROWSERBASE_TOKEN not found in environment variables');
       console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(key => key.includes('BROWSER')));
-      throw new Error('BROWSERBASE_API_KEY not configured');
+      throw new Error('BROWSERBASE_TOKEN not configured');
     }
     console.log('API key found, length:', browserbaseApiKey.length);
 
@@ -123,9 +123,9 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
     console.log('🔑 API Key length:', apiKey.length);
     console.log('🔑 API Key prefix:', apiKey.substring(0, 10) + '...');
     
-    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
     if (!browserbaseProjectId) {
-      throw new Error('BROWSERBASE_PROJECT_ID not configured');
+      throw new Error('BROWSERBASE_PROJECT not configured');
     }
     console.log('🆔 Project ID:', browserbaseProjectId);
 
@@ -141,10 +141,10 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
     
     console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch('https://www.browserbase.com/v1/sessions', {
+    const response = await fetch('https://api.browserbase.com/v1/sessions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'X-BB-API-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
@@ -167,7 +167,7 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
         response: responseText.substring(0, 1000),
         apiKeyLength: apiKey.length,
         projectId: browserbaseProjectId,
-        url: 'https://www.browserbase.com/v1/sessions'
+        url: 'https://api.browserbase.com/v1/sessions'
       });
       
       throw new Error(`Browserbase API returned ${response.status} ${response.statusText}: ${responseText.substring(0, 200)}`);
@@ -261,10 +261,10 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
 
   try {
     // Real Browserbase navigation
-    const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/actions`, {
+    const response = await fetch(`https://api.browserbase.com/v1/sessions/${request.sessionId}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'X-BB-API-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -345,10 +345,10 @@ async function interactWithPage(apiKey: string, request: BrowserSessionRequest):
     const interactionScript = generateInteractionScript(request.registrationData);
     
     // Real Browserbase form interaction
-    const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/actions`, {
-      method: 'POST',
+    const response = await fetch(`https://api.browserbase.com/v1/sessions/${request.sessionId}`, {
+      method: 'POST', 
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'X-BB-API-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -409,10 +409,10 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
 
   try {
     // Real page data extraction using Browserbase
-    const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}/actions`, {
+    const response = await fetch(`https://api.browserbase.com/v1/sessions/${request.sessionId}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'X-BB-API-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -525,10 +525,10 @@ async function closeBrowserSession(apiKey: string, request: BrowserSessionReques
 
   try {
     // Real Browserbase session closure
-    const response = await fetch(`https://www.browserbase.com/v1/sessions/${request.sessionId}`, {
+    const response = await fetch(`https://api.browserbase.com/v1/sessions/${request.sessionId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'X-BB-API-Key': apiKey,
         'Content-Type': 'application/json',
       }
     });
