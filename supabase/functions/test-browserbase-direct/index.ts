@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const browserbaseApiKey = Deno.env.get('BROWSERBASE_API_KEY');
+    const browserbaseApiKey = Deno.env.get('BROWSERBASE_KEY');
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
     
     if (!browserbaseApiKey || !browserbaseProjectId) {

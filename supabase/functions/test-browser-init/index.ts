@@ -14,7 +14,7 @@ serve(async (req) => {
     console.log('🧪 Testing browser automation initialization...');
     
     // Get credentials
-    const browserbaseApiKey = Deno.env.get('BROWSERBASE_API_KEY');
+    const browserbaseApiKey = Deno.env.get('BROWSERBASE_KEY');
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
     
     console.log('✅ Credentials check passed');
