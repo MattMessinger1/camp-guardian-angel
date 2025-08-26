@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,26 @@ export function CaptchaWorkflowTester() {
   const [isTriggering, setIsTriggering] = useState(false);
   const [captchaEvent, setCaptchaEvent] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
+  const [availableSessions, setAvailableSessions] = useState<any[]>([]);
+
+  // Load available sessions on mount
+  useEffect(() => {
+    const loadSessions = async () => {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('id, name, activity_id')
+        .limit(10);
+      
+      if (data && !error) {
+        setAvailableSessions(data);
+        if (data.length > 0 && !sessionId) {
+          setSessionId(data[0].id);
+        }
+      }
+    };
+    
+    loadSessions();
+  }, []);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -25,6 +45,12 @@ export function CaptchaWorkflowTester() {
   };
 
   const simulateCaptchaDetection = async () => {
+    if (!sessionId) {
+      addLog('❌ Please select a session first');
+      toast.error('Please select a session to test with');
+      return;
+    }
+    
     setIsTriggering(true);
     try {
       addLog('🤖 Simulating CAPTCHA detection during registration...');
@@ -35,14 +61,14 @@ export function CaptchaWorkflowTester() {
         return;
       }
 
-      addLog(`🎯 Testing session: ${sessionId || 'auto-generated'}`);
+      addLog(`🎯 Testing session: ${sessionId}`);
       addLog(`🏭 Provider: ${provider}`);
 
       const { data, error } = await supabase.functions.invoke('handle-captcha', {
         body: {
           user_id: userSession.user.id,
           registration_id: registrationId || null,
-          session_id: sessionId || crypto.randomUUID(),
+          session_id: sessionId,
           provider: provider,
           challenge_url: `https://${provider}/captcha-challenge`,
           captcha_type: 'recaptcha_v2'
@@ -158,13 +184,23 @@ export function CaptchaWorkflowTester() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="sessionId">Session ID (Optional)</Label>
-              <Input
+              <Label htmlFor="sessionId">Test Session</Label>
+              <select 
                 id="sessionId"
-                value={sessionId}
+                value={sessionId} 
                 onChange={(e) => setSessionId(e.target.value)}
-                placeholder="Leave blank for auto-generated"
-              />
+                className="w-full p-2 border rounded-md bg-background"
+              >
+                <option value="">Select a session...</option>
+                {availableSessions.map(session => (
+                  <option key={session.id} value={session.id}>
+                    {session.name || `Session ${session.id.slice(0, 8)}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Select from existing sessions to test with
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="provider">Provider Domain</Label>
