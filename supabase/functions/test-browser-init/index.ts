@@ -29,6 +29,7 @@ serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${workingKey}`,
         'Content-Type': 'application/json',
+        'X-BB-Api-Key': workingKey, // Some APIs need this format
       },
       body: JSON.stringify({
         projectId: browserbaseProjectId,
@@ -36,14 +37,24 @@ serve(async (req) => {
     });
 
     console.log('📡 Session creation response status:', createSessionResponse.status);
+    console.log('📡 Response headers:', Object.fromEntries(createSessionResponse.headers.entries()));
     
+    const responseText = await createSessionResponse.text();
+    console.log('📡 Response body:', responseText);
+
     if (!createSessionResponse.ok) {
-      const errorText = await createSessionResponse.text();
-      console.error('❌ Session creation failed:', errorText);
-      throw new Error(`Failed to create session: ${errorText}`);
+      console.error('❌ Session creation failed:', responseText);
+      throw new Error(`Failed to create session: ${responseText}`);
     }
 
-    const sessionData = await createSessionResponse.json();
+    // Try to parse as JSON
+    let sessionData;
+    try {
+      sessionData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ Failed to parse response as JSON');
+      throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
+    }
     console.log('✅ Session created successfully:', sessionData.id);
     
     return new Response(JSON.stringify({
