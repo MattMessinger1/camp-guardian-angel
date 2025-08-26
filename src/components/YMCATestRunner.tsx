@@ -27,7 +27,7 @@ export function YMCATestRunner({ onTestComplete }: YMCATestRunnerProps) {
 
   const runYMCATest = async () => {
     try {
-      addToLog('🎯 Starting YMCA Registration Test (SIMULATION MODE)');
+      addToLog('🎯 Starting YMCA Real Registration Test');
       addToLog(`Testing URL: ${ymcaUrl}`);
       addToLog(`Parent ID: ${parentId}`);
       
@@ -44,74 +44,49 @@ export function YMCATestRunner({ onTestComplete }: YMCATestRunnerProps) {
         addToLog('⚠️ Running test outside business hours - for educational purposes only');
       }
 
-      // SIMULATION MODE - No external dependencies
-      addToLog('📡 Creating simulated browser session... (SIMULATION MODE)');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Initialize browser session with real Browserbase
+      addToLog('📡 Creating real Browserbase session...');
+      const result = await initializeSession(ymcaUrl, 'ymca-test-provider');
       
-      const mockSessionId = `sim-${Date.now()}`;
-      addToLog(`✅ Simulated session created: ${mockSessionId}`);
+      addToLog(`✅ Browser session created: ${result.sessionId}`);
+      addToLog(`🌐 Session URL: ${result.pageData?.url || 'Unknown'}`);
       
-      addToLog('🌐 Simulating navigation to YMCA website...');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock realistic page data extraction
-      const mockPageData = {
-        url: ymcaUrl,
-        title: 'YMCA West Central Florida - Programs & Camps',
-        timestamp: new Date().toISOString(),
-        forms: [
-          {
-            id: 'registration-form',
-            fields: ['firstName', 'lastName', 'email', 'phone', 'childName', 'childAge']
-          },
-          {
-            id: 'contact-form', 
-            fields: ['name', 'email', 'message']
-          }
-        ],
-        campPrograms: [
-          { name: 'Summer Adventure Camp', ages: '6-12', weeks: 8 },
-          { name: 'Sports & Recreation', ages: '8-14', weeks: 6 }
-        ],
-        registrationStatus: 'open',
-        nextSession: 'July 15, 2024'
-      };
-      
-      addToLog(`✅ Simulated session created: ${mockSessionId}`);
-      addToLog(`🌐 Session URL: ${mockPageData.url}`);
-      addToLog(`📄 Page Title: ${mockPageData.title}`);
-      addToLog(`📝 Forms Found: ${mockPageData.forms.length}`);
-      
-      if (mockPageData.forms.length > 0) {
-        mockPageData.forms.forEach((form: any, index: number) => {
-          addToLog(`   Form ${index + 1}: ${form.fields.length} fields`);
-        });
+      if (result.pageData) {
+        addToLog(`📄 Page Title: ${result.pageData.title}`);
+        addToLog(`📝 Forms Found: ${result.pageData.forms?.length || 0}`);
+        
+        if (result.pageData.forms?.length > 0) {
+          result.pageData.forms.forEach((form: any, index: number) => {
+            addToLog(`   Form ${index + 1}: ${form.fields?.length || 0} fields`);
+          });
+        }
       }
 
-      addToLog('🎯 YMCA Simulation Test completed successfully!');
-      addToLog('💡 This demonstrates your workflow - ready for real Browserbase integration');
-      addToLog('📊 All business logic validated in simulation mode');
+      addToLog('🎯 YMCA Real Test completed successfully!');
+      addToLog('📊 Check Supabase compliance_audit table for detailed logs');
       
-      // Set the simulated data so it can be displayed
-      setSimulatedData(mockPageData);
+      // Set the real data so it can be displayed
+      setSimulatedData(result.pageData);
       
-      onTestComplete?.({
-        success: true,
-        sessionId: mockSessionId,
-        url: ymcaUrl,
-        pageData: mockPageData,
-        mode: 'simulation'
-      });
+      onTestComplete?.(result);
 
     } catch (error: any) {
       console.error('YMCA Test failed:', error);
       addToLog(`❌ Test failed: ${error.message}`);
       addToLog('📊 Error logged to compliance_audit table');
     } finally {
-      // Simulate cleanup
-      addToLog('🧹 Post-test cleanup: Simulated session cleanup...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      addToLog('✅ Simulation cleanup completed successfully');
+      // ALWAYS cleanup after test regardless of success or failure
+      addToLog('🧹 Post-test cleanup: Cleaning up browser sessions...');
+      try {
+        // Close the specific session if we have one
+        if (state.sessionId) {
+          await closeSession(state.sessionId);
+          addToLog('✅ Session closed successfully');
+        }
+      } catch (cleanupError: any) {
+        addToLog(`⚠️ Cleanup failed: ${cleanupError.message}`);
+        console.warn('Post-test cleanup failed:', cleanupError);
+      }
     }
   };
 
@@ -146,23 +121,23 @@ export function YMCATestRunner({ onTestComplete }: YMCATestRunnerProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            🎯 YMCA Registration Test
+            🎯 YMCA Real Registration Test
             <Badge variant="secondary">
-              Simulation Mode
+              Production Ready
             </Badge>
           </CardTitle>
           <CardDescription>
-            Test browser automation workflow with simulated YMCA registration.
-            This demonstrates the complete flow without external dependencies.
+            Test real browser automation with YMCA registration during business hours.
+            This performs actual web scraping with full audit logging.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Simulation Mode Active</AlertTitle>
+            <AlertTitle>Real Automation Test</AlertTitle>
             <AlertDescription>
-              This test runs in simulation mode to demonstrate the complete workflow 
-              without external dependencies. All business logic is validated and working.
+              This test creates actual browser sessions and navigates to real YMCA websites.
+              All activities are logged for compliance auditing. Uses Eastern Time for Florida YMCA.
             </AlertDescription>
           </Alert>
 
@@ -272,9 +247,9 @@ export function YMCATestRunner({ onTestComplete }: YMCATestRunnerProps) {
       {simulatedData && (
         <Card>
           <CardHeader>
-            <CardTitle>Simulated Page Data</CardTitle>
+            <CardTitle>Extracted Page Data</CardTitle>
             <CardDescription>
-              Mock data extracted from YMCA registration page (simulation)
+              Real data extracted from YMCA registration page
             </CardDescription>
           </CardHeader>
           <CardContent>
