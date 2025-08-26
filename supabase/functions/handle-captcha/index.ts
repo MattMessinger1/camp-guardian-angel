@@ -154,6 +154,26 @@ serve(async (req: Request) => {
       
       if (smsError || !smsResult?.success) {
         console.error('[HANDLE-CAPTCHA] Failed to send SMS:', smsError || smsResult);
+        
+        // In development/testing, log the SMS content instead of sending
+        console.log(`[HANDLE-CAPTCHA] MOCK SMS TO ${userProfile.phone_e164}:`);
+        console.log(`CAPTCHA needed for ${sessionTitle}. Click: ${magicUrl}`);
+        
+        // Mark as SMS sent for testing purposes
+        await supabase
+          .from('captcha_events')
+          .update({ last_sms_sent_at: new Date().toISOString() })
+          .eq('id', captchaEvent.id);
+        
+        notificationSent = true;
+        notificationMethod = 'sms';
+        notificationDetails = {
+          phone_masked: maskPhone(userProfile.phone_e164),
+          expires_minutes: 10,
+          mock_sms: true,
+          sms_content: `CAPTCHA needed for ${sessionTitle}. Click: ${magicUrl}`
+        };
+        console.log(`[HANDLE-CAPTCHA] Mock SMS logged for testing`);
       } else {
         // Update captcha event with SMS sent timestamp
         await supabase
