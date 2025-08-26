@@ -308,15 +308,17 @@ async function navigateToUrl(apiKey: string, request: BrowserSessionRequest): Pr
       throw new Error('BROWSERBASE_PROJECT not configured for navigation');
     }
 
-    // Real Browserbase navigation - use PUT method with just URL
+    // Real Browserbase navigation - use POST with evaluate action to navigate
     const response = await fetch(`https://api.browserbase.com/v1/sessions/${request.sessionId}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'X-BB-API-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        url: request.url
+        projectId: browserbaseProjectId,
+        action: 'evaluate',
+        script: `window.location.href = '${request.url}'; return { url: '${request.url}', title: document.title };`
       }),
     });
 
