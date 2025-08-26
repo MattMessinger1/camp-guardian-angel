@@ -13,17 +13,21 @@ serve(async (req) => {
   try {
     console.log('🧪 Testing browser automation initialization...');
     
-    // Get credentials
+    // Try both secret names - use the working one  
     const browserbaseApiKey = Deno.env.get('BROWSERBASE_KEY');
+    const browserbaseToken = Deno.env.get('BROWSERBASE_TOKEN');
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
     
+    const workingKey = browserbaseToken || browserbaseApiKey; // Prioritize TOKEN since KEY isn't saving
+    
+    console.log('Using key type:', browserbaseToken ? 'BROWSERBASE_TOKEN' : 'BROWSERBASE_KEY');
     console.log('✅ Credentials check passed');
     
     // Test basic Browserbase API call
     const createSessionResponse = await fetch('https://www.browserbase.com/v1/sessions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${browserbaseApiKey}`,
+        'Authorization': `Bearer ${workingKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

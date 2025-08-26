@@ -11,19 +11,19 @@ serve(async (req) => {
   }
 
   try {
-    // Try both secret names
+    // Try both secret names - use the working one
     const browserbaseApiKey = Deno.env.get('BROWSERBASE_KEY');
     const browserbaseToken = Deno.env.get('BROWSERBASE_TOKEN');
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
     
-    const workingKey = browserbaseApiKey || browserbaseToken;
+    const workingKey = browserbaseToken || browserbaseApiKey; // Prioritize TOKEN since KEY isn't saving
     
     if (!workingKey || !browserbaseProjectId) {
       throw new Error('Missing Browserbase credentials');
     }
 
     console.log('Testing Browserbase API...');
-    console.log('Using key type:', browserbaseApiKey ? 'BROWSERBASE_KEY' : 'BROWSERBASE_TOKEN');
+    console.log('Using key type:', browserbaseToken ? 'BROWSERBASE_TOKEN' : 'BROWSERBASE_KEY');
     console.log('API key length:', workingKey.length);
     console.log('Project ID:', browserbaseProjectId);
 
