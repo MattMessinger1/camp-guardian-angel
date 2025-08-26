@@ -21,10 +21,15 @@ serve(async (req) => {
     const workingKey = browserbaseToken || browserbaseApiKey; // Prioritize TOKEN since KEY isn't saving
     
     console.log('Using key type:', browserbaseToken ? 'BROWSERBASE_TOKEN' : 'BROWSERBASE_KEY');
-    console.log('🔍 API Key first 10 chars:', workingKey?.substring(0, 10));
-    console.log('🔍 API Key last 4 chars:', workingKey?.substring(workingKey.length - 4));
-    console.log('🔍 API Key total length:', workingKey?.length);
-    console.log('🔍 Project ID:', browserbaseProjectId);
+    console.log('🔍 API Key first 10 chars:', workingKey ? workingKey.substring(0, 10) : 'MISSING');
+    console.log('🔍 API Key last 4 chars:', workingKey ? workingKey.substring(workingKey.length - 4) : 'MISSING');
+    console.log('🔍 API Key total length:', workingKey ? workingKey.length : 0);
+    console.log('🔍 Project ID:', browserbaseProjectId || 'MISSING');
+    
+    if (!workingKey || !browserbaseProjectId) {
+      throw new Error(`Missing credentials: API Key=${!!workingKey}, ProjectId=${!!browserbaseProjectId}`);
+    }
+    
     console.log('✅ Credentials check passed');
     
     // Test basic Browserbase API call
@@ -45,9 +50,11 @@ serve(async (req) => {
     const responseText = await createSessionResponse.text();
     console.log('📡 Full response body:', responseText);
     console.log('📡 Request details - URL:', 'https://api.browserbase.com/v1/sessions');
-    console.log('📡 Request details - Headers:', { 'Content-Type': 'application/json', 'X-BB-API-Key': `${workingKey?.substring(0,10)}...${workingKey?.substring(workingKey.length-4)}` });
-    console.log('📡 Request details - Body:', JSON.stringify({ projectId: browserbaseProjectId }));
-    console.log('📡 Response body:', responseText);
+    console.log('📡 Request details - Headers sent:', { 
+      'Content-Type': 'application/json', 
+      'X-BB-API-Key': workingKey ? `${workingKey.substring(0,10)}...${workingKey.substring(workingKey.length-4)}` : 'MISSING'
+    });
+    console.log('📡 Request details - Body sent:', JSON.stringify({ projectId: browserbaseProjectId }));
 
     if (!createSessionResponse.ok) {
       console.error('❌ Session creation failed:', responseText);
