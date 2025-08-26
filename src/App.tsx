@@ -182,11 +182,7 @@ export default function App() {
                 <CaptchaWorkflowTest />
               </ProtectedRoute>
             } />
-            <Route path="/activenetwork-test" element={
-              <ProtectedRoute>
-                <ActiveNetworkTest />
-              </ProtectedRoute>
-            } />
+            <Route path="/activenetwork-test" element={<ActiveNetworkTest />} />
             <Route path="/captcha-optimization" element={
               <ProtectedRoute>
                 <div className="container mx-auto p-6"><CaptchaOptimizationPanel /></div>
