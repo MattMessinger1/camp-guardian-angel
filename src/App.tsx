@@ -182,7 +182,15 @@ export default function App() {
                 <CaptchaWorkflowTest />
               </ProtectedRoute>
             } />
-            <Route path="/activenetwork-test" element={<ActiveNetworkTest />} />
+            <Route path="/activenetwork-test" element={
+              <div style={{padding: '20px', border: '2px solid red', margin: '20px'}}>
+                <h1 style={{color: 'green', fontSize: '24px'}}>🎉 SUCCESS! You are on /activenetwork-test</h1>
+                <p>Current URL: {window.location.href}</p>
+                <p>Current pathname: {window.location.pathname}</p>
+                <p>Timestamp: {new Date().toISOString()}</p>
+                <ActiveNetworkTest />
+              </div>
+            } />
             <Route path="/captcha-optimization" element={
               <ProtectedRoute>
                 <div className="container mx-auto p-6"><CaptchaOptimizationPanel /></div>
@@ -190,7 +198,14 @@ export default function App() {
             } />
             <Route path="/tos-compliance" element={<TOSCompliance />} />
             <Route path="/observability" element={<ObservabilityPage />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={
+              <div>
+                <h1>404 - Route Debug</h1>
+                <p>Current pathname: {window.location.pathname}</p>
+                <p>Attempted route: {window.location.href}</p>
+                <NotFound />
+              </div>
+            } />
           </Routes>
         </ErrorBoundary>
       </BrowserRouter>
