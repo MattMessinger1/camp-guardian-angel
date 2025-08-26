@@ -60,7 +60,10 @@ serve(async (req: Request) => {
       test_mode 
     } = await req.json();
     
+    console.log(`[HANDLE-CAPTCHA] Raw request data:`, { user_id, session_id, provider, test_mode });
+    
     if (!user_id || !session_id || !provider) {
+      console.error(`[HANDLE-CAPTCHA] Missing required fields:`, { user_id: !!user_id, session_id: !!session_id, provider: !!provider });
       return new Response(
         JSON.stringify({ error: 'Missing required fields: user_id, session_id, provider' }),
         {
@@ -70,74 +73,58 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`[HANDLE-CAPTCHA] Processing captcha event for user ${user_id}, session ${session_id}, provider ${provider}`);
+    console.log(`[HANDLE-CAPTCHA] Processing captcha event for user ${user_id}, session ${session_id}, provider ${provider}, test_mode: ${test_mode}`);
+
+    // COMPLETE TEST MODE BYPASS - Return immediately for test mode
+    if (test_mode) {
+      console.log(`[HANDLE-CAPTCHA] TEST MODE ACTIVATED - Bypassing all database operations`);
+      
+      const resumeToken = generateSecureToken();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+      const magicUrl = `${appBaseUrl}/captcha-assist?token=${resumeToken}`;
+      
+      const mockCaptchaEvent = {
+        id: crypto.randomUUID(),
+        user_id,
+        session_id,
+        provider,
+        status: CAPTCHA_STATES.PENDING,
+        resume_token: resumeToken,
+        magic_url: magicUrl,
+        expires_at: expiresAt.toISOString(),
+        test_mode: true
+      };
+      
+      console.log(`[HANDLE-CAPTCHA] TEST MODE - Created mock captcha event:`, mockCaptchaEvent.id);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          captcha_event_id: mockCaptchaEvent.id,
+          resume_token: resumeToken,
+          magic_url: magicUrl,
+          expires_at: expiresAt.toISOString(),
+          notification_sent: false,
+          notification_method: 'test_mode',
+          test_mode: true,
+          message: 'Test mode - no actual captcha event created'
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     // Generate secure resume token
     const resumeToken = generateSecureToken();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
     const magicUrl = `${appBaseUrl}/captcha-assist?token=${resumeToken}`;
 
-    // For test mode, create a temporary session first if it doesn't exist
-    if (test_mode) {
-      console.log('[HANDLE-CAPTCHA] Test mode: Creating temporary session with ID:', session_id);
-      
-      // First create a test activity if it doesn't exist
-      const testActivityId = crypto.randomUUID();
-      
-      try {
-        const { error: activityError } = await supabase
-          .from('activities')
-          .upsert({
-            id: testActivityId,
-            name: 'Test Activity for CAPTCHA',
-            city: 'Test City',
-            state: 'TX'
-          }, { 
-            onConflict: 'id',
-            ignoreDuplicates: true 
-          });
-        
-        if (activityError) {
-          console.error('[HANDLE-CAPTCHA] Activity creation failed:', activityError);
-        } else {
-          console.log('[HANDLE-CAPTCHA] Test activity created/exists:', testActivityId);
-        }
-        
-        // Then create the test session
-        const { error: sessionError } = await supabase
-          .from('sessions')
-          .upsert({
-            id: session_id,
-            activity_id: testActivityId,
-            title: 'Test Session for CAPTCHA',
-            created_at: new Date().toISOString()
-          }, { 
-            onConflict: 'id',
-            ignoreDuplicates: true 
-          });
-        
-        if (sessionError) {
-          console.error('[HANDLE-CAPTCHA] Session creation failed:', sessionError);
-          
-          // If session creation fails, continue anyway for test mode
-          console.log('[HANDLE-CAPTCHA] Continuing without session for test mode...');
-        } else {
-          console.log('[HANDLE-CAPTCHA] Test session created/exists successfully');
-        }
-      } catch (err) {
-        console.error('[HANDLE-CAPTCHA] Error in test setup:', err);
-        console.log('[HANDLE-CAPTCHA] Continuing with test anyway...');
-      }
-    }
-
-    // Create captcha event - handle test mode differently to avoid foreign key constraints
-    let captchaEvent;
-    let captchaError;
-    
-    if (test_mode) {
-      // In test mode, create a mock captcha event object without database insertion
-      captchaEvent = {
-        id: crypto.randomUUID(),
+    // Create captcha event (production mode only - test mode handled above)
+    const { data: captchaEvent, error: captchaError } = await supabase
+      .from('captcha_events')
+      .insert({
         user_id,
         registration_id: registration_id || null,
         session_id,
@@ -151,39 +138,11 @@ serve(async (req: Request) => {
         captcha_context: {
           captcha_type: captcha_type || 'recaptcha_v2',
           app_base_url: appBaseUrl,
-          test_mode: true
-        },
-        created_at: new Date().toISOString()
-      };
-      
-      console.log(`[HANDLE-CAPTCHA] Test mode: Created mock captcha event ${captchaEvent.id}`);
-    } else {
-      // In production mode, create actual captcha event with database insertion
-      const result = await supabase
-        .from('captcha_events')
-        .insert({
-          user_id,
-          registration_id: registration_id || null,
-          session_id,
-          provider,
-          detected_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
-          status: CAPTCHA_STATES.PENDING,
-          resume_token: resumeToken,
-          magic_url: magicUrl,
-          challenge_url: challenge_url || `https://${provider}/captcha-challenge`,
-          captcha_context: {
-            captcha_type: captcha_type || 'recaptcha_v2',
-            app_base_url: appBaseUrl,
-            test_mode: false
-          }
-        })
-        .select()
-        .single();
-
-      captchaEvent = result.data;
-      captchaError = result.error;
-    }
+          test_mode: false
+        }
+      })
+      .select()
+      .single();
 
     if (captchaError) {
       console.error('[HANDLE-CAPTCHA] Error creating captcha event:', captchaError);
