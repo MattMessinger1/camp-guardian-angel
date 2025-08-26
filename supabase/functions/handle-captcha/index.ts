@@ -130,10 +130,14 @@ serve(async (req: Request) => {
       }
     }
 
-    // Create captcha event
-    const { data: captchaEvent, error: captchaError } = await supabase
-      .from('captcha_events')
-      .insert({
+    // Create captcha event - handle test mode differently to avoid foreign key constraints
+    let captchaEvent;
+    let captchaError;
+    
+    if (test_mode) {
+      // In test mode, create a mock captcha event object without database insertion
+      captchaEvent = {
+        id: crypto.randomUUID(),
         user_id,
         registration_id: registration_id || null,
         session_id,
@@ -147,11 +151,39 @@ serve(async (req: Request) => {
         captcha_context: {
           captcha_type: captcha_type || 'recaptcha_v2',
           app_base_url: appBaseUrl,
-          test_mode: test_mode || false
-        }
-      })
-      .select()
-      .single();
+          test_mode: true
+        },
+        created_at: new Date().toISOString()
+      };
+      
+      console.log(`[HANDLE-CAPTCHA] Test mode: Created mock captcha event ${captchaEvent.id}`);
+    } else {
+      // In production mode, create actual captcha event with database insertion
+      const result = await supabase
+        .from('captcha_events')
+        .insert({
+          user_id,
+          registration_id: registration_id || null,
+          session_id,
+          provider,
+          detected_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          status: CAPTCHA_STATES.PENDING,
+          resume_token: resumeToken,
+          magic_url: magicUrl,
+          challenge_url: challenge_url || `https://${provider}/captcha-challenge`,
+          captcha_context: {
+            captcha_type: captcha_type || 'recaptcha_v2',
+            app_base_url: appBaseUrl,
+            test_mode: false
+          }
+        })
+        .select()
+        .single();
+
+      captchaEvent = result.data;
+      captchaError = result.error;
+    }
 
     if (captchaError) {
       console.error('[HANDLE-CAPTCHA] Error creating captcha event:', captchaError);
@@ -210,11 +242,13 @@ serve(async (req: Request) => {
       if (smsError || !smsResult?.success) {
         console.error('[HANDLE-CAPTCHA] Failed to send SMS:', smsError || smsResult);
       } else {
-        // Update captcha event with SMS sent timestamp
-        await supabase
-          .from('captcha_events')
-          .update({ last_sms_sent_at: new Date().toISOString() })
-          .eq('id', captchaEvent.id);
+        // Update captcha event with SMS sent timestamp (only in production mode)
+        if (!test_mode) {
+          await supabase
+            .from('captcha_events')
+            .update({ last_sms_sent_at: new Date().toISOString() })
+            .eq('id', captchaEvent.id);
+        }
         
         notificationSent = true;
         notificationMethod = 'sms';
