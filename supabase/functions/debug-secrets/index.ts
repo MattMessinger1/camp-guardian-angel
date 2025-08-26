@@ -11,28 +11,26 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔍 Simple secrets check...');
+    console.log('🔍 Checking both secrets...');
     
-    // Check both the original and new secret names
-    const apiKey = Deno.env.get('BROWSERBASE_API_KEY');
-    const apiKeyAlt = Deno.env.get('BROWSERBASE_KEY');
+    // Check both secrets
+    const apiKey = Deno.env.get('BROWSERBASE_KEY');
     const projectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
     
-    console.log('API Key (original) found:', !!apiKey);
-    console.log('API Key (original) length:', apiKey?.length || 0);
-    console.log('API Key (alt) found:', !!apiKeyAlt);
-    console.log('API Key (alt) length:', apiKeyAlt?.length || 0);
+    console.log('API Key found:', !!apiKey);
+    console.log('API Key length:', apiKey?.length || 0);
     console.log('Project ID found:', !!projectId);
+    console.log('Project ID length:', projectId?.length || 0);
     
     return new Response(JSON.stringify({
       success: true,
-      originalApiKeyExists: !!apiKey,
-      originalApiKeyLength: apiKey?.length || 0,
-      altApiKeyExists: !!apiKeyAlt,
-      altApiKeyLength: apiKeyAlt?.length || 0,
+      apiKeyExists: !!apiKey,
+      apiKeyLength: apiKey?.length || 0,
+      apiKeyValue: apiKey ? `${apiKey.substring(0, 8)}...` : null,
       projectIdExists: !!projectId,
       projectIdLength: projectId?.length || 0,
-      workingApiKey: apiKeyAlt || apiKey || null,
+      projectIdValue: projectId,
+      bothSecretsReady: !!(apiKey && projectId),
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
