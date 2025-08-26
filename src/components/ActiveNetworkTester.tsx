@@ -195,6 +195,92 @@ export function ActiveNetworkTester() {
           toast.info('📧 Email notification sent for human assistance');
           
           console.log('✅ CAPTCHA event created successfully:', data);
+          
+          // Create test reservation record for account history tracking (simplified approach)
+          console.log('📝 Creating test reservation record for account history...');
+          try {
+            // First check if user has a parent record, create if needed
+            const { data: parentData, error: parentError } = await supabase
+              .from('parents')
+              .select('id')
+              .eq('user_id', userSession.user.id)
+              .maybeSingle();
+
+            let parentId = parentData?.id;
+            
+            if (!parentId) {
+              // Create a test parent record
+              const { data: newParent, error: createParentError } = await supabase
+                .from('parents')
+                .insert({
+                  user_id: userSession.user.id,
+                  name: 'Test Parent',
+                  email: userSession.user.email
+                })
+                .select('id')
+                .single();
+                
+              if (createParentError) {
+                console.error('⚠️ Failed to create test parent:', createParentError);
+                throw createParentError;
+              }
+              parentId = newParent.id;
+            }
+
+            // Create a test child record with proper fingerprint
+            const childName = 'Test Child';
+            const childDob = '2015-01-01';
+            
+            const { data: childData, error: childError } = await supabase
+              .from('children')
+              .insert({
+                parent_id: parentId,
+                name: childName,
+                dob: childDob,
+                fingerprint: `test_${userSession.user.id}_${Date.now()}` // Unique test fingerprint
+              })
+              .select('id')
+              .single();
+              
+            if (childError) {
+              console.error('⚠️ Failed to create test child:', childError);
+              throw childError;
+            }
+
+            // Now create the reservation record
+            const { data: testReservation, error: reservationError } = await supabase
+              .from('reservations')
+              .insert({
+                session_id: session.sessionId,
+                parent_id: parentId,
+                child_id: childData.id,
+                status: 'needs_user_action', // Status indicating CAPTCHA detected
+                provider_platform: 'ActiveNetwork Test',
+                requires_captcha: true,
+                user_id: userSession.user.id,
+                provider_response: {
+                  test_signup_flow: true,
+                  provider: session.provider,
+                  session_name: session.name,
+                  captcha_detected: true,
+                  captcha_event_id: data.captcha_event_id,
+                  automation_stage: 'captcha_detected'
+                }
+              })
+              .select()
+              .single();
+
+            if (reservationError) {
+              console.error('⚠️ Failed to create test reservation:', reservationError);
+            } else {
+              console.log('✅ Test reservation created:', testReservation.id);
+              toast.success('📋 Test signup logged to account history! Check /account-history');
+            }
+          } catch (err) {
+            console.error('⚠️ Error creating test reservation:', err);
+            toast.info('💡 CAPTCHA test completed - check function logs for details');
+          }
+          
         } catch (error: any) {
           console.error('❌ CAPTCHA simulation failed:', error);
           toast.error('CAPTCHA simulation failed: ' + error.message);
