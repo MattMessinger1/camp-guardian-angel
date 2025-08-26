@@ -117,16 +117,59 @@ async function createBrowserSession(apiKey: string, request: BrowserSessionReque
     }
   }
 
+  const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
+  if (!browserbaseProjectId) {
+    throw new Error('BROWSERBASE_PROJECT not configured');
+  }
+
+  // FIRST: Clean up any existing sessions to avoid concurrent session limit
+  console.log('🧹 Checking for existing sessions to clean up...');
+  try {
+    const listResponse = await fetch('https://api.browserbase.com/v1/sessions', {
+      method: 'GET',
+      headers: {
+        'X-BB-API-Key': apiKey,
+      },
+    });
+    
+    if (listResponse.ok) {
+      const existingSessions = await listResponse.json();
+      console.log('🔍 Found', existingSessions.length, 'existing sessions');
+      
+      // Clean up any existing sessions
+      for (const session of existingSessions) {
+        console.log('🗑️ Cleaning up session:', session.id);
+        try {
+          const deleteResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
+            method: 'DELETE',
+            headers: { 'X-BB-API-Key': apiKey },
+          });
+          console.log('🗑️ Delete response:', deleteResponse.status);
+          
+          // Wait a moment between deletions
+          if (existingSessions.length > 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        } catch (deleteError) {
+          console.log('⚠️ Failed to delete session:', session.id, deleteError.message);
+        }
+      }
+      
+      // Wait for cleanup to complete
+      if (existingSessions.length > 0) {
+        console.log('⏳ Waiting for cleanup to complete...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  } catch (cleanupError) {
+    console.log('⚠️ Session cleanup failed, continuing:', cleanupError.message);
+  }
+
   try {
     // Real Browserbase API call with enhanced debugging
     console.log('📡 Calling real Browserbase API to create session...');
     console.log('🔑 API Key length:', apiKey.length);
     console.log('🔑 API Key prefix:', apiKey.substring(0, 10) + '...');
-    
-    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
-    if (!browserbaseProjectId) {
-      throw new Error('BROWSERBASE_PROJECT not configured');
-    }
     console.log('🆔 Project ID:', browserbaseProjectId);
 
     const requestBody = {
