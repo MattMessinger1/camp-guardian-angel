@@ -24,12 +24,11 @@ serve(async (req) => {
     console.log('✅ Credentials check passed');
     
     // Test basic Browserbase API call
-    const createSessionResponse = await fetch('https://www.browserbase.com/v1/sessions', {
+    const createSessionResponse = await fetch('https://api.browserbase.com/v1/sessions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${workingKey}`,
         'Content-Type': 'application/json',
-        'X-BB-Api-Key': workingKey, // Some APIs need this format
+        'X-BB-API-Key': workingKey,
       },
       body: JSON.stringify({
         projectId: browserbaseProjectId,
