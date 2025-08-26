@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const browserbaseApiKey = Deno.env.get('BROWSERBASE_KEY');
-    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
     
     if (!browserbaseApiKey || !browserbaseProjectId) {
       throw new Error('Missing Browserbase credentials');

@@ -11,11 +11,11 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔍 Checking both secrets...');
+    console.log('🔍 Checking both working secrets...');
     
-    // Check both secrets
+    // Check the working secret names
     const apiKey = Deno.env.get('BROWSERBASE_KEY');
-    const projectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
+    const projectId = Deno.env.get('BROWSERBASE_PROJECT');
     
     console.log('API Key found:', !!apiKey);
     console.log('API Key length:', apiKey?.length || 0);
