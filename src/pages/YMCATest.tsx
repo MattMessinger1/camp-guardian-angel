@@ -1,5 +1,6 @@
 import React from 'react';
 import { YMCATestRunner } from '@/components/YMCATestRunner';
+import { SSLTestRunner } from '@/components/SSLTestRunner';
 import { StandardPage } from '@/components/StandardPage';
 
 export default function YMCATest() {
@@ -18,7 +19,10 @@ export default function YMCATest() {
           </p>
         </div>
         
-        <YMCATestRunner onTestComplete={handleTestComplete} />
+        <div className="grid gap-8">
+          <SSLTestRunner />
+          <YMCATestRunner onTestComplete={handleTestComplete} />
+        </div>
         
         <div className="mt-8 p-6 bg-muted/50 rounded-lg">
           <h2 className="text-lg font-semibold mb-3">Test Information</h2>
