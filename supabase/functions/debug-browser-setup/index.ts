@@ -16,14 +16,14 @@ serve(async (req) => {
     
     // Check environment variables
     const browserbaseApiKey = Deno.env.get('BROWSERBASE_KEY');
-    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
     
     // Debug: Log all environment variables that contain 'BROWSER'
     const allEnvVars = Deno.env.toObject();
     const allKeys = Object.keys(allEnvVars);
     console.log('DEBUG: All env var keys:', allKeys.slice(0, 10)); // First 10 keys
     console.log('DEBUG: Raw BROWSERBASE_KEY value:', JSON.stringify(browserbaseApiKey));
-    console.log('DEBUG: Raw BROWSERBASE_PROJECT_ID value:', JSON.stringify(browserbaseProjectId));
+    console.log('DEBUG: Raw BROWSERBASE_PROJECT value:', JSON.stringify(browserbaseProjectId));
     
     console.log('DEBUG: API key exists:', !!browserbaseApiKey);
     console.log('DEBUG: API key length:', browserbaseApiKey?.length || 0);
@@ -31,8 +31,7 @@ serve(async (req) => {
     console.log('DEBUG: Project ID value:', browserbaseProjectId);
     
     // List all environment variables that contain 'BROWSER'
-    const allEnvVars = Object.keys(Deno.env.toObject());
-    const browserVars = allEnvVars.filter(key => key.includes('BROWSER'));
+    const browserVars = allKeys.filter(key => key.includes('BROWSER'));
     console.log('DEBUG: Browser-related env vars:', browserVars);
     
     const result = {
