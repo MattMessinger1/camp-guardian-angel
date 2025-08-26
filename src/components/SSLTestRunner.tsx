@@ -72,9 +72,16 @@ export function SSLTestRunner() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <span>Navigation:</span>
-                  <Badge variant={results.tests.navigation.ok ? "default" : "destructive"}>
-                    {results.tests.navigation.status}
+                  <span>Session Status:</span>
+                  <Badge variant={results.tests.sessionStatus.ok ? "default" : "destructive"}>
+                    {results.tests.sessionStatus.status}
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span>Live URL Check:</span>
+                  <Badge variant={results.tests.liveUrl.ok ? "default" : "secondary"}>
+                    {results.tests.liveUrl.status}
                   </Badge>
                 </div>
                 
@@ -85,9 +92,15 @@ export function SSLTestRunner() {
                   </Badge>
                 </div>
 
-                {results.tests.navigation.response && (
+                {results.tests.sessionStatus.response && (
                   <div className="p-2 bg-muted rounded text-xs">
-                    <strong>Navigation Response:</strong> {results.tests.navigation.response}
+                    <strong>Session Status:</strong> {results.tests.sessionStatus.response}
+                  </div>
+                )}
+                
+                {results.tests.liveUrl.response && (
+                  <div className="p-2 bg-muted rounded text-xs">
+                    <strong>Live URL:</strong> {results.tests.liveUrl.response}
                   </div>
                 )}
               </div>

@@ -96,25 +96,42 @@ serve(async (req) => {
     const session = JSON.parse(sessionData);
     console.log('🗂️ Session ID:', session.id);
 
-    // Test 3: Navigation to YMCA website
-    console.log('📡 Test 3: Testing navigation...');
-    const navResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
-      method: 'PUT',
+    // Test 3: Check session status (this is a valid endpoint)
+    console.log('📡 Test 3: Checking session status...');
+    const statusResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
+      method: 'GET',
       headers: {
         'X-BB-API-Key': apiKey,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        url: 'https://www.ymcawestcentralflorida.com/programs/camps'
-      }),
     });
     
-    console.log('✅ Navigation status:', navResponse.status);
-    const navData = await navResponse.text();
-    console.log('📄 Navigation response:', navData.substring(0, 200));
+    console.log('✅ Session status check:', statusResponse.status);
+    const statusData = await statusResponse.text();
+    console.log('📄 Session status response:', statusData.substring(0, 200));
     
-    // Test 4: Close session
-    console.log('📡 Test 4: Closing session...');
+    // Test 4: Try to get the session's live URL (if it exists)
+    console.log('📡 Test 4: Attempting to get live session URL...');
+    let liveUrlResponse = { ok: false, status: 'skipped' };
+    let liveUrlData = 'Live URL test skipped - session may not be active';
+    
+    try {
+      // Try to get session details which might include live URL
+      if (statusResponse.ok) {
+        const sessionDetails = JSON.parse(statusData);
+        console.log('🔍 Session details:', JSON.stringify(sessionDetails, null, 2));
+        
+        if (sessionDetails.liveURL) {
+          console.log('🌐 Found live URL:', sessionDetails.liveURL);
+          liveUrlResponse = { ok: true, status: 200 };
+          liveUrlData = `Live URL found: ${sessionDetails.liveURL}`;
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ Could not parse session details:', e.message);
+    }
+    
+    // Test 5: Close session
+    console.log('📡 Test 5: Closing session...');
     const closeResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
       method: 'DELETE',
       headers: {
@@ -123,6 +140,8 @@ serve(async (req) => {
     });
     
     console.log('✅ Close status:', closeResponse.status);
+    const closeData = await closeResponse.text();
+    console.log('📄 Close response:', closeData.substring(0, 100));
     
     return new Response(JSON.stringify({
       success: true,
@@ -136,14 +155,20 @@ serve(async (req) => {
           status: createResponse.status,
           ok: createResponse.ok
         },
-        navigation: {
-          status: navResponse.status,
-          ok: navResponse.ok,
-          response: navData.substring(0, 100)
+        sessionStatus: {
+          status: statusResponse.status,
+          ok: statusResponse.ok,
+          response: statusData.substring(0, 100)
+        },
+        liveUrl: {
+          status: liveUrlResponse.status,
+          ok: liveUrlResponse.ok,
+          response: liveUrlData.substring(0, 100)
         },
         sessionClose: {
           status: closeResponse.status,
-          ok: closeResponse.ok
+          ok: closeResponse.ok,
+          response: closeData.substring(0, 100)
         }
       },
       timestamp: new Date().toISOString()
