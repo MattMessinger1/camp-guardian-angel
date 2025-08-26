@@ -172,9 +172,21 @@ export default function App() {
             <Route path="/transparency" element={<TransparencyPage />} />
             <Route path="/bot-info" element={<BotInfoPage />} />
             <Route path="/captcha-assist" element={<CaptchaAssist />} />
-        <Route path="/captcha-workflow-test" element={<CaptchaWorkflowTest />} />
-        <Route path="/activenetwork-test" element={<ActiveNetworkTest />} />
-        <Route path="/captcha-optimization" element={<div className="container mx-auto p-6"><CaptchaOptimizationPanel /></div>} />
+            <Route path="/captcha-workflow-test" element={
+              <ProtectedRoute>
+                <CaptchaWorkflowTest />
+              </ProtectedRoute>
+            } />
+            <Route path="/activenetwork-test" element={
+              <ProtectedRoute>
+                <ActiveNetworkTest />
+              </ProtectedRoute>
+            } />
+            <Route path="/captcha-optimization" element={
+              <ProtectedRoute>
+                <div className="container mx-auto p-6"><CaptchaOptimizationPanel /></div>
+              </ProtectedRoute>
+            } />
             <Route path="/tos-compliance" element={<TOSCompliance />} />
             <Route path="/observability" element={<ObservabilityPage />} />
             <Route path="*" element={<NotFound />} />

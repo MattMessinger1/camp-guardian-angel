@@ -1,6 +1,7 @@
-import { ActiveNetworkTester } from '../components/ActiveNetworkTester';
+import { ActiveNetworkTester } from '@/components/ActiveNetworkTester';
 
 export default function ActiveNetworkTest() {
+  console.log('ActiveNetworkTest component rendering');
   return (
     <div className="container mx-auto p-6">
       <div className="max-w-4xl mx-auto">
