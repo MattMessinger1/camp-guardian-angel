@@ -204,6 +204,47 @@ export function CaptchaWorkflowTester() {
     }
   };
 
+  const debugSmsTest = async () => {
+    try {
+      addLog('🐛 Running SMS debug test...');
+      
+      const { data: { session: userSession } } = await supabase.auth.getSession();
+      if (!userSession) {
+        toast.error('Please log in first');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('debug-sms-test', {
+        headers: {
+          Authorization: `Bearer ${userSession.access_token}`,
+        },
+      });
+
+      if (error) {
+        addLog(`❌ Debug test failed: ${error.message}`);
+        toast.error('Debug test failed');
+        return;
+      }
+
+      addLog('🐛 Debug Results:');
+      addLog(`   User ID: ${data.user_id}`);
+      addLog(`   Phone: ${data.profile?.phone_e164}`);
+      addLog(`   Verified: ${data.profile?.phone_verified}`);
+      
+      if (data.sms_error) {
+        addLog(`❌ SMS Error: ${JSON.stringify(data.sms_error)}`);
+      } else if (data.sms_result) {
+        addLog(`✅ SMS Success: ${JSON.stringify(data.sms_result)}`);
+        addLog('📱 Check your phone for test SMS!');
+      }
+
+      toast.success('Debug test completed - check console');
+    } catch (error: any) {
+      addLog(`❌ Debug error: ${error.message}`);
+      toast.error('Debug test failed');
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <Card>
@@ -258,10 +299,14 @@ export function CaptchaWorkflowTester() {
             </div>
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-            <p className="text-green-800 text-sm">
-              📱 SMS Testing Ready: +1-608-338-6377 verified
-            </p>
+          <div className="flex gap-2">
+            <Button 
+              onClick={debugSmsTest}
+              variant="outline"
+              className="mb-2"
+            >
+              🐛 Debug SMS Test
+            </Button>
           </div>
 
           <div className="flex gap-2">
