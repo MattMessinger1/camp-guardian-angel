@@ -13,61 +13,43 @@ serve(async (req) => {
   try {
     console.log('🧪 Testing browser automation initialization...');
     
-    // Get the working credentials
-    const browserbaseToken = Deno.env.get('BROWSERBASE_TOKEN');
-    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
+    const token = Deno.env.get('BROWSERBASE_TOKEN');
+    const projectId = Deno.env.get('BROWSERBASE_PROJECT');
     
-    const workingKey = browserbaseToken;
+    console.log('Token exists:', !!token);
+    console.log('Project exists:', !!projectId);
     
-    console.log('Using key type:', browserbaseToken ? 'BROWSERBASE_TOKEN' : 'BROWSERBASE_KEY');
-    console.log('🔍 API Key first 10 chars:', workingKey ? workingKey.substring(0, 10) : 'MISSING');
-    console.log('🔍 API Key last 4 chars:', workingKey ? workingKey.substring(workingKey.length - 4) : 'MISSING');
-    console.log('🔍 API Key total length:', workingKey ? workingKey.length : 0);
-    console.log('🔍 Project ID:', browserbaseProjectId || 'MISSING');
-    
-    if (!workingKey || !browserbaseProjectId) {
-      throw new Error(`Missing credentials: API Key=${!!workingKey}, ProjectId=${!!browserbaseProjectId}`);
+    if (!token || !projectId) {
+      return new Response(JSON.stringify({ 
+        error: `Missing credentials: token=${!!token}, project=${!!projectId}`,
+        tokenLength: token?.length || 0,
+        projectId: projectId || null
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
-    
-    console.log('✅ Credentials check passed');
-    
-    // Test basic Browserbase API call
-    const createSessionResponse = await fetch('https://api.browserbase.com/v1/sessions', {
+
+    console.log('Making Browserbase API request...');
+    const response = await fetch('https://api.browserbase.com/v1/sessions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-BB-API-Key': workingKey,
+        'X-BB-API-Key': token,
       },
-      body: JSON.stringify({
-        projectId: browserbaseProjectId,
-      }),
+      body: JSON.stringify({ projectId }),
     });
-
-    console.log('📡 Session creation response status:', createSessionResponse.status);
-    console.log('📡 Response headers:', Object.fromEntries(createSessionResponse.headers.entries()));
     
-    const responseText = await createSessionResponse.text();
-    console.log('📡 Full response body:', responseText);
-    console.log('📡 Request details - URL:', 'https://api.browserbase.com/v1/sessions');
-    console.log('📡 Request details - Headers sent:', { 
-      'Content-Type': 'application/json', 
-      'X-BB-API-Key': workingKey ? `${workingKey.substring(0,10)}...${workingKey.substring(workingKey.length-4)}` : 'MISSING'
-    });
-    console.log('📡 Request details - Body sent:', JSON.stringify({ projectId: browserbaseProjectId }));
-
-    if (!createSessionResponse.ok) {
-      console.error('❌ Session creation failed:', responseText);
+    console.log('Response status:', response.status);
+    const responseText = await response.text();
+    console.log('Response body preview:', responseText.substring(0, 200));
+    
+    if (!response.ok) {
+      console.error('Session creation failed:', responseText);
       throw new Error(`Failed to create session: ${responseText}`);
     }
 
-    // Try to parse as JSON
-    let sessionData;
-    try {
-      sessionData = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('❌ Failed to parse response as JSON');
-      throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
-    }
+    const sessionData = JSON.parse(responseText);
     console.log('✅ Session created successfully:', sessionData.id);
     
     return new Response(JSON.stringify({
