@@ -171,6 +171,38 @@ export function CaptchaWorkflowTester() {
     setCaptchaEvent(null);
   };
 
+  const setupTestPhone = async () => {
+    try {
+      addLog('📱 Setting up phone number for SMS testing...');
+      
+      const { data: { session: userSession } } = await supabase.auth.getSession();
+      if (!userSession) {
+        toast.error('Please log in first');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('setup-test-phone', {
+        body: { phone_e164: '+16083386377' },
+        headers: {
+          Authorization: `Bearer ${userSession.access_token}`,
+        },
+      });
+
+      if (error) {
+        addLog(`❌ Phone setup failed: ${error.message}`);
+        toast.error('Failed to set up phone');
+        return;
+      }
+
+      addLog('✅ Phone number verified for SMS testing!');
+      addLog('📱 Phone: +1-608-338-6377 ready for SMS');
+      toast.success('Phone set up! Next CAPTCHA test will send SMS');
+    } catch (error: any) {
+      addLog(`❌ Phone setup error: ${error.message}`);
+      toast.error('Phone setup failed');
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <Card>
@@ -223,6 +255,16 @@ export function CaptchaWorkflowTester() {
                 placeholder="For existing registration"
               />
             </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button 
+              onClick={setupTestPhone}
+              variant="outline"
+              className="mb-2"
+            >
+              📱 Setup SMS Testing (+1-608-338-6377)
+            </Button>
           </div>
 
           <div className="flex gap-2">
