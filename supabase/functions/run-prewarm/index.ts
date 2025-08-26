@@ -109,17 +109,31 @@ serve(async (req) => {
         needs_correction: Math.abs(timingInfo.skewMs) > 500
       });
 
-      // Step 3.2: Load pending registrations
+      // Step 3.2: Load pending registrations with billing profiles via user_id
       const { data: pendingRegistrations, error: regError } = await admin
         .from('registrations')
         .select(`
-          id, user_id, child_id, priority_opt_in, requested_at,
-          billing_profiles!inner(stripe_customer_id, default_payment_method_id)
+          id, user_id, child_id, priority_opt_in, requested_at
         `)
         .eq('session_id', sessionId)
         .eq('status', REGISTRATION_STATES.PENDING)
         .order('priority_opt_in', { ascending: false })
         .order('requested_at', { ascending: true });
+        
+      // Load billing profiles separately and match by user_id
+      if (pendingRegistrations && pendingRegistrations.length > 0) {
+        const userIds = pendingRegistrations.map(reg => reg.user_id);
+        const { data: billingProfiles } = await admin
+          .from('billing_profiles')
+          .select('user_id, stripe_customer_id, default_payment_method_id')
+          .in('user_id', userIds);
+          
+        // Attach billing info to registrations
+        for (const reg of pendingRegistrations) {
+          const billing = billingProfiles?.find(bp => bp.user_id === reg.user_id);
+          reg.billing_profiles = billing || null;
+        }
+      }
 
       if (regError) {
         throw new Error(`Failed to load registrations: ${regError.message}`);
