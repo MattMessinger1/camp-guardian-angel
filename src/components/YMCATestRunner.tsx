@@ -31,14 +31,14 @@ export function YMCATestRunner({ onTestComplete }: YMCATestRunnerProps) {
       addToLog(`Testing URL: ${ymcaUrl}`);
       addToLog(`Parent ID: ${parentId}`);
       
-      // Check if it's business hours (keeping real business logic)
+      // Check if it's business hours (use Eastern time for Florida YMCA)
       const now = new Date();
-      const pacificTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-      const hour = pacificTime.getHours();
-      const day = pacificTime.getDay();
+      const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+      const hour = easternTime.getHours();
+      const day = easternTime.getDay();
       const isBusinessHours = day >= 1 && day <= 5 && hour >= 9 && hour < 17;
       
-      addToLog(`Business Hours Check: ${isBusinessHours ? '✅ YES' : '⏰ Outside hours'} (${hour}:00 Pacific)`);
+      addToLog(`Business Hours Check: ${isBusinessHours ? '✅ YES' : '⏰ Outside hours'} (${hour}:00 Eastern)`);
       
       if (!isBusinessHours) {
         addToLog('⚠️ Running test outside business hours - for educational purposes only');
