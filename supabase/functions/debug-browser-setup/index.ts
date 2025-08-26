@@ -14,8 +14,9 @@ serve(async (req) => {
   try {
     console.log('DEBUG: Function called successfully');
     
-    // Check environment variables
+    // Check environment variables - try both secret names
     const browserbaseApiKey = Deno.env.get('BROWSERBASE_KEY');
+    const browserbaseToken = Deno.env.get('BROWSERBASE_TOKEN');
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
     
     // Debug: Log all environment variables that contain 'BROWSER'
@@ -23,10 +24,12 @@ serve(async (req) => {
     const allKeys = Object.keys(allEnvVars);
     console.log('DEBUG: All env var keys:', allKeys.slice(0, 10)); // First 10 keys
     console.log('DEBUG: Raw BROWSERBASE_KEY value:', JSON.stringify(browserbaseApiKey));
+    console.log('DEBUG: Raw BROWSERBASE_TOKEN value:', JSON.stringify(browserbaseToken));
     console.log('DEBUG: Raw BROWSERBASE_PROJECT value:', JSON.stringify(browserbaseProjectId));
     
-    console.log('DEBUG: API key exists:', !!browserbaseApiKey);
-    console.log('DEBUG: API key length:', browserbaseApiKey?.length || 0);
+    const workingApiKey = browserbaseApiKey || browserbaseToken;
+    console.log('DEBUG: Working API key exists:', !!workingApiKey);
+    console.log('DEBUG: Working API key length:', workingApiKey?.length || 0);
     console.log('DEBUG: Project ID exists:', !!browserbaseProjectId);
     console.log('DEBUG: Project ID value:', browserbaseProjectId);
     
@@ -37,7 +40,11 @@ serve(async (req) => {
     const result = {
       success: true,
       hasApiKey: !!browserbaseApiKey,
+      hasToken: !!browserbaseToken,
+      workingApiKey: !!workingApiKey,
       apiKeyLength: browserbaseApiKey?.length || 0,
+      tokenLength: browserbaseToken?.length || 0,
+      workingKeyLength: workingApiKey?.length || 0,
       hasProjectId: !!browserbaseProjectId,
       projectId: browserbaseProjectId,
       browserEnvVars: browserVars,
