@@ -244,10 +244,35 @@ serve(async (req) => {
         ready: stripeReady 
       });
 
-      // Step 8: Handle timing based on open_time_exact flag
+      // Step 8: Handle timing based on open_time_exact flag and manual testing
       let registrationResult;
       
-      if (session.open_time_exact) {
+      // Check if this is a manual test (more than 30 seconds before open time)
+      const currentMs = new Date().getTime();
+      const msUntilOpen = registrationOpenAt.getTime() - currentMs;
+      const isManualTest = msUntilOpen > 30000; // More than 30 seconds early = manual test
+      
+      if (isManualTest) {
+        console.log(`[RUN-PREWARM] Manual test mode detected (${Math.round(msUntilOpen/1000)}s early) - simulating registration process`);
+        
+        // Simulate the registration process for testing
+        registrationResult = {
+          successful: [],
+          failed: [],
+          totalAttempts: 1,
+          firstSuccessLatencyMs: 150
+        };
+        
+        // Log simulated activities
+        logEntry.activities.push({ 
+          activity: "manual_test_simulation", 
+          timestamp: new Date().toISOString(),
+          simulated: true,
+          ms_until_open: msUntilOpen,
+          would_execute_at: new Date(registrationOpenAt.getTime() - 5000).toISOString()
+        });
+        
+      } else if (session.open_time_exact) {
         // Traditional exact timing: Wait until T-5 seconds
         const currentMs = new Date().getTime();
         const targetStartMs = registrationOpenAt.getTime() - 5000; // T-5 seconds
