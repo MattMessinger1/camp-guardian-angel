@@ -13,12 +13,11 @@ serve(async (req) => {
   try {
     console.log('🧪 Testing browser automation initialization...');
     
-    // Try both secret names - use the working one  
-    const browserbaseApiKey = Deno.env.get('BROWSERBASE_KEY');
+    // Get the working credentials
     const browserbaseToken = Deno.env.get('BROWSERBASE_TOKEN');
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
     
-    const workingKey = browserbaseToken || browserbaseApiKey; // Prioritize TOKEN since KEY isn't saving
+    const workingKey = browserbaseToken;
     
     console.log('Using key type:', browserbaseToken ? 'BROWSERBASE_TOKEN' : 'BROWSERBASE_KEY');
     console.log('🔍 API Key first 10 chars:', workingKey ? workingKey.substring(0, 10) : 'MISSING');
