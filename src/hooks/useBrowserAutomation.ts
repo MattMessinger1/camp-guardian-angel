@@ -30,19 +30,7 @@ export function useBrowserAutomation() {
         error: null
       }));
 
-      // FIRST: Always clean up any existing sessions before starting
-      console.log('🧹 Pre-test cleanup: Cleaning up any existing browser sessions...');
-      try {
-        await supabase.functions.invoke('browser-automation', {
-          body: { action: 'cleanup' }
-        });
-        console.log('✅ Pre-test cleanup completed');
-      } catch (cleanupError) {
-        console.warn('⚠️ Pre-test cleanup failed:', cleanupError);
-        // Continue anyway - maybe there were no sessions to clean
-      }
-
-      // Create browser session
+      // Create browser session (cleanup is built-in now)
       const { data: sessionResult, error: sessionError } = await supabase.functions.invoke('browser-automation', {
         body: {
           action: 'create',
@@ -110,18 +98,6 @@ export function useBrowserAutomation() {
 
     } catch (error: any) {
       console.error('Browser automation initialization failed:', error);
-      
-      // ALWAYS cleanup on error to prevent session leaks
-      console.log('🧹 Error cleanup: Cleaning up any sessions created during failed initialization...');
-      try {
-        await supabase.functions.invoke('browser-automation', {
-          body: { action: 'cleanup' }
-        });
-        console.log('✅ Error cleanup completed');
-      } catch (cleanupError) {
-        console.warn('⚠️ Error cleanup failed:', cleanupError);
-      }
-      
       setState(prev => ({
         ...prev,
         status: 'error',

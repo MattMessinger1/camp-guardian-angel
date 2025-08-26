@@ -74,21 +74,10 @@ export function YMCATestRunner({ onTestComplete }: YMCATestRunnerProps) {
       // ALWAYS cleanup after test regardless of success or failure
       addToLog('🧹 Post-test cleanup: Cleaning up browser sessions...');
       try {
-        // Use the cleanup action directly
-        const { error: cleanupError } = await supabase.functions.invoke('browser-automation', {
-          body: { action: 'cleanup' }
-        });
-        
-        if (cleanupError) {
-          addToLog(`⚠️ Cleanup warning: ${cleanupError.message}`);
-        } else {
-          addToLog('✅ Post-test cleanup completed successfully');
-        }
-        
-        // Also close the specific session if we have one
+        // Close the specific session if we have one
         if (state.sessionId) {
           await closeSession(state.sessionId);
-          addToLog('✅ Session closed via hook');
+          addToLog('✅ Session closed successfully');
         }
       } catch (cleanupError: any) {
         addToLog(`⚠️ Cleanup failed: ${cleanupError.message}`);
