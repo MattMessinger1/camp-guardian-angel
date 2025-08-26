@@ -274,6 +274,41 @@ export function ActiveNetworkTester() {
               console.error('⚠️ Failed to create test reservation:', reservationError);
             } else {
               console.log('✅ Test reservation created:', testReservation.id);
+              
+              // Create test attempt event with performance metrics for "How Did We Perform" column
+              console.log('📊 Creating performance metrics for timing report...');
+              try {
+                const { data: attemptEvent, error: attemptError } = await supabase
+                  .from('attempt_events')
+                  .insert({
+                    reservation_id: testReservation.id,
+                    event_type: 'captcha_detected',
+                    success_indicator: false, // CAPTCHA detected = automation paused
+                    provider: session.provider,
+                    t0_offset_ms: 2150, // Simulated timing: 2.15s after registration opened
+                    latency_ms: 185,    // Simulated network latency
+                    queue_wait_ms: 0,   // No queue wait in test
+                    failure_reason: 'CAPTCHA detected - human assistance required',
+                    event_category: 'automation',
+                    metadata: {
+                      test_mode: true,
+                      captcha_type: 'recaptcha_v2',
+                      provider_platform: 'ActiveNetwork',
+                      automation_stage: 'form_submission_blocked'
+                    }
+                  })
+                  .select()
+                  .single();
+
+                if (attemptError) {
+                  console.error('⚠️ Failed to create test attempt event:', attemptError);
+                } else {
+                  console.log('✅ Test performance metrics created:', attemptEvent.id);
+                }
+              } catch (err) {
+                console.error('⚠️ Error creating performance metrics:', err);
+              }
+              
               toast.success('📋 Test signup logged to account history! Check /account-history');
             }
           } catch (err) {
