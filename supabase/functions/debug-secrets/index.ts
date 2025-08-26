@@ -13,20 +13,26 @@ serve(async (req) => {
   try {
     console.log('🔍 Simple secrets check...');
     
-    // Just check the two specific keys we need
+    // Check both the original and new secret names
     const apiKey = Deno.env.get('BROWSERBASE_API_KEY');
+    const apiKeyAlt = Deno.env.get('BROWSERBASE_KEY');
     const projectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
     
-    console.log('API Key found:', !!apiKey);
-    console.log('API Key length:', apiKey?.length || 0);
+    console.log('API Key (original) found:', !!apiKey);
+    console.log('API Key (original) length:', apiKey?.length || 0);
+    console.log('API Key (alt) found:', !!apiKeyAlt);
+    console.log('API Key (alt) length:', apiKeyAlt?.length || 0);
     console.log('Project ID found:', !!projectId);
     
     return new Response(JSON.stringify({
       success: true,
-      apiKeyExists: !!apiKey,
-      apiKeyLength: apiKey?.length || 0,  
+      originalApiKeyExists: !!apiKey,
+      originalApiKeyLength: apiKey?.length || 0,
+      altApiKeyExists: !!apiKeyAlt,
+      altApiKeyLength: apiKeyAlt?.length || 0,
       projectIdExists: !!projectId,
       projectIdLength: projectId?.length || 0,
+      workingApiKey: apiKeyAlt || apiKey || null,
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
