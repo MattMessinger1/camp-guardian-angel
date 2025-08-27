@@ -49,7 +49,14 @@ serve(async (req) => {
         return await updateAIContext(supabase, contextId!, stage!, insights);
       
       case 'get':
-        return await getAIContext(supabase, userId!, sessionId!);
+        // Handle both contextId and userId/sessionId based lookups
+        if (contextId) {
+          return await getAIContextById(supabase, contextId);
+        } else if (userId && sessionId) {
+          return await getAIContext(supabase, userId, sessionId);
+        } else {
+          throw new Error('Either contextId or both userId and sessionId are required for get action');
+        }
       
       case 'extract_patterns':
         return await extractSuccessPatterns(supabase, contextId!, outcome!);
@@ -128,6 +135,67 @@ async function updateAIContext(supabase: any, contextId: string, stage: string, 
 
   } catch (error) {
     console.error('updateAIContext error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Retrieve AI context by contextId (for browser session lookups)
+ */
+async function getAIContextById(supabase: any, contextId: string) {
+  try {
+    console.log(`[Context Lookup] Finding context for ID: ${contextId.substring(0, 8)}`);
+    
+    // Try direct ID lookup first
+    const { data: directContext, error: directError } = await supabase
+      .from('ai_signup_context')
+      .select('*')
+      .eq('id', contextId)
+      .maybeSingle();
+
+    if (directError) {
+      console.warn('Direct ID lookup failed:', directError.message);
+    }
+
+    if (directContext) {
+      console.log(`[Context Found] Direct match for: ${contextId.substring(0, 8)}`);
+      return new Response(JSON.stringify({
+        success: true,
+        context: directContext,
+        relevant_patterns: [],
+        lookup_method: 'direct_id'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // If no direct match, try searching by metadata pattern (for browser sessions)
+    const { data: contextSearch, error: searchError } = await supabase
+      .from('ai_signup_context')
+      .select('*')
+      .or(`search_insights->>browser_session_id.eq.${contextId},automation_insights->>browser_session_id.eq.${contextId}`)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (searchError) {
+      console.warn('Metadata search failed:', searchError.message);
+    }
+
+    console.log(`[Context Search] ${contextSearch ? 'Found' : 'Not found'} context via metadata search`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      context: contextSearch || null,
+      relevant_patterns: [],
+      lookup_method: 'metadata_search',
+      note: contextSearch ? 'Found via metadata search' : 'No context found for this ID'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('getAIContextById error:', error);
     throw error;
   }
 }
