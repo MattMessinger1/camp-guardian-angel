@@ -53,7 +53,7 @@ serve(async (req) => {
       apiKeyConfigured: !!openAIApiKey,
       requestPayload: {
         model: visionModel,
-        maxTokens: 800,
+        maxTokens: 2000,
         responseFormat: 'json_object'
       }
     });
@@ -65,7 +65,7 @@ serve(async (req) => {
       model: visionModel,
       messageCount: 1,
       contentTypes: ['text', 'image_url'],
-      maxTokens: 800,
+      maxTokens: 2000,
       responseFormat: 'json_object',
       promptType: 'wcag_compliance_assessment'
     });
@@ -93,7 +93,7 @@ serve(async (req) => {
           }
         ]
       }],
-      [config.maxTokensParam]: 800,
+      [config.maxTokensParam]: 2000,
       response_format: { type: "json_object" }
     };
 
