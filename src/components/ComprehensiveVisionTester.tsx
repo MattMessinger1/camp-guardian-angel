@@ -741,10 +741,10 @@ export const ComprehensiveVisionTester = () => {
           </Card>
         </div>
 
-        {/* Persistent Test Results - Won't disappear */}
-        <div className="space-y-3 max-h-[600px] overflow-y-auto border rounded-lg bg-gray-50 p-4">
-          <div className="flex items-center justify-between sticky top-0 bg-gray-50 py-2 border-b">
-            <h4 className="font-medium">📋 Test Results (Persistent View)</h4>
+        {/* Results Organized by Section - Cards View */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium">📋 Test Results by Section</h4>
             <Button 
               variant="outline" 
               size="sm"
@@ -753,59 +753,192 @@ export const ComprehensiveVisionTester = () => {
                   `${r.testCase}: ${r.status.toUpperCase()} - ${r.message}${r.duration ? ` (${r.duration}ms)` : ''}`
                 ).join('\n');
                 navigator.clipboard.writeText(resultsText);
-                toast({ title: "Results copied to clipboard!" });
+                toast({ title: "All results copied to clipboard!" });
               }}
             >
-              📋 Copy Results
+              📋 Copy All Results
             </Button>
           </div>
-          
-          {testResults.map((result, index) => (
-            <div key={`${result.testCase}-${index}`} className="border rounded-lg p-4 bg-white">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium">{result.testCase}</h4>
-                <div className="flex items-center gap-2">
-                  {result.duration && (
-                    <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded">
-                      {result.duration}ms
-                    </span>
-                  )}
-                  <Badge className={getStatusColor(result.status)}>
-                    {result.status}
-                  </Badge>
-                </div>
+
+          {/* Section 1: Unit Tests */}
+          <Card className="border-green-200 bg-green-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-green-800">Section 1: Unit Tests for Vision Analysis Functions</CardTitle>
+              <CardDescription>Testing analyzePageWithVision() and model compatibility</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {testResults
+                  .filter(result => result.testCase.startsWith('1.') || result.testCase.includes('Unit Tests') || result.testCase.includes('Model Compatibility'))
+                  .map((result, index) => (
+                    <div key={`section1-${index}`} className="border rounded-lg p-3 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-sm">{result.testCase}</h5>
+                        <div className="flex items-center gap-2">
+                          {result.duration && (
+                            <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded">
+                              {result.duration}ms
+                            </span>
+                          )}
+                          <Badge className={getStatusColor(result.status)}>
+                            {result.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{result.message}</p>
+                      {result.data && (
+                        <details className="mt-2">
+                          <summary className="text-xs cursor-pointer text-blue-600">📊 View Data</summary>
+                          <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-x-auto max-h-32">
+                            {JSON.stringify(result.data, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                {testResults.filter(r => r.testCase.startsWith('1.') || r.testCase.includes('Unit Tests') || r.testCase.includes('Model Compatibility')).length === 0 && (
+                  <div className="text-center text-muted-foreground py-4">No Section 1 results yet</div>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground mb-2">{result.message}</p>
-              {result.data && (
-                <details className="mt-2">
-                  <summary className="text-xs cursor-pointer text-blue-600 hover:text-blue-800">
-                    📊 View Raw Data
-                  </summary>
-                  <div className="mt-2 p-2 bg-gray-100 rounded border">
-                    <pre className="text-xs overflow-x-auto max-h-40 whitespace-pre-wrap">
-                      {JSON.stringify(result.data, null, 2)}
-                    </pre>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="mt-2"
-                      onClick={() => {
-                        navigator.clipboard.writeText(JSON.stringify(result.data, null, 2));
-                        toast({ title: "Data copied to clipboard!" });
-                      }}
-                    >
-                      📋 Copy Data
-                    </Button>
-                  </div>
-                </details>
-              )}
-            </div>
-          ))}
-          
+            </CardContent>
+          </Card>
+
+          {/* Section 2: Integration Tests */}
+          <Card className="border-blue-200 bg-blue-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-blue-800">Section 2: Integration Tests with Browser Automation</CardTitle>
+              <CardDescription>Testing vision analysis within browser-automation and AI context integration</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {testResults
+                  .filter(result => result.testCase.startsWith('2.') || result.testCase.includes('Integration Tests') || result.testCase.includes('Browser Automation') || result.testCase.includes('AI Context'))
+                  .map((result, index) => (
+                    <div key={`section2-${index}`} className="border rounded-lg p-3 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-sm">{result.testCase}</h5>
+                        <div className="flex items-center gap-2">
+                          {result.duration && (
+                            <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded">
+                              {result.duration}ms
+                            </span>
+                          )}
+                          <Badge className={getStatusColor(result.status)}>
+                            {result.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{result.message}</p>
+                      {result.data && (
+                        <details className="mt-2">
+                          <summary className="text-xs cursor-pointer text-blue-600">📊 View Data</summary>
+                          <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-x-auto max-h-32">
+                            {JSON.stringify(result.data, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                {testResults.filter(r => r.testCase.startsWith('2.') || r.testCase.includes('Integration Tests') || r.testCase.includes('Browser Automation') || r.testCase.includes('AI Context')).length === 0 && (
+                  <div className="text-center text-muted-foreground py-4">No Section 2 results yet</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 3: E2E Workflow Tests */}
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-orange-800">Section 3: End-to-End Workflow Tests</CardTitle>
+              <CardDescription>Testing complete flow from session discovery to automated signup</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {testResults
+                  .filter(result => result.testCase.startsWith('3.') || result.testCase.includes('E2E') || result.testCase.includes('Complete Flow') || result.testCase.includes('Fallback'))
+                  .map((result, index) => (
+                    <div key={`section3-${index}`} className="border rounded-lg p-3 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-sm">{result.testCase}</h5>
+                        <div className="flex items-center gap-2">
+                          {result.duration && (
+                            <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded">
+                              {result.duration}ms
+                            </span>
+                          )}
+                          <Badge className={getStatusColor(result.status)}>
+                            {result.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{result.message}</p>
+                      {result.data && (
+                        <details className="mt-2">
+                          <summary className="text-xs cursor-pointer text-blue-600">📊 View Data</summary>
+                          <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-x-auto max-h-32">
+                            {JSON.stringify(result.data, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                {testResults.filter(r => r.testCase.startsWith('3.') || r.testCase.includes('E2E') || r.testCase.includes('Complete Flow') || r.testCase.includes('Fallback')).length === 0 && (
+                  <div className="text-center text-muted-foreground py-4">No Section 3 results yet</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 5: Real-world Scenarios */}
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-red-800">Section 5: Real-world Scenario Tests</CardTitle>
+              <CardDescription>Testing with actual camp registration sites, CAPTCHA detection, and accessibility scoring</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {testResults
+                  .filter(result => result.testCase.startsWith('5.') || result.testCase.includes('Real') || result.testCase.includes('CAPTCHA') || result.testCase.includes('Accessibility'))
+                  .map((result, index) => (
+                    <div key={`section5-${index}`} className="border rounded-lg p-3 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-sm">{result.testCase}</h5>
+                        <div className="flex items-center gap-2">
+                          {result.duration && (
+                            <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded">
+                              {result.duration}ms
+                            </span>
+                          )}
+                          <Badge className={getStatusColor(result.status)}>
+                            {result.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{result.message}</p>
+                      {result.data && (
+                        <details className="mt-2">
+                          <summary className="text-xs cursor-pointer text-blue-600">📊 View Data</summary>
+                          <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-x-auto max-h-32">
+                            {JSON.stringify(result.data, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                {testResults.filter(r => r.testCase.startsWith('5.') || r.testCase.includes('Real') || r.testCase.includes('CAPTCHA') || r.testCase.includes('Accessibility')).length === 0 && (
+                  <div className="text-center text-muted-foreground py-4">No Section 5 results yet</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {testResults.length === 0 && !isRunning && (
-            <div className="text-center text-muted-foreground py-8 bg-white rounded border">
-              Click "Run Complete Test Suite" to start comprehensive vision analysis testing with GPT-5
-            </div>
+            <Card className="border-gray-200">
+              <CardContent className="text-center text-muted-foreground py-8">
+                Click "🚀 Run Complete Test Suite" to start comprehensive vision analysis testing with GPT-5.
+                Results will be organized by sections above.
+              </CardContent>
+            </Card>
           )}
         </div>
 
