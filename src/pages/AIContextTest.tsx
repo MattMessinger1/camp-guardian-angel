@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StandardPage } from '@/components/StandardPage';
 import { AIContextTester } from '@/components/AIContextTester';
 import { AIContextManagerTester } from '@/components/AIContextManagerTester';
+import { VisionAnalysisTester } from '@/components/VisionAnalysisTester';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -172,6 +173,9 @@ export default function AIContextTest() {
         {/* AI Context Manager Testing (Phase 1.2) */}
         <AIContextManagerTester />
 
+        {/* GPT-4 Vision Analysis Testing (Phase 2.1) */}
+        <VisionAnalysisTester />
+
         {/* Next Steps */}
         <Card>
           <CardHeader>
@@ -184,6 +188,7 @@ export default function AIContextTest() {
             <div className="space-y-2 text-sm">
               <p><strong>✅ Phase 1.1:</strong> Unified AI context database - COMPLETE</p>
               <p><strong>✅ Phase 1.2:</strong> AI Context Manager Edge Function - COMPLETE</p>
+              <p><strong>🔬 Phase 2.1:</strong> GPT-4 Vision Browser Analysis - TESTING AVAILABLE</p>
               <p><strong>Phase 1.3:</strong> Integrate context management into existing functions</p>
               <p><strong>Phase 2:</strong> Enhance browser automation with GPT-4 Vision</p>
             </div>

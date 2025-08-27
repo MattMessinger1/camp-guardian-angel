@@ -147,3 +147,6 @@ verify_jwt = false
 [functions.ai-context-manager]
 verify_jwt = true
 
+[functions.test-vision-analysis]
+verify_jwt = false
+
