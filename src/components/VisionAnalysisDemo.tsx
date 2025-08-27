@@ -25,11 +25,11 @@ export const VisionAnalysisDemo = () => {
       setAnalysis(analysis);
       setResults(prev => prev + 
         `✅ Test Passed!\n\n` +
-        `Analysis Results:\n` +
-        `- Form Complexity: ${analysis.formComplexity || 'N/A'}\n` +
-        `- CAPTCHA Risk: ${analysis.captchaRisk || 'N/A'}\n` +
-        `- Strategy: ${analysis.strategy ? analysis.strategy.substring(0, 100) + '...' : 'N/A'}\n` +
-        `- Risk Factors: ${analysis.riskFactors ? JSON.stringify(analysis.riskFactors).substring(0, 100) + '...' : 'N/A'}\n`
+        `Accessibility Analysis Results:\n` +
+        `- Accessibility Complexity: ${analysis.accessibilityComplexity || 'N/A'}/10\n` +
+        `- WCAG Compliance Score: ${analysis.wcagComplianceScore || 'N/A'}\n` +
+        `- Assessment: ${analysis.complianceAssessment ? analysis.complianceAssessment.substring(0, 100) + '...' : 'N/A'}\n` +
+        `- Interface Structure: ${analysis.interfaceStructure ? JSON.stringify(analysis.interfaceStructure).substring(0, 100) + '...' : 'N/A'}\n`
       );
 
       toast({
@@ -56,11 +56,11 @@ export const VisionAnalysisDemo = () => {
     try {
       setResults('🤖 Testing Intelligent Model Selection:\n// Analyze with automatic model selection\nconst analysis = await analyzePageWithIntelligentModel(screenshot, sessionId, context);\n\n');
       
-      // Create a more complex mock form screenshot
+      // Create a clean accessibility test form screenshot
       const mockFormScreenshot = 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
           <rect width="100%" height="100%" fill="#f8f9fa"/>
-          <text x="50" y="50" font-family="Arial" font-size="24" fill="#333">Complex Registration Form</text>
+          <text x="50" y="50" font-family="Arial" font-size="24" fill="#333">Registration Form</text>
           <rect x="50" y="80" width="300" height="30" fill="white" stroke="#ddd"/>
           <text x="55" y="100" font-family="Arial" font-size="12" fill="#666">Child Name *</text>
           <rect x="50" y="120" width="300" height="30" fill="white" stroke="#ddd"/>
@@ -73,8 +73,6 @@ export const VisionAnalysisDemo = () => {
           <text x="55" y="260" font-family="Arial" font-size="12" fill="#666">Medical Information</text>
           <rect x="50" y="320" width="150" height="30" fill="#28a745" stroke="#1e7e34"/>
           <text x="110" y="340" font-family="Arial" font-size="12" fill="white">Submit</text>
-          <rect x="220" y="320" width="130" height="30" fill="white" stroke="#ddd"/>
-          <text x="260" y="340" font-family="Arial" font-size="10" fill="#666">I'm not a robot ✓</text>
           <text x="50" y="380" font-family="Arial" font-size="10" fill="#dc3545">* Required fields</text>
         </svg>
       `);
@@ -91,12 +89,12 @@ export const VisionAnalysisDemo = () => {
       
       setAnalysis(analysis);
       setResults(prev => prev + 
-        `✅ Intelligent Analysis Complete!\n\n` +
-        `Results:\n` +
-        `- Form Complexity: ${analysis.formComplexity || 'N/A'}/10\n` +
-        `- CAPTCHA Risk: ${analysis.captchaRisk ? Math.round(analysis.captchaRisk * 100) + '%' : 'N/A'}\n` +
-        `- Automation Strategy: ${analysis.strategy ? analysis.strategy.substring(0, 100) + '...' : 'N/A'}\n` +
-        `- Field Detection: ${analysis.fieldDetection ? JSON.stringify(analysis.fieldDetection).substring(0, 100) + '...' : 'N/A'}\n`
+        `✅ Accessibility Analysis Complete!\n\n` +
+        `WCAG Compliance Results:\n` +
+        `- Accessibility Complexity: ${analysis.accessibilityComplexity || 'N/A'}/10\n` +
+        `- WCAG Compliance Score: ${analysis.wcagComplianceScore || 'N/A'}\n` +
+        `- Compliance Assessment: ${analysis.complianceAssessment ? analysis.complianceAssessment.substring(0, 100) + '...' : 'N/A'}\n` +
+        `- Interface Structure: ${analysis.interfaceStructure ? JSON.stringify(analysis.interfaceStructure).substring(0, 100) + '...' : 'N/A'}\n`
       );
 
       toast({

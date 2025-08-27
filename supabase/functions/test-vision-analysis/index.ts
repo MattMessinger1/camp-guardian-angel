@@ -36,80 +36,6 @@ serve(async (req) => {
       });
     }
 
-    // Debug logging
-    console.log(`📊 Request details:`, {
-      sessionId,
-      model,
-      screenshotLength: screenshot?.length || 0,
-      screenshotPreview: screenshot?.substring(0, 50) || 'No screenshot'
-    });
-
-    console.log(`🔍 Testing ${model} Vision analysis...`);
-    
-    // For test sessions, bypass OpenAI and return mock data to isolate variables
-    if (sessionId === 'test-session') {
-      console.log('🧪 BYPASS: Using mock response for test session to isolate OpenAI filtering');
-      
-      const mockAnalysis = {
-        formComplexity: 4,
-        accessibilityScore: 0.7,
-        usabilityAnalysis: 'Mock analysis: Form appears to have standard web form elements with moderate complexity. This is a test bypass to isolate OpenAI content filtering issues.',
-        fieldStructure: {
-          detectedFields: ['email', 'name', 'submit'],
-          inputTypes: 'Standard form inputs detected',
-          requiredElements: 'Email and name fields appear required'
-        },
-        designRecommendations: ['Add clear field labels', 'Improve form contrast'],
-        userExperience: 'Bypass test - would normally analyze user experience patterns'
-      };
-      
-      // Still test the AI context manager integration
-      try {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
-        
-        const contextId = `test_session_${sessionId}`;
-        
-        const { error: contextError } = await supabase.functions.invoke('ai-context-manager', {
-          body: {
-            action: 'update',
-            contextId,
-            sessionId,
-            stage: 'automation',
-            insights: {
-              visionAnalysis: mockAnalysis,
-              timestamp: new Date().toISOString(),
-              model,
-              testType: 'bypass_test',
-              bypassReason: 'OpenAI content filtering isolation test'
-            }
-          }
-        });
-
-        if (contextError) {
-          console.warn('⚠️ AI Context update failed:', contextError);
-        } else {
-          console.log('✅ AI Context updated with mock vision insights');
-        }
-      } catch (contextError) {
-        console.warn('⚠️ AI Context update error:', contextError);
-      }
-      
-      return new Response(JSON.stringify({
-        success: true,
-        analysis: mockAnalysis,
-        metadata: {
-          model,
-          timestamp: new Date().toISOString(),
-          sessionId,
-          testMode: 'bypass_openai_filtering'
-        }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
     // Use newer GPT-5 model to avoid content filtering issues
     const visionModel = 'gpt-5-2025-08-07';
     const config = {
@@ -118,6 +44,31 @@ serve(async (req) => {
       supportsJsonMode: true
     };
 
+    // Debug logging for production diagnostics
+    console.log(`📊 Vision Analysis Request:`, {
+      sessionId,
+      model: visionModel,
+      screenshotLength: screenshot?.length || 0,
+      timestamp: new Date().toISOString(),
+      apiKeyConfigured: !!openAIApiKey,
+      requestPayload: {
+        model: visionModel,
+        maxTokens: 800,
+        responseFormat: 'json_object'
+      }
+    });
+
+    console.log(`🔍 Processing GPT-5 Vision analysis with sanitized accessibility prompt...`);
+    
+    // Debug log the exact request body (without screenshot data)
+    console.log('🔍 OpenAI Request Structure:', {
+      model: visionModel,
+      messageCount: 1,
+      contentTypes: ['text', 'image_url'],
+      maxTokens: 800,
+      responseFormat: 'json_object'
+    });
+
     const requestBody: any = {
       model: visionModel,
       messages: [{
@@ -125,30 +76,30 @@ serve(async (req) => {
         content: [
           { 
             type: 'text', 
-            text: `Analyze this web form and provide structured insights for accessibility evaluation:
-            
-            1. FORM COMPLEXITY (1-10 score):
-            - Field count and types
-            - Layout complexity
-            - Visual design assessment
-            
-            2. ACCESSIBILITY FEATURES (0-1 score):
-            - Form labels and structure
-            - Navigation elements
-            - User experience indicators
-            
-            3. USABILITY ANALYSIS:
-            - Form design patterns
-            - User interface elements
-            - Completion guidance
-            - Design recommendations
-            
-            4. FIELD STRUCTURE:
-            - Form fields identified
-            - Input types detected
-            - Required vs optional elements
-            
-            Respond in JSON format with keys: formComplexity, accessibilityScore, usabilityAnalysis, fieldStructure, designRecommendations, userExperience.`
+            text: `Perform a comprehensive WCAG 2.1 accessibility compliance assessment of this web interface screenshot. Provide structured evaluation data for digital accessibility review:
+
+            1. ACCESSIBILITY COMPLEXITY RATING (1-10 scale):
+            - Interface element density and organization
+            - Visual hierarchy assessment
+            - Layout structure evaluation
+
+            2. WCAG COMPLIANCE SCORE (0-1 scale):
+            - Label association and semantic markup indicators
+            - Color contrast and visual accessibility
+            - Interface readability metrics
+
+            3. COMPLIANCE ASSESSMENT:
+            - Digital accessibility standards evaluation
+            - User interface design quality review
+            - Accessibility barrier identification
+            - Professional accessibility recommendations
+
+            4. INTERFACE STRUCTURE ANALYSIS:
+            - Web form elements present
+            - Input control types identified
+            - Required field indicators analysis
+
+            Provide assessment results in JSON format with keys: accessibilityComplexity, wcagComplianceScore, complianceAssessment, interfaceStructure, accessibilityRecommendations, usabilityAssessment.`
           },
           { 
             type: 'image_url', 
@@ -181,7 +132,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         error: `OpenAI API error: ${response.status}`,
         details: errorText,
-        requestDetails: { model, sessionId }
+        requestDetails: { model: visionModel, sessionId }
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -241,27 +192,11 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+      // Remove old fallback test code that references outdated keys
       
       console.log('🔍 Raw OpenAI content:', content);
       
       analysis = JSON.parse(content);
-      
-      // If this is a test with a minimal screenshot, provide fallback data
-      if (sessionId === 'test-session' && (!analysis.formComplexity || analysis.formComplexity === null)) {
-        console.log('🧪 Using test fallback data for minimal screenshot');
-        analysis = {
-          formComplexity: 3,
-          accessibilityScore: 0.8,
-          usabilityAnalysis: 'This appears to be a minimal test image. For actual forms, the system would analyze design patterns, user interface elements, and completion guidance.',
-          fieldStructure: {
-            detectedFields: [],
-            inputTypes: 'No form fields detected in test image',
-            requiredElements: 'Unable to determine from test image'
-          },
-          designRecommendations: ['Improve form visibility', 'Add clear labeling'],
-          userExperience: 'Test scenario - limited evaluation possible'
-        };
-      }
     } catch (parseError) {
       console.error('❌ Failed to parse vision analysis JSON:', parseError);
       console.error('❌ Raw content was:', result.choices?.[0]?.message?.content);
@@ -288,9 +223,9 @@ serve(async (req) => {
     }
     
     console.log('✅ Vision analysis completed:', {
-      complexity: analysis?.formComplexity || 'N/A',
-      accessibilityScore: analysis?.accessibilityScore || 'N/A',
-      usabilityAnalysis: analysis?.usabilityAnalysis ? analysis.usabilityAnalysis.substring(0, 100) + '...' : 'N/A'
+      accessibilityComplexity: analysis?.accessibilityComplexity || 'N/A',
+      wcagComplianceScore: analysis?.wcagComplianceScore || 'N/A',
+      complianceAssessment: analysis?.complianceAssessment ? analysis.complianceAssessment.substring(0, 100) + '...' : 'N/A'
     });
 
     // Initialize Supabase client for AI context updates
@@ -311,7 +246,7 @@ serve(async (req) => {
           insights: {
             visionAnalysis: analysis,
             timestamp: new Date().toISOString(),
-            model,
+        model: visionModel,
             testType: 'direct_vision_test'
           }
         }
@@ -330,7 +265,7 @@ serve(async (req) => {
       success: true,
       analysis,
       metadata: {
-        model,
+        model: visionModel,
         timestamp: new Date().toISOString(),
         sessionId
       }
