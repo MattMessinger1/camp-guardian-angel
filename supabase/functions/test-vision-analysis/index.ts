@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
 
@@ -36,38 +37,56 @@ serve(async (req) => {
       });
     }
 
-    // Use newer GPT-5 model to avoid content filtering issues
-    const visionModel = 'gpt-5-2025-08-07';
-    const config = {
-      maxTokensParam: 'max_completion_tokens',
-      supportsTemperature: false,
-      supportsJsonMode: true
-    };
+    // Configure parameters based on model type
+    let visionModel = model;
+    let config;
+
+    // Legacy models (GPT-4o family)
+    if (model.startsWith('gpt-4o')) {
+      config = {
+        maxTokensParam: 'max_tokens',
+        supportsTemperature: true,
+        supportsJsonMode: true
+      };
+    }
+    // Newer models (GPT-5, GPT-4.1+, O3, O4)
+    else {
+      visionModel = 'gpt-5-2025-08-07'; // Default to GPT-5 for non-legacy requests
+      config = {
+        maxTokensParam: 'max_completion_tokens',
+        supportsTemperature: false,
+        supportsJsonMode: true
+      };
+    }
 
     // Debug logging for production diagnostics
     console.log(`📊 Vision Analysis Request:`, {
       sessionId,
-      model: visionModel,
+      originalModel: model,
+      selectedModel: visionModel,
       screenshotLength: screenshot?.length || 0,
       timestamp: new Date().toISOString(),
       apiKeyConfigured: !!openAIApiKey,
       requestPayload: {
         model: visionModel,
-        maxTokens: 2000,
+        maxTokensParam: config.maxTokensParam,
+        maxTokens: 4000,
         responseFormat: 'json_object'
       }
     });
 
-    console.log(`🔍 Processing GPT-5 Vision analysis with professional WCAG compliance prompt...`);
+    console.log(`🔍 Processing ${visionModel} Vision analysis with professional WCAG compliance prompt...`);
     
-    // Debug log the exact request body (without screenshot data)
-     console.log('🔍 OpenAI Request Structure:', {
+    // Debug log the exact request body structure
+    console.log('🔍 OpenAI Request Structure:', {
       model: visionModel,
       messageCount: 1,
       contentTypes: ['text', 'image_url'],
-      maxTokens: 2000,
+      tokenParam: config.maxTokensParam,
+      maxTokens: 4000,
       responseFormat: 'json_object',
-      promptType: 'wcag_compliance_assessment'
+      promptType: 'wcag_compliance_assessment',
+      supportsTemperature: config.supportsTemperature
     });
 
     const requestBody: any = {
@@ -93,7 +112,7 @@ serve(async (req) => {
           }
         ]
       }],
-      [config.maxTokensParam]: 2000,
+      [config.maxTokensParam]: 4000,
       response_format: { type: "json_object" }
     };
 
@@ -101,6 +120,8 @@ serve(async (req) => {
     if (config.supportsTemperature) {
       requestBody.temperature = 0.3;
     }
+
+    console.log(`📤 Making OpenAI API request with ${config.maxTokensParam}: 4000`);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -118,7 +139,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         error: `OpenAI API error: ${response.status}`,
         details: errorText,
-        requestDetails: { model: visionModel, sessionId }
+        requestDetails: { 
+          model: visionModel, 
+          sessionId,
+          tokenParam: config.maxTokensParam,
+          originalModel: model
+        }
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -128,7 +154,7 @@ serve(async (req) => {
     const result = await response.json();
     console.log('📥 Full OpenAI API response:', JSON.stringify(result, null, 2));
     
-    // First check: Does OpenAI response have basic structure?
+    // Check OpenAI response structure
     console.log('🔍 OpenAI Response Analysis:', {
       hasChoices: !!result.choices,
       choicesLength: result.choices?.length || 0,
@@ -160,25 +186,26 @@ serve(async (req) => {
 
       const content = result.choices[0].message.content;
       
-      // If content is null or empty, this is often due to content filtering
+      // If content is null or empty, this is often due to content filtering or token limits
       if (!content || content.trim() === '') {
-        console.error('❌ OpenAI returned empty content - likely content filtering or model refusal');
+        console.error('❌ OpenAI returned empty content - likely content filtering or token limit');
         return new Response(JSON.stringify({ 
           error: 'OpenAI returned empty content',
           possibleCauses: [
             'Content filtering triggered',
             'Model refused to analyze image', 
+            'Token limit reached (increase max_completion_tokens)',
             'Image format not supported',
             'API key issues'
           ],
           finishReason: result.choices[0].finish_reason,
+          usage: result.usage,
           openaiResponse: result
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
-      // Remove old fallback test code that references outdated keys
       
       console.log('🔍 Raw OpenAI content:', content);
       
@@ -232,7 +259,7 @@ serve(async (req) => {
           insights: {
             visionAnalysis: analysis,
             timestamp: new Date().toISOString(),
-        model: visionModel,
+            model: visionModel,
             testType: 'direct_vision_test'
           }
         }
@@ -252,8 +279,10 @@ serve(async (req) => {
       analysis,
       metadata: {
         model: visionModel,
+        originalModel: model,
         timestamp: new Date().toISOString(),
-        sessionId
+        sessionId,
+        tokenParam: config.maxTokensParam
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
