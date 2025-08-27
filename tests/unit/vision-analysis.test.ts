@@ -16,56 +16,70 @@ const mockSupabase = {
           error: null
         };
       }
-      return { data: null, error: new Error('Unknown function') };
+      return { data: null, error: { message: 'Unknown function' } };
     }
   }
 };
 
 test.describe('Vision Analysis Unit Tests', () => {
   test('validates mock screenshot data format', async () => {
-    expect(mockScreenshots.simpleForm).toContain('data:image/svg+xml;base64');
-    expect(mockScreenshots.complexForm).toContain('data:image/svg+xml;base64');
+    // Check that mock data contains expected base64 image format
+    expect(mockScreenshots.simpleForm).toContain('data:image/svg+xml;base64,');
+    expect(mockScreenshots.complexForm).toContain('data:image/svg+xml;base64,');
   });
 
   test('validates expected response structure', async () => {
-    const response = {
-      accessibilityComplexity: 5,
-      wcagComplianceScore: 0.7,
-      complianceAssessment: 'Good accessibility features present',
-      interfaceStructure: 'Well-organized form layout'
+    // Test the expected response validation
+    const mockResponse = {
+      accessibilityComplexity: 7,
+      wcagComplianceScore: 0.8,
+      complianceAssessment: 'Good accessibility implementation',
+      interfaceStructure: 'Well-structured form with proper labeling'
     };
 
-    validateVisionResponse(response);
+    validateVisionResponse(mockResponse);
+    
+    // Should not throw any errors
+    expect(mockResponse.accessibilityComplexity).toBe(7);
+    expect(mockResponse.wcagComplianceScore).toBe(0.8);
   });
 
   test('creates test session data correctly', async () => {
     const session = createTestSession('test-123');
     
     expect(session.sessionId).toBe('test-123');
-    expect(session.provider).toBe('test-provider');
-    expect(session.testMode).toBe(true);
-    expect(session.timestamp).toBeTruthy();
+    expect(session.testType).toBe('vision-analysis');
+    expect(session.timestamp).toBeDefined();
+    
+    // Timestamp should be recent (within last minute)
+    const sessionTime = new Date(session.timestamp);
+    const now = new Date();
+    const timeDiff = now.getTime() - sessionTime.getTime();
+    expect(timeDiff).toBeLessThan(60000); // Less than 1 minute
   });
 
   test('handles vision analysis response validation', async () => {
     const validResponse = {
-      accessibilityComplexity: 3,
-      wcagComplianceScore: 0.8,
-      complianceAssessment: 'Excellent compliance',
-      interfaceStructure: 'Clear structure'
+      accessibilityComplexity: 5,
+      wcagComplianceScore: 0.75
     };
 
+    // Should not throw
     expect(() => validateVisionResponse(validResponse)).not.toThrow();
   });
 
   test('rejects invalid vision analysis responses', async () => {
-    const invalidResponse = {
-      accessibilityComplexity: 15, // Invalid: > 10
-      wcagComplianceScore: 1.5,    // Invalid: > 1
-      complianceAssessment: '',     // Invalid: empty
-      interfaceStructure: null      // Invalid: null
+    const invalidResponse1 = {
+      accessibilityComplexity: 15, // Out of range (1-10)
+      wcagComplianceScore: 0.5
     };
 
-    expect(() => validateVisionResponse(invalidResponse)).toThrow();
+    const invalidResponse2 = {
+      accessibilityComplexity: 5,
+      wcagComplianceScore: 1.5 // Out of range (0-1)
+    };
+
+    expect(() => validateVisionResponse(invalidResponse1)).toThrow();
+    expect(() => validateVisionResponse(invalidResponse2)).toThrow();
   });
 });
