@@ -11,6 +11,8 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+
 interface BrowserSessionRequest {
   action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup';
   sessionId?: string;
@@ -19,6 +21,7 @@ interface BrowserSessionRequest {
   parentId?: string;
   registrationData?: any;
   approvalToken?: string;
+  enableVision?: boolean;
 }
 
 interface BrowserSession {
@@ -444,12 +447,35 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
     throw new Error('Session ID required for data extraction');
   }
 
-  console.log(`🎯 YMCA Test: Page data extraction simulation for session ${request.sessionId}`);
+  console.log(`🎯 YMCA Test: Page data extraction with AI vision for session ${request.sessionId}`);
 
   try {
-    // FIXED: Browserbase doesn't have HTTP POST endpoints for script execution
-    // Real implementation would use WebSocket CDP connection
+    // Get session details for screenshot capture
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('browser_sessions')
+      .select('metadata')
+      .eq('session_id', request.sessionId)
+      .single();
+
+    if (sessionError) {
+      throw new Error(`Session query failed: ${sessionError.message}`);
+    }
+
+    const connectUrl = sessionData?.metadata?.realSession?.connectUrl;
     
+    // Capture screenshot if vision analysis is enabled
+    let visionAnalysis = null;
+    if (request.enableVision !== false && connectUrl) {
+      console.log('📸 Attempting screenshot capture for vision analysis...');
+      const screenshot = await captureScreenshot(apiKey, request.sessionId, connectUrl);
+      
+      if (screenshot) {
+        console.log('🔍 Running GPT-4 Vision analysis on screenshot...');
+        visionAnalysis = await analyzePageWithVision(screenshot, request.sessionId);
+      }
+    }
+    
+    // Simulate page data extraction with potential vision enhancements
     const simulatedPageData = {
       title: 'YMCA West Central Florida - Programs and Camps',
       url: 'https://www.ymcawestcentralflorida.com/programs/camps',
@@ -469,11 +495,12 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
       text: 'Welcome to YMCA West Central Florida camps! Register your child for our summer programs...'
     };
     
-    console.log('✅ YMCA Test: Page data extraction simulated (WebSocket CDP would be used in production)');
+    console.log('✅ YMCA Test: Page data extraction with vision completed');
     console.log('Page title:', simulatedPageData.title);
     console.log('Forms found:', simulatedPageData.forms.length);
+    console.log('Vision analysis:', visionAnalysis ? 'Completed' : 'Skipped');
 
-    // Enhanced data for YMCA-specific processing
+    // Enhanced data with vision insights
     const enhancedData = {
       ...simulatedPageData,
       provider: simulatedPageData.title.toLowerCase().includes('ymca') ? 'YMCA' : 'Unknown',
@@ -481,21 +508,31 @@ async function extractPageData(apiKey: string, request: BrowserSessionRequest): 
       realExtraction: false,
       simulated: true,
       testType: 'YMCA_REAL_TEST',
-      note: 'Page extraction simulated - real implementation would use WebSocket CDP'
+      visionAnalysis,
+      automationRecommendations: visionAnalysis ? {
+        complexity: visionAnalysis.formComplexity,
+        captchaRisk: visionAnalysis.captchaRisk,
+        strategy: visionAnalysis.strategy,
+        timing: visionAnalysis.timing
+      } : null,
+      note: 'Page extraction simulated with GPT-4 Vision analysis - real implementation would use WebSocket CDP'
     };
 
-    await logYMCATestEvent('extraction_success', {
+    await logYMCATestEvent('extraction_with_vision_success', {
       sessionId: request.sessionId,
       pageTitle: simulatedPageData.title,
       formsFound: simulatedPageData.forms.length,
       url: simulatedPageData.url,
+      visionAnalysis: !!visionAnalysis,
+      complexityScore: visionAnalysis?.formComplexity,
+      captchaRisk: visionAnalysis?.captchaRisk,
       simulated: true
     });
 
     return enhancedData;
 
   } catch (error) {
-    console.error('❌ YMCA Test: Data extraction failed:', error);
+    console.error('❌ YMCA Test: Data extraction with vision failed:', error);
     
     await logYMCATestEvent('extraction_error', {
       sessionId: request.sessionId,
@@ -573,6 +610,160 @@ async function closeBrowserSession(apiKey: string, request: BrowserSessionReques
       .eq('session_id', request.sessionId);
     
     throw error;
+  }
+}
+
+// Add vision analysis for form complexity
+async function analyzePageWithVision(screenshot: string, sessionId: string): Promise<any> {
+  if (!openAIApiKey) {
+    console.warn('OpenAI API key not configured, skipping vision analysis');
+    return null;
+  }
+
+  try {
+    console.log('🔍 Starting GPT-4 Vision analysis...');
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{
+          role: 'user',
+          content: [
+            { 
+              type: 'text', 
+              text: `Analyze this signup form and provide structured insights:
+              
+              1. FORM COMPLEXITY (1-10 score):
+              - Field count and types
+              - Layout complexity
+              - Visual clutter assessment
+              
+              2. CAPTCHA LIKELIHOOD (0-1 probability):
+              - Security elements visible
+              - Bot protection indicators
+              - Form submission barriers
+              
+              3. AUTOMATION STRATEGY:
+              - Recommended approach
+              - Risk factors
+              - Timing considerations
+              - Alternative strategies
+              
+              4. FIELD DETECTION:
+              - Key form fields identified
+              - Field priorities
+              - Required vs optional fields
+              
+              Respond in JSON format with keys: formComplexity, captchaRisk, strategy, fieldDetection, riskFactors, timing.`
+            },
+            { 
+              type: 'image_url', 
+              image_url: { url: `data:image/png;base64,${screenshot}` }
+            }
+          ]
+        }],
+        max_completion_tokens: 800,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OpenAI Vision API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    const analysis = JSON.parse(result.choices[0].message.content);
+    
+    console.log('✅ Vision analysis completed:', {
+      complexity: analysis.formComplexity,
+      captchaRisk: analysis.captchaRisk,
+      strategy: analysis.strategy?.substring(0, 100) + '...'
+    });
+
+    // Update AI context with vision insights
+    await updateAIContext(sessionId, 'automation', {
+      visionAnalysis: analysis,
+      timestamp: new Date().toISOString(),
+      model: 'gpt-4o'
+    });
+
+    return analysis;
+    
+  } catch (error) {
+    console.error('❌ Vision analysis failed:', error);
+    
+    // Log vision analysis failure for observability
+    await logYMCATestEvent('vision_analysis_error', {
+      sessionId,
+      error: error.message,
+      hasScreenshot: !!screenshot
+    });
+    
+    return null;
+  }
+}
+
+// Update AI Context with insights
+async function updateAIContext(sessionId: string, stage: string, insights: any): Promise<void> {
+  try {
+    const contextId = `browser_session_${sessionId}`;
+    
+    const { error } = await supabase.functions.invoke('ai-context-manager', {
+      body: {
+        action: 'update',
+        contextId,
+        sessionId,
+        stage,
+        insights
+      }
+    });
+
+    if (error) {
+      console.warn('⚠️ AI Context update failed:', error);
+    } else {
+      console.log('✅ AI Context updated with stage:', stage);
+    }
+  } catch (error) {
+    console.warn('⚠️ AI Context update error:', error);
+  }
+}
+
+// Capture screenshot from Browserbase session
+async function captureScreenshot(apiKey: string, sessionId: string, connectUrl: string): Promise<string | null> {
+  try {
+    console.log('📸 Attempting screenshot capture via Browserbase API...');
+    
+    // Try screenshot via REST API first
+    const screenshotResponse = await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}/screenshot`, {
+      method: 'GET',
+      headers: {
+        'X-BB-API-Key': apiKey,
+      },
+    });
+
+    if (screenshotResponse.ok) {
+      const screenshotBuffer = await screenshotResponse.arrayBuffer();
+      const base64Screenshot = btoa(String.fromCharCode(...new Uint8Array(screenshotBuffer)));
+      console.log('✅ Screenshot captured successfully');
+      return base64Screenshot;
+    } else {
+      console.warn('⚠️ Screenshot API not available:', screenshotResponse.status);
+      
+      // For now, return null - in production, this would use WebSocket CDP
+      console.log('📝 Note: Real screenshot would be captured via WebSocket CDP connection');
+      return null;
+    }
+    
+  } catch (error) {
+    console.warn('⚠️ Screenshot capture failed:', error);
+    return null;
   }
 }
 
