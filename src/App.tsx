@@ -67,6 +67,7 @@ const DevPages = {
   CaptchaOptimizationPanel: lazy(() => import("./components/CaptchaOptimizationPanel").then(m => ({ default: m.CaptchaOptimizationPanel }))),
   TOSCompliance: lazy(() => import('./pages/TOSCompliance')),
   ObservabilityPage: lazy(() => import('./pages/ObservabilityPage')),
+  AIContextTest: lazy(() => import('./pages/AIContextTest')),
 };
 
 export default function App() {
@@ -216,6 +217,7 @@ export default function App() {
                   } />
                   <Route path="/tos-compliance" element={<DevPages.TOSCompliance />} />
                   <Route path="/observability" element={<DevPages.ObservabilityPage />} />
+                  <Route path="/ai-context-test" element={<DevPages.AIContextTest />} />
                 </>
               )}
               
