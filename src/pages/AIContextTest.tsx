@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StandardPage } from '@/components/StandardPage';
 import { AIContextTester } from '@/components/AIContextTester';
+import { AIContextManagerTester } from '@/components/AIContextManagerTester';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,8 +56,8 @@ export default function AIContextTest() {
     <StandardPage
       pageName="AI Context Testing"
       currentRoute="/ai-context-test"
-      title="Phase 1.1: AI Context System Testing"
-      description="Test the unified AI context database and RLS policies"
+      title="Phase 1.1-1.2: AI Context System Testing"
+      description="Test the unified AI context database, RLS policies, and Context Manager"
     >
       <div className="space-y-6">
         {/* Overview */}
@@ -64,8 +65,9 @@ export default function AIContextTest() {
           <CardHeader>
             <CardTitle>Testing Overview</CardTitle>
             <CardDescription>
-              Phase 1.1 creates the central nervous system for our AI learning system. 
-              This tests the database structure, RLS policies, and Edge function access.
+              Phase 1.1-1.2 creates the central nervous system for our AI learning system. 
+              Phase 1.1 tests the database structure and RLS policies.
+              Phase 1.2 tests the AI Context Manager that actively uses this intelligence.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -96,7 +98,7 @@ export default function AIContextTest() {
         {/* Edge function testing */}
         <Card>
           <CardHeader>
-            <CardTitle>Edge Function Testing</CardTitle>
+            <CardTitle>Edge Function Testing (Phase 1.1)</CardTitle>
             <CardDescription>
               Test Edge function access privileges and AI learning capabilities
             </CardDescription>
@@ -167,17 +169,21 @@ export default function AIContextTest() {
           </CardContent>
         </Card>
 
+        {/* AI Context Manager Testing (Phase 1.2) */}
+        <AIContextManagerTester />
+
         {/* Next Steps */}
         <Card>
           <CardHeader>
             <CardTitle>Next Steps</CardTitle>
             <CardDescription>
-              After Phase 1.1 testing is complete
+              After Phase 1.1-1.2 testing is complete
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <p><strong>Phase 1.2:</strong> Create the ai-context-manager Edge Function</p>
+              <p><strong>✅ Phase 1.1:</strong> Unified AI context database - COMPLETE</p>
+              <p><strong>✅ Phase 1.2:</strong> AI Context Manager Edge Function - COMPLETE</p>
               <p><strong>Phase 1.3:</strong> Integrate context management into existing functions</p>
               <p><strong>Phase 2:</strong> Enhance browser automation with GPT-4 Vision</p>
             </div>
