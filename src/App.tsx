@@ -109,6 +109,9 @@ export default function App() {
               <Route path="/billing/cancelled" element={<BillingSetupCancelled />} />
               <Route path="/payment/success" element={<PaymentSuccess />} />
               
+              {/* AI Testing Routes - Always Available */}
+              <Route path="/ai-context-test" element={<DevPages.AIContextTest />} />
+              
               {/* Legacy Redirects */}
               <Route path="/accounthistory" element={<Navigate to="/account-history" replace />} />
               <Route path="/signuphistory" element={<Navigate to="/account-history" replace />} />
@@ -217,7 +220,6 @@ export default function App() {
                   } />
                   <Route path="/tos-compliance" element={<DevPages.TOSCompliance />} />
                   <Route path="/observability" element={<DevPages.ObservabilityPage />} />
-                  <Route path="/ai-context-test" element={<DevPages.AIContextTest />} />
                 </>
               )}
               
