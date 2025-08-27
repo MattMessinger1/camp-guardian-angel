@@ -42,21 +42,42 @@ export const VisionAnalysisTester = () => {
       
       const testSessionId = crypto.randomUUID();
       
-      // Create a mock browser session with vision enabled
-      const { data: sessionData, error: sessionError } = await supabase.functions.invoke('browser-automation', {
-        body: {
-          action: 'create',
-          campProviderId: 'test-ymca',
-          enableVision: true
+      // Create a mock browser session with vision enabled - with retry logic
+      let sessionData, sessionError;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        const response = await supabase.functions.invoke('browser-automation', {
+          body: {
+            action: 'create',
+            campProviderId: 'test-ymca',
+            enableVision: true
+          }
+        });
+
+        sessionData = response.data;
+        sessionError = response.error;
+
+        if (!sessionError) break;
+
+        retryCount++;
+        if (retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+          addResult('Browser Session', 'pending', `Session creation failed, retrying in ${delay/1000}s... (${retryCount}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
-      });
+      }
 
       if (sessionError) {
-        addResult('Browser Session', 'error', `Session creation failed: ${sessionError.message}`);
+        addResult('Browser Session', 'error', `Session creation failed after retries: ${sessionError.message}`);
         return;
       } else {
         addResult('Browser Session', 'success', 'Browser session created successfully', sessionData);
       }
+
+      // Add delay between operations
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Test 2: Extract page data with vision analysis
       const { data: extractData, error: extractError } = await supabase.functions.invoke('browser-automation', {
@@ -87,6 +108,9 @@ export const VisionAnalysisTester = () => {
         addResult('Vision Analysis', 'error', 'No vision analysis data returned (OpenAI API key may be missing)');
       }
 
+      // Add delay between operations
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Test 3: AI Context Integration
       const { data: contextData, error: contextError } = await supabase.functions.invoke('ai-context-manager', {
         body: {
@@ -102,6 +126,9 @@ export const VisionAnalysisTester = () => {
       } else {
         addResult('AI Context Integration', 'error', 'AI context not updated with vision insights');
       }
+
+      // Add delay before cleanup
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Test 4: Cleanup
       const { error: cleanupError } = await supabase.functions.invoke('browser-automation', {
@@ -153,19 +180,60 @@ export const VisionAnalysisTester = () => {
         </svg>
       `);
 
-      // Test the vision analysis function directly via edge function
-      const { data: visionData, error: visionError } = await supabase.functions.invoke('test-vision-analysis', {
-        body: {
-          screenshot: mockFormScreenshot.split(',')[1], // Remove data:image/svg+xml;base64, prefix
-          sessionId: 'test-direct-vision',
-          model: selectedModel
+      // Test the vision analysis function directly via edge function - with retry logic
+      let visionData, visionError;
+      let retryCount = 0;
+      const maxRetries = 2;
+
+      while (retryCount < maxRetries) {
+        const response = await supabase.functions.invoke('test-vision-analysis', {
+          body: {
+            screenshot: mockFormScreenshot.split(',')[1], // Remove data:image/svg+xml;base64, prefix
+            sessionId: 'test-direct-vision',
+            model: selectedModel
+          }
+        });
+
+        visionData = response.data;
+        visionError = response.error;
+
+        if (!visionError) break;
+
+        retryCount++;
+        if (retryCount < maxRetries) {
+          const delay = 2000 * retryCount; // 2s, 4s delays
+          addResult('Direct Vision Analysis', 'pending', `Vision analysis failed, retrying in ${delay/1000}s... (${retryCount}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
-      });
+      }
 
       if (visionError) {
-        addResult('Direct Vision Analysis', 'error', `Vision test failed: ${visionError.message}`);
+        addResult('Direct Vision Analysis', 'error', `Vision test failed after retries: ${visionError.message}`);
+      } else if (visionData?.analysis) {
+        // Validate response structure
+        const analysis = visionData.analysis;
+        const hasValidStructure = 
+          typeof analysis.accessibilityComplexity === 'number' && 
+          analysis.accessibilityComplexity >= 1 && 
+          analysis.accessibilityComplexity <= 10 &&
+          typeof analysis.wcagComplianceScore === 'number' && 
+          analysis.wcagComplianceScore >= 0 && 
+          analysis.wcagComplianceScore <= 1;
+
+        if (hasValidStructure) {
+          addResult('Direct Vision Analysis', 'success', `Direct vision analysis completed successfully with ${visionData.metadata?.model || selectedModel}`, {
+            analysis: visionData.analysis,
+            model: visionData.metadata?.model,
+            timestamp: visionData.metadata?.timestamp
+          });
+        } else {
+          addResult('Direct Vision Analysis', 'error', 'Vision analysis returned invalid structure', {
+            analysis,
+            validationResults: { hasValidStructure }
+          });
+        }
       } else {
-        addResult('Direct Vision Analysis', 'success', 'Direct vision analysis completed', visionData);
+        addResult('Direct Vision Analysis', 'error', 'No analysis data returned from vision function', visionData);
       }
 
     } catch (error) {

@@ -26,7 +26,7 @@ serve(async (req) => {
       });
     }
 
-    const { screenshot, sessionId, model = 'gpt-4o-mini', isolationTest = false } = await req.json();
+    const { screenshot, sessionId, model = 'gpt-5-2025-08-07', isolationTest = false } = await req.json();
 
     if (!screenshot || !sessionId) {
       return new Response(JSON.stringify({ 
@@ -84,34 +84,42 @@ serve(async (req) => {
       });
     }
 
-    // ISOLATION TEST: Use known working model with reduced settings
+    // Model configuration based on actual API requirements
     let visionModel = model;
     let config;
-    let maxTokens = 1000; // Reduce from 4000 to speed up responses
+    let maxTokens = 2000;
     
     if (isolationTest) {
       console.log('🧪 ISOLATION TEST MODE: Using gpt-4o-mini with minimal settings');
       visionModel = 'gpt-4o-mini';
-      maxTokens = 500; // Very low for isolation test
+      maxTokens = 500;
+      config = {
+        maxTokensParam: 'max_tokens',
+        supportsTemperature: true,
+        supportsJsonMode: true
+      };
     }
-    // Force gpt-4o-mini for now to isolate GPT-5 timeout issue
+    // Configure for GPT-5 and newer models
     else if (model.includes('gpt-5') || model.includes('gpt-4.1') || model.includes('o3') || model.includes('o4')) {
-      console.log('⚠️ DEBUGGING: Forcing gpt-4o-mini instead of ' + model + ' to isolate timeout issue');
-      visionModel = 'gpt-4o-mini';
-      maxTokens = 2000; // Moderate tokens
+      console.log('🚀 Using advanced model:', model);
+      visionModel = model;
+      maxTokens = 3000;
+      config = {
+        maxTokensParam: 'max_completion_tokens',
+        supportsTemperature: false, // GPT-5+ doesn't support temperature
+        supportsJsonMode: true
+      };
     }
-    // Use requested model if it's a working one
+    // Legacy model configuration
     else {
       visionModel = model;
       maxTokens = model === 'gpt-4o-mini' ? 2000 : 4000;
+      config = {
+        maxTokensParam: 'max_tokens',
+        supportsTemperature: true,
+        supportsJsonMode: true
+      };
     }
-    
-    // All models get legacy config for now
-    config = {
-      maxTokensParam: 'max_tokens',
-      supportsTemperature: true,
-      supportsJsonMode: true
-    };
 
     // Debug logging for production diagnostics
     console.log(`📊 Vision Analysis Request:`, {
@@ -142,7 +150,7 @@ serve(async (req) => {
       Return JSON with these keys: accessibilityComplexity (1-10), wcagComplianceScore (0-1), complianceAssessment (brief text), interfaceStructure (brief text).`;
     }
     
-    // Log exact request body before sending
+    // Build request body with correct parameters for each model type
     const requestBody: any = {
       model: visionModel,
       messages: [{
@@ -158,9 +166,11 @@ serve(async (req) => {
           }
         ]
       }],
-      response_format: { type: "json_object" },
-      max_tokens: maxTokens
+      response_format: { type: "json_object" }
     };
+
+    // Set correct token parameter based on model
+    requestBody[config.maxTokensParam] = maxTokens;
 
     // Only add temperature for models that support it
     if (config.supportsTemperature) {
