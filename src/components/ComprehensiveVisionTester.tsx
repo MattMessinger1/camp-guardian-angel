@@ -680,14 +680,21 @@ export const ComprehensiveVisionTester = () => {
     setCurrentTest('');
     setIsRunning(false);
     
-    const successCount = testResults.filter(r => r.status === 'success').length;
-    const totalTests = testResults.length;
-    
-    toast({
-      title: "Comprehensive Vision Tests Complete",
-      description: `${successCount}/${totalTests} tests passed`,
-      variant: successCount === totalTests ? "default" : "destructive"
-    });
+    // Use setTimeout to access updated state
+    setTimeout(() => {
+      setTestResults(currentResults => {
+        const successCount = currentResults.filter(r => r.status === 'success').length;
+        const totalTests = currentResults.length;
+        
+        toast({
+          title: "Comprehensive Vision Tests Complete",
+          description: `${successCount}/${totalTests} tests passed`,
+          variant: successCount === totalTests ? "default" : "destructive"
+        });
+        
+        return currentResults; // Return same state
+      });
+    }, 100);
   };
 
   const getStatusColor = (status: string) => {
@@ -808,11 +815,9 @@ export const ComprehensiveVisionTester = () => {
               <div className="space-y-3">
                 {testResults
                   .filter(result => 
-                    result.testCase.includes('1.1') || 
-                    result.testCase.includes('1.2') || 
-                    result.testCase.toLowerCase().includes('unit') ||
-                    result.testCase.toLowerCase().includes('model compatibility') ||
-                    result.testCase.toLowerCase().includes('analyzepagwithvision')
+                    result.testCase.startsWith('1.') || 
+                    result.testCase.toLowerCase().includes('vision analysis') ||
+                    result.testCase.toLowerCase().includes('model compatibility')
                   )
                   .map((result, index) => (
                     <div key={`section1-${index}`} className="border rounded-lg p-3 bg-white">
@@ -841,9 +846,8 @@ export const ComprehensiveVisionTester = () => {
                     </div>
                   ))}
                 {testResults.filter(r => 
-                  r.testCase.includes('1.1') || 
-                  r.testCase.includes('1.2') || 
-                  r.testCase.toLowerCase().includes('unit') ||
+                  r.testCase.startsWith('1.') || 
+                  r.testCase.toLowerCase().includes('vision analysis') ||
                   r.testCase.toLowerCase().includes('model compatibility')
                 ).length === 0 && (
                   <div className="text-center text-muted-foreground py-4">No Section 1 results yet</div>
@@ -862,9 +866,7 @@ export const ComprehensiveVisionTester = () => {
               <div className="space-y-3">
                 {testResults
                   .filter(result => 
-                    result.testCase.includes('2.1') || 
-                    result.testCase.includes('2.2') ||
-                    result.testCase.toLowerCase().includes('integration') ||
+                    result.testCase.startsWith('2.') ||
                     result.testCase.toLowerCase().includes('browser automation') ||
                     result.testCase.toLowerCase().includes('ai context')
                   )
@@ -895,9 +897,7 @@ export const ComprehensiveVisionTester = () => {
                     </div>
                   ))}
                 {testResults.filter(r => 
-                  r.testCase.includes('2.1') || 
-                  r.testCase.includes('2.2') ||
-                  r.testCase.toLowerCase().includes('integration') ||
+                  r.testCase.startsWith('2.') ||
                   r.testCase.toLowerCase().includes('browser automation') ||
                   r.testCase.toLowerCase().includes('ai context')
                 ).length === 0 && (
