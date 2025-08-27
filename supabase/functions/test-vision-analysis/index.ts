@@ -48,28 +48,39 @@ serve(async (req) => {
         const [mimeType, base64Data] = screenshot.split(',');
         validScreenshot = base64Data;
         imageFormat = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpeg' : 'png';
-      } else if (screenshot.startsWith('<svg')) {
-        // SVG is not supported by OpenAI Vision API - use a test PNG instead
-        console.log('🔧 SVG detected - using test PNG for compatibility');
-        // Generate a simple 1x1 PNG for testing purposes
-        validScreenshot = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-        imageFormat = 'png';
       } else {
-        // Assume it's already base64 - validate it
-        const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-        if (!base64Regex.test(screenshot)) {
-          console.error('❌ Invalid base64 format detected');
-          return new Response(JSON.stringify({ 
-            error: 'Invalid screenshot format - must be valid base64 or data URL',
-            format: typeof screenshot,
-            length: screenshot.length,
-            preview: screenshot.substring(0, 100)
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+        // Try to decode base64 to check if it's SVG
+        let decodedContent = '';
+        try {
+          decodedContent = atob(screenshot);
+        } catch (e) {
+          // If it fails to decode, treat as raw content
+          decodedContent = screenshot;
         }
-        validScreenshot = screenshot;
+        
+        if (decodedContent.includes('<svg') || screenshot.startsWith('<svg')) {
+          // SVG is not supported by OpenAI Vision API - use a test PNG instead
+          console.log('🔧 SVG detected (encoded or raw) - using test PNG for compatibility');
+          // Use a simple 1x1 PNG for testing purposes
+          validScreenshot = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+          imageFormat = 'png';
+        } else {
+          // Assume it's already base64 - validate it
+          const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+          if (!base64Regex.test(screenshot)) {
+            console.error('❌ Invalid base64 format detected');
+            return new Response(JSON.stringify({ 
+              error: 'Invalid screenshot format - must be valid base64 or data URL',
+              format: typeof screenshot,
+              length: screenshot.length,
+              preview: screenshot.substring(0, 100)
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          validScreenshot = screenshot;
+        }
       }
       
       // Ensure valid base64 padding
