@@ -1,70 +1,79 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { logger } from "@/lib/log";
+import { isDevelopmentMode } from "@/lib/config/developmentMode";
+import { Suspense, lazy } from 'react';
+
+// Core Production Pages (always available)
 import HomePage from "./pages/Home";
-import ReservationHolds from "./pages/ReservationHolds";
-import ManualBackup from "./pages/ManualBackup";
-import Login from "./pages/Login";
 import Auth from "./pages/Auth";
-import Signup from "./pages/Signup";
 import AutomatedSignupPage from "./pages/AutomatedSignupPage";
-import Dashboard from "./pages/Dashboard";
-import Sessions from "./pages/Sessions";
-import Children from "./pages/Children";
+import SignupSubmitted from './pages/SignupSubmitted';
+import AccountHistory from './pages/AccountHistory';
 import Settings from "./pages/Settings";
-import FindCamps from "./pages/FindCamps";
-import SessionDetail from "./pages/SessionDetail";
-import SessionSignup from "./pages/SessionSignup";
-import SessionForm from "./pages/SessionForm";
-import PlanDetail from "./pages/PlanDetail";
-import Billing from "./pages/Billing";
 import BillingSetupSuccess from "./pages/BillingSetupSuccess";
 import BillingSetupCancelled from "./pages/BillingSetupCancelled";
 import PaymentSuccess from "./pages/PaymentSuccess";
-import AdminDashboard from "./pages/AdminDashboard";
-import SystemDashboard from "./pages/SystemDashboard";
-import HealthCheck from "./pages/HealthCheck";
-import SanityCheck from "./pages/SanityCheck";
-import GuardrailsTest from "./pages/GuardrailsTest";
-import DevLimits from "./pages/DevLimits";
-import DevRunPrewarm from "./pages/DevRunPrewarm";
 import NotFound from "./pages/NotFound";
-import { TestEnvironment } from "./pages/TestEnvironment";
-import Diagnostics from "./pages/Diagnostics";
-import SearchTest from "./pages/SearchTest";
-import UIAuditSummary from './pages/UIAuditSummary';
-import UIShowcase from './pages/UIShowcase';
-import ExampleNewPage from './pages/ExampleNewPage';
-import Readiness from './pages/Readiness';
-import TestDebug from './pages/TestDebug';
-import WorkingTest from './pages/WorkingTest';
-import ReadyToSignup from './pages/ReadyToSignup';
-import YMCATest from './pages/YMCATest';
-import PrewarmTest from './pages/PrewarmTest';
-
-import SignupSubmitted from './pages/SignupSubmitted';
-import PendingSignups from './pages/PendingSignups';
-import AccountHistory from './pages/AccountHistory';
-import ApprovePage from './pages/ApprovePage';
-import Operations from './pages/Operations';
-import ComplianceDashboard from './pages/ComplianceDashboard';
-import AdminLayout from './pages/AdminLayout';
-import Partnerships from './pages/Partnerships';
-import Analytics from './pages/Analytics';
-import ProductionMonitoring from './pages/ProductionMonitoring';
-import TransparencyPage from './pages/TransparencyPage';
-import BotInfoPage from './pages/BotInfoPage';
-import CaptchaAssist from './pages/CaptchaAssist';
-import CaptchaWorkflowTest from "@/pages/CaptchaWorkflowTest";
-import ActiveNetworkTest from "@/pages/ActiveNetworkTest";
-import { CaptchaOptimizationPanel } from "@/components/CaptchaOptimizationPanel";
-import TOSCompliance from './pages/TOSCompliance';
-import ObservabilityPage from './pages/ObservabilityPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
+// Development/Testing Pages (lazy loaded only when needed)
+const DevPages = {
+  ReservationHolds: lazy(() => import("./pages/ReservationHolds")),
+  ManualBackup: lazy(() => import("./pages/ManualBackup")),
+  Login: lazy(() => import("./pages/Login")),
+  Signup: lazy(() => import("./pages/Signup")),
+  Dashboard: lazy(() => import("./pages/Dashboard")),
+  Sessions: lazy(() => import("./pages/Sessions")),
+  Children: lazy(() => import("./pages/Children")),
+  FindCamps: lazy(() => import("./pages/FindCamps")),
+  SessionDetail: lazy(() => import("./pages/SessionDetail")),
+  SessionSignup: lazy(() => import("./pages/SessionSignup")),
+  SessionForm: lazy(() => import("./pages/SessionForm")),
+  PlanDetail: lazy(() => import("./pages/PlanDetail")),
+  Billing: lazy(() => import("./pages/Billing")),
+  AdminDashboard: lazy(() => import("./pages/AdminDashboard")),
+  SystemDashboard: lazy(() => import("./pages/SystemDashboard")),
+  HealthCheck: lazy(() => import("./pages/HealthCheck")),
+  SanityCheck: lazy(() => import("./pages/SanityCheck")),
+  GuardrailsTest: lazy(() => import("./pages/GuardrailsTest")),
+  DevLimits: lazy(() => import("./pages/DevLimits")),
+  DevRunPrewarm: lazy(() => import("./pages/DevRunPrewarm")),
+  TestEnvironment: lazy(() => import("./pages/TestEnvironment").then(m => ({ default: m.TestEnvironment }))),
+  Diagnostics: lazy(() => import("./pages/Diagnostics")),
+  SearchTest: lazy(() => import("./pages/SearchTest")),
+  UIAuditSummary: lazy(() => import('./pages/UIAuditSummary')),
+  UIShowcase: lazy(() => import('./pages/UIShowcase')),
+  ExampleNewPage: lazy(() => import('./pages/ExampleNewPage')),
+  Readiness: lazy(() => import('./pages/Readiness')),
+  TestDebug: lazy(() => import('./pages/TestDebug')),
+  WorkingTest: lazy(() => import('./pages/WorkingTest')),
+  ReadyToSignup: lazy(() => import('./pages/ReadyToSignup')),
+  YMCATest: lazy(() => import('./pages/YMCATest')),
+  PrewarmTest: lazy(() => import('./pages/PrewarmTest')),
+  PendingSignups: lazy(() => import('./pages/PendingSignups')),
+  ApprovePage: lazy(() => import('./pages/ApprovePage')),
+  Operations: lazy(() => import('./pages/Operations')),
+  ComplianceDashboard: lazy(() => import('./pages/ComplianceDashboard')),
+  AdminLayout: lazy(() => import('./pages/AdminLayout')),
+  Partnerships: lazy(() => import('./pages/Partnerships')),
+  Analytics: lazy(() => import('./pages/Analytics')),
+  ProductionMonitoring: lazy(() => import('./pages/ProductionMonitoring')),
+  TransparencyPage: lazy(() => import('./pages/TransparencyPage')),
+  BotInfoPage: lazy(() => import('./pages/BotInfoPage')),
+  CaptchaAssist: lazy(() => import('./pages/CaptchaAssist')),
+  CaptchaWorkflowTest: lazy(() => import("./pages/CaptchaWorkflowTest")),
+  ActiveNetworkTest: lazy(() => import("./pages/ActiveNetworkTest")),
+  CaptchaOptimizationPanel: lazy(() => import("./components/CaptchaOptimizationPanel").then(m => ({ default: m.CaptchaOptimizationPanel }))),
+  TOSCompliance: lazy(() => import('./pages/TOSCompliance')),
+  ObservabilityPage: lazy(() => import('./pages/ObservabilityPage')),
+};
+
 export default function App() {
+  const devMode = isDevelopmentMode();
+  
   console.log('🚀 App component is rendering!');
+  console.log('🛠️ Development Mode:', devMode);
   
   const currentPath = window.location.pathname;
   const currentSearch = window.location.search;
@@ -80,133 +89,140 @@ export default function App() {
         }}
       >
         <ErrorBoundary>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/signup" element={<AutomatedSignupPage />} />
-            <Route path="/automated-signup" element={<AutomatedSignupPage />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Signup />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/sessions" element={
-              <ProtectedRoute>
-                <Sessions />
-              </ProtectedRoute>
-            } />
-            <Route path="/children" element={
-              <ProtectedRoute>
-                <Children />
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } />
-            <Route path="/find-camps" element={
-              <ProtectedRoute>
-                <FindCamps />
-              </ProtectedRoute>
-            } />
-            <Route path="/session/:sessionId" element={
-              <ProtectedRoute>
-                <SessionDetail />
-              </ProtectedRoute>
-            } />
-            <Route path="/session/:sessionId/signup" element={
-              <ProtectedRoute>
-                <SessionSignup />
-              </ProtectedRoute>
-            } />
-            <Route path="/session/new" element={
-              <ProtectedRoute>
-                <SessionForm />
-              </ProtectedRoute>
-            } />
-            <Route path="/billing" element={
-              <ProtectedRoute>
-                <Billing />
-              </ProtectedRoute>
-            } />
-            <Route path="/ymca-test" element={
-              <ProtectedRoute>
-                <YMCATest />
-              </ProtectedRoute>
-            } />
-            <Route path="/prewarm-test" element={
-              <ProtectedRoute>
-                <PrewarmTest />
-              </ProtectedRoute>
-            } />
-            <Route path="/billing/success" element={<BillingSetupSuccess />} />
-            <Route path="/billing/cancelled" element={<BillingSetupCancelled />} />
-            <Route path="/payment/success" element={<PaymentSuccess />} />
-            <Route path="/admin/*" element={
-              <ProtectedRoute>
-                <AdminLayout />
-              </ProtectedRoute>
-            } />
-            <Route path="/health" element={<HealthCheck />} />
-            <Route path="/sanity" element={<SanityCheck />} />
-            <Route path="/test-env" element={<TestEnvironment />} />
-            <Route path="/diagnostics" element={<Diagnostics />} />
-            <Route path="/search-test" element={<SearchTest />} />
-            <Route path="/ui-audit" element={<UIAuditSummary />} />
-            <Route path="/ui-showcase" element={<UIShowcase />} />
-            <Route path="/readiness" element={<Readiness />} />
-            <Route path="/test-debug" element={<TestDebug />} />
-            <Route path="/working-test" element={<WorkingTest />} />
-            <Route path="/ready-to-signup" element={<ReadyToSignup />} />
-            <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
-            <Route path="/sessions/:sessionId/signup-submitted" element={<SignupSubmitted />} />
-            <Route path="/pending-signups" element={<PendingSignups />} />
-            
-            <Route path="/account-history" element={<AccountHistory />} />
-            <Route path="/accounthistory" element={<Navigate to="/account-history" replace />} />
-            <Route path="/signuphistory" element={<Navigate to="/account-history" replace />} />
-            <Route path="/approve" element={<ApprovePage />} />
-            <Route path="/operations" element={<Operations />} />
-            <Route path="/compliance" element={<ComplianceDashboard />} />
-            <Route path="/partnerships" element={<Partnerships />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/production-monitoring" element={<ProductionMonitoring />} />
-            <Route path="/transparency" element={<TransparencyPage />} />
-            <Route path="/bot-info" element={<BotInfoPage />} />
-            <Route path="/captcha-assist" element={<CaptchaAssist />} />
-            <Route path="/captcha-workflow-test" element={
-              <ProtectedRoute>
-                <CaptchaWorkflowTest />
-              </ProtectedRoute>
-            } />
-            <Route path="/activenetwork-test" element={
-              <div style={{padding: '20px', border: '2px solid red', margin: '20px'}}>
-                <h1 style={{color: 'green', fontSize: '24px'}}>🎉 SUCCESS! You are on /activenetwork-test</h1>
-                <p>Current URL: {window.location.href}</p>
-                <p>Current pathname: {window.location.pathname}</p>
-                <p>Timestamp: {new Date().toISOString()}</p>
-                <ActiveNetworkTest />
-              </div>
-            } />
-            <Route path="/captcha-optimization" element={
-              <ProtectedRoute>
-                <div className="container mx-auto p-6"><CaptchaOptimizationPanel /></div>
-              </ProtectedRoute>
-            } />
-            <Route path="/tos-compliance" element={<TOSCompliance />} />
-            <Route path="/observability" element={<ObservabilityPage />} />
-            <Route path="*" element={
-              <div>
-                <h1>404 - Route Debug</h1>
-                <p>Current pathname: {window.location.pathname}</p>
-                <p>Attempted route: {window.location.href}</p>
-                <NotFound />
-              </div>
-            } />
-          </Routes>
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+            <Routes>
+              {/* Core V1.0 Production Routes - Always Available */}
+              <Route path="/" element={<HomePage />} />
+              <Route path="/signup" element={<AutomatedSignupPage />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+              <Route path="/sessions/:sessionId/signup-submitted" element={<SignupSubmitted />} />
+              <Route path="/account-history" element={<AccountHistory />} />
+              
+              {/* Payment Routes - Always Available */}
+              <Route path="/billing/success" element={<BillingSetupSuccess />} />
+              <Route path="/billing/cancelled" element={<BillingSetupCancelled />} />
+              <Route path="/payment/success" element={<PaymentSuccess />} />
+              
+              {/* Legacy Redirects */}
+              <Route path="/accounthistory" element={<Navigate to="/account-history" replace />} />
+              <Route path="/signuphistory" element={<Navigate to="/account-history" replace />} />
+              
+              {/* Development/Testing Routes - Only Available in Development Mode */}
+              {devMode && (
+                <>
+                  <Route path="/automated-signup" element={<AutomatedSignupPage />} />
+                  <Route path="/login" element={<DevPages.Login />} />
+                  <Route path="/register" element={<DevPages.Signup />} />
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <DevPages.Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/sessions" element={
+                    <ProtectedRoute>
+                      <DevPages.Sessions />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/children" element={
+                    <ProtectedRoute>
+                      <DevPages.Children />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/find-camps" element={
+                    <ProtectedRoute>
+                      <DevPages.FindCamps />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/session/:sessionId" element={
+                    <ProtectedRoute>
+                      <DevPages.SessionDetail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/session/:sessionId/signup" element={
+                    <ProtectedRoute>
+                      <DevPages.SessionSignup />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/session/new" element={
+                    <ProtectedRoute>
+                      <DevPages.SessionForm />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/billing" element={
+                    <ProtectedRoute>
+                      <DevPages.Billing />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/ymca-test" element={
+                    <ProtectedRoute>
+                      <DevPages.YMCATest />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/prewarm-test" element={
+                    <ProtectedRoute>
+                      <DevPages.PrewarmTest />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/*" element={
+                    <ProtectedRoute>
+                      <DevPages.AdminLayout />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/health" element={<DevPages.HealthCheck />} />
+                  <Route path="/sanity" element={<DevPages.SanityCheck />} />
+                  <Route path="/test-env" element={<DevPages.TestEnvironment />} />
+                  <Route path="/diagnostics" element={<DevPages.Diagnostics />} />
+                  <Route path="/search-test" element={<DevPages.SearchTest />} />
+                  <Route path="/ui-audit" element={<DevPages.UIAuditSummary />} />
+                  <Route path="/ui-showcase" element={<DevPages.UIShowcase />} />
+                  <Route path="/readiness" element={<DevPages.Readiness />} />
+                  <Route path="/test-debug" element={<DevPages.TestDebug />} />
+                  <Route path="/working-test" element={<DevPages.WorkingTest />} />
+                  <Route path="/ready-to-signup" element={<DevPages.ReadyToSignup />} />
+                  <Route path="/sessions/:sessionId/ready-to-signup" element={<DevPages.ReadyToSignup />} />
+                  <Route path="/pending-signups" element={<DevPages.PendingSignups />} />
+                  <Route path="/approve" element={<DevPages.ApprovePage />} />
+                  <Route path="/operations" element={<DevPages.Operations />} />
+                  <Route path="/compliance" element={<DevPages.ComplianceDashboard />} />
+                  <Route path="/partnerships" element={<DevPages.Partnerships />} />
+                  <Route path="/analytics" element={<DevPages.Analytics />} />
+                  <Route path="/production-monitoring" element={<DevPages.ProductionMonitoring />} />
+                  <Route path="/transparency" element={<DevPages.TransparencyPage />} />
+                  <Route path="/bot-info" element={<DevPages.BotInfoPage />} />
+                  <Route path="/captcha-assist" element={<DevPages.CaptchaAssist />} />
+                  <Route path="/captcha-workflow-test" element={
+                    <ProtectedRoute>
+                      <DevPages.CaptchaWorkflowTest />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/activenetwork-test" element={
+                    <div style={{padding: '20px', border: '2px solid red', margin: '20px'}}>
+                      <h1 style={{color: 'green', fontSize: '24px'}}>🎉 SUCCESS! You are on /activenetwork-test</h1>
+                      <p>Current URL: {window.location.href}</p>
+                      <p>Current pathname: {window.location.pathname}</p>
+                      <p>Timestamp: {new Date().toISOString()}</p>
+                      <DevPages.ActiveNetworkTest />
+                    </div>
+                  } />
+                  <Route path="/captcha-optimization" element={
+                    <ProtectedRoute>
+                      <div className="container mx-auto p-6"><DevPages.CaptchaOptimizationPanel /></div>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/tos-compliance" element={<DevPages.TOSCompliance />} />
+                  <Route path="/observability" element={<DevPages.ObservabilityPage />} />
+                </>
+              )}
+              
+              {/* 404 Route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </BrowserRouter>
     </AuthProvider>

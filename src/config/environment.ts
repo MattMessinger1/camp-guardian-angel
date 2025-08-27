@@ -34,6 +34,7 @@ export interface EnvironmentConfig {
   FEATURE_PROVIDER_AUTOMATION_SIMULATE: boolean;
   PUBLIC_DATA_MODE: boolean;
   GEOCODE_ENABLED: boolean;
+  DEVELOPMENT_MODE: boolean;
 }
 
 export interface EnvironmentVariable {
@@ -168,6 +169,13 @@ export const ENVIRONMENT_VARIABLES: EnvironmentVariable[] = [
     sensitive: false,
     defaultValue: false,
   },
+  {
+    key: 'DEVELOPMENT_MODE',
+    required: false,
+    description: 'Enable development and testing features (test routes, debug tools, admin panels)',
+    sensitive: false,
+    defaultValue: false,
+  },
 ];
 
 export class EnvironmentError extends Error {
@@ -211,7 +219,7 @@ export function validateEnvironment(context: 'browser' | 'server' = 'browser'): 
     }
     
     // Type conversion and validation
-    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'PUBLIC_DATA_MODE' || envVar.key === 'GEOCODE_ENABLED') {
+    if (envVar.key === 'STRIPE_CONNECT' || envVar.key === 'FEATURE_PROVIDER_AUTOMATION_SIMULATE' || envVar.key === 'PUBLIC_DATA_MODE' || envVar.key === 'GEOCODE_ENABLED' || envVar.key === 'DEVELOPMENT_MODE') {
       (config as any)[envVar.key] = value.toLowerCase() === 'true';
     } else if (envVar.key === 'CRYPTO_KEY_VERSION') {
       (config as any)[envVar.key] = parseInt(value, 10);
