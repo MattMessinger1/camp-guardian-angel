@@ -745,19 +745,22 @@ export const ComprehensiveVisionTester = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-medium">📋 Test Results by Section</h4>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                const resultsText = testResults.map(r => 
-                  `${r.testCase}: ${r.status.toUpperCase()} - ${r.message}${r.duration ? ` (${r.duration}ms)` : ''}`
-                ).join('\n');
-                navigator.clipboard.writeText(resultsText);
-                toast({ title: "All results copied to clipboard!" });
-              }}
-            >
-              📋 Copy All Results
-            </Button>
+            <div className="flex gap-2">
+              <Badge variant="outline">{testResults.length} total results</Badge>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const resultsText = testResults.map(r => 
+                    `${r.testCase}: ${r.status.toUpperCase()} - ${r.message}${r.duration ? ` (${r.duration}ms)` : ''}`
+                  ).join('\n');
+                  navigator.clipboard.writeText(resultsText);
+                  toast({ title: "All results copied to clipboard!" });
+                }}
+              >
+                📋 Copy All Results
+              </Button>
+            </div>
           </div>
 
           {/* Section 1: Unit Tests */}
