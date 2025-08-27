@@ -26,7 +26,7 @@ serve(async (req) => {
       });
     }
 
-    const { screenshot, sessionId, model = 'gpt-5-2025-08-07', isolationTest = false } = await req.json();
+    const { screenshot, sessionId, model = 'gpt-4o', isolationTest = false } = await req.json();
 
     if (!screenshot || !sessionId) {
       return new Response(JSON.stringify({ 
@@ -100,24 +100,34 @@ serve(async (req) => {
       });
     }
 
-    // Model configuration based on actual API requirements
-    let visionModel = model;
+    // Model configuration - validate and use correct OpenAI model names
+    let visionModel;
     let config;
     let maxTokens = 2000;
     
-    // Configure for GPT-5 and newer models
-    if (model.includes('gpt-5') || model.includes('gpt-4.1') || model.includes('o3') || model.includes('o4')) {
-      console.log('🚀 Using advanced model:', model);
-      visionModel = model;
-      maxTokens = isolationTest ? 500 : 3000;
+    console.log('🔍 Original model requested:', model);
+    
+    // Map requested models to valid OpenAI model names
+    if (model === 'gpt-5-2025-08-07' || model.includes('gpt-5')) {
+      visionModel = 'gpt-4o'; // Use GPT-4o as GPT-5 is not available yet
+      console.log('⚠️ GPT-5 not available, using GPT-4o instead');
+      maxTokens = isolationTest ? 500 : 4000;
       config = {
-        maxTokensParam: 'max_completion_tokens',
-        supportsTemperature: false, // GPT-5+ doesn't support temperature
+        maxTokensParam: 'max_tokens',
+        supportsTemperature: true,
         supportsJsonMode: true
       };
-    }
-    // Legacy model configuration
-    else {
+    } else if (model === 'gpt-4.1-2025-04-14' || model.includes('gpt-4.1')) {
+      visionModel = 'gpt-4o'; // Use GPT-4o for GPT-4.1 requests
+      console.log('⚠️ GPT-4.1 not available, using GPT-4o instead');
+      maxTokens = isolationTest ? 500 : 4000;
+      config = {
+        maxTokensParam: 'max_tokens',
+        supportsTemperature: true,
+        supportsJsonMode: true
+      };
+    } else {
+      // Use the model as-is for standard OpenAI models
       visionModel = model;
       maxTokens = isolationTest ? 500 : (model === 'gpt-4o-mini' ? 2000 : 4000);
       config = {
@@ -126,6 +136,8 @@ serve(async (req) => {
         supportsJsonMode: true
       };
     }
+    
+    console.log('✅ Using OpenAI model:', visionModel);
 
     // Debug logging for production diagnostics
     console.log(`📊 Vision Analysis Request:`, {
@@ -389,10 +401,18 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Vision analysis test failed:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', {
+      name: error.name,
+      message: error.message,
+      cause: error.cause
+    });
     
     return new Response(JSON.stringify({ 
       error: error.message,
-      timestamp: new Date().toISOString()
+      errorType: error.name,
+      timestamp: new Date().toISOString(),
+      stack: error.stack
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

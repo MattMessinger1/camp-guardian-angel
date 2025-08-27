@@ -11,8 +11,8 @@ serve(async (req) => {
   }
 
   try {
-    const browserbaseApiKey = Deno.env.get('BROWSERBASE_API_KEY');
-    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT_ID');
+    const browserbaseApiKey = Deno.env.get('BROWSERBASE_TOKEN');
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
 
     console.log('🔍 Browserbase Credentials Check:');
     console.log('API Key exists:', !!browserbaseApiKey);
@@ -22,8 +22,9 @@ serve(async (req) => {
 
     if (!browserbaseApiKey) {
       return new Response(JSON.stringify({
-        error: 'BROWSERBASE_API_KEY not configured in Supabase secrets',
+        error: 'BROWSERBASE_TOKEN not configured in Supabase secrets',
         status: 'missing_api_key',
+        availableEnvVars: Object.keys(Deno.env.toObject()).filter(key => key.includes('BROWSER')),
         timestamp: new Date().toISOString()
       }), {
         status: 400,
@@ -33,8 +34,9 @@ serve(async (req) => {
 
     if (!browserbaseProjectId) {
       return new Response(JSON.stringify({
-        error: 'BROWSERBASE_PROJECT_ID not configured in Supabase secrets',
+        error: 'BROWSERBASE_PROJECT not configured in Supabase secrets',
         status: 'missing_project_id',
+        availableEnvVars: Object.keys(Deno.env.toObject()).filter(key => key.includes('PROJECT')),
         timestamp: new Date().toISOString()
       }), {
         status: 400,
@@ -45,7 +47,7 @@ serve(async (req) => {
     // Test basic API connectivity
     console.log('🧪 Testing Browserbase API connectivity...');
     
-    const response = await fetch('https://www.browserbase.com/v1/sessions', {
+    const response = await fetch('https://api.browserbase.com/v1/sessions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${browserbaseApiKey}`,
