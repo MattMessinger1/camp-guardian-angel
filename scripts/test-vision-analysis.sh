@@ -89,7 +89,7 @@ main() {
     
     # Run unit tests
     print_status "Running vision analysis unit tests..."
-    npx playwright test tests/unit/vision-analysis.test.ts --reporter=line
+    npx playwright test tests/vision-analysis-unit.spec.ts --reporter=line
     
     # Run integration tests (extend existing)
     print_status "Running integration tests..."

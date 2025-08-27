@@ -1,25 +1,30 @@
 import { test, expect } from '@playwright/test';
-import { mockScreenshots, expectedResponses, validateVisionResponse, createTestSession } from '../utils/visionTestUtils';
 
-// Mock Supabase client to avoid actual API calls in unit tests
-const mockSupabase = {
-  functions: {
-    invoke: async (functionName: string, options: any) => {
-      if (functionName === 'test-vision-analysis') {
-        return {
-          data: {
-            accessibilityComplexity: 5,
-            wcagComplianceScore: 0.6,
-            complianceAssessment: 'The interface has moderate accessibility features.',
-            interfaceStructure: 'Standard form layout with clear labels.'
-          },
-          error: null
-        };
-      }
-      return { data: null, error: { message: 'Unknown function' } };
-    }
-  }
+// Mock screenshot data for testing vision analysis
+const mockScreenshots = {
+  simpleForm: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIiBmaWxsPSIjZjhmOWZhIi8+CiAgICA8dGV4dCB4PSI1MCIgeT0iNTAiPkZvcm08L3RleHQ+Cjwvc3ZnPg==",
+  complexForm: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjgwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iODAwIiBmaWxsPSIjZjhmOWZhIi8+CiAgICA8dGV4dCB4PSI1MCIgeT0iMzAiPkNvbXBsZXggRm9ybTwvdGV4dD4KPC9zdmc+"
 };
+
+// Validation function for vision analysis responses
+function validateVisionResponse(response: any) {
+  expect(response).toHaveProperty('accessibilityComplexity');
+  expect(response.accessibilityComplexity).toBeGreaterThanOrEqual(1);
+  expect(response.accessibilityComplexity).toBeLessThanOrEqual(10);
+  
+  expect(response).toHaveProperty('wcagComplianceScore');
+  expect(response.wcagComplianceScore).toBeGreaterThanOrEqual(0);
+  expect(response.wcagComplianceScore).toBeLessThanOrEqual(1);
+}
+
+// Create test session data
+function createTestSession(sessionId: string = 'test-session') {
+  return {
+    sessionId,
+    timestamp: new Date().toISOString(),
+    testType: 'vision-analysis'
+  };
+}
 
 test.describe('Vision Analysis Unit Tests', () => {
   test('validates mock screenshot data format', async () => {
