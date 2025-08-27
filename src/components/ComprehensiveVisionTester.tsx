@@ -317,196 +317,239 @@ export const ComprehensiveVisionTester = () => {
   const testRealWorldScenarios = async () => {
     setCurrentTest('Section 5: Real-world Scenario Tests');
     
-    // Test 5.1: Actual camp registration forms from different providers
+    // Test 5.1: REAL camp registration sites (not mock data!)
     const startTime1 = Date.now();
     try {
-      const campProviderForms = [
+      const realCampSites = [
         {
-          name: 'YMCA Registration',
-          screenshot: 'data:image/svg+xml;base64,' + btoa(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="900" height="700">
-              <rect width="100%" height="100%" fill="#ffffff"/>
-              <rect x="0" y="0" width="900" height="80" fill="#e31e24"/>
-              <text x="50" y="50" font-size="28" fill="white" font-weight="bold">YMCA of Greater Seattle</text>
-              <text x="50" y="120" font-size="20" fill="#333">Summer Camp Registration 2024</text>
-              
-              <rect x="50" y="160" width="800" height="400" fill="white" stroke="#ddd"/>
-              <text x="70" y="190" font-size="16" font-weight="bold" fill="#333">Child Information</text>
-              <rect x="70" y="210" width="200" height="30" fill="white" stroke="#ccc"/>
-              <text x="75" y="230" font-size="12" fill="#666">First Name *</text>
-              <rect x="290" y="210" width="200" height="30" fill="white" stroke="#ccc"/>
-              <text x="295" y="230" font-size="12" fill="#666">Last Name *</text>
-              <rect x="510" y="210" width="120" height="30" fill="white" stroke="#ccc"/>
-              <text x="515" y="230" font-size="12" fill="#666">Age *</text>
-              
-              <text x="70" y="280" font-size="16" font-weight="bold" fill="#333">Parent/Guardian Information</text>
-              <rect x="70" y="300" width="350" height="30" fill="white" stroke="#ccc"/>
-              <text x="75" y="320" font-size="12" fill="#666">Email Address *</text>
-              <rect x="440" y="300" width="250" height="30" fill="white" stroke="#ccc"/>
-              <text x="445" y="320" font-size="12" fill="#666">Phone Number *</text>
-              
-              <text x="70" y="370" font-size="16" font-weight="bold" fill="#333">Camp Selection</text>
-              <rect x="70" y="390" width="300" height="30" fill="white" stroke="#ccc"/>
-              <text x="75" y="410" font-size="12" fill="#666">Select Camp Program *</text>
-              <rect x="390" y="390" width="150" height="30" fill="white" stroke="#ccc"/>
-              <text x="395" y="410" font-size="12" fill="#666">Week Selection *</text>
-              
-              <text x="70" y="460" font-size="16" font-weight="bold" fill="#333">Emergency Contact</text>
-              <rect x="70" y="480" width="200" height="30" fill="white" stroke="#ccc"/>
-              <text x="75" y="500" font-size="12" fill="#666">Contact Name *</text>
-              <rect x="290" y="480" width="200" height="30" fill="white" stroke="#ccc"/>
-              <text x="295" y="500" font-size="12" fill="#666">Contact Phone *</text>
-              
-              <rect x="350" y="580" width="200" height="50" fill="#e31e24"/>
-              <text x="420" y="610" font-size="16" fill="white" text-anchor="middle">REGISTER NOW</text>
-              
-              <text x="50" y="660" font-size="10" fill="#999">* Required fields</text>
-              <text x="50" y="680" font-size="10" fill="#999">Registration fee: $180/week</text>
-            </svg>
-          `)
+          name: 'YMCA Seattle',
+          url: 'https://www.seattleymca.org/programs/youth-teen/camps',
+          testType: 'real_site_navigation'
         },
         {
-          name: 'Community Center Form',
-          screenshot: 'data:image/svg+xml;base64,' + btoa(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
-              <rect width="100%" height="100%" fill="#f5f5f5"/>
-              <rect x="50" y="30" width="700" height="60" fill="#2e7d32"/>
-              <text x="400" y="70" font-size="24" fill="white" text-anchor="middle" font-weight="bold">Bellevue Community Center</text>
-              
-              <rect x="100" y="120" width="600" height="400" fill="white" stroke="#ddd"/>
-              <text x="120" y="150" font-size="18" fill="#333" font-weight="bold">Youth Summer Program Registration</text>
-              
-              <text x="120" y="180" font-size="14" fill="#666">Child's Information</text>
-              <rect x="120" y="190" width="250" height="25" fill="white" stroke="#bbb"/>
-              <text x="125" y="208" font-size="11" fill="#888">Child's Full Name</text>
-              <rect x="380" y="190" width="100" height="25" fill="white" stroke="#bbb"/>
-              <text x="385" y="208" font-size="11" fill="#888">Birth Date</text>
-              <rect x="490" y="190" width="80" height="25" fill="white" stroke="#bbb"/>
-              <text x="495" y="208" font-size="11" fill="#888">Grade</text>
-              
-              <text x="120" y="240" font-size="14" fill="#666">Parent Information</text>
-              <rect x="120" y="250" width="200" height="25" fill="white" stroke="#bbb"/>
-              <text x="125" y="268" font-size="11" fill="#888">Parent Name</text>
-              <rect x="330" y="250" width="240" height="25" fill="white" stroke="#bbb"/>
-              <text x="335" y="268" font-size="11" fill="#888">Email</text>
-              <rect x="580" y="250" width="120" height="25" fill="white" stroke="#bbb"/>
-              <text x="585" y="268" font-size="11" fill="#888">Phone</text>
-              
-              <text x="120" y="300" font-size="14" fill="#666">Program Selection</text>
-              <rect x="120" y="310" width="200" height="25" fill="white" stroke="#bbb"/>
-              <text x="125" y="328" font-size="11" fill="#888">Select Program</text>
-              <rect x="330" y="310" width="150" height="25" fill="white" stroke="#bbb"/>
-              <text x="335" y="328" font-size="11" fill="#888">Session Dates</text>
-              
-              <rect x="120" y="360" width="450" height="60" fill="white" stroke="#bbb"/>
-              <text x="125" y="378" font-size="11" fill="#888">Special Instructions / Medical Information</text>
-              
-              <rect x="300" y="450" width="150" height="40" fill="#2e7d32"/>
-              <text x="375" y="475" font-size="14" fill="white" text-anchor="middle">Submit Registration</text>
-            </svg>
-          `)
+          name: 'Community Center Registration',
+          url: 'https://www.seattle.gov/parks/recreation/summer-camps',
+          testType: 'real_site_navigation'
+        },
+        {
+          name: 'Local Day Camp',
+          url: 'https://www.redmond.gov/542/Summer-Camps',
+          testType: 'real_site_navigation'
         }
       ];
 
-      const providerResults = [];
-      for (const provider of campProviderForms) {
+      const realSiteResults = [];
+      
+      for (const site of realCampSites) {
         try {
-          const { data: analysisData, error } = await supabase.functions.invoke('test-vision-analysis', {
+          addResult(`5.1.${site.name} - Real Site Test`, 'pending', `Testing real camp site: ${site.url}...`);
+          
+          // Create real browser session for the camp site
+          const { data: sessionData, error: sessionError } = await supabase.functions.invoke('browser-automation', {
             body: {
-              screenshot: provider.screenshot.split(',')[1],
-              sessionId: `provider-${provider.name.replace(/\s+/g, '-').toLowerCase()}`,
-              model: 'gpt-4o-mini'
+              action: 'create',
+              campProviderId: site.url,
+              enableVision: true,
+              realSiteTest: true
             }
           });
 
-          if (!error && analysisData) {
-            providerResults.push({
-              provider: provider.name,
-              status: 'success',
-              formComplexity: analysisData.accessibilityComplexity,
-              wcagScore: analysisData.wcagComplianceScore
-            });
-          } else {
-            providerResults.push({
-              provider: provider.name,
-              status: 'error',
-              error: error?.message || 'No analysis data'
-            });
+          if (sessionError) {
+            addResult(`5.1.${site.name} - Real Site Test`, 'error', `Failed to create browser session: ${sessionError.message}`);
+            continue;
           }
-        } catch (e) {
-          providerResults.push({
-            provider: provider.name,
-            status: 'error',
-            error: e.message
+
+          // Navigate to registration page and capture real screenshot
+          const { data: navigationData, error: navError } = await supabase.functions.invoke('browser-automation', {
+            body: {
+              action: 'navigate',
+              sessionId: sessionData.id,
+              url: site.url,
+              waitForSelector: 'form, input, button[type="submit"]', // Wait for registration elements
+              enableVision: true
+            }
           });
+
+          if (navError) {
+            addResult(`5.1.${site.name} - Real Site Test`, 'error', `Navigation failed: ${navError.message}`);
+            // Cleanup
+            await supabase.functions.invoke('browser-automation', {
+              body: { action: 'close', sessionId: sessionData.id }
+            });
+            continue;
+          }
+
+          // Extract real page data with vision analysis
+          const { data: extractData, error: extractError } = await supabase.functions.invoke('browser-automation', {
+            body: {
+              action: 'extract',
+              sessionId: sessionData.id,
+              enableVision: true,
+              extractType: 'registration_form_analysis'
+            }
+          });
+
+          if (extractError || !extractData?.screenshot) {
+            addResult(`5.1.${site.name} - Real Site Test`, 'error', `Failed to extract real page data: ${extractError?.message || 'No screenshot captured'}`);
+          } else {
+            // Analyze real screenshot with vision
+            const { data: visionData, error: visionError } = await supabase.functions.invoke('test-vision-analysis', {
+              body: {
+                screenshot: extractData.screenshot,
+                sessionId: `real-site-${site.name.replace(/\s+/g, '-').toLowerCase()}`,
+                model: 'gpt-4o-mini',
+                realSiteAnalysis: true
+              }
+            });
+
+            if (visionError) {
+              addResult(`5.1.${site.name} - Real Site Test`, 'error', `Vision analysis of real site failed: ${visionError.message}`);
+            } else {
+              realSiteResults.push({
+                site: site.name,
+                url: site.url,
+                status: 'success',
+                formComplexity: visionData.accessibilityComplexity,
+                wcagScore: visionData.wcagComplianceScore,
+                realSiteData: true
+              });
+              
+              addResult(`5.1.${site.name} - Real Site Test`, 'success', 
+                `Real site analyzed! Complexity: ${visionData.accessibilityComplexity}/10, WCAG: ${visionData.wcagComplianceScore}`, 
+                Date.now() - startTime1, 
+                { realSite: true, url: site.url, visionData }
+              );
+            }
+          }
+
+          // Cleanup browser session
+          await supabase.functions.invoke('browser-automation', {
+            body: { action: 'close', sessionId: sessionData.id }
+          });
+
+        } catch (error) {
+          addResult(`5.1.${site.name} - Real Site Test`, 'error', `Real site test failed: ${error}`);
         }
       }
 
       const duration1 = Date.now() - startTime1;
-      const successfulAnalyses = providerResults.filter(r => r.status === 'success').length;
+      const successfulRealSites = realSiteResults.filter(r => r.status === 'success').length;
       
-      if (successfulAnalyses >= 1) {
-        addResult('5.1 - Real Camp Provider Forms', 'success', `${successfulAnalyses}/${campProviderForms.length} provider forms analyzed`, duration1, providerResults);
+      if (successfulRealSites >= 1) {
+        addResult('5.1 - Real Camp Sites Summary', 'success', 
+          `Successfully analyzed ${successfulRealSites}/${realCampSites.length} real camp registration sites`, 
+          duration1, 
+          { realSiteResults, totalTested: realCampSites.length, successCount: successfulRealSites }
+        );
       } else {
-        addResult('5.1 - Real Camp Provider Forms', 'error', 'No provider forms successfully analyzed', duration1, providerResults);
+        addResult('5.1 - Real Camp Sites Summary', 'error', 
+          'No real camp sites successfully analyzed - check browser automation setup', 
+          duration1, 
+          { realSiteResults, totalTested: realCampSites.length }
+        );
       }
     } catch (error) {
-      addResult('5.1 - Real Camp Provider Forms', 'error', `Real-world forms test failed: ${error}`, Date.now() - startTime1);
+      addResult('5.1 - Real Camp Sites', 'error', `Real-world sites test failed: ${error}`, Date.now() - startTime1);
     }
 
-    // Test 5.2: CAPTCHA detection accuracy
+    // Test 5.2: Real CAPTCHA detection on live sites
     const startTime2 = Date.now();
     try {
-      const captchaForm = 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="800" height="500">
-          <rect width="100%" height="100%" fill="#ffffff"/>
-          <text x="50" y="50" font-size="20" fill="#333">Registration Form with CAPTCHA</text>
-          
-          <rect x="50" y="80" width="300" height="30" fill="white" stroke="#ddd"/>
-          <text x="55" y="100" font-size="12" fill="#666">Child Name</text>
-          <rect x="50" y="120" width="300" height="30" fill="white" stroke="#ddd"/>
-          <text x="55" y="140" font-size="12" fill="#666">Parent Email</text>
-          
-          <!-- CAPTCHA Section -->
-          <rect x="50" y="180" width="400" height="100" fill="#f9f9f9" stroke="#ddd" stroke-width="2"/>
-          <text x="60" y="200" font-size="14" fill="#333" font-weight="bold">Security Verification</text>
-          <rect x="60" y="210" width="250" height="60" fill="#e8e8e8" stroke="#999"/>
-          <text x="70" y="235" font-size="12" fill="#666">I'm not a robot</text>
-          <rect x="70" y="245" width="15" height="15" fill="white" stroke="#333"/>
-          <text x="320" y="245" font-size="12" fill="#1976d2" font-weight="bold">reCAPTCHA</text>
-          
-          <rect x="50" y="300" width="120" height="40" fill="#4CAF50"/>
-          <text x="100" y="325" font-size="14" fill="white" text-anchor="middle">Submit</text>
-        </svg>
-      `);
+      addResult('5.2 - Real CAPTCHA Detection', 'pending', 'Searching for real CAPTCHAs on camp registration sites...');
+      
+      // Test sites known to have CAPTCHAs or security verification
+      const captchaSites = [
+        'https://www.camps.com', // Often has CAPTCHAs
+        'https://www.ymca.net',  // May have security verification
+        'https://www.jccm.org'   // Community center with potential CAPTCHAs
+      ];
 
-      const { data: captchaAnalysis, error: captchaError } = await supabase.functions.invoke('test-vision-analysis', {
-        body: {
-          screenshot: captchaForm.split(',')[1],
-          sessionId: 'captcha-detection-test',
-          model: 'gpt-4o-mini'
-        }
-      });
+      let captchaFound = false;
+      let captchaAnalysisResults = [];
 
-      const duration2 = Date.now() - startTime2;
-      if (captchaError) {
-        addResult('5.2 - CAPTCHA Detection', 'error', `CAPTCHA detection failed: ${captchaError.message}`, duration2);
-      } else {
-        // Check if analysis mentions CAPTCHA or security verification
-        const analysisText = JSON.stringify(captchaAnalysis).toLowerCase();
-        const captchaDetected = analysisText.includes('captcha') || 
-                              analysisText.includes('security') || 
-                              analysisText.includes('verification') ||
-                              analysisText.includes('robot');
-        
-        if (captchaDetected) {
-          addResult('5.2 - CAPTCHA Detection', 'success', 'CAPTCHA successfully detected in form analysis', duration2, captchaAnalysis);
-        } else {
-          addResult('5.2 - CAPTCHA Detection', 'error', 'CAPTCHA not detected in analysis', duration2, captchaAnalysis);
+      for (const siteUrl of captchaSites) {
+        try {
+          // Create browser session for CAPTCHA detection
+          const { data: sessionData, error: sessionError } = await supabase.functions.invoke('browser-automation', {
+            body: {
+              action: 'create',
+              campProviderId: siteUrl,
+              enableVision: true,
+              captchaDetection: true
+            }
+          });
+
+          if (sessionError) continue;
+
+          // Navigate and look for registration forms with CAPTCHAs
+          const { data: captchaData, error: captchaError } = await supabase.functions.invoke('browser-automation', {
+            body: {
+              action: 'extract',
+              sessionId: sessionData.id,
+              enableVision: true,
+              extractType: 'captcha_detection',
+              selectors: ['iframe[src*="recaptcha"]', '.g-recaptcha', '.h-captcha', '[data-captcha]']
+            }
+          });
+
+          if (captchaData?.screenshot) {
+            // Analyze for CAPTCHA presence
+            const { data: analysis, error: analysisError } = await supabase.functions.invoke('test-vision-analysis', {
+              body: {
+                screenshot: captchaData.screenshot,
+                sessionId: `captcha-real-${Date.now()}`,
+                model: 'gpt-4o-mini',
+                analysisType: 'captcha_detection'
+              }
+            });
+
+            if (!analysisError && analysis) {
+              const analysisText = JSON.stringify(analysis).toLowerCase();
+              const hasCaptcha = analysisText.includes('captcha') || 
+                               analysisText.includes('recaptcha') || 
+                               analysisText.includes('hcaptcha') ||
+                               analysisText.includes('security verification') ||
+                               analysisText.includes('robot verification');
+              
+              captchaAnalysisResults.push({
+                site: siteUrl,
+                captchaDetected: hasCaptcha,
+                analysis: analysis
+              });
+
+              if (hasCaptcha) {
+                captchaFound = true;
+                addResult(`5.2.Real CAPTCHA Found`, 'success', `CAPTCHA detected on live site: ${siteUrl}`, Date.now() - startTime2, analysis);
+              }
+            }
+          }
+
+          // Cleanup
+          await supabase.functions.invoke('browser-automation', {
+            body: { action: 'close', sessionId: sessionData.id }
+          });
+
+        } catch (error) {
+          console.error(`CAPTCHA detection error for ${siteUrl}:`, error);
         }
       }
+
+      const duration2 = Date.now() - startTime2;
+      if (captchaFound) {
+        addResult('5.2 - Real CAPTCHA Detection', 'success', 
+          `Successfully detected CAPTCHAs on real camp registration sites`, 
+          duration2, 
+          { captchaAnalysisResults, totalSitesChecked: captchaSites.length }
+        );
+      } else {
+        addResult('5.2 - Real CAPTCHA Detection', 'error', 
+          'No CAPTCHAs found on tested sites (may need to navigate deeper into registration flows)', 
+          duration2, 
+          { captchaAnalysisResults, totalSitesChecked: captchaSites.length }
+        );
+      }
     } catch (error) {
-      addResult('5.2 - CAPTCHA Detection', 'error', `CAPTCHA detection test failed: ${error}`, Date.now() - startTime2);
+      addResult('5.2 - Real CAPTCHA Detection', 'error', `Real CAPTCHA detection test failed: ${error}`, Date.now() - startTime2);
     }
 
     // Test 5.3: Accessibility compliance scoring validation
@@ -739,7 +782,7 @@ export const ComprehensiveVisionTester = () => {
                 <li>• Vision analysis within browser-automation edge function</li>
                 <li>• Screenshot capture → vision analysis → automation decision pipeline</li>
                 <li>• Vision analysis integration with ai-context-manager</li>
-                <li>• Real camp provider forms (YMCA, community centers)</li>
+                <li>• 🌐 <strong>REAL browser sessions</strong> with live camp sites</li>
               </ul>
             </div>
             <div>
@@ -753,12 +796,19 @@ export const ComprehensiveVisionTester = () => {
             <div>
               <p className="font-medium text-foreground mb-1">Section 5: Real-world Scenarios</p>
               <ul className="space-y-1 text-xs">
-                <li>• Actual camp registration forms from different providers</li>
-                <li>• CAPTCHA detection accuracy testing</li>
-                <li>• Form complexity scoring against manual assessments</li>
-                <li>• Accessibility compliance scoring validation</li>
+                <li>• 🌐 <strong>REAL CAMP SITES:</strong> YMCA Seattle, Community Centers, Day Camps</li>
+                <li>• 🤖 <strong>REAL CAPTCHA Detection:</strong> Live sites with actual security verification</li>
+                <li>• 📊 <strong>REAL Form Analysis:</strong> Actual registration forms, not mock data</li>
+                <li>• ♿ <strong>REAL Accessibility:</strong> True WCAG compliance on live sites</li>
               </ul>
             </div>
+          </div>
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
+            <p className="text-sm font-medium text-green-800">🎯 <strong>REAL SITES TESTING:</strong></p>
+            <p className="text-xs text-green-700 mt-1">
+              This test suite now analyzes <strong>actual live camp registration websites</strong> using your browser automation system. 
+              Much more valuable than mock data for validating vision analysis accuracy!
+            </p>
           </div>
         </div>
       </CardContent>
