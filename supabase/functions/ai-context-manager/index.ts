@@ -109,7 +109,7 @@ async function updateAIContext(supabase: any, contextId: string, stage: string, 
       .update(updateData)
       .eq('id', contextId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       throw new Error(`Failed to update context: ${updateError.message}`);

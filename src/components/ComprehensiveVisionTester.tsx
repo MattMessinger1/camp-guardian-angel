@@ -803,6 +803,9 @@ export const ComprehensiveVisionTester = () => {
           {/* DEBUG: Show that cards are rendering */}
           <div className="text-xs text-gray-500 mb-2">
             Debug: Section cards are rendering. Total results: {testResults.length}
+            {testResults.length > 0 && (
+              <div>Recent results: {testResults.slice(-3).map(r => r.testCase).join(', ')}</div>
+            )}
           </div>
 
           {/* Section 1: Unit Tests */}
