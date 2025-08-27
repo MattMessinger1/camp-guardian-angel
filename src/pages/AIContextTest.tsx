@@ -6,6 +6,7 @@ import { VisionAnalysisTester } from '@/components/VisionAnalysisTester';
 import { VisionAnalysisDemo } from '@/components/VisionAnalysisDemo';
 import { ComprehensiveVisionTester } from '@/components/ComprehensiveVisionTester';
 import { OptimizedAutomationDemo } from '@/components/OptimizedAutomationDemo';
+import { RoutingStrategyAnalyzer } from '@/components/RoutingStrategyAnalyzer';
 import { IntelligentModelTester } from '@/components/IntelligentModelTester';
 import { SystematicTester } from '@/components/SystematicTester';
 import { Button } from '@/components/ui/button';
@@ -97,6 +98,9 @@ export default function AIContextTest() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Routing Strategy Analysis */}
+        <RoutingStrategyAnalyzer />
 
         {/* Optimization Strategy Analysis */}
         <OptimizedAutomationDemo />
