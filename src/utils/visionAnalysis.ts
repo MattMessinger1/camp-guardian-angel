@@ -22,6 +22,8 @@ export async function analyzePageWithVision(
     }
 
     console.log('📤 Calling test-vision-analysis function...');
+    console.log('🔍 Request payload:', { sessionId, model, screenshotLength: cleanScreenshot.length });
+    
     const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
       body: {
         screenshot: cleanScreenshot,
@@ -30,9 +32,17 @@ export async function analyzePageWithVision(
       }
     });
 
+    console.log('📥 Raw Supabase response:', { data, error });
+
     if (error) {
-      console.error('❌ Supabase function invoke error:', error);
-      throw new Error(`Vision analysis failed: ${error.message}`);
+      console.error('❌ Supabase function invoke error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        fullError: error
+      });
+      throw new Error(`Vision analysis failed: Edge Function returned a non-2xx status code`);
     }
 
     if (!data) {
