@@ -46,6 +46,70 @@ serve(async (req) => {
 
     console.log(`🔍 Testing ${model} Vision analysis...`);
     
+    // For test sessions, bypass OpenAI and return mock data to isolate variables
+    if (sessionId === 'test-session') {
+      console.log('🧪 BYPASS: Using mock response for test session to isolate OpenAI filtering');
+      
+      const mockAnalysis = {
+        formComplexity: 4,
+        accessibilityScore: 0.7,
+        usabilityAnalysis: 'Mock analysis: Form appears to have standard web form elements with moderate complexity. This is a test bypass to isolate OpenAI content filtering issues.',
+        fieldStructure: {
+          detectedFields: ['email', 'name', 'submit'],
+          inputTypes: 'Standard form inputs detected',
+          requiredElements: 'Email and name fields appear required'
+        },
+        designRecommendations: ['Add clear field labels', 'Improve form contrast'],
+        userExperience: 'Bypass test - would normally analyze user experience patterns'
+      };
+      
+      // Still test the AI context manager integration
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        const contextId = `test_session_${sessionId}`;
+        
+        const { error: contextError } = await supabase.functions.invoke('ai-context-manager', {
+          body: {
+            action: 'update',
+            contextId,
+            sessionId,
+            stage: 'automation',
+            insights: {
+              visionAnalysis: mockAnalysis,
+              timestamp: new Date().toISOString(),
+              model,
+              testType: 'bypass_test',
+              bypassReason: 'OpenAI content filtering isolation test'
+            }
+          }
+        });
+
+        if (contextError) {
+          console.warn('⚠️ AI Context update failed:', contextError);
+        } else {
+          console.log('✅ AI Context updated with mock vision insights');
+        }
+      } catch (contextError) {
+        console.warn('⚠️ AI Context update error:', contextError);
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        analysis: mockAnalysis,
+        metadata: {
+          model,
+          timestamp: new Date().toISOString(),
+          sessionId,
+          testMode: 'bypass_openai_filtering'
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
     // Configure parameters based on model type
     const getModelConfig = (modelName: string) => {
       const isNewModel = modelName.startsWith('gpt-5') || modelName.startsWith('o3') || modelName.startsWith('o4');
