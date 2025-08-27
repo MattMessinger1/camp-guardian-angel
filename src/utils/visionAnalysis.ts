@@ -1,16 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Analyze a page screenshot using GPT-4 Vision
+ * Analyze a page screenshot using GPT Vision models
  * @param screenshot - Base64 encoded image data (with or without data URL prefix)
  * @param sessionId - Session identifier for tracking
- * @param model - Optional model to use (defaults to gpt-4o)
+ * @param model - Optional model to use (defaults to gpt-5-2025-08-07)
  * @returns Vision analysis results
  */
 export async function analyzePageWithVision(
   screenshot: string, 
   sessionId: string, 
-  model: string = 'gpt-4o'
+  model: string = 'gpt-5-2025-08-07'
 ) {
   console.log('🔍 Starting vision analysis for session:', sessionId, 'with model:', model);
   
