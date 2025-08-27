@@ -23,6 +23,7 @@ export const ComprehensiveVisionTester = () => {
   const { toast } = useToast();
 
   const addResult = (testCase: string, status: TestResult['status'], message: string, duration?: number, data?: any) => {
+    console.log(`🧪 Adding test result: ${testCase} - ${status}: ${message}`);
     setTestResults(prev => [...prev, { testCase, status, message, duration, data }]);
   };
 
@@ -124,6 +125,7 @@ export const ComprehensiveVisionTester = () => {
     setCurrentTest('Section 2: Integration Tests - Browser Automation');
     
     // Test 2.1: Vision analysis within browser-automation edge function
+    console.log('🧪 Starting test 2.1 - Browser Automation Vision');
     const startTime1 = Date.now();
     try {
       const { data: sessionData, error: sessionError } = await supabase.functions.invoke('browser-automation', {
@@ -136,6 +138,7 @@ export const ComprehensiveVisionTester = () => {
 
       const duration1 = Date.now() - startTime1;
       if (sessionError) {
+        console.log('🧪 Test 2.1 failed with session error:', sessionError.message);
         addResult('2.1 - Browser Automation Vision', 'error', `Session creation failed: ${sessionError.message}`, duration1);
       } else if (sessionData?.id) {
         // Test screenshot capture → vision analysis → automation decision pipeline
@@ -150,28 +153,36 @@ export const ComprehensiveVisionTester = () => {
 
         const duration2 = Date.now() - startTime2;
         if (extractError) {
+          console.log('🧪 Test 2.1 failed with extract error:', extractError.message);
           addResult('2.1 - Browser Automation Vision', 'error', `Vision extraction failed: ${extractError.message}`, duration1 + duration2);
         } else {
+          console.log('🧪 Test 2.1 passed successfully');
           addResult('2.1 - Browser Automation Vision', 'success', 'Screenshot → Vision → Decision pipeline working', duration1 + duration2, extractData);
         }
       } else {
+        console.log('🧪 Test 2.1 failed - no session ID returned');
         addResult('2.1 - Browser Automation Vision', 'error', 'Session creation returned no session ID', duration1);
+      }
 
-        // Cleanup
+      // Cleanup if session was created
+      if (sessionData?.id) {
         await supabase.functions.invoke('browser-automation', {
           body: { action: 'close', sessionId: sessionData.id }
         });
       }
     } catch (error) {
       const duration1 = Date.now() - startTime1;
+      console.log('🧪 Test 2.1 failed with exception:', error.message);
       addResult('2.1 - Browser Automation Vision', 'error', `Integration test failed: ${error.message}`, duration1);
     }
 
     // Test 2.2: Vision analysis integration with ai-context-manager
+    console.log('🧪 Starting test 2.2 - AI Context Integration');
     const startTime2 = Date.now();
     try {
       // Generate proper UUID for contextId
       const contextId = crypto.randomUUID();
+      console.log('🧪 Generated contextId:', contextId);
       
       // Test vision analysis result integration with AI context
       const { data: contextData, error: contextError } = await supabase.functions.invoke('ai-context-manager', {
@@ -192,14 +203,18 @@ export const ComprehensiveVisionTester = () => {
 
       const duration2 = Date.now() - startTime2;
       if (contextError) {
+        console.log('🧪 Test 2.2 failed with context error:', contextError.message);
         addResult('2.2 - AI Context Integration', 'error', `Context integration failed: ${contextError.message}`, duration2);
       } else if (contextData?.success) {
+        console.log('🧪 Test 2.2 passed successfully');
         addResult('2.2 - AI Context Integration', 'success', 'Vision analysis integrated with AI context manager', duration2, contextData);
       } else {
+        console.log('🧪 Test 2.2 failed - no success in response:', contextData);
         addResult('2.2 - AI Context Integration', 'error', `Context integration failed: ${contextData?.error || 'Unknown error'}`, duration2, contextData);
       }
     } catch (error) {
       const duration2 = Date.now() - startTime2;
+      console.log('🧪 Test 2.2 failed with exception:', error.message);
       addResult('2.2 - AI Context Integration', 'error', `AI context integration failed: ${error.message}`, duration2);
     }
   };
