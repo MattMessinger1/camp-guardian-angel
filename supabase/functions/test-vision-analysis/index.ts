@@ -110,19 +110,16 @@ serve(async (req) => {
       });
     }
     
-    // Configure parameters based on model type
-    const getModelConfig = (modelName: string) => {
-      const isNewModel = modelName.startsWith('gpt-5') || modelName.startsWith('o3') || modelName.startsWith('o4');
-      return {
-        maxTokensParam: isNewModel ? 'max_completion_tokens' : 'max_tokens',
-        supportsTemperature: !isNewModel,
-        supportsJsonMode: true
-      };
+    // Use newer GPT-5 model to avoid content filtering issues
+    const visionModel = 'gpt-5-2025-08-07';
+    const config = {
+      maxTokensParam: 'max_completion_tokens',
+      supportsTemperature: false,
+      supportsJsonMode: true
     };
 
-    const config = getModelConfig(model);
     const requestBody: any = {
-      model,
+      model: visionModel,
       messages: [{
         role: 'user',
         content: [
