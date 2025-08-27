@@ -10,6 +10,7 @@ export const VisionAnalysisDemo = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<string>('');
   const [analysis, setAnalysis] = useState<any>(null);
+  const [isolationTest, setIsolationTest] = useState(true); // Start with isolation test
   const { toast } = useToast();
 
   const runStep2_1Test = async () => {

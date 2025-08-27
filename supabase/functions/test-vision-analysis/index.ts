@@ -26,7 +26,7 @@ serve(async (req) => {
       });
     }
 
-    const { screenshot, sessionId, model = 'gpt-4o' } = await req.json();
+    const { screenshot, sessionId, model = 'gpt-4o-mini', isolationTest = false } = await req.json();
 
     if (!screenshot || !sessionId) {
       return new Response(JSON.stringify({ 
@@ -37,27 +37,34 @@ serve(async (req) => {
       });
     }
 
-    // Configure parameters based on model type
+    // ISOLATION TEST: Use known working model with reduced settings
     let visionModel = model;
     let config;
-
-    // Legacy models (GPT-4o family)
-    if (model.startsWith('gpt-4o')) {
-      config = {
-        maxTokensParam: 'max_tokens',
-        supportsTemperature: true,
-        supportsJsonMode: true
-      };
+    let maxTokens = 1000; // Reduce from 4000 to speed up responses
+    
+    if (isolationTest) {
+      console.log('🧪 ISOLATION TEST MODE: Using gpt-4o-mini with minimal settings');
+      visionModel = 'gpt-4o-mini';
+      maxTokens = 500; // Very low for isolation test
     }
-    // Newer models (GPT-5, GPT-4.1+, O3, O4)
+    // Force gpt-4o-mini for now to isolate GPT-5 timeout issue
+    else if (model.includes('gpt-5') || model.includes('gpt-4.1') || model.includes('o3') || model.includes('o4')) {
+      console.log('⚠️ DEBUGGING: Forcing gpt-4o-mini instead of ' + model + ' to isolate timeout issue');
+      visionModel = 'gpt-4o-mini';
+      maxTokens = 2000; // Moderate tokens
+    }
+    // Use requested model if it's a working one
     else {
-      visionModel = 'gpt-5-2025-08-07'; // Default to GPT-5 for non-legacy requests
-      config = {
-        maxTokensParam: 'max_completion_tokens',
-        supportsTemperature: false,
-        supportsJsonMode: true
-      };
+      visionModel = model;
+      maxTokens = model === 'gpt-4o-mini' ? 2000 : 4000;
     }
+    
+    // All models get legacy config for now
+    config = {
+      maxTokensParam: 'max_tokens',
+      supportsTemperature: true,
+      supportsJsonMode: true
+    };
 
     // Debug logging for production diagnostics
     console.log(`📊 Vision Analysis Request:`, {
@@ -70,12 +77,22 @@ serve(async (req) => {
       requestPayload: {
         model: visionModel,
         maxTokensParam: config.maxTokensParam,
-        maxTokens: 4000,
+        maxTokens: maxTokens,
         responseFormat: 'json_object'
       }
     });
 
-    console.log(`🔍 Processing ${visionModel} Vision analysis with professional WCAG compliance prompt...`);
+    console.log(`🔍 Processing ${visionModel} Vision analysis with ${isolationTest ? 'SIMPLE' : 'standard'} prompt...`);
+    
+    // Simplified prompt for isolation testing
+    let promptText;
+    if (isolationTest) {
+      promptText = `Analyze this screenshot and return JSON with: {"status": "analyzed", "content": "brief description"}`;
+    } else {
+      promptText = `Analyze this web interface screenshot and return structured JSON assessment:
+      
+      Return JSON with these keys: accessibilityComplexity (1-10), wcagComplianceScore (0-1), complianceAssessment (brief text), interfaceStructure (brief text).`;
+    }
     
     // Log exact request body before sending
     const requestBody: any = {
@@ -85,15 +102,7 @@ serve(async (req) => {
         content: [
           { 
             type: 'text', 
-            text: `Conduct a professional WCAG 2.1 accessibility compliance evaluation of this web interface screenshot. Provide structured assessment data for digital accessibility standards review:
-
-            EVALUATION CRITERIA:
-            1. Interface Accessibility Rating (scale 1-10): Assess visual layout organization, element hierarchy, and structural clarity
-            2. WCAG Compliance Score (scale 0-1): Evaluate semantic markup quality, contrast ratios, and readability standards  
-            3. Digital Standards Assessment: Review interface design quality and accessibility barrier identification
-            4. Form Structure Analysis: Document input controls, field labeling, and required element indicators
-
-            Return structured JSON assessment with these keys: accessibilityComplexity, wcagComplianceScore, complianceAssessment, interfaceStructure, accessibilityRecommendations, usabilityAssessment.`
+            text: promptText
           },
           { 
             type: 'image_url', 
@@ -101,15 +110,9 @@ serve(async (req) => {
           }
         ]
       }],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      max_tokens: maxTokens
     };
-
-    // Add the correct token parameter based on model
-    if (config.maxTokensParam === 'max_tokens') {
-      requestBody.max_tokens = 4000;
-    } else {
-      requestBody.max_completion_tokens = 4000;
-    }
 
     // Only add temperature for models that support it
     if (config.supportsTemperature) {
@@ -118,13 +121,14 @@ serve(async (req) => {
 
     console.log(`📤 Final OpenAI request body:`, JSON.stringify(requestBody, null, 2));
 
-    console.log(`📤 Making OpenAI API request with ${config.maxTokensParam}: 4000`);
+    console.log(`📤 Making OpenAI API request with ${config.maxTokensParam}: ${maxTokens}`);
     
     let response;
     try {
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging - shorter for isolation test
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutMs = isolationTest ? 15000 : 25000; // 15s for isolation, 25s for normal
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       
       response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -142,8 +146,10 @@ serve(async (req) => {
       
       if (fetchError.name === 'AbortError') {
         return new Response(JSON.stringify({ 
-          error: 'OpenAI API request timed out after 30 seconds',
+          error: `OpenAI API request timed out after ${timeoutMs/1000} seconds`,
           model: visionModel,
+          originalModel: model,
+          isolationTest,
           sessionId
         }), {
           status: 408, // Request Timeout
