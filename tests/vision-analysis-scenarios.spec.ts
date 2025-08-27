@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockScreenshots, validateVisionResponse, createTestSession } from './utils/visionTestUtils';
+import { mockScreenshots, validateVisionResponse, createTestSession } from './utils/visionTestUtils.js';
 
 test.describe('Vision Analysis Real-World Scenarios', () => {
   test.beforeEach(async ({ page }) => {

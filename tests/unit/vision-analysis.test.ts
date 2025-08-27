@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockScreenshots, expectedResponses, validateVisionResponse, createTestSession } from '../utils/visionTestUtils';
+import { mockScreenshots, expectedResponses, validateVisionResponse, createTestSession } from '../utils/visionTestUtils.js';
 
 // Mock Supabase client to avoid actual API calls in unit tests
 const mockSupabase = {
