@@ -36,6 +36,14 @@ serve(async (req) => {
       });
     }
 
+    // Debug logging
+    console.log(`📊 Request details:`, {
+      sessionId,
+      model,
+      screenshotLength: screenshot?.length || 0,
+      screenshotPreview: screenshot?.substring(0, 50) || 'No screenshot'
+    });
+
     console.log(`🔍 Testing ${model} Vision analysis...`);
     
     // Configure parameters based on model type
@@ -111,7 +119,8 @@ serve(async (req) => {
       
       return new Response(JSON.stringify({ 
         error: `OpenAI API error: ${response.status}`,
-        details: errorText
+        details: errorText,
+        requestDetails: { model, sessionId }
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -119,6 +128,7 @@ serve(async (req) => {
     }
 
     const result = await response.json();
+    console.log('📥 Full OpenAI API response:', JSON.stringify(result, null, 2));
     let analysis;
     
     try {
