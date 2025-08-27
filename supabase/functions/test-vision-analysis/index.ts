@@ -77,18 +77,7 @@ serve(async (req) => {
 
     console.log(`🔍 Processing ${visionModel} Vision analysis with professional WCAG compliance prompt...`);
     
-    // Debug log the exact request body structure
-    console.log('🔍 OpenAI Request Structure:', {
-      model: visionModel,
-      messageCount: 1,
-      contentTypes: ['text', 'image_url'],
-      tokenParam: config.maxTokensParam,
-      maxTokens: 4000,
-      responseFormat: 'json_object',
-      promptType: 'wcag_compliance_assessment',
-      supportsTemperature: config.supportsTemperature
-    });
-
+    // Log exact request body before sending
     const requestBody: any = {
       model: visionModel,
       messages: [{
@@ -112,14 +101,22 @@ serve(async (req) => {
           }
         ]
       }],
-      [config.maxTokensParam]: 4000,
       response_format: { type: "json_object" }
     };
+
+    // Add the correct token parameter based on model
+    if (config.maxTokensParam === 'max_tokens') {
+      requestBody.max_tokens = 4000;
+    } else {
+      requestBody.max_completion_tokens = 4000;
+    }
 
     // Only add temperature for models that support it
     if (config.supportsTemperature) {
       requestBody.temperature = 0.3;
     }
+
+    console.log(`📤 Final OpenAI request body:`, JSON.stringify(requestBody, null, 2));
 
     console.log(`📤 Making OpenAI API request with ${config.maxTokensParam}: 4000`);
     
