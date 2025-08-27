@@ -58,15 +58,16 @@ serve(async (req) => {
       }
     });
 
-    console.log(`🔍 Processing GPT-5 Vision analysis with sanitized accessibility prompt...`);
+    console.log(`🔍 Processing GPT-5 Vision analysis with professional WCAG compliance prompt...`);
     
     // Debug log the exact request body (without screenshot data)
-    console.log('🔍 OpenAI Request Structure:', {
+     console.log('🔍 OpenAI Request Structure:', {
       model: visionModel,
       messageCount: 1,
       contentTypes: ['text', 'image_url'],
       maxTokens: 800,
-      responseFormat: 'json_object'
+      responseFormat: 'json_object',
+      promptType: 'wcag_compliance_assessment'
     });
 
     const requestBody: any = {
@@ -76,30 +77,15 @@ serve(async (req) => {
         content: [
           { 
             type: 'text', 
-            text: `Perform a comprehensive WCAG 2.1 accessibility compliance assessment of this web interface screenshot. Provide structured evaluation data for digital accessibility review:
+            text: `Conduct a professional WCAG 2.1 accessibility compliance evaluation of this web interface screenshot. Provide structured assessment data for digital accessibility standards review:
 
-            1. ACCESSIBILITY COMPLEXITY RATING (1-10 scale):
-            - Interface element density and organization
-            - Visual hierarchy assessment
-            - Layout structure evaluation
+            EVALUATION CRITERIA:
+            1. Interface Accessibility Rating (scale 1-10): Assess visual layout organization, element hierarchy, and structural clarity
+            2. WCAG Compliance Score (scale 0-1): Evaluate semantic markup quality, contrast ratios, and readability standards  
+            3. Digital Standards Assessment: Review interface design quality and accessibility barrier identification
+            4. Form Structure Analysis: Document input controls, field labeling, and required element indicators
 
-            2. WCAG COMPLIANCE SCORE (0-1 scale):
-            - Label association and semantic markup indicators
-            - Color contrast and visual accessibility
-            - Interface readability metrics
-
-            3. COMPLIANCE ASSESSMENT:
-            - Digital accessibility standards evaluation
-            - User interface design quality review
-            - Accessibility barrier identification
-            - Professional accessibility recommendations
-
-            4. INTERFACE STRUCTURE ANALYSIS:
-            - Web form elements present
-            - Input control types identified
-            - Required field indicators analysis
-
-            Provide assessment results in JSON format with keys: accessibilityComplexity, wcagComplianceScore, complianceAssessment, interfaceStructure, accessibilityRecommendations, usabilityAssessment.`
+            Return structured JSON assessment with these keys: accessibilityComplexity, wcagComplianceScore, complianceAssessment, interfaceStructure, accessibilityRecommendations, usabilityAssessment.`
           },
           { 
             type: 'image_url', 
