@@ -769,7 +769,13 @@ export const ComprehensiveVisionTester = () => {
             <CardContent>
               <div className="space-y-3">
                 {testResults
-                  .filter(result => result.testCase.startsWith('1.') || result.testCase.includes('Unit Tests') || result.testCase.includes('Model Compatibility'))
+                  .filter(result => 
+                    result.testCase.includes('1.1') || 
+                    result.testCase.includes('1.2') || 
+                    result.testCase.toLowerCase().includes('unit') ||
+                    result.testCase.toLowerCase().includes('model compatibility') ||
+                    result.testCase.toLowerCase().includes('analyzepagwithvision')
+                  )
                   .map((result, index) => (
                     <div key={`section1-${index}`} className="border rounded-lg p-3 bg-white">
                       <div className="flex items-center justify-between mb-2">
@@ -796,7 +802,12 @@ export const ComprehensiveVisionTester = () => {
                       )}
                     </div>
                   ))}
-                {testResults.filter(r => r.testCase.startsWith('1.') || r.testCase.includes('Unit Tests') || r.testCase.includes('Model Compatibility')).length === 0 && (
+                {testResults.filter(r => 
+                  r.testCase.includes('1.1') || 
+                  r.testCase.includes('1.2') || 
+                  r.testCase.toLowerCase().includes('unit') ||
+                  r.testCase.toLowerCase().includes('model compatibility')
+                ).length === 0 && (
                   <div className="text-center text-muted-foreground py-4">No Section 1 results yet</div>
                 )}
               </div>
@@ -812,7 +823,13 @@ export const ComprehensiveVisionTester = () => {
             <CardContent>
               <div className="space-y-3">
                 {testResults
-                  .filter(result => result.testCase.startsWith('2.') || result.testCase.includes('Integration Tests') || result.testCase.includes('Browser Automation') || result.testCase.includes('AI Context'))
+                  .filter(result => 
+                    result.testCase.includes('2.1') || 
+                    result.testCase.includes('2.2') ||
+                    result.testCase.toLowerCase().includes('integration') ||
+                    result.testCase.toLowerCase().includes('browser automation') ||
+                    result.testCase.toLowerCase().includes('ai context')
+                  )
                   .map((result, index) => (
                     <div key={`section2-${index}`} className="border rounded-lg p-3 bg-white">
                       <div className="flex items-center justify-between mb-2">
@@ -839,7 +856,13 @@ export const ComprehensiveVisionTester = () => {
                       )}
                     </div>
                   ))}
-                {testResults.filter(r => r.testCase.startsWith('2.') || r.testCase.includes('Integration Tests') || r.testCase.includes('Browser Automation') || r.testCase.includes('AI Context')).length === 0 && (
+                {testResults.filter(r => 
+                  r.testCase.includes('2.1') || 
+                  r.testCase.includes('2.2') ||
+                  r.testCase.toLowerCase().includes('integration') ||
+                  r.testCase.toLowerCase().includes('browser automation') ||
+                  r.testCase.toLowerCase().includes('ai context')
+                ).length === 0 && (
                   <div className="text-center text-muted-foreground py-4">No Section 2 results yet</div>
                 )}
               </div>
@@ -855,7 +878,13 @@ export const ComprehensiveVisionTester = () => {
             <CardContent>
               <div className="space-y-3">
                 {testResults
-                  .filter(result => result.testCase.startsWith('3.') || result.testCase.includes('E2E') || result.testCase.includes('Complete Flow') || result.testCase.includes('Fallback'))
+                  .filter(result => 
+                    result.testCase.includes('3.1') || 
+                    result.testCase.includes('3.2') ||
+                    result.testCase.toLowerCase().includes('e2e') ||
+                    result.testCase.toLowerCase().includes('complete flow') ||
+                    result.testCase.toLowerCase().includes('fallback')
+                  )
                   .map((result, index) => (
                     <div key={`section3-${index}`} className="border rounded-lg p-3 bg-white">
                       <div className="flex items-center justify-between mb-2">
@@ -882,7 +911,13 @@ export const ComprehensiveVisionTester = () => {
                       )}
                     </div>
                   ))}
-                {testResults.filter(r => r.testCase.startsWith('3.') || r.testCase.includes('E2E') || r.testCase.includes('Complete Flow') || r.testCase.includes('Fallback')).length === 0 && (
+                {testResults.filter(r => 
+                  r.testCase.includes('3.1') || 
+                  r.testCase.includes('3.2') ||
+                  r.testCase.toLowerCase().includes('e2e') ||
+                  r.testCase.toLowerCase().includes('complete flow') ||
+                  r.testCase.toLowerCase().includes('fallback')
+                ).length === 0 && (
                   <div className="text-center text-muted-foreground py-4">No Section 3 results yet</div>
                 )}
               </div>
@@ -898,7 +933,14 @@ export const ComprehensiveVisionTester = () => {
             <CardContent>
               <div className="space-y-3">
                 {testResults
-                  .filter(result => result.testCase.startsWith('5.') || result.testCase.includes('Real') || result.testCase.includes('CAPTCHA') || result.testCase.includes('Accessibility'))
+                  .filter(result => 
+                    result.testCase.includes('5.1') || 
+                    result.testCase.includes('5.2') ||
+                    result.testCase.toLowerCase().includes('real') ||
+                    result.testCase.toLowerCase().includes('captcha') ||
+                    result.testCase.toLowerCase().includes('accessibility') ||
+                    result.testCase.toLowerCase().includes('scenario')
+                  )
                   .map((result, index) => (
                     <div key={`section5-${index}`} className="border rounded-lg p-3 bg-white">
                       <div className="flex items-center justify-between mb-2">
@@ -925,7 +967,14 @@ export const ComprehensiveVisionTester = () => {
                       )}
                     </div>
                   ))}
-                {testResults.filter(r => r.testCase.startsWith('5.') || r.testCase.includes('Real') || r.testCase.includes('CAPTCHA') || r.testCase.includes('Accessibility')).length === 0 && (
+                {testResults.filter(r => 
+                  r.testCase.includes('5.1') || 
+                  r.testCase.includes('5.2') ||
+                  r.testCase.toLowerCase().includes('real') ||
+                  r.testCase.toLowerCase().includes('captcha') ||
+                  r.testCase.toLowerCase().includes('accessibility') ||
+                  r.testCase.toLowerCase().includes('scenario')
+                ).length === 0 && (
                   <div className="text-center text-muted-foreground py-4">No Section 5 results yet</div>
                 )}
               </div>
