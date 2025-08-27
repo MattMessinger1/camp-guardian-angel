@@ -7,6 +7,29 @@ test.describe('Ready to Signup - Integration Tests', () => {
     await page.waitForTimeout(2000);
   });
 
+  // Basic workflow test (converted from Cypress)
+  test('TC-030: Basic workflow navigation', async ({ page }) => {
+    // Step 1: Homepage
+    await page.goto('/');
+    await expect(page.locator('body')).toBeVisible();
+    
+    // Step 2: Session page  
+    await page.goto('/sessions/555555555501');
+    await expect(page.locator('body')).toBeVisible();
+    
+    // Step 3: Signup flow
+    await page.goto('/signup?sessionId=555555555501');
+    await expect(page.locator('body')).toBeVisible();
+    
+    // Step 4: Confirmation
+    await page.goto('/sessions/555555555501/confirmation');
+    await expect(page.locator('body')).toBeVisible();
+    
+    // Step 5: Account history
+    await page.goto('/account/history');
+    await expect(page.locator('body')).toBeVisible();
+  });
+
   test('TC-031: Complete Ready to Signup Workflow', async ({ page }) => {
     // End-to-end test of the complete "Ready to Signup" process
     console.log('Starting complete Ready to Signup workflow test...');
