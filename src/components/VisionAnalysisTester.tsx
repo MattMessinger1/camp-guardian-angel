@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export const VisionAnalysisTester = () => {
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-4o');
+  const [selectedModel, setSelectedModel] = useState('gpt-5-2025-08-07');
   const [testResults, setTestResults] = useState<Array<{
     test: string;
     status: 'success' | 'error' | 'pending';

@@ -123,14 +123,46 @@ serve(async (req) => {
 
     console.log(`📤 Making OpenAI API request with ${config.maxTokensParam}: 4000`);
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
+    let response;
+    try {
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      console.error('❌ OpenAI API fetch error:', fetchError);
+      
+      if (fetchError.name === 'AbortError') {
+        return new Response(JSON.stringify({ 
+          error: 'OpenAI API request timed out after 30 seconds',
+          model: visionModel,
+          sessionId
+        }), {
+          status: 408, // Request Timeout
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      return new Response(JSON.stringify({ 
+        error: `Network error: ${fetchError.message}`,
+        model: visionModel,
+        sessionId
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
