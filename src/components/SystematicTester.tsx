@@ -53,28 +53,22 @@ export const SystematicTester = () => {
         }
       }
 
-      // Test 3: CORS handling
-      addResult('Step 3: CORS Test', 'pending', 'Testing CORS preflight handling...');
+      // Test 3: Direct function call (bypassing CORS preflight)
+      addResult('Step 3: Function Connectivity', 'pending', 'Testing direct function call...');
       
-      // Make an actual preflight request
       try {
-        const corsResponse = await fetch(`https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/test-minimal`, {
-          method: 'OPTIONS',
-          headers: {
-            'Access-Control-Request-Method': 'POST',
-            'Access-Control-Request-Headers': 'authorization, x-client-info, apikey, content-type',
-            'Origin': window.location.origin
-          }
+        const { data: directData, error: directError } = await supabase.functions.invoke('test-minimal', {
+          body: { test: 'connectivity' }
         });
 
-        if (corsResponse.ok) {
-          addResult('Step 3: CORS Test', 'success', 'CORS preflight working correctly');
-        } else {
-          addResult('Step 3: CORS Test', 'error', `CORS preflight failed: ${corsResponse.status}`);
+        if (directError) {
+          addResult('Step 3: Function Connectivity', 'error', `Function call failed: ${directError.message}`, directError);
           return;
+        } else {
+          addResult('Step 3: Function Connectivity', 'success', 'Function connectivity working', directData);
         }
-      } catch (corsError) {
-        addResult('Step 3: CORS Test', 'error', `CORS test failed: ${corsError}`);
+      } catch (connectError) {
+        addResult('Step 3: Function Connectivity', 'error', `Connection test failed: ${connectError}`, connectError);
         return;
       }
 
@@ -153,7 +147,7 @@ export const SystematicTester = () => {
           <ol className="text-sm space-y-1 text-muted-foreground list-decimal list-inside">
             <li><strong>Deployment:</strong> Test if functions deploy at all</li>
             <li><strong>Environment:</strong> Verify all required env vars present</li>
-            <li><strong>CORS:</strong> Test preflight handling specifically</li>
+            <li><strong>Function Connectivity:</strong> Test direct function calls</li>
             <li><strong>AI Context:</strong> Test isolated functionality</li>
             <li><strong>Vision Analysis:</strong> Test isolated functionality</li>
           </ol>
