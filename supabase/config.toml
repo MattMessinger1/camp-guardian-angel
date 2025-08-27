@@ -150,6 +150,6 @@ verify_jwt = true
 [functions.test-vision-analysis]
 verify_jwt = false
 
-[functions.test-minimal]
+[functions.intelligent-model-selector]
 verify_jwt = false
 

@@ -95,6 +95,120 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_model_outcomes: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          model_id: string
+          response_time: number | null
+          signup_successful: boolean | null
+          success: boolean
+          task_type: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          model_id: string
+          response_time?: number | null
+          signup_successful?: boolean | null
+          success: boolean
+          task_type: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          model_id?: string
+          response_time?: number | null
+          signup_successful?: boolean | null
+          success?: boolean
+          task_type?: string
+        }
+        Relationships: []
+      }
+      ai_model_performance: {
+        Row: {
+          avg_response_time: number
+          created_at: string
+          error_rate: number
+          id: string
+          last_used_at: string
+          model_id: string
+          signup_success_rate: number
+          success_rate: number
+          task_type: string
+          total_attempts: number
+          total_signup_successes: number
+          total_successes: number
+          updated_at: string
+        }
+        Insert: {
+          avg_response_time?: number
+          created_at?: string
+          error_rate?: number
+          id?: string
+          last_used_at?: string
+          model_id: string
+          signup_success_rate?: number
+          success_rate?: number
+          task_type: string
+          total_attempts?: number
+          total_signup_successes?: number
+          total_successes?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_response_time?: number
+          created_at?: string
+          error_rate?: number
+          id?: string
+          last_used_at?: string
+          model_id?: string
+          signup_success_rate?: number
+          success_rate?: number
+          task_type?: string
+          total_attempts?: number
+          total_signup_successes?: number
+          total_successes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_model_selections: {
+        Row: {
+          context: Json
+          created_at: string
+          id: string
+          model_id: string
+          score: number | null
+          selection_reason: Json | null
+          task_type: string
+        }
+        Insert: {
+          context: Json
+          created_at?: string
+          id?: string
+          model_id: string
+          score?: number | null
+          selection_reason?: Json | null
+          task_type: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          id?: string
+          model_id?: string
+          score?: number | null
+          selection_reason?: Json | null
+          task_type?: string
+        }
+        Relationships: []
+      }
       ai_signup_context: {
         Row: {
           actual_outcome: string | null
