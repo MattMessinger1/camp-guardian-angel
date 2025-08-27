@@ -3,6 +3,7 @@ import { StandardPage } from '@/components/StandardPage';
 import { AIContextTester } from '@/components/AIContextTester';
 import { AIContextManagerTester } from '@/components/AIContextManagerTester';
 import { VisionAnalysisTester } from '@/components/VisionAnalysisTester';
+import { VisionAnalysisDemo } from '@/components/VisionAnalysisDemo';
 import { IntelligentModelTester } from '@/components/IntelligentModelTester';
 import { SystematicTester } from '@/components/SystematicTester';
 import { Button } from '@/components/ui/button';
@@ -94,6 +95,9 @@ export default function AIContextTest() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Vision Analysis Demo */}
+        <VisionAnalysisDemo />
 
         {/* Intelligent Model Selection System */}
         <IntelligentModelTester />
