@@ -25,7 +25,7 @@ serve(async (req) => {
       });
     }
 
-    const { screenshot, sessionId } = await req.json();
+    const { screenshot, sessionId, model = 'gpt-4o' } = await req.json();
 
     if (!screenshot || !sessionId) {
       return new Response(JSON.stringify({ 
@@ -36,7 +36,65 @@ serve(async (req) => {
       });
     }
 
-    console.log('🔍 Testing GPT-4 Vision analysis...');
+    console.log(`🔍 Testing ${model} Vision analysis...`);
+    
+    // Configure parameters based on model type
+    const getModelConfig = (modelName: string) => {
+      const isNewModel = modelName.startsWith('gpt-5') || modelName.startsWith('o3') || modelName.startsWith('o4');
+      return {
+        maxTokensParam: isNewModel ? 'max_completion_tokens' : 'max_tokens',
+        supportsTemperature: !isNewModel,
+        supportsJsonMode: true
+      };
+    };
+
+    const config = getModelConfig(model);
+    const requestBody: any = {
+      model,
+      messages: [{
+        role: 'user',
+        content: [
+          { 
+            type: 'text', 
+            text: `Analyze this signup form and provide structured insights:
+            
+            1. FORM COMPLEXITY (1-10 score):
+            - Field count and types
+            - Layout complexity
+            - Visual clutter assessment
+            
+            2. CAPTCHA LIKELIHOOD (0-1 probability):
+            - Security elements visible
+            - Bot protection indicators
+            - Form submission barriers
+            
+            3. AUTOMATION STRATEGY:
+            - Recommended approach
+            - Risk factors
+            - Timing considerations
+            - Alternative strategies
+            
+            4. FIELD DETECTION:
+            - Key form fields identified
+            - Field priorities
+            - Required vs optional fields
+            
+            Respond in JSON format with keys: formComplexity, captchaRisk, strategy, fieldDetection, riskFactors, timing.`
+          },
+          { 
+            type: 'image_url', 
+            image_url: { url: `data:image/png;base64,${screenshot}` }
+          }
+        ]
+      }],
+      [config.maxTokensParam]: 800,
+      response_format: { type: "json_object" }
+    };
+
+    // Only add temperature for models that support it
+    if (config.supportsTemperature) {
+      requestBody.temperature = 0.3;
+    }
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -44,48 +102,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [{
-          role: 'user',
-          content: [
-            { 
-              type: 'text', 
-              text: `Analyze this signup form and provide structured insights:
-              
-              1. FORM COMPLEXITY (1-10 score):
-              - Field count and types
-              - Layout complexity
-              - Visual clutter assessment
-              
-              2. CAPTCHA LIKELIHOOD (0-1 probability):
-              - Security elements visible
-              - Bot protection indicators
-              - Form submission barriers
-              
-              3. AUTOMATION STRATEGY:
-              - Recommended approach
-              - Risk factors
-              - Timing considerations
-              - Alternative strategies
-              
-              4. FIELD DETECTION:
-              - Key form fields identified
-              - Field priorities
-              - Required vs optional fields
-              
-              Respond in JSON format with keys: formComplexity, captchaRisk, strategy, fieldDetection, riskFactors, timing.`
-            },
-            { 
-              type: 'image_url', 
-              image_url: { url: `data:image/png;base64,${screenshot}` }
-            }
-          ]
-        }],
-        max_tokens: 800,
-        temperature: 0.3,
-        response_format: { type: "json_object" }
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -141,7 +158,7 @@ serve(async (req) => {
           insights: {
             visionAnalysis: analysis,
             timestamp: new Date().toISOString(),
-            model: 'gpt-4o',
+            model,
             testType: 'direct_vision_test'
           }
         }
@@ -160,7 +177,7 @@ serve(async (req) => {
       success: true,
       analysis,
       metadata: {
-        model: 'gpt-4o',
+        model,
         timestamp: new Date().toISOString(),
         sessionId
       }

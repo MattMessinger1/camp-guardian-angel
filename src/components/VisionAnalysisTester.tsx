@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
 export const VisionAnalysisTester = () => {
   const [isRunning, setIsRunning] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gpt-4o');
   const [testResults, setTestResults] = useState<Array<{
     test: string;
     status: 'success' | 'error' | 'pending';
@@ -16,6 +18,15 @@ export const VisionAnalysisTester = () => {
   }>>([]);
   const [mockScreenshot] = useState('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='); // 1x1 transparent PNG
   const { toast } = useToast();
+
+  const visionModels = [
+    { value: 'gpt-4o', label: 'GPT-4o (Legacy)', category: 'OpenAI Legacy' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Legacy)', category: 'OpenAI Legacy' },
+    { value: 'gpt-4.1-mini-2025-04-14', label: 'GPT-4.1 Mini', category: 'OpenAI Current' },
+    { value: 'gpt-5-2025-08-07', label: 'GPT-5 (Latest)', category: 'OpenAI Latest' },
+    { value: 'o3-2025-04-16', label: 'O3 (Reasoning)', category: 'OpenAI Reasoning' },
+    { value: 'o4-mini-2025-04-16', label: 'O4 Mini (Fast Reasoning)', category: 'OpenAI Reasoning' }
+  ];
 
   const addResult = (test: string, status: 'success' | 'error' | 'pending', message: string, data?: any) => {
     setTestResults(prev => [...prev, { test, status, message, data }]);
@@ -146,7 +157,8 @@ export const VisionAnalysisTester = () => {
       const { data: visionData, error: visionError } = await supabase.functions.invoke('test-vision-analysis', {
         body: {
           screenshot: mockFormScreenshot.split(',')[1], // Remove data:image/svg+xml;base64, prefix
-          sessionId: 'test-direct-vision'
+          sessionId: 'test-direct-vision',
+          model: selectedModel
         }
       });
 
@@ -181,23 +193,51 @@ export const VisionAnalysisTester = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Button 
-            onClick={testVisionAnalysis} 
-            disabled={isRunning}
-            className="w-full"
-          >
-            {isRunning ? 'Running Tests...' : 'Test Vision + Browser Automation'}
-          </Button>
-          
-          <Button 
-            onClick={testDirectVisionCall} 
-            disabled={isRunning}
-            variant="outline"
-            className="w-full"
-          >
-            {isRunning ? 'Running Tests...' : 'Test Direct Vision Analysis'}
-          </Button>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button 
+              onClick={testVisionAnalysis} 
+              disabled={isRunning}
+              className="w-full"
+            >
+              {isRunning ? 'Running Tests...' : 'Test Vision + Browser Automation'}
+            </Button>
+            
+            <Button 
+              onClick={testDirectVisionCall} 
+              disabled={isRunning}
+              variant="outline"
+              className="w-full"
+            >
+              {isRunning ? 'Running Tests...' : 'Test Direct Vision Analysis'}
+            </Button>
+          </div>
+
+          <div className="border rounded-lg p-4 bg-muted/20">
+            <h4 className="font-medium mb-3">Model Configuration</h4>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Vision Model:</label>
+              <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isRunning}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a vision model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {visionModels.map((model) => (
+                    <SelectItem key={model.value} value={model.value}>
+                      <div className="flex flex-col">
+                        <span>{model.label}</span>
+                        <span className="text-xs text-muted-foreground">{model.category}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Different models have different strengths: Legacy models support temperature control, 
+                while newer models (GPT-5, O3/O4) have enhanced reasoning but different parameter requirements.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="p-4 bg-muted/50 rounded-lg">
