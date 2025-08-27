@@ -4,6 +4,7 @@ import { AIContextTester } from '@/components/AIContextTester';
 import { AIContextManagerTester } from '@/components/AIContextManagerTester';
 import { VisionAnalysisTester } from '@/components/VisionAnalysisTester';
 import { VisionAnalysisDemo } from '@/components/VisionAnalysisDemo';
+import { ComprehensiveVisionTester } from '@/components/ComprehensiveVisionTester';
 import { IntelligentModelTester } from '@/components/IntelligentModelTester';
 import { SystematicTester } from '@/components/SystematicTester';
 import { Button } from '@/components/ui/button';
@@ -95,6 +96,9 @@ export default function AIContextTest() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Comprehensive Vision Testing Suite */}
+        <ComprehensiveVisionTester />
 
         {/* Vision Analysis Demo */}
         <VisionAnalysisDemo />
