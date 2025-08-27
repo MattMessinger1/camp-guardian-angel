@@ -144,3 +144,6 @@ verify_jwt = false
 [functions.test-browser-automation]
 verify_jwt = false
 
+[functions.ai-context-manager]
+verify_jwt = true
+
