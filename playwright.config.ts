@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  testMatch: ['**/*.spec.ts', '**/vision-analysis.test.ts'], // Only Playwright tests
+  testIgnore: ['**/readiness-*.test.ts'], // Exclude vitest files
   timeout: 30000,
   use: {
     headless: false,
