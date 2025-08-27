@@ -95,6 +95,102 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_signup_context: {
+        Row: {
+          actual_outcome: string | null
+          automation_intelligence: Json | null
+          created_at: string | null
+          failure_reasons: string[] | null
+          id: string
+          journey_stage: string
+          lessons_learned: Json | null
+          predicted_success_rate: number | null
+          prewarm_strategy: Json | null
+          provider_patterns: Json | null
+          readiness_assessment: Json | null
+          requirements_analysis: Json | null
+          search_insights: Json | null
+          session_id: string
+          timing_intelligence: Json | null
+          updated_at: string | null
+          user_behavior_features: Json | null
+          user_id: string
+        }
+        Insert: {
+          actual_outcome?: string | null
+          automation_intelligence?: Json | null
+          created_at?: string | null
+          failure_reasons?: string[] | null
+          id?: string
+          journey_stage: string
+          lessons_learned?: Json | null
+          predicted_success_rate?: number | null
+          prewarm_strategy?: Json | null
+          provider_patterns?: Json | null
+          readiness_assessment?: Json | null
+          requirements_analysis?: Json | null
+          search_insights?: Json | null
+          session_id: string
+          timing_intelligence?: Json | null
+          updated_at?: string | null
+          user_behavior_features?: Json | null
+          user_id: string
+        }
+        Update: {
+          actual_outcome?: string | null
+          automation_intelligence?: Json | null
+          created_at?: string | null
+          failure_reasons?: string[] | null
+          id?: string
+          journey_stage?: string
+          lessons_learned?: Json | null
+          predicted_success_rate?: number | null
+          prewarm_strategy?: Json | null
+          provider_patterns?: Json | null
+          readiness_assessment?: Json | null
+          requirements_analysis?: Json | null
+          search_insights?: Json | null
+          session_id?: string
+          timing_intelligence?: Json | null
+          updated_at?: string | null
+          user_behavior_features?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_success_patterns: {
+        Row: {
+          confidence_score: number
+          created_at: string | null
+          id: string
+          last_validated_at: string | null
+          pattern_features: Json
+          pattern_type: string
+          success_correlation: number
+          usage_count: number | null
+        }
+        Insert: {
+          confidence_score?: number
+          created_at?: string | null
+          id?: string
+          last_validated_at?: string | null
+          pattern_features: Json
+          pattern_type: string
+          success_correlation: number
+          usage_count?: number | null
+        }
+        Update: {
+          confidence_score?: number
+          created_at?: string | null
+          id?: string
+          last_validated_at?: string | null
+          pattern_features?: Json
+          pattern_type?: string
+          success_correlation?: number
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string
