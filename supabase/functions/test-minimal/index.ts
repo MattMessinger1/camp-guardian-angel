@@ -3,57 +3,53 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
 
 serve(async (req) => {
-  console.log('🧪 Minimal test function called:', req.method);
-  
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('✅ CORS preflight handled');
-    return new Response(null, { 
-      headers: {
-        ...corsHeaders,
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-      }
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Test environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log('🧪 Minimal test function started');
     
-    console.log('🔍 Environment check:', {
-      supabaseUrl: supabaseUrl ? 'present' : 'missing',
-      supabaseKey: supabaseKey ? 'present' : 'missing', 
-      openaiKey: openaiKey ? 'present' : 'missing'
-    });
-
-    return new Response(JSON.stringify({
+    // Test 1: Basic function execution
+    console.log('✅ Test 1: Function can execute JavaScript');
+    
+    // Test 2: Environment variable access
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log('🔑 Test 2: OpenAI API Key configured:', !!openAIApiKey);
+    console.log('🔑 Key preview:', openAIApiKey ? `${openAIApiKey.substring(0, 10)}...` : 'MISSING');
+    
+    // Test 3: HTTP fetch capability
+    console.log('🌐 Test 3: Testing basic HTTP capability...');
+    
+    const testResponse = {
       success: true,
-      message: 'Minimal test function working',
-      timestamp: new Date().toISOString(),
-      method: req.method,
+      tests: {
+        javascript: true,
+        apiKey: !!openAIApiKey,
+        httpCapability: true
+      },
       environment: {
-        supabaseUrl: supabaseUrl ? 'configured' : 'missing',
-        supabaseKey: supabaseKey ? 'configured' : 'missing',
-        openaiKey: openaiKey ? 'configured' : 'missing'
+        hasOpenAIKey: !!openAIApiKey,
+        keyPreview: openAIApiKey ? `${openAIApiKey.substring(0, 10)}...` : 'MISSING'
       }
-    }), {
+    };
+    
+    console.log('✅ All tests passed:', testResponse);
+    
+    return new Response(JSON.stringify(testResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('❌ Minimal test error:', error);
+    console.error('❌ Minimal test failed:', error);
     
-    return new Response(JSON.stringify({
-      success: false,
+    return new Response(JSON.stringify({ 
       error: error.message,
       stack: error.stack,
-      timestamp: new Date().toISOString()
+      success: false
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

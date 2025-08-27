@@ -153,3 +153,6 @@ verify_jwt = false
 [functions.intelligent-model-selector]
 verify_jwt = false
 
+[functions.test-minimal]
+verify_jwt = false
+
