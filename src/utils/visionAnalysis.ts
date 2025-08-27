@@ -12,7 +12,7 @@ export async function analyzePageWithVision(
   sessionId: string, 
   model: string = 'gpt-4o'
 ) {
-  console.log('🔍 Starting vision analysis for session:', sessionId);
+  console.log('🔍 Starting vision analysis for session:', sessionId, 'with model:', model);
   
   try {
     // Clean the screenshot data - remove data URL prefix if present
@@ -21,6 +21,7 @@ export async function analyzePageWithVision(
       cleanScreenshot = screenshot.split(',')[1];
     }
 
+    console.log('📤 Calling test-vision-analysis function...');
     const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
       body: {
         screenshot: cleanScreenshot,
@@ -30,13 +31,18 @@ export async function analyzePageWithVision(
     });
 
     if (error) {
-      console.error('❌ Vision analysis failed:', error);
+      console.error('❌ Supabase function invoke error:', error);
       throw new Error(`Vision analysis failed: ${error.message}`);
     }
 
+    if (!data) {
+      console.error('❌ No data returned from function');
+      throw new Error('No data returned from vision analysis function');
+    }
+
     if (!data.success) {
-      console.error('❌ Vision analysis returned failure:', data.error);
-      throw new Error(`Vision analysis error: ${data.error}`);
+      console.error('❌ Vision analysis returned failure:', data.error || data);
+      throw new Error(`Vision analysis error: ${data.error || 'Unknown error'}`);
     }
 
     console.log('✅ Vision analysis completed:', {
