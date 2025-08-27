@@ -47,7 +47,7 @@ export const ComprehensiveVisionTester = () => {
         </svg>
       `);
       
-      const analysis = await testVisionAnalysis('gpt-4o-mini', true);
+      const analysis = await testVisionAnalysis('gpt-5-2025-08-07', true);  // Use GPT-5 latest
       const duration1 = Date.now() - startTime1;
       
       // Handle both response formats
@@ -230,8 +230,8 @@ export const ComprehensiveVisionTester = () => {
               <text x="85" y="220" font-size="12" fill="white">Register</text>
             </svg>
           `).split(',')[1],
-          sessionId: sessionId,
-          model: 'gpt-4o-mini'
+          sessionId: `e2e-test-${Date.now()}`,
+          model: 'gpt-5-2025-08-07'  // Use GPT-5 latest
         }
       });
 
@@ -278,7 +278,7 @@ export const ComprehensiveVisionTester = () => {
         body: {
           screenshot: 'corrupted-image-data',
           sessionId: 'fallback-test',
-          model: 'gpt-4o-mini'
+          model: 'gpt-5-2025-08-07'  // Use GPT-5 latest
         }
       });
 
@@ -409,14 +409,14 @@ export const ComprehensiveVisionTester = () => {
             addResult(`5.1.${site.name} - Real Site Test`, 'error', `Failed to extract real page data: ${extractError?.message || 'No screenshot captured'}`);
           } else {
             // Analyze real screenshot with vision
-            const { data: visionData, error: visionError } = await supabase.functions.invoke('test-vision-analysis', {
-              body: {
-                screenshot: extractData.screenshot,
-                sessionId: `real-site-${site.name.replace(/\s+/g, '-').toLowerCase()}`,
-                model: 'gpt-4o-mini',
-                realSiteAnalysis: true
-              }
-            });
+          const { data: visionData, error: visionError } = await supabase.functions.invoke('test-vision-analysis', {
+            body: {
+              screenshot: extractData.screenshot,
+              sessionId: `real-site-${site.name.replace(/\s+/g, '-').toLowerCase()}`,
+              model: 'gpt-5-2025-08-07',  // Use GPT-5 latest
+              realSiteAnalysis: true
+            }
+          });
 
             if (visionError) {
               addResult(`5.1.${site.name} - Real Site Test`, 'error', `Vision analysis of real site failed: ${visionError.message}`);
@@ -514,7 +514,7 @@ export const ComprehensiveVisionTester = () => {
               body: {
                 screenshot: captchaData.screenshot,
                 sessionId: `captcha-real-${Date.now()}`,
-                model: 'gpt-4o-mini',
+                model: 'gpt-5-2025-08-07',  // Use GPT-5 latest
                 analysisType: 'captcha_detection'
               }
             });
@@ -605,7 +605,7 @@ export const ComprehensiveVisionTester = () => {
         body: {
           screenshot: accessibilityTestForm.split(',')[1],
           sessionId: 'accessibility-scoring-test',
-          model: 'gpt-4o-mini'
+          model: 'gpt-5-2025-08-07'  // Use GPT-5 latest
         }
       });
 
@@ -741,15 +741,32 @@ export const ComprehensiveVisionTester = () => {
           </Card>
         </div>
 
-        {/* Test Results */}
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        {/* Persistent Test Results - Won't disappear */}
+        <div className="space-y-3 max-h-[600px] overflow-y-auto border rounded-lg bg-gray-50 p-4">
+          <div className="flex items-center justify-between sticky top-0 bg-gray-50 py-2 border-b">
+            <h4 className="font-medium">📋 Test Results (Persistent View)</h4>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                const resultsText = testResults.map(r => 
+                  `${r.testCase}: ${r.status.toUpperCase()} - ${r.message}${r.duration ? ` (${r.duration}ms)` : ''}`
+                ).join('\n');
+                navigator.clipboard.writeText(resultsText);
+                toast({ title: "Results copied to clipboard!" });
+              }}
+            >
+              📋 Copy Results
+            </Button>
+          </div>
+          
           {testResults.map((result, index) => (
-            <div key={index} className="border rounded-lg p-4">
+            <div key={`${result.testCase}-${index}`} className="border rounded-lg p-4 bg-white">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium">{result.testCase}</h4>
                 <div className="flex items-center gap-2">
                   {result.duration && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-1 rounded">
                       {result.duration}ms
                     </span>
                   )}
@@ -758,30 +775,43 @@ export const ComprehensiveVisionTester = () => {
                   </Badge>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">{result.message}</p>
+              <p className="text-sm text-muted-foreground mb-2">{result.message}</p>
               {result.data && (
                 <details className="mt-2">
-                  <summary className="text-xs cursor-pointer text-blue-600">
-                    View Test Data
+                  <summary className="text-xs cursor-pointer text-blue-600 hover:text-blue-800">
+                    📊 View Raw Data
                   </summary>
-                  <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-x-auto max-h-32">
-                    {JSON.stringify(result.data, null, 2)}
-                  </pre>
+                  <div className="mt-2 p-2 bg-gray-100 rounded border">
+                    <pre className="text-xs overflow-x-auto max-h-40 whitespace-pre-wrap">
+                      {JSON.stringify(result.data, null, 2)}
+                    </pre>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(result.data, null, 2));
+                        toast({ title: "Data copied to clipboard!" });
+                      }}
+                    >
+                      📋 Copy Data
+                    </Button>
+                  </div>
                 </details>
               )}
             </div>
           ))}
+          
+          {testResults.length === 0 && !isRunning && (
+            <div className="text-center text-muted-foreground py-8 bg-white rounded border">
+              Click "Run Complete Test Suite" to start comprehensive vision analysis testing with GPT-5
+            </div>
+          )}
         </div>
 
-        {testResults.length === 0 && !isRunning && (
-          <div className="text-center text-muted-foreground py-8">
-            Click "Run Complete Test Suite" to start comprehensive vision analysis testing
-          </div>
-        )}
-
-        {/* Test Coverage Summary */}
-        <div className="p-4 bg-muted/50 rounded-lg">
-          <h4 className="font-medium mb-2">🎯 Comprehensive Test Coverage (Sections 1, 2, 3, 5):</h4>
+        {/* Test Coverage Summary - Always Visible */}
+        <Card className="p-4 bg-blue-50 border-blue-200 sticky bottom-0">
+          <h4 className="font-medium mb-2">🎯 Comprehensive Test Coverage (Sections 1, 2, 3, 5) - Using GPT-5:</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
             <div>
               <p className="font-medium text-foreground mb-1">Section 1: Unit Tests</p>
@@ -820,13 +850,13 @@ export const ComprehensiveVisionTester = () => {
             </div>
           </div>
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
-            <p className="text-sm font-medium text-green-800">🎯 <strong>REAL SITES TESTING:</strong></p>
+            <p className="text-sm font-medium text-green-800">🚀 <strong>NOW USING GPT-5 (gpt-5-2025-08-07):</strong></p>
             <p className="text-xs text-green-700 mt-1">
-              This test suite now analyzes <strong>actual live camp registration websites</strong> using your browser automation system. 
-              Much more valuable than mock data for validating vision analysis accuracy!
+              All vision analysis now uses the latest GPT-5 model for maximum accuracy and reliability.
+              Results are persistent and can be copied for analysis.
             </p>
           </div>
-        </div>
+        </Card>
       </CardContent>
     </Card>
   );
