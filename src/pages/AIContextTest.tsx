@@ -3,6 +3,7 @@ import { StandardPage } from '@/components/StandardPage';
 import { AIContextTester } from '@/components/AIContextTester';
 import { AIContextManagerTester } from '@/components/AIContextManagerTester';
 import { VisionAnalysisTester } from '@/components/VisionAnalysisTester';
+import { SystematicTester } from '@/components/SystematicTester';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -92,6 +93,9 @@ export default function AIContextTest() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Systematic Issue Isolation */}
+        <SystematicTester />
 
         {/* User-level testing */}
         <AIContextTester />
