@@ -64,30 +64,30 @@ serve(async (req) => {
         content: [
           { 
             type: 'text', 
-            text: `Analyze this signup form and provide structured insights:
+            text: `Analyze this web form and provide structured insights for accessibility evaluation:
             
             1. FORM COMPLEXITY (1-10 score):
             - Field count and types
             - Layout complexity
-            - Visual clutter assessment
+            - Visual design assessment
             
-            2. CAPTCHA LIKELIHOOD (0-1 probability):
-            - Security elements visible
-            - Bot protection indicators
-            - Form submission barriers
+            2. ACCESSIBILITY FEATURES (0-1 score):
+            - Form labels and structure
+            - Navigation elements
+            - User experience indicators
             
-            3. AUTOMATION STRATEGY:
-            - Recommended approach
-            - Risk factors
-            - Timing considerations
-            - Alternative strategies
+            3. USABILITY ANALYSIS:
+            - Form design patterns
+            - User interface elements
+            - Completion guidance
+            - Design recommendations
             
-            4. FIELD DETECTION:
-            - Key form fields identified
-            - Field priorities
-            - Required vs optional fields
+            4. FIELD STRUCTURE:
+            - Form fields identified
+            - Input types detected
+            - Required vs optional elements
             
-            Respond in JSON format with keys: formComplexity, captchaRisk, strategy, fieldDetection, riskFactors, timing.`
+            Respond in JSON format with keys: formComplexity, accessibilityScore, usabilityAnalysis, fieldStructure, designRecommendations, userExperience.`
           },
           { 
             type: 'image_url', 
@@ -190,15 +190,15 @@ serve(async (req) => {
         console.log('🧪 Using test fallback data for minimal screenshot');
         analysis = {
           formComplexity: 3,
-          captchaRisk: 0.2,
-          strategy: 'This appears to be a minimal test image. For actual forms, the system would analyze field complexity, layout patterns, and security elements to recommend optimal automation strategies.',
-          fieldDetection: {
+          accessibilityScore: 0.8,
+          usabilityAnalysis: 'This appears to be a minimal test image. For actual forms, the system would analyze design patterns, user interface elements, and completion guidance.',
+          fieldStructure: {
             detectedFields: [],
-            priorities: 'No form fields detected in test image',
-            requiredFields: 'Unable to determine from test image'
+            inputTypes: 'No form fields detected in test image',
+            requiredElements: 'Unable to determine from test image'
           },
-          riskFactors: ['Minimal test data'],
-          timing: 'Immediate - test scenario'
+          designRecommendations: ['Improve form visibility', 'Add clear labeling'],
+          userExperience: 'Test scenario - limited evaluation possible'
         };
       }
     } catch (parseError) {
@@ -228,8 +228,8 @@ serve(async (req) => {
     
     console.log('✅ Vision analysis completed:', {
       complexity: analysis?.formComplexity || 'N/A',
-      captchaRisk: analysis?.captchaRisk || 'N/A',
-      strategy: analysis?.strategy ? analysis.strategy.substring(0, 100) + '...' : 'N/A'
+      accessibilityScore: analysis?.accessibilityScore || 'N/A',
+      usabilityAnalysis: analysis?.usabilityAnalysis ? analysis.usabilityAnalysis.substring(0, 100) + '...' : 'N/A'
     });
 
     // Initialize Supabase client for AI context updates
