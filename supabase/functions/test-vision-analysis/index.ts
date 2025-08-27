@@ -82,7 +82,8 @@ serve(async (req) => {
             }
           ]
         }],
-        max_completion_tokens: 800,
+        max_tokens: 800,
+        temperature: 0.3,
         response_format: { type: "json_object" }
       })
     });
