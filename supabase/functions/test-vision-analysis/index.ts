@@ -129,20 +129,31 @@ serve(async (req) => {
 
     const result = await response.json();
     console.log('📥 Full OpenAI API response:', JSON.stringify(result, null, 2));
+    
+    // First check: Does OpenAI response have basic structure?
+    console.log('🔍 OpenAI Response Analysis:', {
+      hasChoices: !!result.choices,
+      choicesLength: result.choices?.length || 0,
+      hasMessage: !!result.choices?.[0]?.message,
+      messageRole: result.choices?.[0]?.message?.role || 'none',
+      hasContent: !!result.choices?.[0]?.message?.content,
+      contentType: typeof result.choices?.[0]?.message?.content,
+      contentLength: result.choices?.[0]?.message?.content?.length || 0,
+      contentPreview: result.choices?.[0]?.message?.content?.substring(0, 200) || 'NO CONTENT',
+      finishReason: result.choices?.[0]?.finish_reason || 'none',
+      usage: result.usage || 'none',
+      error: result.error || 'none'
+    });
+
     let analysis;
     
     try {
       // Check if OpenAI response has the expected structure
-      if (!result.choices || !result.choices[0] || !result.choices[0].message || !result.choices[0].message.content) {
-        console.error('❌ Invalid OpenAI response structure:', result);
+      if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+        console.error('❌ Missing basic OpenAI response structure');
         return new Response(JSON.stringify({ 
-          error: 'Invalid OpenAI response structure',
-          responseStructure: {
-            hasChoices: !!result.choices,
-            choicesLength: result.choices?.length,
-            hasMessage: !!result.choices?.[0]?.message,
-            hasContent: !!result.choices?.[0]?.message?.content
-          }
+          error: 'Invalid OpenAI response - missing choices or message',
+          openaiResponse: result
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -150,6 +161,26 @@ serve(async (req) => {
       }
 
       const content = result.choices[0].message.content;
+      
+      // If content is null or empty, this is often due to content filtering
+      if (!content || content.trim() === '') {
+        console.error('❌ OpenAI returned empty content - likely content filtering or model refusal');
+        return new Response(JSON.stringify({ 
+          error: 'OpenAI returned empty content',
+          possibleCauses: [
+            'Content filtering triggered',
+            'Model refused to analyze image', 
+            'Image format not supported',
+            'API key issues'
+          ],
+          finishReason: result.choices[0].finish_reason,
+          openaiResponse: result
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
       console.log('🔍 Raw OpenAI content:', content);
       
       analysis = JSON.parse(content);
