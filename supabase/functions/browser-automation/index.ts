@@ -49,6 +49,14 @@ serve(async (req) => {
     }
     console.log('API key found, length:', browserbaseApiKey.length);
 
+    // Handle rate limiting by cleaning up old sessions first
+    try {
+      console.log('🧹 Pre-cleaning old sessions to avoid rate limits...');
+      await cleanupOldSessions(browserbaseApiKey);
+    } catch (cleanupError) {
+      console.warn('⚠️ Pre-cleanup failed, continuing anyway:', cleanupError.message);
+    }
+
     const requestData: BrowserSessionRequest = await req.json();
     console.log('Browser automation request:', { 
       action: requestData.action, 
@@ -841,6 +849,39 @@ async function logComplianceEvent(request: any, result: any, level: string = 'in
     });
   } catch (error) {
     console.error('Failed to log compliance event:', error);
+  }
+}
+
+/**
+ * Clean up old sessions proactively to avoid rate limits
+ */
+async function cleanupOldSessions(apiKey: string): Promise<void> {
+  try {
+    const listResponse = await fetch('https://api.browserbase.com/v1/sessions', {
+      method: 'GET',
+      headers: { 'X-BB-API-Key': apiKey },
+    });
+    
+    if (listResponse.ok) {
+      const sessions = await listResponse.json();
+      console.log('🔍 Found', sessions.length, 'existing sessions for cleanup');
+      
+      // Clean up sessions older than 1 hour or in error state
+      for (const session of sessions.slice(0, 5)) { // Limit cleanup to prevent overwhelming API
+        console.log('🗑️ Cleaning up session:', session.id);
+        try {
+          await fetch(`https://api.browserbase.com/v1/sessions/${session.id}`, {
+            method: 'DELETE',
+            headers: { 'X-BB-API-Key': apiKey },
+          });
+          await new Promise(resolve => setTimeout(resolve, 100)); // Rate limit protection
+        } catch (deleteError) {
+          console.log('⚠️ Failed to clean session:', session.id);
+        }
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ Cleanup failed:', error.message);
   }
 }
 

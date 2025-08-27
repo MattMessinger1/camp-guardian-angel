@@ -800,11 +800,20 @@ export const ComprehensiveVisionTester = () => {
             </div>
           </div>
 
-          {/* DEBUG: Show that cards are rendering */}
-          <div className="text-xs text-gray-500 mb-2">
-            Debug: Section cards are rendering. Total results: {testResults.length}
+          {/* DEBUG: Show test results array status */}
+          <div className="text-xs text-gray-500 mb-2 p-2 bg-gray-50 rounded">
+            <div>Debug Info: Total results: {testResults.length}</div>
             {testResults.length > 0 && (
-              <div>Recent results: {testResults.slice(-3).map(r => r.testCase).join(', ')}</div>
+              <div className="mt-1">
+                <div>Latest results: {testResults.slice(-3).map(r => `${r.testCase}: ${r.status}`).join(', ')}</div>
+                <div>Results by section:</div>
+                <div className="ml-2 text-xs">
+                  <div>Section 1: {testResults.filter(r => r.testCase.startsWith('1.')).length} results</div>
+                  <div>Section 2: {testResults.filter(r => r.testCase.startsWith('2.')).length} results</div>
+                  <div>Section 3: {testResults.filter(r => r.testCase.startsWith('3.')).length} results</div>
+                  <div>Section 5: {testResults.filter(r => r.testCase.startsWith('5.')).length} results</div>
+                </div>
+              </div>
             )}
           </div>
 

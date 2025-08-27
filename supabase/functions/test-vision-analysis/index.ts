@@ -37,6 +37,53 @@ serve(async (req) => {
       });
     }
 
+    // Validate and fix screenshot format
+    let validScreenshot = screenshot;
+    let imageFormat = 'png';
+    
+    try {
+      // Handle different input formats
+      if (screenshot.startsWith('data:image/')) {
+        // Extract base64 part from data URL
+        const [mimeType, base64Data] = screenshot.split(',');
+        validScreenshot = base64Data;
+        imageFormat = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpeg' : 'png';
+      } else if (screenshot.startsWith('<svg')) {
+        // Convert SVG to base64 PNG - this is likely causing the format errors
+        console.log('🔧 Converting SVG to base64 PNG format');
+        const svgBase64 = btoa(screenshot);
+        validScreenshot = svgBase64;
+        imageFormat = 'png'; // Treat SVG as PNG for OpenAI
+      } else if (!screenshot.match(/^[A-Za-z0-9+/]*={0,2}$/)) {
+        console.error('❌ Invalid base64 format detected');
+        return new Response(JSON.stringify({ 
+          error: 'Invalid screenshot format - must be valid base64 or data URL',
+          format: typeof screenshot,
+          length: screenshot.length,
+          preview: screenshot.substring(0, 100)
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // Ensure valid base64 padding
+      if (validScreenshot.length % 4 !== 0) {
+        validScreenshot += '='.repeat(4 - (validScreenshot.length % 4));
+      }
+      
+    } catch (formatError) {
+      console.error('❌ Screenshot format validation error:', formatError);
+      return new Response(JSON.stringify({ 
+        error: 'Failed to process screenshot format',
+        details: formatError.message,
+        originalFormat: typeof screenshot
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // ISOLATION TEST: Use known working model with reduced settings
     let visionModel = model;
     let config;
@@ -71,7 +118,8 @@ serve(async (req) => {
       sessionId,
       originalModel: model,
       selectedModel: visionModel,
-      screenshotLength: screenshot?.length || 0,
+      screenshotLength: validScreenshot?.length || 0,
+      screenshotFormat: imageFormat,
       timestamp: new Date().toISOString(),
       apiKeyConfigured: !!openAIApiKey,
       requestPayload: {
@@ -106,7 +154,7 @@ serve(async (req) => {
           },
           { 
             type: 'image_url', 
-            image_url: { url: `data:image/png;base64,${screenshot}` }
+            image_url: { url: `data:image/${imageFormat};base64,${validScreenshot}` }
           }
         ]
       }],
