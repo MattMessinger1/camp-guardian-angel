@@ -84,18 +84,20 @@ export const ComprehensiveVisionTester = () => {
       
       for (const model of testModels) {
         try {
+          // Generate proper UUID for sessionId
+          const sessionId = crypto.randomUUID();
           const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
             body: {
               screenshot: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-              sessionId: `model-compat-${model}`,
+              sessionId: sessionId,
               model: model
             }
           });
           
-          if (!error) {
+          if (!error && data?.success) {
             modelResults.push({ model, status: 'success', data });
           } else {
-            modelResults.push({ model, status: 'error', error: error.message });
+            modelResults.push({ model, status: 'error', error: error?.message || data?.error || 'Unknown error' });
           }
         } catch (e) {
           modelResults.push({ model, status: 'error', error: e.message });
@@ -104,14 +106,16 @@ export const ComprehensiveVisionTester = () => {
       
       const duration2 = Date.now() - startTime2;
       const successCount = modelResults.filter(r => r.status === 'success').length;
+      const errorDetails = modelResults.filter(r => r.status === 'error').map(r => `${r.model}: ${r.error}`).join('; ');
       
       if (successCount >= 1) {
         addResult('1.2 - Model Compatibility', 'success', `${successCount}/${testModels.length} models compatible`, duration2, modelResults);
       } else {
-        addResult('1.2 - Model Compatibility', 'error', 'No models working properly', duration2, modelResults);
+        addResult('1.2 - Model Compatibility', 'error', `No models working: ${errorDetails}`, duration2, modelResults);
       }
     } catch (error) {
-      addResult('1.2 - Model Compatibility', 'error', `Model compatibility test failed: ${error}`, Date.now() - startTime2);
+      const duration2 = Date.now() - startTime2;
+      addResult('1.2 - Model Compatibility', 'error', `Model compatibility test failed: ${error.message}`, duration2);
     }
   };
 
@@ -130,10 +134,12 @@ export const ComprehensiveVisionTester = () => {
         }
       });
 
+      const duration1 = Date.now() - startTime1;
       if (sessionError) {
-        addResult('2.1 - Browser Automation Vision', 'error', `Session creation failed: ${sessionError.message}`, Date.now() - startTime1);
-      } else {
+        addResult('2.1 - Browser Automation Vision', 'error', `Session creation failed: ${sessionError.message}`, duration1);
+      } else if (sessionData?.id) {
         // Test screenshot capture → vision analysis → automation decision pipeline
+        const startTime2 = Date.now();
         const { data: extractData, error: extractError } = await supabase.functions.invoke('browser-automation', {
           body: {
             action: 'extract',
@@ -142,12 +148,14 @@ export const ComprehensiveVisionTester = () => {
           }
         });
 
-        const duration1 = Date.now() - startTime1;
+        const duration2 = Date.now() - startTime2;
         if (extractError) {
-          addResult('2.1 - Browser Automation Vision', 'error', `Vision extraction failed: ${extractError.message}`, duration1);
+          addResult('2.1 - Browser Automation Vision', 'error', `Vision extraction failed: ${extractError.message}`, duration1 + duration2);
         } else {
-          addResult('2.1 - Browser Automation Vision', 'success', 'Screenshot → Vision → Decision pipeline working', duration1, extractData);
+          addResult('2.1 - Browser Automation Vision', 'success', 'Screenshot → Vision → Decision pipeline working', duration1 + duration2, extractData);
         }
+      } else {
+        addResult('2.1 - Browser Automation Vision', 'error', 'Session creation returned no session ID', duration1);
 
         // Cleanup
         await supabase.functions.invoke('browser-automation', {
@@ -155,13 +163,15 @@ export const ComprehensiveVisionTester = () => {
         });
       }
     } catch (error) {
-      addResult('2.1 - Browser Automation Vision', 'error', `Integration test failed: ${error}`, Date.now() - startTime1);
+      const duration1 = Date.now() - startTime1;
+      addResult('2.1 - Browser Automation Vision', 'error', `Integration test failed: ${error.message}`, duration1);
     }
 
     // Test 2.2: Vision analysis integration with ai-context-manager
     const startTime2 = Date.now();
     try {
-      const contextId = `test-context-${Date.now()}`;
+      // Generate proper UUID for contextId
+      const contextId = crypto.randomUUID();
       
       // Test vision analysis result integration with AI context
       const { data: contextData, error: contextError } = await supabase.functions.invoke('ai-context-manager', {
@@ -183,11 +193,14 @@ export const ComprehensiveVisionTester = () => {
       const duration2 = Date.now() - startTime2;
       if (contextError) {
         addResult('2.2 - AI Context Integration', 'error', `Context integration failed: ${contextError.message}`, duration2);
-      } else {
+      } else if (contextData?.success) {
         addResult('2.2 - AI Context Integration', 'success', 'Vision analysis integrated with AI context manager', duration2, contextData);
+      } else {
+        addResult('2.2 - AI Context Integration', 'error', `Context integration failed: ${contextData?.error || 'Unknown error'}`, duration2, contextData);
       }
     } catch (error) {
-      addResult('2.2 - AI Context Integration', 'error', `AI context integration failed: ${error}`, Date.now() - startTime2);
+      const duration2 = Date.now() - startTime2;
+      addResult('2.2 - AI Context Integration', 'error', `AI context integration failed: ${error.message}`, duration2);
     }
   };
 
@@ -240,10 +253,11 @@ export const ComprehensiveVisionTester = () => {
         addResult('3.1 - E2E Complete Flow', 'error', `Vision analysis failed: ${visionError.message}`, Date.now() - startTime1);
       } else {
         // Step 4: Test AI context update with results
+        const contextId = crypto.randomUUID(); // Generate proper UUID
         const { data: contextUpdate, error: contextError } = await supabase.functions.invoke('ai-context-manager', {
           body: {
             action: 'update',
-            contextId: `browser_session_${sessionData.id}`,
+            contextId: contextId,
             stage: 'automation_ready',
             data: {
               visionAnalysis: visionData,
@@ -268,7 +282,8 @@ export const ComprehensiveVisionTester = () => {
       });
 
     } catch (error) {
-      addResult('3.1 - E2E Complete Flow', 'error', `E2E workflow test failed: ${error}`, Date.now() - startTime1);
+      const duration1 = Date.now() - startTime1;
+      addResult('3.1 - E2E Complete Flow', 'error', `E2E workflow test failed: ${error.message}`, duration1);
     }
 
     // Test 3.2: Fallback behavior when vision analysis fails
@@ -761,6 +776,11 @@ export const ComprehensiveVisionTester = () => {
                 📋 Copy All Results
               </Button>
             </div>
+          </div>
+
+          {/* DEBUG: Show that cards are rendering */}
+          <div className="text-xs text-gray-500 mb-2">
+            Debug: Section cards are rendering. Total results: {testResults.length}
           </div>
 
           {/* Section 1: Unit Tests */}
