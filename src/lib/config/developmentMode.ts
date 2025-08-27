@@ -11,13 +11,18 @@ import { env } from '@/config/environment';
  */
 
 export function isDevelopmentMode(): boolean {
-  // Check environment variable first
+  // In Lovable environment, always prioritize Vite's DEV mode detection
+  if (import.meta.env.DEV) {
+    return true;
+  }
+  
+  // Check environment variable for explicit override
   if (env.DEVELOPMENT_MODE !== undefined) {
     return env.DEVELOPMENT_MODE;
   }
   
-  // Fallback to checking if we're in development environment
-  return import.meta.env.DEV;
+  // Default to false for production
+  return false;
 }
 
 export function logDevelopmentInfo(feature: string, context?: string) {
