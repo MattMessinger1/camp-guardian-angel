@@ -8,20 +8,32 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Check if OpenAI API key is configured
+    // CRITICAL: Check for OpenAI API key first
     const openAIKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIKey) {
-      console.error('OPENAI_API_KEY is not configured');
+    
+    console.log('Environment check:', {
+      hasOpenAIKey: !!openAIKey,
+      keyDefined: openAIKey !== undefined,
+      keyNotEmpty: openAIKey !== '',
+      keyLength: openAIKey?.length || 0
+    });
+    
+    if (!openAIKey || openAIKey === '' || openAIKey === 'undefined') {
+      console.error('CRITICAL: OPENAI_API_KEY is not set or is empty');
       return new Response(
         JSON.stringify({ 
-          error: 'Configuration error',
-          details: 'OpenAI API key is not configured. Please set OPENAI_API_KEY in Supabase edge function secrets.'
+          error: 'Configuration Error',
+          details: 'OPENAI_API_KEY is not configured. Please set it in Supabase Edge Function Secrets.',
+          instructions: '1. Go to Supabase Dashboard 2. Navigate to Edge Functions 3. Click on Secrets 4. Add OPENAI_API_KEY with your OpenAI API key',
+          debugInfo: {
+            keyExists: !!openAIKey,
+            keyValue: openAIKey || 'UNDEFINED'
+          }
         }),
         { 
           status: 500,
@@ -31,22 +43,24 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { screenshot, sessionId, model = 'gpt-4o', url, fallbackHtml } = body;
+    const { screenshot, sessionId, model = 'gpt-4o' } = body;
     
-    console.log('Received request:', {
-      hasScreenshot: !!screenshot,
-      screenshotLength: screenshot?.length,
-      sessionId,
+    console.log('Request received with API key present:', {
+      hasApiKey: true,
+      keyLength: openAIKey.length,
+      keyStart: openAIKey.substring(0, 7), // Should be "sk-..."
       model,
-      hasApiKey: !!openAIKey
+      hasScreenshot: !!screenshot,
+      screenshotLength: screenshot?.length
     });
 
     // Validate screenshot
-    if (!screenshot && !fallbackHtml) {
+    if (!screenshot || !screenshot.startsWith('data:image/')) {
       return new Response(
         JSON.stringify({ 
-          error: 'No content to analyze',
-          details: 'Please provide either a screenshot or HTML content'
+          error: 'Invalid screenshot',
+          details: 'Screenshot must be a valid data URL',
+          received: screenshot ? screenshot.substring(0, 50) : 'null'
         }),
         { 
           status: 400,
@@ -55,122 +69,27 @@ serve(async (req) => {
       )
     }
 
-    if (screenshot) {
-      // Validate data URL format
-      if (!screenshot.startsWith('data:image/')) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'Invalid screenshot format',
-            details: 'Screenshot must be a data URL starting with data:image/',
-            received: screenshot.substring(0, 50)
-          }),
-          { 
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
-      }
-
-      // Check for SVG format
-      if (screenshot.includes('image/svg+xml')) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'SVG format not supported by OpenAI Vision API',
-            details: 'Please convert SVG to PNG client-side before sending',
-            requiresConversion: true,
-            originalFormat: 'svg'
-          }),
-          { 
-            status: 422, // Unprocessable Entity
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
-      }
-    }
-
-    // Map model names to valid OpenAI models
-    const modelMap: Record<string, string> = {
-      'gpt-5-2025-08-07': 'gpt-4o',
-      'gpt-4o': 'gpt-4o',
-      'gpt-4o-mini': 'gpt-4o-mini',
-      'gpt-4-turbo': 'gpt-4-turbo-preview',
-      'gpt-4-vision-preview': 'gpt-4o'
-    };
-
-    const openAIModel = modelMap[model] || 'gpt-4o';
+    // Test OpenAI API key by making a simple request
+    console.log('Testing OpenAI API with key...');
     
-    if (model !== openAIModel) {
-      console.log(`Model "${model}" mapped to "${openAIModel}"`);
-    }
-
-    console.log('Calling OpenAI API with model:', openAIModel);
-
-    // Build messages
-    const messages = [];
-    
-    if (screenshot) {
-      messages.push({
-        role: 'user',
-        content: [
-          { 
-            type: 'text', 
-            text: 'Analyze this webpage screenshot. Identify any forms, input fields, buttons, and CAPTCHA or verification challenges present.'
-          },
-          { 
-            type: 'image_url',
-            image_url: {
-              url: screenshot
-            }
-          }
-        ]
-      });
-    } else if (fallbackHtml) {
-      messages.push({
-        role: 'user',
-        content: `Analyze this HTML content for forms, especially registration forms. Look for CAPTCHA implementations, required fields, and form structure:\n\n${fallbackHtml}`
-      });
-    }
-
-    // Call OpenAI API
-    const requestBody = {
-      model: openAIModel,
-      messages,
-      max_tokens: 500
-    };
-
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const testResponse = await fetch('https://api.openai.com/v1/models', {
       headers: {
-        'Authorization': `Bearer ${openAIKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    const responseText = await openAIResponse.text();
-    console.log('OpenAI Response Status:', openAIResponse.status);
-
-    if (!openAIResponse.ok) {
-      console.error('OpenAI API error:', openAIResponse.status, responseText);
-      
-      // Parse error message
-      let errorMessage = 'Unknown error';
-      let errorDetails = {};
-      try {
-        const errorJson = JSON.parse(responseText);
-        errorMessage = errorJson.error?.message || errorJson.message || 'API request failed';
-        errorDetails = errorJson.error || errorJson;
-      } catch {
-        errorMessage = responseText.substring(0, 200);
+        'Authorization': `Bearer ${openAIKey}`
       }
-      
+    });
+    
+    if (!testResponse.ok) {
+      const error = await testResponse.text();
+      console.error('OpenAI API key test failed:', testResponse.status, error);
       return new Response(
         JSON.stringify({ 
-          error: 'OpenAI API error',
-          details: errorMessage,
-          status: openAIResponse.status,
-          model: openAIModel,
-          errorInfo: errorDetails
+          error: 'Invalid OpenAI API Key',
+          details: `The OpenAI API key is invalid or expired. Status: ${testResponse.status}`,
+          apiError: error,
+          debugInfo: {
+            keyStart: openAIKey.substring(0, 7),
+            status: testResponse.status
+          }
         }),
         { 
           status: 500,
@@ -179,15 +98,70 @@ serve(async (req) => {
       )
     }
 
-    const result = JSON.parse(responseText);
+    console.log('✅ OpenAI API key is valid, proceeding with vision analysis...');
+
+    // Make the actual vision API call
+    const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: model === 'gpt-4o' || model === 'gpt-4o-mini' ? model : 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { 
+                type: 'text', 
+                text: 'Analyze this webpage screenshot. Identify any forms, input fields, buttons, and CAPTCHA or verification challenges present.'
+              },
+              { 
+                type: 'image_url',
+                image_url: {
+                  url: screenshot
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 500
+      })
+    });
+
+    const visionResult = await visionResponse.text();
+    
+    if (!visionResponse.ok) {
+      console.error('Vision API error:', visionResponse.status, visionResult);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Vision API Failed',
+          details: visionResult,
+          status: visionResponse.status,
+          debugInfo: {
+            model,
+            screenshotFormat: screenshot.match(/^data:image\/([^;]+)/)?.[1]
+          }
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const data = JSON.parse(visionResult);
+    
+    console.log('✅ Vision analysis completed successfully');
     
     return new Response(
       JSON.stringify({
         success: true,
-        analysis: result.choices?.[0]?.message?.content || 'No analysis generated',
-        model: openAIModel,
+        analysis: data.choices[0]?.message?.content || 'No content',
+        model,
         sessionId,
-        usage: result.usage
+        usage: data.usage
       }),
       { 
         status: 200,
@@ -196,12 +170,13 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Edge function error:', error);
+    console.error('Unexpected error in edge function:', error);
     return new Response(
       JSON.stringify({ 
-        error: 'Internal server error',
+        error: 'Unexpected Error',
         message: error.message,
-        details: error.toString()
+        stack: error.stack,
+        details: 'An unexpected error occurred in the edge function'
       }),
       { 
         status: 500,

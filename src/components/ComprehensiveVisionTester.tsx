@@ -24,6 +24,40 @@ export const ComprehensiveVisionTester = () => {
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
 
+  const debugEdgeFunction = async () => {
+    setCurrentTest('Debug - Edge Function Check');
+    console.log('🔍 Running edge function debug check...');
+    
+    try {
+      const { checkEdgeFunction } = await import('@/utils/checkEdgeFunction');
+      const result = await checkEdgeFunction();
+      
+      if (result.success) {
+        addResult('Debug Edge Function', 'success', 'Edge function is working correctly', undefined, result.data);
+        toast({
+          title: "Edge Function Working",
+          description: "OpenAI API key is configured and working",
+        });
+      } else {
+        addResult('Debug Edge Function', 'error', `Edge function failed: ${result.error}`, undefined, result);
+        toast({
+          title: "Edge Function Error",
+          description: result.error === 'Missing OpenAI API Key' 
+            ? "Please set OPENAI_API_KEY in Supabase Edge Function Secrets"
+            : result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      addResult('Debug Edge Function', 'error', `Debug failed: ${error.message}`, undefined, { error: error.message });
+      toast({
+        title: "Debug Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const addResult = (testCase: string, status: TestResult['status'], message: string, duration?: number, data?: any) => {
     console.log(`🧪 Adding test result: ${testCase} - ${status}: ${message}`);
     setTestResults(prev => [...prev, { testCase, status, message, duration, data }]);
@@ -749,14 +783,25 @@ export const ComprehensiveVisionTester = () => {
       <CardContent className="space-y-6">
         {/* Test Controls */}
         <div className="flex flex-col gap-4">
-          <Button 
-            onClick={runAllTests} 
-            disabled={isRunning}
-            size="lg"
-            className="w-full"
-          >
-            {isRunning ? `Running: ${currentTest}` : '🚀 Run Complete Test Suite'}
-          </Button>
+          <div className="flex gap-4">
+            <Button 
+              onClick={runAllTests} 
+              disabled={isRunning}
+              size="lg"
+              className="flex-1"
+            >
+              {isRunning ? `Running: ${currentTest}` : '🚀 Run Complete Test Suite'}
+            </Button>
+            
+            <Button 
+              onClick={debugEdgeFunction}
+              variant="outline"
+              size="lg"
+              className="px-6"
+            >
+              🔍 Debug Edge Function
+            </Button>
+          </div>
 
           {isRunning && (
             <div className="space-y-2">
