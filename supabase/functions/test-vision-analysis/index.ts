@@ -42,16 +42,38 @@ serve(async (req) => {
 
     // Validate screenshot format if provided
     if (screenshot) {
-      const base64Regex = /^data:image\/(png|jpeg|jpg|gif);base64,/
+      // Accept broader range of image formats including SVG
+      const base64Regex = /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/
       const isValidFormat = base64Regex.test(screenshot)
-      const base64Content = screenshot.split(',')[1]
       
-      if (!isValidFormat || !base64Content || base64Content === 'undefined') {
-        console.error('Invalid screenshot format detected')
+      if (!isValidFormat) {
+        console.error('Invalid screenshot format detected:', {
+          hasDataPrefix: screenshot.startsWith('data:'),
+          hasImagePrefix: screenshot.startsWith('data:image/'),
+          firstChars: screenshot.substring(0, 50),
+          format: 'Expected data:image/[format];base64,[content]'
+        })
         return new Response(
           JSON.stringify({ 
             error: 'Invalid screenshot format',
-            details: 'Screenshot must be a valid base64-encoded image',
+            details: 'Screenshot must be a valid data URL: data:image/[format];base64,[content]',
+            received: screenshot?.substring(0, 100),
+            expected: 'data:image/png;base64,... or data:image/svg+xml;base64,...'
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+      
+      const base64Content = screenshot.split(',')[1]
+      if (!base64Content || base64Content === 'undefined') {
+        console.error('No base64 content found after comma')
+        return new Response(
+          JSON.stringify({ 
+            error: 'Invalid screenshot content',
+            details: 'No base64 content found after data URL prefix',
             received: screenshot?.substring(0, 100)
           }),
           { 
@@ -104,18 +126,44 @@ serve(async (req) => {
       });
     }
 
+    // Model compatibility handling for OpenAI API
+    let apiModel = model;
+    let requestBody: any;
+    
+    // Handle newer models that aren't available yet
+    if (model === 'gpt-5-2025-08-07' || model.includes('gpt-5')) {
+      apiModel = 'gpt-4o'; // Fallback to GPT-4o
+      console.log(`⚠️ Using GPT-4o instead of ${model}`);
+    }
+    
+    // Build request based on content type
+    if (screenshot) {
+      // Vision API call
+      requestBody = {
+        model: apiModel,
+        messages,
+        max_tokens: 1000,
+        temperature: 0.3
+      };
+    } else if (fallbackHtml) {
+      // Text-only API call  
+      requestBody = {
+        model: apiModel,
+        messages,
+        max_tokens: 1000,
+        temperature: 0.3
+      };
+    } else {
+      throw new Error('No content provided for analysis');
+    }
+
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: model,
-        messages,
-        max_tokens: 1000,
-        temperature: 0.3
-      })
+      body: JSON.stringify(requestBody)
     })
 
     if (!openAIResponse.ok) {
