@@ -130,10 +130,13 @@ serve(async (req) => {
     let apiModel = model;
     let requestBody: any;
     
-    // Handle newer models that aren't available yet
+    // Use correct OpenAI model names
     if (model === 'gpt-5-2025-08-07' || model.includes('gpt-5')) {
-      apiModel = 'gpt-4o'; // Fallback to GPT-4o
-      console.log(`⚠️ Using GPT-4o instead of ${model}`);
+      apiModel = 'gpt-4o'; // GPT-5 not yet available, fallback to GPT-4o
+      console.log(`⚠️ Using GPT-4o instead of ${model} (GPT-5 not available)`);
+    } else if (model === 'gpt-4-vision-preview') {
+      apiModel = 'gpt-4o'; // gpt-4-vision-preview is deprecated
+      console.log(`⚠️ Using GPT-4o instead of deprecated ${model}`);
     }
     
     // Build request based on content type

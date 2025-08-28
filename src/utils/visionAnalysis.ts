@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 export async function analyzePageWithVision(
   screenshot: string, 
   sessionId: string, 
-  model: string = 'gpt-4o-mini',
+  model: string = 'gpt-4o',
   isolationTest: boolean = false
 ) {
   console.log(`🔍 Starting vision analysis for session: ${sessionId} with model: ${model}${isolationTest ? ' (isolation mode)' : ''}`);
