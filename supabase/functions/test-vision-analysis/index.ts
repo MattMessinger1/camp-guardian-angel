@@ -37,6 +37,19 @@ serve(async (req) => {
       });
     }
 
+    // Additional validation for screenshot content
+    if (screenshot === 'undefined' || screenshot === undefined || screenshot === null || screenshot.trim() === '') {
+      console.error('❌ Screenshot is undefined or empty:', { screenshot: typeof screenshot, value: screenshot });
+      return new Response(JSON.stringify({ 
+        error: 'Screenshot content is undefined or empty',
+        received: typeof screenshot,
+        value: screenshot === 'undefined' ? 'string "undefined"' : String(screenshot)
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Validate and fix screenshot format
     let validScreenshot = screenshot;
     let imageFormat = 'png';
