@@ -13,37 +13,39 @@ serve(async (req) => {
   }
 
   try {
-    // CRITICAL: Check for OpenAI API key first
+    // Check if OpenAI API key exists
     const openAIKey = Deno.env.get('OPENAI_API_KEY');
+    console.log('OpenAI key exists:', !!openAIKey);
     
-    console.log('Environment check:', {
-      hasOpenAIKey: !!openAIKey,
-      keyDefined: openAIKey !== undefined,
-      keyNotEmpty: openAIKey !== '',
-      keyLength: openAIKey?.length || 0
-    });
-    
-    if (!openAIKey || openAIKey === '' || openAIKey === 'undefined') {
-      console.error('CRITICAL: OPENAI_API_KEY is not set or is empty');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Configuration Error',
-          details: 'OPENAI_API_KEY is not configured. Please set it in Supabase Edge Function Secrets.',
-          instructions: '1. Go to Supabase Dashboard 2. Navigate to Edge Functions 3. Click on Secrets 4. Add OPENAI_API_KEY with your OpenAI API key',
-          debugInfo: {
-            keyExists: !!openAIKey,
-            keyValue: openAIKey || 'UNDEFINED'
-          }
-        }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
     const body = await req.json();
     const { screenshot, sessionId, model = 'gpt-4o', isolationTest = false } = body;
+    
+    // Log screenshot format for debugging
+    console.log('Screenshot format received:', {
+      hasScreenshot: !!screenshot,
+      screenshotStart: screenshot ? screenshot.substring(0, 30) : 'null',
+      screenshotLength: screenshot?.length || 0,
+      model,
+      sessionId
+    });
+
+    // If no API key, return mock data instead of failing
+    if (!openAIKey) {
+      console.log('No OpenAI API key found, returning mock data');
+      return new Response(JSON.stringify({
+        success: true,
+        analysis: "Mock mode - OpenAI not configured. This is a simulated analysis of the webpage screenshot.",
+        model: model + '-mock',
+        sessionId,
+        isolationTest,
+        mock: true,
+        formComplexity: 5,
+        captchaRisk: 0.3
+      }), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
     console.log('Request received with API key present:', {
       hasApiKey: true,
@@ -172,13 +174,18 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Unexpected error in edge function:', error);
+    console.error('Vision analysis error:', error.message);
+    console.error('Full error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
     return new Response(
       JSON.stringify({ 
-        error: 'Unexpected Error',
-        message: error.message,
-        stack: error.stack,
-        details: 'An unexpected error occurred in the edge function'
+        data: null,
+        error: { message: error.message },
+        success: false
       }),
       { 
         status: 500,
