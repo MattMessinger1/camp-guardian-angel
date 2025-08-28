@@ -68,6 +68,7 @@ const DevPages = {
   TOSCompliance: lazy(() => import('./pages/TOSCompliance')),
   ObservabilityPage: lazy(() => import('./pages/ObservabilityPage')),
   AIContextTest: lazy(() => import('./pages/AIContextTest')),
+  TestSignupPage: lazy(() => import('./pages/TestSignupPage')),
 };
 
 export default function App() {
@@ -111,6 +112,7 @@ export default function App() {
               
               {/* AI Testing Routes - Always Available */}
               <Route path="/ai-context-test" element={<DevPages.AIContextTest />} />
+              <Route path="/test-signup" element={<DevPages.TestSignupPage />} />
               
               {/* Legacy Redirects */}
               <Route path="/accounthistory" element={<Navigate to="/account-history" replace />} />
