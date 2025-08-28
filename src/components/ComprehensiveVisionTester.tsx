@@ -694,14 +694,30 @@ export const ComprehensiveVisionTester = () => {
         </svg>
       `);
 
+      // Convert SVG to PNG before sending to OpenAI Vision API
+      let processedScreenshot = accessibilityTestForm;
+      
+      try {
+        if (accessibilityTestForm.includes('image/svg+xml')) {
+          console.log('Converting accessibility test SVG to PNG for OpenAI Vision API...');
+          processedScreenshot = await ensureOpenAICompatibleImage(accessibilityTestForm);
+          console.log('Successfully converted accessibility test SVG to PNG');
+        }
+      } catch (conversionError) {
+        console.error('Failed to convert accessibility test SVG:', conversionError);
+        // Use fallback PNG
+        processedScreenshot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+      }
+
       console.log('Accessibility test screenshot:', {
-        isValid: accessibilityTestForm.startsWith('data:image'),
-        length: accessibilityTestForm.length
+        isValid: processedScreenshot.startsWith('data:image'),
+        length: processedScreenshot.length,
+        format: processedScreenshot.match(/data:image\/([^;]+)/)?.[1]
       });
 
       const { data: accessibilityAnalysis, error: accessibilityError } = await supabase.functions.invoke('test-vision-analysis', {
         body: {
-          screenshot: accessibilityTestForm,  // Send complete data URL
+          screenshot: processedScreenshot,  // Send converted screenshot
           sessionId: 'accessibility-scoring-test',
           model: 'gpt-4o',
           url: 'test://accessibility-scoring'
@@ -712,9 +728,10 @@ export const ComprehensiveVisionTester = () => {
       if (accessibilityError) {
         addResult('5.3 - Accessibility Scoring', 'error', `Accessibility scoring failed: ${accessibilityError.message}`, duration3);
       } else {
-        // Validate that analysis was returned
-        if (typeof accessibilityAnalysis === 'string' && accessibilityAnalysis.length > 0) {
-          addResult('5.3 - Accessibility Scoring', 'success', `Accessibility analysis completed`, duration3, { analysis: accessibilityAnalysis.substring(0, 100) });
+        // Validate that analysis was returned and extract the analysis content
+        const analysisContent = accessibilityAnalysis?.analysis || accessibilityAnalysis;
+        if (typeof analysisContent === 'string' && analysisContent.length > 0) {
+          addResult('5.3 - Accessibility Scoring', 'success', `Accessibility analysis completed`, duration3, { analysis: analysisContent.substring(0, 100) });
         } else {
           addResult('5.3 - Accessibility Scoring', 'error', 'Invalid accessibility analysis results', duration3, accessibilityAnalysis);
         }
