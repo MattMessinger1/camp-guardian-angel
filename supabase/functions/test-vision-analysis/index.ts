@@ -8,6 +8,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
+// OpenAI Vision API only supports these formats
+const OPENAI_SUPPORTED_FORMATS = ['png', 'jpeg', 'jpg', 'gif', 'webp'];
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -42,23 +45,51 @@ serve(async (req) => {
 
     // Validate screenshot format if provided
     if (screenshot) {
-      // Accept broader range of image formats including SVG
-      const base64Regex = /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/
-      const isValidFormat = base64Regex.test(screenshot)
-      
-      if (!isValidFormat) {
-        console.error('Invalid screenshot format detected:', {
-          hasDataPrefix: screenshot.startsWith('data:'),
-          hasImagePrefix: screenshot.startsWith('data:image/'),
-          firstChars: screenshot.substring(0, 50),
-          format: 'Expected data:image/[format];base64,[content]'
-        })
+      // Parse the data URL
+      const dataUrlMatch = screenshot.match(/^data:image\/([^;]+);base64,(.+)$/)
+      if (!dataUrlMatch) {
+        console.error('Invalid data URL format')
         return new Response(
           JSON.stringify({ 
             error: 'Invalid screenshot format',
-            details: 'Screenshot must be a valid data URL: data:image/[format];base64,[content]',
-            received: screenshot?.substring(0, 100),
-            expected: 'data:image/png;base64,... or data:image/svg+xml;base64,...'
+            details: 'Screenshot must be a valid data URL: data:image/[format];base64,[content]'
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      const [_, format, base64Content] = dataUrlMatch
+      const cleanFormat = format.replace('+xml', '') // Clean svg+xml to svg
+      
+      console.log('Image format detected:', format)
+
+      // Check if format is supported by OpenAI
+      if (!OPENAI_SUPPORTED_FORMATS.includes(cleanFormat)) {
+        console.log(`Format ${format} not supported by OpenAI`)
+        
+        // For SVG, return specific error for client-side conversion
+        if (format === 'svg+xml' || cleanFormat === 'svg') {
+          return new Response(
+            JSON.stringify({ 
+              error: 'SVG format not supported by OpenAI Vision API',
+              details: 'Please convert SVG to PNG client-side before sending',
+              requiresConversion: true,
+              originalFormat: format
+            }),
+            { 
+              status: 422, // Unprocessable Entity
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: 'Unsupported image format',
+            details: `Format ${format} is not supported. Supported: ${OPENAI_SUPPORTED_FORMATS.join(', ')}`
           }),
           { 
             status: 400,
@@ -67,14 +98,12 @@ serve(async (req) => {
         )
       }
       
-      const base64Content = screenshot.split(',')[1]
       if (!base64Content || base64Content === 'undefined') {
         console.error('No base64 content found after comma')
         return new Response(
           JSON.stringify({ 
             error: 'Invalid screenshot content',
-            details: 'No base64 content found after data URL prefix',
-            received: screenshot?.substring(0, 100)
+            details: 'No base64 content found after data URL prefix'
           }),
           { 
             status: 400,

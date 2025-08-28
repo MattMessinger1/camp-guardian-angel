@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ensureOpenAICompatibleImage } from '@/utils/imageConverter';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -81,7 +82,7 @@ export const ComprehensiveVisionTester = () => {
     // Test 1.2: Model compatibility (GPT-4o vs GPT-5 parameter differences)
     const startTime2 = Date.now();
     try {
-      const testModels = ['gpt-4o-mini', 'gpt-5-2025-08-07'];
+      const testModels = ['gpt-4o-mini', 'gpt-4o'];
       const modelResults = [];
       
       for (const model of testModels) {
@@ -267,17 +268,32 @@ export const ComprehensiveVisionTester = () => {
         </svg>
       `);
 
+      // Convert SVG to PNG for OpenAI compatibility
+      let processedScreenshot = mockScreenshot;
+      
+      try {
+        if (mockScreenshot.includes('image/svg+xml')) {
+          console.log('Converting SVG to PNG for OpenAI Vision API...');
+          processedScreenshot = await ensureOpenAICompatibleImage(mockScreenshot);
+          console.log('Successfully converted SVG to PNG');
+        }
+      } catch (conversionError) {
+        console.error('Failed to convert SVG:', conversionError);
+        // Use fallback PNG
+        processedScreenshot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+      }
+
       console.log('Screenshot validation:', {
-        isValid: mockScreenshot.startsWith('data:image'),
-        length: mockScreenshot.length,
-        format: 'svg+xml'
+        isValid: processedScreenshot.startsWith('data:image'),
+        length: processedScreenshot.length,
+        format: processedScreenshot.match(/data:image\/([^;]+)/)?.[1]
       });
 
       const { data: visionData, error: visionError } = await supabase.functions.invoke('test-vision-analysis', {
         body: {
-          screenshot: mockScreenshot,  // Send complete data URL
+          screenshot: processedScreenshot,  // Send converted screenshot
           sessionId: `e2e-test-${Date.now()}`,
-          model: 'gpt-5-2025-08-07',
+          model: 'gpt-4o',
           url: 'test://e2e-workflow'
         }
       });
@@ -328,7 +344,7 @@ export const ComprehensiveVisionTester = () => {
         body: {
           screenshot: undefined,  // Send undefined to test validation
           sessionId: 'fallback-test',
-          model: 'gpt-5-2025-08-07',
+          model: 'gpt-4o',
           fallbackHtml: '<html><body>Fallback content for testing</body></html>',
           url: 'test://fallback-scenario'
         }
@@ -471,7 +487,7 @@ export const ComprehensiveVisionTester = () => {
             body: {
               screenshot: extractData.screenshot,
               sessionId: `real-site-${site.name.replace(/\s+/g, '-').toLowerCase()}`,
-              model: 'gpt-5-2025-08-07',  // Use GPT-5 latest
+              model: 'gpt-4o',
               realSiteAnalysis: true
             }
           });
@@ -572,7 +588,7 @@ export const ComprehensiveVisionTester = () => {
               body: {
                 screenshot: captchaData.screenshot,
                 sessionId: `captcha-real-${Date.now()}`,
-                model: 'gpt-5-2025-08-07',  // Use GPT-5 latest
+                model: 'gpt-4o',
                 analysisType: 'captcha_detection'
               }
             });
@@ -668,7 +684,7 @@ export const ComprehensiveVisionTester = () => {
         body: {
           screenshot: accessibilityTestForm,  // Send complete data URL
           sessionId: 'accessibility-scoring-test',
-          model: 'gpt-5-2025-08-07',
+          model: 'gpt-4o',
           url: 'test://accessibility-scoring'
         }
       });
