@@ -26,11 +26,8 @@ export const VisionAnalysisDemo = () => {
       setAnalysis(analysis);
       setResults(prev => prev + 
         `✅ Test Passed!\n\n` +
-        `Accessibility Analysis Results:\n` +
-        `- Accessibility Complexity: ${analysis.accessibilityComplexity || 'N/A'}/10\n` +
-        `- WCAG Compliance Score: ${analysis.wcagComplianceScore || 'N/A'}\n` +
-        `- Assessment: ${analysis.complianceAssessment ? analysis.complianceAssessment.substring(0, 100) + '...' : 'N/A'}\n` +
-        `- Interface Structure: ${analysis.interfaceStructure ? JSON.stringify(analysis.interfaceStructure).substring(0, 100) + '...' : 'N/A'}\n`
+        `Vision Analysis Results:\n` +
+        `${typeof analysis === 'string' ? analysis.substring(0, 200) + '...' : JSON.stringify(analysis).substring(0, 200) + '...'}\n`
       );
 
       toast({
@@ -90,12 +87,9 @@ export const VisionAnalysisDemo = () => {
       
       setAnalysis(analysis);
       setResults(prev => prev + 
-        `✅ Accessibility Analysis Complete!\n\n` +
-        `WCAG Compliance Results:\n` +
-        `- Accessibility Complexity: ${analysis.accessibilityComplexity || 'N/A'}/10\n` +
-        `- WCAG Compliance Score: ${analysis.wcagComplianceScore || 'N/A'}\n` +
-        `- Compliance Assessment: ${analysis.complianceAssessment ? analysis.complianceAssessment.substring(0, 100) + '...' : 'N/A'}\n` +
-        `- Interface Structure: ${analysis.interfaceStructure ? JSON.stringify(analysis.interfaceStructure).substring(0, 100) + '...' : 'N/A'}\n`
+        `✅ Vision Analysis Complete!\n\n` +
+        `Analysis Results:\n` +
+        `${typeof analysis === 'string' ? analysis.substring(0, 200) + '...' : JSON.stringify(analysis).substring(0, 200) + '...'}\n`
       );
 
       toast({

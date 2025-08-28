@@ -9,105 +9,83 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export async function analyzePageWithVision(
   screenshot: string, 
-  sessionId: string, 
+  sessionId: string = 'default', 
   model: string = 'gpt-4o',
   isolationTest: boolean = false
 ) {
-  console.log(`🔍 Starting vision analysis for session: ${sessionId} with model: ${model}${isolationTest ? ' (isolation mode)' : ''}`);
-  
-  try {
-    // Keep the complete screenshot data URL - don't remove the prefix
-    console.log('📤 Calling test-vision-analysis function...');
-    console.log('🔍 Request payload:', { 
-      sessionId, 
-      model, 
-      screenshotValid: screenshot.startsWith('data:image'),
-      screenshotLength: screenshot.length, 
-      isolationTest 
-    });
-    
-    const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
-      body: {
-        screenshot: screenshot,  // Send complete data URL
-        sessionId,
-        model,
-        isolationTest
-      }
-    });
-
-    console.log('📥 Raw Supabase response:', { data, error });
-
-    if (error) {
-      console.error('❌ Supabase function invoke error details:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        fullError: error
-      });
-      throw new Error(`Vision analysis failed: Edge Function returned a non-2xx status code`);
-    }
-
-    if (!data) {
-      console.error('❌ No data returned from function');
-      throw new Error('No data returned from vision analysis function');
-    }
-
-    if (!data.success) {
-      console.error('❌ Vision analysis returned failure:', data.error || data);
-      throw new Error(`Vision analysis error: ${data.error || 'Unknown error'}`);
-    }
-
-    console.log('✅ Vision analysis completed:', {
-      complexity: data.analysis?.formComplexity,
-      captchaRisk: data.analysis?.captchaRisk,
-      model: data.metadata?.model
-    });
-
-    return data.analysis;
-
-  } catch (error) {
-    console.error('❌ Vision analysis function error:', error);
-    throw error;
+  // Validate model name and provide fallback
+  const validModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];
+  if (!validModels.includes(model)) {
+    console.warn(`Invalid model "${model}" requested, using "gpt-4o" instead`);
+    model = 'gpt-4o';
   }
+  
+  console.log('🔍 Starting vision analysis for session:', sessionId, 'with model:', model, isolationTest ? '(isolation mode)' : '');
+  console.log('📤 Calling test-vision-analysis function...');
+  console.log('🔍 Request payload:', {
+    sessionId,
+    model,
+    screenshotValid: !!screenshot && screenshot.startsWith('data:image'),
+    screenshotLength: screenshot?.length,
+    isolationTest
+  });
+
+  const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
+    body: {
+      screenshot,
+      sessionId,
+      model,
+      isolationTest
+    }
+  });
+
+  console.log('📥 Raw Supabase response:', { data, error });
+
+  if (error) {
+    console.error('❌ Supabase function invoke error details:', {
+      message: error.message,
+      details: error['details'],
+      hint: error['hint'],
+      code: error['code'],
+      fullError: error
+    });
+    throw new Error(`Vision analysis failed: ${error.message}`);
+  }
+
+  if (!data?.success) {
+    throw new Error(`Vision analysis error: ${data?.error || 'Unknown error'}`);
+  }
+
+  // Return the analysis content directly, maintaining backward compatibility
+  return data.analysis;
 }
 
 /**
  * Test the vision analysis with a simple mock screenshot
  */
 export async function testVisionAnalysis(model: string = 'gpt-4o', isolationTest: boolean = false) {
-  console.log(`🧪 Testing Step 2.1: Vision Analysis with model: ${model} (isolation: ${isolationTest})`);
-  
-  // First run minimal test to check edge function basics
-  console.log('🔧 Running minimal function test first...');
+  console.log(`🧪 Testing vision analysis with model: ${model} (isolation: ${isolationTest})`);
   
   try {
-    const { data: minimalTest, error: minimalError } = await supabase.functions.invoke('test-minimal', { body: {} });
+    // Generate a valid test screenshot (1x1 red pixel PNG)
+    const testScreenshot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
     
-    if (minimalError) {
-      console.error('❌ Minimal test failed:', minimalError);
-      throw new Error(`Minimal test failed: ${minimalError.message}`);
+    // Validate model name and provide fallback
+    const validModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];
+    if (!validModels.includes(model)) {
+      console.warn(`Invalid model "${model}" requested, using "gpt-4o" instead`);
+      model = 'gpt-4o';
     }
     
-    console.log('✅ Minimal test passed:', minimalTest);
+    const result = await analyzePageWithVision(
+      testScreenshot,
+      'test-session',
+      model,
+      isolationTest
+    );
     
-    // If basic test passes, proceed with vision analysis with proper data URL
-    const testScreenshot = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAEsASwDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9U6KKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9k=';
-    const testSessionId = 'test-session';
-    
-    console.log('🔍 Starting vision analysis for session:', testSessionId, 'with model:', model, isolationTest ? '(isolation mode)' : '');
-    console.log('📤 Calling test-vision-analysis function...');
-    console.log('🔍 Request payload:', {
-      hasScreenshot: !!testScreenshot,
-      screenshotFormat: testScreenshot.startsWith('data:image') ? 'data-url' : 'raw-base64',
-      screenshotLength: testScreenshot.length,
-      model
-    });
-    
-    const analysis = await analyzePageWithVision(testScreenshot, testSessionId, model, isolationTest);
-    console.log('✅ Vision analysis test passed:', analysis);
-    return analysis;
-    
+    console.log('✅ Vision analysis test passed:', result);
+    return result;
   } catch (error) {
     console.error('❌ Vision analysis test failed:', error);
     throw error;

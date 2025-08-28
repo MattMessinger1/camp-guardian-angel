@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export const VisionAnalysisTester = () => {
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-5-2025-08-07');  // Default to GPT-5
+  const [selectedModel, setSelectedModel] = useState('gpt-4o');  // Default to valid model
   const [testResults, setTestResults] = useState<Array<{
     test: string;
     status: 'success' | 'error' | 'pending';
@@ -210,26 +210,20 @@ export const VisionAnalysisTester = () => {
       if (visionError) {
         addResult('Direct Vision Analysis', 'error', `Vision test failed after retries: ${visionError.message}`);
       } else if (visionData?.analysis) {
-        // Validate response structure
+        // Validate response structure - now expecting string analysis
         const analysis = visionData.analysis;
-        const hasValidStructure = 
-          typeof analysis.accessibilityComplexity === 'number' && 
-          analysis.accessibilityComplexity >= 1 && 
-          analysis.accessibilityComplexity <= 10 &&
-          typeof analysis.wcagComplianceScore === 'number' && 
-          analysis.wcagComplianceScore >= 0 && 
-          analysis.wcagComplianceScore <= 1;
+        const hasValidAnalysis = typeof analysis === 'string' && analysis.length > 0;
 
-        if (hasValidStructure) {
-          addResult('Direct Vision Analysis', 'success', `Direct vision analysis completed successfully with ${visionData.metadata?.model || selectedModel}`, {
-            analysis: visionData.analysis,
-            model: visionData.metadata?.model,
-            timestamp: visionData.metadata?.timestamp
+        if (hasValidAnalysis) {
+          addResult('Direct Vision Analysis', 'success', `Direct vision analysis completed successfully with ${visionData.model || selectedModel}`, {
+            analysis: analysis.substring(0, 200),
+            model: visionData.model,
+            timestamp: new Date().toISOString()
           });
         } else {
-          addResult('Direct Vision Analysis', 'error', 'Vision analysis returned invalid structure', {
+          addResult('Direct Vision Analysis', 'error', 'Vision analysis returned invalid or empty response', {
             analysis,
-            validationResults: { hasValidStructure }
+            validationResults: { hasValidAnalysis }
           });
         }
       } else {

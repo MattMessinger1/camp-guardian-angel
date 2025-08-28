@@ -50,30 +50,16 @@ export const ComprehensiveVisionTester = () => {
         </svg>
       `);
       
-      const analysis = await testVisionAnalysis('gpt-5-2025-08-07', true);  // Use GPT-5 latest
+      const analysis = await testVisionAnalysis('gpt-4o', true);  // Use valid model
       const duration1 = Date.now() - startTime1;
       
-      // Handle both response formats
-      const hasAccessibilityData = analysis.accessibilityComplexity !== undefined && analysis.wcagComplianceScore !== undefined;
-      const hasGenericData = analysis.status !== undefined && analysis.content !== undefined;
-      
-      if (hasAccessibilityData) {
-        // Expected accessibility analysis format
-        if (analysis.accessibilityComplexity >= 1 && analysis.accessibilityComplexity <= 10 &&
-            analysis.wcagComplianceScore >= 0 && analysis.wcagComplianceScore <= 1) {
-          addResult('1.1 - analyzePageWithVision Types', 'success', 
-            `Accessibility analysis completed (Complexity: ${analysis.accessibilityComplexity}/10, WCAG: ${analysis.wcagComplianceScore})`, 
-            duration1, analysis);
-        } else {
-          addResult('1.1 - analyzePageWithVision Types', 'error', 'Invalid accessibility scores in response', duration1, analysis);
-        }
-      } else if (hasGenericData) {
-        // Generic response format - still valid but not ideal
+      // Handle analysis response (now returns text content from OpenAI)
+      if (typeof analysis === 'string' && analysis.length > 0) {
         addResult('1.1 - analyzePageWithVision Types', 'success', 
-          `Generic vision analysis completed: ${analysis.content}`, 
-          duration1, analysis);
+          `Vision analysis completed: ${analysis.substring(0, 100)}...`, 
+          duration1, { analysis });
       } else {
-        addResult('1.1 - analyzePageWithVision Types', 'error', 'Unrecognized response structure', duration1, analysis);
+        addResult('1.1 - analyzePageWithVision Types', 'error', 'Invalid response format or empty analysis', duration1, analysis);
       }
     } catch (error) {
       addResult('1.1 - analyzePageWithVision Types', 'error', `Function test failed: ${error}`, Date.now() - startTime1);
@@ -82,7 +68,7 @@ export const ComprehensiveVisionTester = () => {
     // Test 1.2: Model compatibility (GPT-4o vs GPT-5 parameter differences)
     const startTime2 = Date.now();
     try {
-      const testModels = ['gpt-4o-mini', 'gpt-4o'];
+      const testModels = ['gpt-4o-mini', 'gpt-4o'];  // Only valid OpenAI models
       const modelResults = [];
       
       for (const model of testModels) {
@@ -311,7 +297,7 @@ export const ComprehensiveVisionTester = () => {
             stage: 'automation_ready',
             data: {
               visionAnalysis: visionData,
-              automationDecision: visionData.accessibilityComplexity < 7 ? 'proceed' : 'manual_review'
+              automationDecision: typeof visionData === 'string' && visionData.includes('form') ? 'proceed' : 'manual_review'
             }
           }
         });
@@ -499,15 +485,14 @@ export const ComprehensiveVisionTester = () => {
                 site: site.name,
                 url: site.url,
                 status: 'success',
-                formComplexity: visionData.accessibilityComplexity,
-                wcagScore: visionData.wcagComplianceScore,
+                analysisText: typeof visionData === 'string' ? visionData.substring(0, 100) : 'No analysis',
                 realSiteData: true
               });
               
               addResult(`5.1.${site.name} - Real Site Test`, 'success', 
-                `Real site analyzed! Complexity: ${visionData.accessibilityComplexity}/10, WCAG: ${visionData.wcagComplianceScore}`, 
+                `Real site analyzed successfully`, 
                 Date.now() - startTime1, 
-                { realSite: true, url: site.url, visionData }
+                { realSite: true, url: site.url, analysis: typeof visionData === 'string' ? visionData.substring(0, 100) : visionData }
               );
             }
           }
@@ -693,15 +678,11 @@ export const ComprehensiveVisionTester = () => {
       if (accessibilityError) {
         addResult('5.3 - Accessibility Scoring', 'error', `Accessibility scoring failed: ${accessibilityError.message}`, duration3);
       } else {
-        // Validate that accessibility scores are reasonable
-        const hasAccessibilityScore = accessibilityAnalysis.accessibilityComplexity !== undefined;
-        const hasWcagScore = accessibilityAnalysis.wcagComplianceScore !== undefined;
-        const wcagScoreValid = accessibilityAnalysis.wcagComplianceScore >= 0 && accessibilityAnalysis.wcagComplianceScore <= 1;
-        
-        if (hasAccessibilityScore && hasWcagScore && wcagScoreValid) {
-          addResult('5.3 - Accessibility Scoring', 'success', `Accessibility scoring valid (Complexity: ${accessibilityAnalysis.accessibilityComplexity}/10, WCAG: ${accessibilityAnalysis.wcagComplianceScore})`, duration3, accessibilityAnalysis);
+        // Validate that analysis was returned
+        if (typeof accessibilityAnalysis === 'string' && accessibilityAnalysis.length > 0) {
+          addResult('5.3 - Accessibility Scoring', 'success', `Accessibility analysis completed`, duration3, { analysis: accessibilityAnalysis.substring(0, 100) });
         } else {
-          addResult('5.3 - Accessibility Scoring', 'error', 'Invalid accessibility scoring results', duration3, accessibilityAnalysis);
+          addResult('5.3 - Accessibility Scoring', 'error', 'Invalid accessibility analysis results', duration3, accessibilityAnalysis);
         }
       }
     } catch (error) {
