@@ -9,6 +9,7 @@ import { OptimizedAutomationDemo } from '@/components/OptimizedAutomationDemo';
 import { RoutingStrategyAnalyzer } from '@/components/RoutingStrategyAnalyzer';
 import { IntelligentModelTester } from '@/components/IntelligentModelTester';
 import { SystematicTester } from '@/components/SystematicTester';
+import { VisionAnalysisWithCapture } from '@/components/VisionAnalysisWithCapture';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -107,6 +108,9 @@ export default function AIContextTest() {
 
         {/* Comprehensive Vision Testing Suite */}
         <ComprehensiveVisionTester />
+
+        {/* Vision Analysis with Enhanced Capture */}
+        <VisionAnalysisWithCapture />
 
         {/* Vision Analysis Demo */}
         <VisionAnalysisDemo />
