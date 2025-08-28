@@ -4,7 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 interface TestResults {
   screenshot?: string;
   visionAnalysis?: any;
+  fastSearch?: any;
+  reserveInit?: any;
   automationResult?: any;
+  captchaHandling?: any;
+  approvalWorkflow?: any;
 }
 
 export default function SimpleSignupTest() {
@@ -39,9 +43,36 @@ export default function SimpleSignupTest() {
     return data;
   };
 
+  const testFastCampSearch = async () => {
+    setCurrentStep('Testing fast camp search...');
+    const { data, error } = await supabase.functions.invoke('fast-camp-search', {
+      body: { 
+        query: 'YMCA summer camp',
+        location: 'New York',
+        ageRange: '8-12'
+      }
+    });
+
+    if (error) throw new Error(`Fast search failed: ${error.message}`);
+    return data;
+  };
+
+  const testReserveInit = async () => {
+    setCurrentStep('Testing reservation initialization...');
+    const { data, error } = await supabase.functions.invoke('reserve-init', {
+      body: { 
+        sessionId: `test-${Date.now()}`,
+        providerUrl: 'https://www.ymca.org/join'
+      }
+    });
+
+    if (error) throw new Error(`Reserve init failed: ${error.message}`);
+    return data;
+  };
+
   const attemptAutomation = async () => {
-    setCurrentStep('Attempting browser automation...');
-    const { data, error } = await supabase.functions.invoke('browser-automation', {
+    setCurrentStep('Testing browser automation...');
+    const { data, error } = await supabase.functions.invoke('test-browser-automation', {
       body: { 
         action: 'test_form_filling',
         url: 'https://www.ymca.org/join'
@@ -52,35 +83,61 @@ export default function SimpleSignupTest() {
     return data;
   };
 
+  const testCaptchaHandling = async () => {
+    setCurrentStep('Testing CAPTCHA handling workflow...');
+    const { data, error } = await supabase.functions.invoke('handle-captcha', {
+      body: { 
+        sessionId: `test-${Date.now()}`,
+        captchaType: 'recaptcha'
+      }
+    });
+
+    if (error) throw new Error(`CAPTCHA handling failed: ${error.message}`);
+    return data;
+  };
+
   const runSignupTest = async () => {
     setStatus('running');
     setError('');
     setResults({});
     
     try {
-      // Step 1: Capture screenshot
+      // Step 1: Test fast camp search (speed optimization)
+      const fastSearch = await testFastCampSearch();
+      setResults(prev => ({ ...prev, fastSearch }));
+
+      // Step 2: Capture screenshot for analysis
       const screenshot = await captureScreenshot('https://www.ymca.org/join');
       setResults(prev => ({ ...prev, screenshot }));
 
-      // Step 2: Analyze screenshot
+      // Step 3: AI vision analysis (accuracy optimization)
       const visionAnalysis = await analyzeScreenshot(screenshot);
       setResults(prev => ({ ...prev, visionAnalysis }));
 
-      // Step 3: Check CAPTCHA risk and attempt automation
+      // Step 4: Initialize reservation (security optimization)
+      const reserveInit = await testReserveInit();
+      setResults(prev => ({ ...prev, reserveInit }));
+
+      // Step 5: Check CAPTCHA risk and handle accordingly
       const captchaRisk = visionAnalysis?.captchaRisk || 0;
-      if (captchaRisk < 0.5) {
+      if (captchaRisk >= 0.5) {
+        // High CAPTCHA risk - test human-assisted workflow
+        const captchaHandling = await testCaptchaHandling();
+        setResults(prev => ({ ...prev, captchaHandling }));
+        setCurrentStep('⚠️ CAPTCHA detected - human assistance workflow activated');
+      } else {
+        // Low CAPTCHA risk - attempt automation
         const automationResult = await attemptAutomation();
         setResults(prev => ({ ...prev, automationResult }));
-        setCurrentStep('✅ All steps completed successfully');
-      } else {
-        setCurrentStep(`⚠️ CAPTCHA risk too high (${captchaRisk}) - skipping automation`);
+        setCurrentStep('✅ Automated signup flow completed');
       }
 
       setStatus('success');
+      setCurrentStep('✅ Full signup optimization pipeline tested successfully');
     } catch (err: any) {
       setError(err.message);
       setStatus('error');
-      setCurrentStep('❌ Test failed');
+      setCurrentStep('❌ Test failed - reviewing for optimization opportunities');
     }
   };
 
@@ -134,10 +191,22 @@ export default function SimpleSignupTest() {
         {/* Results Display */}
         {Object.keys(results).length > 0 && (
           <div className="space-y-4">
+            {/* Fast Search Results */}
+            {results.fastSearch && (
+              <div className="space-y-2">
+                <h3 className="font-semibold">🚀 Fast Camp Search (Speed Optimization):</h3>
+                <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                  <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(results.fastSearch, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+
             {/* Screenshot */}
             {results.screenshot && (
               <div className="space-y-2">
-                <h3 className="font-semibold">Screenshot Captured:</h3>
+                <h3 className="font-semibold">📸 Screenshot Captured:</h3>
                 <img 
                   src={results.screenshot} 
                   alt="Captured webpage"
@@ -149,10 +218,34 @@ export default function SimpleSignupTest() {
             {/* Vision Analysis */}
             {results.visionAnalysis && (
               <div className="space-y-2">
-                <h3 className="font-semibold">Vision Analysis Results:</h3>
-                <div className="bg-muted p-4 rounded-lg">
+                <h3 className="font-semibold">🎯 AI Vision Analysis (Accuracy Optimization):</h3>
+                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                   <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
                     {JSON.stringify(results.visionAnalysis, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Reserve Init */}
+            {results.reserveInit && (
+              <div className="space-y-2">
+                <h3 className="font-semibold">🔒 Reservation Initialization (Security Optimization):</h3>
+                <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(results.reserveInit, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* CAPTCHA Handling */}
+            {results.captchaHandling && (
+              <div className="space-y-2">
+                <h3 className="font-semibold">🤖 CAPTCHA Handling (Human-Assisted Workflow):</h3>
+                <div className="bg-orange-50 dark:bg-orange-950 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+                  <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(results.captchaHandling, null, 2)}
                   </pre>
                 </div>
               </div>
@@ -161,8 +254,8 @@ export default function SimpleSignupTest() {
             {/* Automation Result */}
             {results.automationResult && (
               <div className="space-y-2">
-                <h3 className="font-semibold">Browser Automation Result:</h3>
-                <div className="bg-muted p-4 rounded-lg">
+                <h3 className="font-semibold">⚡ Browser Automation (Effectiveness Optimization):</h3>
+                <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg border border-green-200 dark:border-green-800">
                   <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
                     {JSON.stringify(results.automationResult, null, 2)}
                   </pre>
