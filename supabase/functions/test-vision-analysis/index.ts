@@ -27,7 +27,7 @@ serve(async (req) => {
       });
     }
 
-    const { screenshot, sessionId, url, fallbackHtml, model = 'gpt-4-vision-preview', isolationTest = false } = await req.json();
+    const { screenshot, sessionId, url, fallbackHtml, model = 'gpt-4o', isolationTest = false } = await req.json();
 
     // Detailed logging for debugging
     console.log('Vision analysis request:', {
@@ -126,17 +126,13 @@ serve(async (req) => {
       });
     }
 
-    // Model compatibility handling for OpenAI API
+    // Use only available OpenAI models
     let apiModel = model;
-    let requestBody: any;
     
-    // Use correct OpenAI model names
-    if (model === 'gpt-5-2025-08-07' || model.includes('gpt-5')) {
-      apiModel = 'gpt-4o'; // GPT-5 not yet available, fallback to GPT-4o
-      console.log(`⚠️ Using GPT-4o instead of ${model} (GPT-5 not available)`);
-    } else if (model === 'gpt-4-vision-preview') {
-      apiModel = 'gpt-4o'; // gpt-4-vision-preview is deprecated
-      console.log(`⚠️ Using GPT-4o instead of deprecated ${model}`);
+    // Map to actual available models
+    if (model.includes('gpt-5') || model === 'gpt-4-vision-preview') {
+      apiModel = 'gpt-4o'; // Use GPT-4o for vision tasks
+      console.log(`⚠️ Using available model GPT-4o instead of ${model}`);
     }
     
     // Build request based on content type

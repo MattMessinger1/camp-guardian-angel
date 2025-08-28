@@ -75,7 +75,7 @@ export async function analyzePageWithVision(
 /**
  * Test the vision analysis with a simple mock screenshot
  */
-export async function testVisionAnalysis(model: string = 'gpt-4o-mini', isolationTest: boolean = false) {
+export async function testVisionAnalysis(model: string = 'gpt-4o', isolationTest: boolean = false) {
   console.log(`🧪 Testing Step 2.1: Vision Analysis with model: ${model} (isolation: ${isolationTest})`);
   
   // First run minimal test to check edge function basics
