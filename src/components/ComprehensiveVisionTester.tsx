@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { testVisionAnalysis, analyzePageWithIntelligentModel } from '@/utils/visionAnalysis';
+import html2canvas from 'html2canvas';
 
 interface TestResult {
   testCase: string;
@@ -85,13 +86,22 @@ export const ComprehensiveVisionTester = () => {
       
       for (const model of testModels) {
         try {
-          // Generate proper UUID for sessionId
+          // Generate proper UUID for sessionId and create valid test screenshot
           const sessionId = crypto.randomUUID();
+          const testScreenshot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+          
+          console.log(`Testing model ${model} with valid screenshot:`, {
+            sessionId,
+            screenshotValid: testScreenshot.startsWith('data:image'),
+            model
+          });
+
           const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
             body: {
-              screenshot: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+              screenshot: testScreenshot,
               sessionId: sessionId,
-              model: model
+              model: model,
+              url: `test://model-compatibility-${model}`
             }
           });
           
@@ -243,23 +253,32 @@ export const ComprehensiveVisionTester = () => {
         return;
       }
 
-      // Step 2: Vision analysis 
+      // Step 2: Vision analysis with proper screenshot format
+      const mockScreenshot = 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
+          <rect width="100%" height="100%" fill="#f8f9fa"/>
+          <text x="50" y="50" font-size="18" fill="#333">YMCA Summer Camp Registration</text>
+          <rect x="50" y="80" width="300" height="30" fill="white" stroke="#ddd"/>
+          <text x="55" y="100" font-size="12" fill="#666">Child Name</text>
+          <rect x="50" y="120" width="300" height="30" fill="white" stroke="#ddd"/>
+          <text x="55" y="140" font-size="12" fill="#666">Parent Email</text>
+          <rect x="50" y="200" width="100" height="30" fill="#007bff"/>
+          <text x="85" y="220" font-size="12" fill="white">Register</text>
+        </svg>
+      `);
+
+      console.log('Screenshot validation:', {
+        isValid: mockScreenshot.startsWith('data:image'),
+        length: mockScreenshot.length,
+        format: 'svg+xml'
+      });
+
       const { data: visionData, error: visionError } = await supabase.functions.invoke('test-vision-analysis', {
         body: {
-          screenshot: 'data:image/svg+xml;base64,' + btoa(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
-              <rect width="100%" height="100%" fill="#f8f9fa"/>
-              <text x="50" y="50" font-size="18" fill="#333">YMCA Summer Camp Registration</text>
-              <rect x="50" y="80" width="300" height="30" fill="white" stroke="#ddd"/>
-              <text x="55" y="100" font-size="12" fill="#666">Child Name</text>
-              <rect x="50" y="120" width="300" height="30" fill="white" stroke="#ddd"/>
-              <text x="55" y="140" font-size="12" fill="#666">Parent Email</text>
-              <rect x="50" y="200" width="100" height="30" fill="#007bff"/>
-              <text x="85" y="220" font-size="12" fill="white">Register</text>
-            </svg>
-          `).split(',')[1],
+          screenshot: mockScreenshot,  // Send complete data URL
           sessionId: `e2e-test-${Date.now()}`,
-          model: 'gpt-5-2025-08-07'  // Use GPT-5 latest
+          model: 'gpt-5-2025-08-07',
+          url: 'test://e2e-workflow'
         }
       });
 
@@ -304,11 +323,14 @@ export const ComprehensiveVisionTester = () => {
     // Test 3.2: Fallback behavior when vision analysis fails
     const startTime2 = Date.now();
     try {
+      // Test with invalid screenshot to verify error handling
       const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('test-vision-analysis', {
         body: {
-          screenshot: 'corrupted-image-data',
+          screenshot: undefined,  // Send undefined to test validation
           sessionId: 'fallback-test',
-          model: 'gpt-5-2025-08-07'  // Use GPT-5 latest
+          model: 'gpt-5-2025-08-07',
+          fallbackHtml: '<html><body>Fallback content for testing</body></html>',
+          url: 'test://fallback-scenario'
         }
       });
 
@@ -337,11 +359,17 @@ export const ComprehensiveVisionTester = () => {
         </svg>
       `);
 
+      console.log('Performance test screenshot:', {
+        isValid: mockScreenshot.startsWith('data:image'),
+        length: mockScreenshot.length
+      });
+
       const { data: analysisData, error } = await supabase.functions.invoke('test-vision-analysis', {
         body: {
-          screenshot: mockScreenshot.split(',')[1],
+          screenshot: mockScreenshot,  // Send complete data URL
           sessionId: 'performance-test',
-          model: 'gpt-4o-mini' // Use fastest model for performance test
+          model: 'gpt-4o-mini',  // Use fastest model for performance test
+          url: 'test://performance-benchmark'
         }
       });
 
@@ -631,11 +659,17 @@ export const ComprehensiveVisionTester = () => {
         </svg>
       `);
 
+      console.log('Accessibility test screenshot:', {
+        isValid: accessibilityTestForm.startsWith('data:image'),
+        length: accessibilityTestForm.length
+      });
+
       const { data: accessibilityAnalysis, error: accessibilityError } = await supabase.functions.invoke('test-vision-analysis', {
         body: {
-          screenshot: accessibilityTestForm.split(',')[1],
+          screenshot: accessibilityTestForm,  // Send complete data URL
           sessionId: 'accessibility-scoring-test',
-          model: 'gpt-5-2025-08-07'  // Use GPT-5 latest
+          model: 'gpt-5-2025-08-07',
+          url: 'test://accessibility-scoring'
         }
       });
 
