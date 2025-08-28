@@ -135,7 +135,13 @@ export class ScreenshotCapture {
     
     console.log(`📸 Attempting to capture: ${url}`);
     
-    // Try different capture methods in order of preference
+    // For external URLs, use server-side capture via Supabase Edge Function
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      console.log('🌐 External URL detected, using server-side capture...');
+      return this.captureWithServerSide(url);
+    }
+    
+    // For local/same-origin URLs, try browser methods
     const methods: Array<{ 
       name: 'iframe' | 'html2canvas' | 'api' | 'html-fallback';
       fn: () => Promise<string | null>;
@@ -193,6 +199,47 @@ export class ScreenshotCapture {
     return { 
       error: 'All capture methods failed' 
     };
+  }
+
+  private static async captureWithServerSide(url: string): Promise<CaptureResult> {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      console.log(`🚀 Calling server-side screenshot capture for: ${url}`);
+      
+      const { data, error } = await supabase.functions.invoke('capture-website-screenshot', {
+        body: { 
+          url,
+          sessionId: `screenshot-${Date.now()}`
+        }
+      });
+      
+      if (error) {
+        console.error('Server-side capture error:', error);
+        return { 
+          error: `Server-side capture failed: ${error.message}` 
+        };
+      }
+      
+      if (data?.success && data?.screenshot) {
+        console.log('✅ Server-side screenshot captured successfully');
+        return {
+          screenshot: data.screenshot,
+          method: 'api',
+          html: data.screenshot.startsWith('data:text/html') ? atob(data.screenshot.split(',')[1]) : undefined
+        };
+      }
+      
+      return { 
+        error: 'Server-side capture returned no data' 
+      };
+      
+    } catch (error) {
+      console.error('Server-side capture failed:', error);
+      return { 
+        error: `Server-side capture error: ${error.message}` 
+      };
+    }
   }
 }
 

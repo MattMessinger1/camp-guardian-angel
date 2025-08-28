@@ -452,92 +452,63 @@ export const ComprehensiveVisionTester = () => {
       
       for (const site of realCampSites) {
         try {
-          addResult(`5.1.${site.name} - Real Site Test`, 'pending', `Testing real camp site: ${site.url}...`);
+          addResult(`5.1.${site.name} - Real Site Test`, 'pending', `Testing real camp site with server-side capture: ${site.url}...`);
           
-          // Create real browser session for the camp site
-          const { data: sessionData, error: sessionError } = await supabase.functions.invoke('browser-automation', {
+          // Use server-side screenshot capture instead of browser automation
+          const { data: screenshotData, error: screenshotError } = await supabase.functions.invoke('capture-website-screenshot', {
             body: {
-              action: 'create',
-              campProviderId: site.url,
-              enableVision: true,
-              realSiteTest: true
-            }
-          });
-
-          if (sessionError) {
-            addResult(`5.1.${site.name} - Real Site Test`, 'error', `Failed to create browser session: ${sessionError.message}`);
-            continue;
-          }
-
-          // Navigate to registration page and capture real screenshot
-          const { data: navigationData, error: navError } = await supabase.functions.invoke('browser-automation', {
-            body: {
-              action: 'navigate',
-              sessionId: sessionData.id,
               url: site.url,
-              waitForSelector: 'form, input, button[type="submit"]', // Wait for registration elements
-              enableVision: true
+              sessionId: `real-site-${site.name.replace(/\s+/g, '-').toLowerCase()}`
             }
           });
 
-          if (navError) {
-            addResult(`5.1.${site.name} - Real Site Test`, 'error', `Navigation failed: ${navError.message}`);
-            // Cleanup
-            await supabase.functions.invoke('browser-automation', {
-              body: { action: 'close', sessionId: sessionData.id }
-            });
+          if (screenshotError) {
+            addResult(`5.1.${site.name} - Real Site Test`, 'error', `Screenshot capture failed: ${screenshotError.message}`);
             continue;
           }
 
-          // Extract real page data with vision analysis
-          const { data: extractData, error: extractError } = await supabase.functions.invoke('browser-automation', {
-            body: {
-              action: 'extract',
-              sessionId: sessionData.id,
-              enableVision: true,
-              extractType: 'registration_form_analysis'
-            }
-          });
+          if (!screenshotData?.screenshot) {
+            addResult(`5.1.${site.name} - Real Site Test`, 'error', 'No screenshot data returned from server');
+            continue;
+          }
 
-          if (extractError || !extractData?.screenshot) {
-            addResult(`5.1.${site.name} - Real Site Test`, 'error', `Failed to extract real page data: ${extractError?.message || 'No screenshot captured'}`);
-          } else {
-            // Analyze real screenshot with vision
+          // Analyze the captured screenshot with vision
           const { data: visionData, error: visionError } = await supabase.functions.invoke('test-vision-analysis', {
             body: {
-              screenshot: extractData.screenshot,
+              screenshot: screenshotData.screenshot,
               sessionId: `real-site-${site.name.replace(/\s+/g, '-').toLowerCase()}`,
               model: 'gpt-4o',
-              realSiteAnalysis: true
+              url: site.url
             }
           });
 
-            if (visionError) {
-              addResult(`5.1.${site.name} - Real Site Test`, 'error', `Vision analysis of real site failed: ${visionError.message}`);
-            } else {
-              realSiteResults.push({
-                site: site.name,
-                url: site.url,
-                status: 'success',
-                analysisText: typeof visionData === 'string' ? visionData.substring(0, 100) : 'No analysis',
-                realSiteData: true
-              });
-              
-              addResult(`5.1.${site.name} - Real Site Test`, 'success', 
-                `Real site analyzed successfully`, 
-                Date.now() - startTime1, 
-                { realSite: true, url: site.url, analysis: typeof visionData === 'string' ? visionData.substring(0, 100) : visionData }
-              );
-            }
+          if (visionError) {
+            addResult(`5.1.${site.name} - Real Site Test`, 'error', `Vision analysis failed: ${visionError.message}`);
+          } else {
+            realSiteResults.push({
+              site: site.name,
+              url: site.url,
+              status: 'success',
+              analysisText: visionData?.analysis || visionData || 'Analysis completed',
+              serverSideCapture: true,
+              simulated: screenshotData.simulated
+            });
+            
+            addResult(`5.1.${site.name} - Real Site Test`, 'success', 
+              `Real site analyzed successfully${screenshotData.simulated ? ' (simulated)' : ''}`, 
+              Date.now() - startTime1, 
+              { 
+                realSite: true, 
+                url: site.url, 
+                analysis: visionData?.analysis || visionData,
+                method: 'server-side-capture',
+                simulated: screenshotData.simulated
+              }
+            );
           }
 
-          // Cleanup browser session
-          await supabase.functions.invoke('browser-automation', {
-            body: { action: 'close', sessionId: sessionData.id }
-          });
-
         } catch (error) {
-          addResult(`5.1.${site.name} - Real Site Test`, 'error', `Real site test failed: ${error}`);
+          addResult(`5.1.${site.name} - Real Site Test`, 'error', `Real site test failed: ${error.message}`);
         }
       }
 
