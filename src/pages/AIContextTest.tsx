@@ -10,6 +10,7 @@ import { RoutingStrategyAnalyzer } from '@/components/RoutingStrategyAnalyzer';
 import { IntelligentModelTester } from '@/components/IntelligentModelTester';
 import { SystematicTester } from '@/components/SystematicTester';
 import { VisionAnalysisWithCapture } from '@/components/VisionAnalysisWithCapture';
+import SimpleSignupTest from '@/components/SimpleSignupTest';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -99,6 +100,9 @@ export default function AIContextTest() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Simple Signup Test */}
+        <SimpleSignupTest />
 
         {/* Routing Strategy Analysis */}
         <RoutingStrategyAnalyzer />
