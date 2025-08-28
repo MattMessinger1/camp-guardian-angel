@@ -20,10 +20,10 @@ serve(async (req) => {
     const body = await req.json();
     const { screenshot, sessionId, model = 'gpt-4o', isolationTest = false } = body;
     
-    // Log screenshot format for debugging
+    // Log screenshot format for debugging (first 100 characters)
     console.log('Screenshot format received:', {
       hasScreenshot: !!screenshot,
-      screenshotStart: screenshot ? screenshot.substring(0, 30) : 'null',
+      screenshotStart: screenshot ? screenshot.substring(0, 100) : 'null',
       screenshotLength: screenshot?.length || 0,
       model,
       sessionId
@@ -57,13 +57,16 @@ serve(async (req) => {
       isolationTest
     });
 
-    // Validate screenshot
-    if (!screenshot || !screenshot.startsWith('data:image/')) {
+    // Enhanced image validation and format handling
+    let processedScreenshot = screenshot;
+    
+    if (!screenshot) {
+      console.error('❌ No screenshot provided');
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid screenshot',
-          details: 'Screenshot must be a valid data URL',
-          received: screenshot ? screenshot.substring(0, 50) : 'null'
+          error: 'Missing Screenshot',
+          details: 'No screenshot data was provided in the request',
+          solution: 'Please provide a valid screenshot as base64 data or data URL'
         }),
         { 
           status: 400,
@@ -71,6 +74,117 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log('🔍 Analyzing screenshot format:', {
+      hasDataPrefix: screenshot.startsWith('data:image/'),
+      firstChars: screenshot.substring(0, 50),
+      totalLength: screenshot.length
+    });
+
+    // Check if it's a data URL format
+    if (screenshot.startsWith('data:image/')) {
+      // Already in correct format
+      console.log('✅ Screenshot is in data URL format');
+      
+      // Validate it's a supported image format
+      const formatMatch = screenshot.match(/^data:image\/([^;]+)/);
+      if (!formatMatch) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Invalid Data URL',
+            details: 'Screenshot appears to be a data URL but format is malformed',
+            received: screenshot.substring(0, 100),
+            solution: 'Ensure the data URL follows format: data:image/[type];base64,[data]'
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+      
+      const imageFormat = formatMatch[1];
+      const supportedFormats = ['png', 'jpeg', 'jpg', 'gif', 'webp'];
+      
+      if (!supportedFormats.includes(imageFormat.toLowerCase())) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Unsupported Image Format',
+            details: `Image format "${imageFormat}" is not supported by OpenAI Vision API`,
+            supportedFormats,
+            solution: 'Convert image to PNG, JPEG, GIF, or WebP format'
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+      
+      processedScreenshot = screenshot;
+    } 
+    // Check if it's raw base64 data (starts with common base64 chars)
+    else if (/^[A-Za-z0-9+/]/.test(screenshot) && screenshot.length > 100) {
+      console.log('🔧 Converting raw base64 to data URL format');
+      processedScreenshot = `data:image/png;base64,${screenshot}`;
+    }
+    // Invalid format
+    else {
+      console.error('❌ Invalid screenshot format:', {
+        startsWithData: screenshot.startsWith('data:'),
+        startsWithBase64: /^[A-Za-z0-9+/]/.test(screenshot),
+        length: screenshot.length,
+        firstChars: screenshot.substring(0, 50)
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid Screenshot Format',
+          details: 'Screenshot must be either a data URL (data:image/...) or raw base64 data',
+          received: {
+            format: screenshot.startsWith('data:') ? 'data-url-malformed' : 'unknown',
+            firstChars: screenshot.substring(0, 50),
+            length: screenshot.length
+          },
+          solution: 'Provide screenshot as: 1) data:image/png;base64,[data] or 2) raw base64 string'
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // Final validation before sending to OpenAI
+    if (!processedScreenshot.startsWith('data:image/') || processedScreenshot.length < 200) {
+      console.error('❌ Final validation failed:', {
+        hasDataPrefix: processedScreenshot.startsWith('data:image/'),
+        length: processedScreenshot.length,
+        preview: processedScreenshot.substring(0, 100)
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Screenshot Validation Failed',
+          details: 'Processed screenshot failed final validation checks',
+          debugInfo: {
+            hasCorrectPrefix: processedScreenshot.startsWith('data:image/'),
+            length: processedScreenshot.length,
+            minimumLength: 200
+          },
+          solution: 'Ensure screenshot is a valid, non-empty image in base64 format'
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    console.log('✅ Screenshot validation passed, format:', {
+      finalFormat: processedScreenshot.match(/^data:image\/([^;]+)/)?.[1] || 'unknown',
+      finalLength: processedScreenshot.length
+    });
 
     // Test OpenAI API key by making a simple request
     console.log('Testing OpenAI API with key...');
@@ -120,10 +234,10 @@ serve(async (req) => {
                 type: 'text', 
                 text: 'Analyze this webpage screenshot. Identify any forms, input fields, buttons, and CAPTCHA or verification challenges present.'
               },
-              { 
+                { 
                 type: 'image_url',
                 image_url: {
-                  url: screenshot
+                  url: processedScreenshot
                 }
               }
             ]
@@ -144,7 +258,7 @@ serve(async (req) => {
           status: visionResponse.status,
           debugInfo: {
             model,
-            screenshotFormat: screenshot.match(/^data:image\/([^;]+)/)?.[1]
+            screenshotFormat: processedScreenshot.match(/^data:image\/([^;]+)/)?.[1]
           }
         }),
         { 
