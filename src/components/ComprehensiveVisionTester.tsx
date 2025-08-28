@@ -33,6 +33,22 @@ export const ComprehensiveVisionTester = () => {
     if (!apiKey) return { data: null, error: { message: 'API key required' } };
     
     try {
+      // Ensure screenshot has proper data URL prefix
+      let formattedScreenshot = screenshot;
+      if (!screenshot.startsWith('data:image')) {
+        // If it's just base64, assume PNG format
+        if (screenshot.match(/^[A-Za-z0-9+/=]+$/)) {
+          formattedScreenshot = `data:image/png;base64,${screenshot}`;
+        } else {
+          throw new Error('Invalid screenshot format');
+        }
+      }
+
+      // Validate it's a proper data URL
+      if (!formattedScreenshot.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,/)) {
+        throw new Error('Invalid screenshot: must be a valid image data URL with supported format');
+      }
+      
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -45,7 +61,7 @@ export const ComprehensiveVisionTester = () => {
             role: 'user',
             content: [
               { type: 'text', text: 'Analyze this screenshot for forms, buttons, and CAPTCHA elements.' },
-              { type: 'image_url', image_url: { url: screenshot } }
+              { type: 'image_url', image_url: { url: formattedScreenshot, detail: 'low' } }
             ]
           }],
           max_tokens: 300
@@ -73,6 +89,48 @@ export const ComprehensiveVisionTester = () => {
     }
   };
 
+  // Test API Connectivity Function
+  const testAPIConnectivity = async () => {
+    // Use a simple valid PNG for testing
+    const validTestImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+    
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini', // Use mini for testing, it's cheaper
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: 'What color is this image?' },
+              { 
+                type: 'image_url', 
+                image_url: { 
+                  url: validTestImage,
+                  detail: 'low'
+                }
+              }
+            ]
+          }],
+          max_tokens: 50
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'API call failed');
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   // Mock screenshot capture for testing without Edge Functions
   const mockScreenshot = () => ({
     data: {
@@ -95,18 +153,17 @@ export const ComprehensiveVisionTester = () => {
     console.log('🔍 Testing direct OpenAI API connection...');
     
     try {
-      const testScreenshot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77mgAAAABJRU5ErkJggg==';
-      const result = await analyzeWithOpenAI(testScreenshot, 'gpt-4o-mini');
+      const apiTest = await testAPIConnectivity();
       
-      if (result.data?.success) {
-        addResult('Debug OpenAI API', 'success', 'Direct OpenAI API is working correctly', undefined, result.data);
+      if (apiTest.success) {
+        addResult('Debug OpenAI API', 'success', 'Direct OpenAI API is working correctly', undefined, apiTest);
         toast({
           title: "OpenAI API Working",
           description: "Direct API connection successful",
         });
       } else {
-        const errorMsg = handleOpenAIError(result.error);
-        addResult('Debug OpenAI API', 'error', `OpenAI API failed: ${errorMsg}`, undefined, result);
+        const errorMsg = handleOpenAIError({ message: apiTest.error });
+        addResult('Debug OpenAI API', 'error', `OpenAI API failed: ${errorMsg}`, undefined, apiTest);
         toast({
           title: "OpenAI API Error",
           description: errorMsg,
