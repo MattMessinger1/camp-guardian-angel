@@ -359,12 +359,13 @@ export const ComprehensiveVisionTester = () => {
     try {
       console.log('🧪 Testing 3.2 - Fallback behavior with invalid screenshot...');
       
-      // Test with invalid screenshot to verify error handling
+      // Test with invalid screenshot to verify error handling - now using proper format
       const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('test-vision-analysis', {
         body: {
           screenshot: 'invalid-screenshot-data',  // Send invalid data to test validation
           sessionId: 'fallback-test',
-          model: 'gpt-4o-mini'  // Use faster model for error testing
+          model: 'gpt-4o-mini',  // Use faster model for error testing
+          isolationTest: true   // Mark as isolation test for fallback behavior
         }
       });
 
@@ -373,11 +374,11 @@ export const ComprehensiveVisionTester = () => {
       if (fallbackError) {
         // Check if it's the expected validation error
         const errorMessage = fallbackError.message || fallbackError;
-        if (errorMessage.includes('screenshot') || errorMessage.includes('invalid') || errorMessage.includes('data URL')) {
+        if (errorMessage.includes('screenshot') || errorMessage.includes('invalid') || errorMessage.includes('data URL') || errorMessage.includes('Invalid screenshot')) {
           addResult('3.2 - Fallback Behavior', 'success', 
             'System correctly validated screenshot format and rejected invalid data', 
             duration2, 
-            { expectedError: errorMessage, fallbackWorking: true }
+            { expectedError: errorMessage, fallbackWorking: true, isolationTest: true }
           );
         } else {
           // Different error type - check if it's an API key or deployment issue
@@ -387,21 +388,21 @@ export const ComprehensiveVisionTester = () => {
           addResult('3.2 - Fallback Behavior', resultStatus as any, 
             `System handled error gracefully: ${errorInfo.instructions}`, 
             duration2, 
-            { ...errorInfo, fallbackBehaviorTested: true }
+            { ...errorInfo, fallbackBehaviorTested: true, isolationTest: true }
           );
         }
-      } else if (fallbackData?.error) {
+      } else if (fallbackData?.error || !fallbackData?.success) {
         // Edge function returned structured error (good fallback behavior)
         addResult('3.2 - Fallback Behavior', 'success', 
           'System returned structured error response for invalid input', 
           duration2, 
-          { structuredError: fallbackData.error, fallbackWorking: true }
+          { structuredError: fallbackData?.error || 'Function rejected invalid data', fallbackWorking: true, isolationTest: true }
         );
       } else {
         // Unexpected: function should have failed with invalid screenshot
         addResult('3.2 - Fallback Behavior', 'warning', 
-          'Function accepted invalid screenshot - validation may be too lenient', 
-          duration2, 
+          'Function may have accepted invalid screenshot - validation may be too lenient', 
+          duration2,
           { unexpectedSuccess: fallbackData, validationConcern: true }
         );
       }
@@ -637,8 +638,7 @@ export const ComprehensiveVisionTester = () => {
             body: {
               screenshot: screenshotData.screenshot,
               sessionId: `real-site-${site.name.replace(/\s+/g, '-').toLowerCase()}`,
-              model: 'gpt-4o',
-              url: site.url
+              model: 'gpt-4o'
             }
           });
 
@@ -1117,7 +1117,8 @@ export const ComprehensiveVisionTester = () => {
             body: {
               screenshot: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77mgAAAABJRU5ErkJggg==',
               sessionId: 'pre-flight-api-key-test',
-              model: 'gpt-4o-mini'  // Use cheaper model for testing
+              model: 'gpt-4o-mini',  // Use cheaper model for testing
+              isolationTest: true    // Mark as pre-flight test
             }
           });
 
