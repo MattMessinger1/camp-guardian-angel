@@ -188,7 +188,7 @@ export const VisionAnalysisTester = () => {
       while (retryCount < maxRetries) {
         const response = await supabase.functions.invoke('test-vision-analysis', {
           body: {
-            screenshot: mockFormScreenshot.split(',')[1], // Remove data:image/svg+xml;base64, prefix
+            screenshot: mockFormScreenshot, // Keep full data URL
             sessionId: 'test-direct-vision',
             model: selectedModel
           }

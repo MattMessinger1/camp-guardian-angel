@@ -80,9 +80,8 @@ export function VisionAnalysisWithCapture() {
         const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
           body: {
             screenshot: captureResult.screenshot,
-            fallbackHtml: captureResult.html,
-            url: url,
-            sessionId: `test-${Date.now()}`
+            sessionId: `test-${Date.now()}`,
+            model: 'gpt-4o'
           }
         });
 

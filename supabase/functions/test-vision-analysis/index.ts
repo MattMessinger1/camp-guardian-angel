@@ -43,7 +43,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { screenshot, sessionId, model = 'gpt-4o' } = body;
+    const { screenshot, sessionId, model = 'gpt-4o', isolationTest = false } = body;
     
     console.log('Request received with API key present:', {
       hasApiKey: true,
@@ -51,7 +51,8 @@ serve(async (req) => {
       keyStart: openAIKey.substring(0, 7), // Should be "sk-..."
       model,
       hasScreenshot: !!screenshot,
-      screenshotLength: screenshot?.length
+      screenshotLength: screenshot?.length,
+      isolationTest
     });
 
     // Validate screenshot
@@ -161,6 +162,7 @@ serve(async (req) => {
         analysis: data.choices[0]?.message?.content || 'No content',
         model,
         sessionId,
+        isolationTest,
         usage: data.usage
       }),
       { 
