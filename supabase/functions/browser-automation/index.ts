@@ -14,7 +14,7 @@ const supabase = createClient(
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 interface BrowserSessionRequest {
-  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup';
+  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'test-connection';
   sessionId?: string;
   url?: string;
   campProviderId?: string;
@@ -67,6 +67,9 @@ serve(async (req) => {
     let result;
     
     switch (requestData.action) {
+      case 'test-connection':
+        result = await testBrowserbaseConnection(browserbaseApiKey);
+        break;
       case 'create':
         result = await createBrowserSession(browserbaseApiKey, requestData);
         break;
@@ -111,6 +114,139 @@ serve(async (req) => {
     });
   }
 });
+
+async function testBrowserbaseConnection(apiKey: string): Promise<any> {
+  console.log('🔧 Testing Browserbase connection...');
+  
+  try {
+    // 1. Verify credentials are set
+    if (!apiKey) {
+      return {
+        success: false,
+        error: 'BROWSERBASE_TOKEN not found in environment variables',
+        details: 'The Browserbase API key is not configured',
+        solution: 'Add BROWSERBASE_TOKEN to Supabase edge function secrets'
+      };
+    }
+
+    const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
+    if (!browserbaseProjectId) {
+      return {
+        success: false,
+        error: 'BROWSERBASE_PROJECT not found in environment variables', 
+        details: 'The Browserbase project ID is not configured',
+        solution: 'Add BROWSERBASE_PROJECT to Supabase edge function secrets'
+      };
+    }
+
+    console.log('✅ Browserbase credentials found');
+    console.log('🔑 API Key length:', apiKey.length);
+    console.log('🆔 Project ID:', browserbaseProjectId);
+
+    // 2. Try to create a test Browserbase session
+    const requestBody = {
+      projectId: browserbaseProjectId,
+      browserSettings: {
+        viewport: { width: 1280, height: 720 },
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Test Connection)'
+        }
+      }
+    };
+
+    console.log('📤 Testing Browserbase API call...');
+    const response = await fetch('https://api.browserbase.com/v1/sessions', {
+      method: 'POST',
+      headers: {
+        'X-BB-API-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const responseText = await response.text();
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response body:', responseText);
+
+    // 3. Parse and validate response
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `Browserbase API returned ${response.status} ${response.statusText}`,
+        details: responseText,
+        debugInfo: {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          apiKeyLength: apiKey.length,
+          projectId: browserbaseProjectId
+        },
+        solution: response.status === 401 ? 'Check API key validity' : 
+                 response.status === 403 ? 'Check API permissions and project access' :
+                 'Check Browserbase service status and configuration'
+      };
+    }
+
+    let sessionData;
+    try {
+      sessionData = JSON.parse(responseText);
+    } catch (parseError) {
+      return {
+        success: false,
+        error: 'Invalid JSON response from Browserbase API',
+        details: `Parse error: ${parseError.message}`,
+        rawResponse: responseText,
+        solution: 'Check Browserbase API status - unexpected response format'
+      };
+    }
+
+    // 4. Clean up test session immediately
+    if (sessionData.id) {
+      console.log('🧹 Cleaning up test session:', sessionData.id);
+      try {
+        const deleteResponse = await fetch(`https://api.browserbase.com/v1/sessions/${sessionData.id}`, {
+          method: 'DELETE',
+          headers: { 'X-BB-API-Key': apiKey },
+        });
+        console.log('🗑️ Test session cleanup:', deleteResponse.status);
+      } catch (cleanupError) {
+        console.warn('⚠️ Test session cleanup failed:', cleanupError.message);
+      }
+    }
+
+    // 5. Return success with debugging info
+    return {
+      success: true,
+      message: 'Browserbase connection test successful',
+      sessionCreated: !!sessionData.id,
+      sessionCleaned: true,
+      debugInfo: {
+        apiKeyLength: apiKey.length,
+        projectId: browserbaseProjectId,
+        responseStatus: response.status,
+        sessionId: sessionData.id,
+        connectUrl: sessionData.connectUrl ? 'Available' : 'Not provided'
+      },
+      browserbaseResponse: {
+        id: sessionData.id,
+        status: sessionData.status,
+        projectId: sessionData.projectId,
+        createdAt: sessionData.createdAt,
+        connectUrl: sessionData.connectUrl ? 'Hidden for security' : undefined
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Connection test failed:', error);
+    return {
+      success: false,
+      error: 'Connection test exception',
+      details: error.message,
+      stack: error.stack,
+      solution: 'Check network connectivity and Browserbase service status'
+    };
+  }
+}
 
 async function createBrowserSession(apiKey: string, request: BrowserSessionRequest): Promise<BrowserSession> {
   console.log('🎯 REAL YMCA TEST: Creating browser session for YMCA registration');
