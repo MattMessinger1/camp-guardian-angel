@@ -499,12 +499,18 @@ const HomePage = () => {
               </a>
               
               {/* Test Button for Ready for Signup Page */}
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
                 <Link 
                   to="/sessions/003217fe-7854-43da-8a64-db592d5d78d5/ready-to-signup"
-                  className="text-blue-400 hover:text-blue-300 transition-colors text-sm underline"
+                  className="block text-blue-400 hover:text-blue-300 transition-colors text-sm underline"
                 >
                   🧪 Test Ready for Signup Page
+                </Link>
+                <Link 
+                  to="/e2e-tests"
+                  className="block text-green-400 hover:text-green-300 transition-colors text-sm underline"
+                >
+                  ⚡ E2E Test Suite
                 </Link>
               </div>
             </div>
