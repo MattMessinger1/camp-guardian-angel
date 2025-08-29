@@ -165,3 +165,6 @@ verify_jwt = false
 [functions.persistent-session-manager]
 verify_jwt = false
 
+[functions.smart-notification-manager]
+verify_jwt = false
+
