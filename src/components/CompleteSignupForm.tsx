@@ -14,6 +14,8 @@ import { getTestScenario } from "@/lib/test-scenarios";
 import { PreRegistrationAccountSetup } from "@/components/PreRegistrationAccountSetup";
 import { AutomatedSignupStatus } from "@/components/AutomatedSignupStatus";
 import { CaptchaAssistanceFlow } from "@/components/CaptchaAssistanceFlow";
+import { useSessionRequirements } from "@/hooks/useSessionRequirements";
+import DynamicRequirementsForm from "@/components/DynamicRequirementsForm";
 
 interface Child {
   name: string;
@@ -62,6 +64,22 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
   // Generate a unique key for this form session
   const formStorageKey = `signup-form-${sessionId || 'default'}`;
   
+  // Use session requirements discovery
+  const {
+    requirements,
+    sessionInfo,
+    loading: loadingRequirements,
+    error: requirementsError,
+    automationAvailable,
+    cached,
+    needsAuthentication,
+    needsPhoneVerification,
+    getPaymentAmount
+  } = useSessionRequirements(sessionId);
+  
+  // Dynamic form values for discovered requirements
+  const [dynamicFormValues, setDynamicFormValues] = useState<Record<string, string>>({});
+  
   // Account info
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -81,13 +99,6 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
   const [otp, setOtp] = useState("");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [needsPhoneVerification, setNeedsPhoneVerification] = useState(false);
-  
-  // Dynamic requirements
-  const [requirements, setRequirements] = useState<SessionRequirements | null>(null);
-  const [loadingRequirements, setLoadingRequirements] = useState(false);
-  const [requirementsError, setRequirementsError] = useState<string | null>(null);
-  const [remainingFields, setRemainingFields] = useState<string[]>([]);
   
   // Form state
   const [loading, setLoading] = useState(false);
@@ -331,139 +342,42 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     restoreFormData();
   }, [restoreFormData]);
 
-  // Load session-specific requirements
+  // Handle dynamic form value changes
+  const handleDynamicFormChange = (field: string, value: string) => {
+    setDynamicFormValues(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Update legacy fields for backwards compatibility
+    if (field === 'guardian_name') setGuardianName(value);
+    if (field === 'email') setEmail(value);
+    if (field === 'child_name' && children.length > 0) {
+      setChildren(prev => prev.map((child, i) => 
+        i === 0 ? { ...child, name: value } : child
+      ));
+    }
+    if (field === 'child_dob' && children.length > 0) {
+      setChildren(prev => prev.map((child, i) => 
+        i === 0 ? { ...child, dob: value } : child
+      ));
+    }
+  };
+
+  // Auto-populate dynamic form values from legacy state
   useEffect(() => {
-    const loadRequirements = () => {
-      const testScenario = sessionId ? getTestScenario(sessionId) : null;
+    if (requirements) {
+      const newValues: Record<string, string> = {};
       
-      if (testScenario) {
-        console.log('🧪 Using test scenario:', testScenario.name);
-        
-        const testRequirements: SessionRequirements = {
-          required_fields: [
-            { field_name: "email", field_type: "email", required: true, label: "Email Address" },
-            { field_name: "password", field_type: "password", required: true, label: "Password" },
-            { field_name: "guardian_name", field_type: "text", required: true, label: "Parent/Guardian Name" },
-            
-            ...(testScenario.requirements?.required_parent_fields || []).map(field => ({
-              field_name: field,
-              field_type: field.includes('email') ? 'email' : field.includes('phone') ? 'tel' : 'text',
-              required: true,
-              label: field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-            })),
-            
-            ...(testScenario.requirements?.required_child_fields || []).map(field => ({
-              field_name: field,
-              field_type: field === 'dob' ? 'date' : 'text',
-              required: true,
-              label: field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-            }))
-          ],
-          phi_blocked_fields: [],
-          communication_preferences: {
-            sms_required: true,
-            email_required: true
-          },
-          payment_required: !!testScenario.requirements?.deposit_amount_cents,
-          payment_amount: testScenario.requirements?.deposit_amount_cents ? 
-            testScenario.requirements.deposit_amount_cents / 100 : undefined
-        };
-        
-        setRequirements(testRequirements);
-        setRemainingFields(testScenario.requirements?.required_documents || []);
-        setNeedsPhoneVerification(true);
-        setLoadingRequirements(false);
-        return;
-      }
-
-      if (discoveredRequirements) {
-        console.log('📋 Using discovered requirements:', discoveredRequirements);
-        
-        let signupFields = [];
-        let remainingFields = [];
-        
-        const discoveryReqs = discoveredRequirements.discovery?.requirements;
-        if (discoveryReqs) {
-          const allRequiredFields = [
-            ...(discoveryReqs.required_parent_fields || []),
-            ...(discoveryReqs.required_child_fields || [])
-          ];
-          
-          const fieldMappings: Record<string, { type: string; label: string; options?: string[] }> = {
-            parent_guardian_name: { type: 'text', label: 'Parent/Guardian Name' },
-            parent_email: { type: 'email', label: 'Parent Email' },
-            parent_cell_phone: { type: 'tel', label: 'Parent Phone' },
-            camper_first_name: { type: 'text', label: 'Camper First Name' },
-            camper_last_name: { type: 'text', label: 'Camper Last Name' },
-            camper_dob: { type: 'date', label: 'Camper Date of Birth' },
-            emergency_contact_name: { type: 'text', label: 'Emergency Contact Name' },
-            emergency_contact_phone: { type: 'tel', label: 'Emergency Contact Phone' },
-          };
-          
-          signupFields = allRequiredFields
-            .filter(fieldName => fieldMappings[fieldName as keyof typeof fieldMappings])
-            .map(fieldName => {
-              const mapping = fieldMappings[fieldName as keyof typeof fieldMappings];
-              return {
-                field_name: fieldName,
-                field_type: mapping.type,
-                required: true,
-                label: mapping.label,
-                ...(mapping.options && { options: mapping.options })
-              };
-            });
-          
-          remainingFields = allRequiredFields.filter(fieldName => 
-            !fieldMappings[fieldName as keyof typeof fieldMappings]
-          );
-          
-          setRemainingFields(remainingFields);
-        }
-
-        const sessionReqs: SessionRequirements = {
-          required_fields: [
-            { field_name: "email", field_type: "email", required: true, label: "Email Address" },
-            { field_name: "password", field_type: "password", required: true, label: "Password" },
-            ...signupFields
-          ],
-          phi_blocked_fields: discoveredRequirements.discovery?.phi_blocked_fields || [],
-          communication_preferences: {
-            sms_required: discoveredRequirements.discovery?.requirements?.sms_required || false,
-            email_required: true
-          },
-          payment_required: discoveredRequirements.discovery?.requirements?.payment_required !== false,
-          payment_amount: discoveredRequirements.discovery?.requirements?.deposit_amount_cents ? 
-            discoveredRequirements.discovery.requirements.deposit_amount_cents / 100 : undefined
-        };
-
-        setRequirements(sessionReqs);
-        setNeedsPhoneVerification(!!sessionId);
-        return;
-      }
-
-      console.log('ℹ️ No discovered requirements, using defaults');
-      setRequirements({
-        required_fields: [
-          { field_name: "guardian_name", field_type: "text", required: true, label: "Guardian Name" },
-          { field_name: "children", field_type: "array", required: true, label: "Participant" },
-          { field_name: "email", field_type: "email", required: true, label: "Email Address" },
-          { field_name: "password", field_type: "password", required: true, label: "Password" }
-        ],
-        phi_blocked_fields: [],
-        communication_preferences: {
-          sms_required: false,
-          email_required: true
-        },
-        payment_required: true
-      });
+      // Map existing values to dynamic form
+      if (guardianName) newValues['guardian_name'] = guardianName;
+      if (email) newValues['email'] = email;
+      if (children[0]?.name) newValues['child_name'] = children[0].name;
+      if (children[0]?.dob) newValues['child_dob'] = children[0].dob;
       
-      setNeedsPhoneVerification(!!sessionId);
-      setLoadingRequirements(false);
-    };
-
-    setLoadingRequirements(true);
-    setTimeout(loadRequirements, 100);
-  }, [sessionId, discoveredRequirements]);
+      setDynamicFormValues(prev => ({ ...prev, ...newValues }));
+    }
+  }, [requirements, guardianName, email, children]);
 
   const handleAddPayment = async () => {
     setPaymentLoading(true);
@@ -628,289 +542,141 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     );
   }
 
-  // Step 2: Profile Information
-  if (currentStep === 'profile-info') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold">Profile Information</h1>
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-xs">✓</div>
-              <span>Account Setup</span>
-              <div className="w-4 h-px bg-border"></div>
-              <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">2</div>
-              <span>Profile Info</span>
-              <div className="w-4 h-px bg-border"></div>
-              <div className="w-8 h-8 bg-muted text-muted-foreground rounded-full flex items-center justify-center text-xs">3</div>
-              <span>Payment</span>
+        {currentStep === 'profile-info' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Registration Requirements</h2>
+              <p className="text-muted-foreground mb-6">
+                Provide information needed for automated registration.
+              </p>
             </div>
-          </div>
 
-          <Card className="surface-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <User className="h-5 w-5" />
-                Required Information
-              </CardTitle>
-              {accountSetupData?.account_required && (
-                <Alert>
-                  <Check className="h-4 w-4" />
-                  <AlertDescription>
-                    Account setup complete for {accountSetupData.provider_name}. 
-                    Your credentials are securely stored for automatic login.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardHeader>
-            
-            <CardContent>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                setCurrentStep('payment');
-              }} className="space-y-6">
-                
-                {/* Participant Information */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <User className="h-5 w-5" />
-                    Participant
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {children.map((child, index) => (
-                      <div key={index} className="flex gap-3 items-end">
-                        <div className="flex-1">
-                          <Label>Participant Name *</Label>
-                          <Input 
-                            value={child.name} 
-                            onChange={(e) => updateChild(index, "name", e.target.value)}
-                            placeholder="Enter participant's name"
-                            required 
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <Label>Birth Date *</Label>
-                          <Input 
-                            type="date" 
-                            value={child.dob} 
-                            onChange={(e) => updateChild(index, "dob", e.target.value)}
-                            required 
-                          />
-                        </div>
-                        {children.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeChild(index)}
-                            className="px-3"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+            {/* Dynamic Requirements Form */}
+            <DynamicRequirementsForm
+              requirements={requirements}
+              sessionInfo={sessionInfo}
+              automationAvailable={automationAvailable}
+              cached={cached}
+              loading={loadingRequirements}
+              values={dynamicFormValues}
+              onChange={handleDynamicFormChange}
+            />
+
+            {/* Phone Verification for CAPTCHA assistance */}
+            {needsPhoneVerification() && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Phone className="h-5 w-5" />
+                    <span>Phone Verification for CAPTCHA Assistance</span>
+                    {phoneVerified && <Check className="h-4 w-4 text-green-600" />}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {phoneStep === "input" ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        We'll send you SMS notifications when CAPTCHAs need to be solved during registration.
+                      </p>
+                      <div>
+                        <Label htmlFor="phone">Phone Number *</Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
+                          placeholder="(555) 123-4567"
+                          required
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleSendOtp}
+                        disabled={sendingOtp || !phone.trim() || phoneVerified}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {sendingOtp ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : phoneVerified ? (
+                          <>
+                            <Check className="mr-2 h-4 w-4" />
+                            Verified
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Send Verification Code
+                          </>
                         )}
-                      </div>
-                    ))}
-                    
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addChild}
-                      disabled={children.length >= 5}
-                      className="w-fit"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Another Participant {children.length >= 5 && "(Max 5)"}
-                    </Button>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Guardian Information */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <User className="h-5 w-5" />
-                    Parent/Guardian Information
-                  </div>
-                  
-                  <div className="grid gap-4">
-                    <div>
-                      <Label htmlFor="guardianName">Full Name *</Label>
-                      <Input 
-                        id="guardianName"
-                        value={guardianName} 
-                        onChange={(e) => setGuardianName(e.target.value)}
-                        placeholder="Enter your full name"
-                        required 
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="email">Email Address *</Label>
-                      <Input 
-                        id="email"
-                        type="email" 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email"
-                        required 
-                        disabled={!!accountSetupData?.account_email}
-                      />
-                      {accountSetupData?.account_email && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Using email from your camp account setup
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="password">Password *</Label>
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        value={password} 
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Choose a secure password"
-                        required 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Phone Verification */}
-                {needsPhoneVerification && (
-                  <>
-                    <Separator />
+                      </Button>
+                    </>
+                  ) : (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-lg font-semibold">
-                        <Phone className="h-5 w-5" />
-                        Phone Verification for SMS Notifications
+                      <p className="text-sm">
+                        Enter the 6-digit code sent to {formatPhoneDisplay(phone)}:
+                      </p>
+                      <div>
+                        <Label htmlFor="otp">Verification Code</Label>
+                        <Input
+                          id="otp"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value)}
+                          placeholder="123456"
+                          maxLength={6}
+                          pattern="[0-9]{6}"
+                        />
                       </div>
-                      <Alert>
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          This session may require CAPTCHA solving. Please verify your phone number to receive instant SMS notifications.
-                        </AlertDescription>
-                      </Alert>
-                      
-                      {phoneVerified ? (
-                        <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
-                          <div className="flex items-center gap-3">
-                            <Check className="h-5 w-5 text-green-600" />
-                            <div>
-                              <p className="font-medium text-green-800">Phone Verified</p>
-                              <p className="text-sm text-green-600">
-                                {formatPhoneDisplay(phone)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {phoneStep === "input" ? (
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={handleVerifyOtp}
+                          disabled={verifyingOtp || !otp.trim()}
+                          size="sm"
+                        >
+                          {verifyingOtp ? (
                             <>
-                              <div>
-                                <Label htmlFor="phone">Phone Number *</Label>
-                                <Input
-                                  id="phone"
-                                  type="tel"
-                                  placeholder="(555) 123-4567"
-                                  value={formatPhoneInput(phone)}
-                                  onChange={(e) => setPhone(e.target.value)}
-                                  disabled={sendingOtp}
-                                />
-                              </div>
-                              
-                              <Button
-                                type="button"
-                                onClick={handleSendOtp}
-                                disabled={!phone.trim() || sendingOtp}
-                                className="w-full"
-                              >
-                                {sendingOtp ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Sending Code...
-                                  </>
-                                ) : (
-                                  "Send Verification Code"
-                                )}
-                              </Button>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Verifying...
                             </>
                           ) : (
-                            <>
-                              <div>
-                                <Label htmlFor="otp">6-Digit Verification Code *</Label>
-                                <Input
-                                  id="otp"
-                                  type="text"
-                                  placeholder="123456"
-                                  value={otp}
-                                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                  disabled={verifyingOtp}
-                                  maxLength={6}
-                                />
-                              </div>
-                              
-                              <div className="flex gap-2">
-                                <Button
-                                  type="button"
-                                  onClick={handleVerifyOtp}
-                                  disabled={otp.length !== 6 || verifyingOtp}
-                                  className="flex-1"
-                                >
-                                  {verifyingOtp ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                      Verifying...
-                                    </>
-                                  ) : (
-                                    "Verify Code"
-                                  )}
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => setPhoneStep("input")}
-                                  disabled={verifyingOtp}
-                                >
-                                  Back
-                                </Button>
-                              </div>
-                            </>
+                            'Verify Code'
                           )}
-                        </div>
-                      )}
+                        </Button>
+                        <Button
+                          onClick={() => setPhoneStep("input")}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Change Number
+                        </Button>
+                      </div>
                     </div>
-                  </>
-                )}
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep('account-setup')}
-                    className="flex-1"
-                  >
-                    Back
-                  </Button>
-                  <Button 
-                    type="submit"
-                    className="flex-1"
-                    disabled={!guardianName.trim() || !email.trim() || !password.trim() || children.some(child => !child.name.trim() || !child.dob) || (needsPhoneVerification && !phoneVerified)}
-                  >
-                    Continue to Payment
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setCurrentStep('account-setup')}>
+                Back
+              </Button>
+              <Button 
+                onClick={() => setCurrentStep('payment')}
+                disabled={
+                  loadingRequirements ||
+                  (requirements?.required_fields?.some(field => 
+                    field.required && !dynamicFormValues[field.field_name]?.trim()
+                  )) ||
+                  (needsPhoneVerification() && !phoneVerified)
+                }
+              >
+                Continue to Payment
+              </Button>
+            </div>
+          </div>
+        )}
 
   // Step 3: Payment
   return (
@@ -947,7 +713,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                   <CreditCard className="h-4 w-4" />
                   <AlertDescription>
                     This session requires payment setup. You'll need to add a payment method to secure your registration.
-                    {requirements.payment_amount && ` Amount: $${requirements.payment_amount}`}
+                    {getPaymentAmount() && ` Amount: $${getPaymentAmount()}`}
                   </AlertDescription>
                 </Alert>
               )}
