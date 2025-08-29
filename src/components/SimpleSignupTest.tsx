@@ -64,7 +64,7 @@ export default function SimpleSignupTest() {
     setCurrentStep('Navigating to registration flow...');
     console.log('🧭 [SimpleSignupTest] Starting navigation to registration:', url);
     
-    const { data, error } = await supabase.functions.invoke('browser-automation', {
+    const { data, error } = await supabase.functions.invoke('browser-automation-simple', {
       body: { 
         action: 'navigate_and_register',
         url,
