@@ -56,6 +56,12 @@ serve(async (req) => {
   });
 
   try {
+    console.log('🔧 Environment check:', {
+      hasSupabaseUrl: !!SUPABASE_URL,
+      hasSupabaseServiceRole: !!SUPABASE_SERVICE_ROLE,
+      hasStripeKey: !!STRIPE_SECRET_KEY
+    });
+
     // Real reservation processing (no more PUBLIC_DATA_MODE)
     console.log('💼 Processing real reservation with Stripe integration');
 

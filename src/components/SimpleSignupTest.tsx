@@ -52,32 +52,74 @@ export default function SimpleSignupTest() {
 
   const captureScreenshot = async (url: string) => {
     setCurrentStep('Capturing screenshot...');
+    console.log('🚀 [SimpleSignupTest] Starting screenshot capture for:', url);
+    
     const { data, error } = await supabase.functions.invoke('capture-website-screenshot', {
       body: { url, sessionId: `test-${Date.now()}` }
     });
 
-    if (error) throw new Error(`Screenshot capture failed: ${error.message}`);
-    if (!data?.screenshot) throw new Error('No screenshot returned');
+    console.log('📸 [SimpleSignupTest] Screenshot response:', { data, error });
+    
+    if (error) {
+      console.error('❌ [SimpleSignupTest] Screenshot error:', error);
+      throw new Error(`Screenshot capture failed: ${error.message}`);
+    }
+    if (!data?.screenshot) {
+      console.error('❌ [SimpleSignupTest] No screenshot in response:', data);
+      throw new Error('No screenshot returned');
+    }
+    
+    console.log('✅ [SimpleSignupTest] Screenshot captured successfully, length:', data.screenshot?.length);
+    console.log('🔍 [SimpleSignupTest] Screenshot metadata:', {
+      simulated: data.simulated,
+      browserbase_session_id: data.browserbase_session_id,
+      timestamp: data.timestamp
+    });
     
     return data.screenshot;
   };
 
   const analyzeScreenshot = async (screenshot: string) => {
     setCurrentStep('Analyzing screenshot with AI...');
+    console.log('🤖 [SimpleSignupTest] Starting AI vision analysis');
+    console.log('🔍 [SimpleSignupTest] Screenshot length for analysis:', screenshot?.length);
+    
     const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
       body: { 
         screenshot, 
         sessionId: `test-${Date.now()}`,
-        model: 'gpt-4o'
+        model: 'gpt-4o',
+        isolationTest: false // Force real analysis
       }
     });
 
-    if (error) throw new Error(`Vision analysis failed: ${error.message}`);
+    console.log('🤖 [SimpleSignupTest] Vision analysis response:', { data, error });
+    
+    if (error) {
+      console.error('❌ [SimpleSignupTest] Vision analysis error:', error);
+      throw new Error(`Vision analysis failed: ${error.message}`);
+    }
+    
+    console.log('✅ [SimpleSignupTest] Vision analysis completed');
+    console.log('🔍 [SimpleSignupTest] Analysis metadata:', {
+      mock: data?.mock,
+      model: data?.model,
+      isolationTest: data?.isolationTest,
+      captchaRisk: data?.captchaRisk
+    });
+    
     return data;
   };
 
   const testFastCampSearch = async () => {
     setCurrentStep('Testing fast camp search...');
+    console.log('🔍 [SimpleSignupTest] Starting fast camp search');
+    console.log('📝 [SimpleSignupTest] Search params:', {
+      query: selectedCamp.searchQuery,
+      location: selectedCamp.location,
+      selectedCamp: selectedCamp.name
+    });
+    
     const { data, error } = await supabase.functions.invoke('fast-camp-search', {
       body: { 
         query: selectedCamp.searchQuery,
@@ -86,12 +128,25 @@ export default function SimpleSignupTest() {
       }
     });
 
-    if (error) throw new Error(`Fast search failed: ${error.message}`);
+    console.log('🔍 [SimpleSignupTest] Fast search response:', { data, error });
+    
+    if (error) {
+      console.error('❌ [SimpleSignupTest] Fast search error:', error);
+      throw new Error(`Fast search failed: ${error.message}`);
+    }
+    
+    console.log('✅ [SimpleSignupTest] Fast search completed, results:', data?.results?.length || 0);
     return data;
   };
 
   const testReserveInit = async () => {
     setCurrentStep('Testing reservation initialization...');
+    console.log('🔒 [SimpleSignupTest] Starting reservation initialization');
+    console.log('📝 [SimpleSignupTest] Reserve params:', {
+      providerUrl: selectedCamp.url,
+      campName: selectedCamp.name
+    });
+    
     const { data, error } = await supabase.functions.invoke('reserve-init', {
       body: { 
         sessionId: `test-${Date.now()}`,
@@ -99,7 +154,19 @@ export default function SimpleSignupTest() {
       }
     });
 
-    if (error) throw new Error(`Reserve init failed: ${error.message}`);
+    console.log('🔒 [SimpleSignupTest] Reserve init response:', { data, error });
+    
+    if (error) {
+      console.error('❌ [SimpleSignupTest] Reserve init error:', error);
+      throw new Error(`Reserve init failed: ${error.message}`);
+    }
+    
+    console.log('✅ [SimpleSignupTest] Reserve init completed');
+    console.log('🔍 [SimpleSignupTest] Reserve metadata:', {
+      mock_mode: data?.mock_mode,
+      reservation_id: data?.reservation_id
+    });
+    
     return data;
   };
 
@@ -130,35 +197,47 @@ export default function SimpleSignupTest() {
   };
 
   const runSignupTest = async () => {
+    console.log('🚀 [SimpleSignupTest] === STARTING FULL SIGNUP TEST ===');
+    console.log('🏕️ [SimpleSignupTest] Testing camp:', selectedCamp.name, 'at', selectedCamp.url);
+    
     setStatus('running');
     setError('');
     setResults({});
     
     try {
       // Step 1: Test fast camp search (speed optimization)
+      console.log('📝 [SimpleSignupTest] === STEP 1: Fast Camp Search ===');
       const fastSearch = await testFastCampSearch();
       setResults(prev => ({ ...prev, fastSearch }));
 
       // Step 2: Capture screenshot for analysis
+      console.log('📸 [SimpleSignupTest] === STEP 2: Screenshot Capture ===');
       const screenshot = await captureScreenshot(selectedCamp.url);
       setResults(prev => ({ ...prev, screenshot }));
 
       // Step 3: AI vision analysis (accuracy optimization)
+      console.log('🤖 [SimpleSignupTest] === STEP 3: AI Vision Analysis ===');
       const visionAnalysis = await analyzeScreenshot(screenshot);
       setResults(prev => ({ ...prev, visionAnalysis }));
 
       // Step 4: Initialize reservation (security optimization)
+      console.log('🔒 [SimpleSignupTest] === STEP 4: Reservation Init ===');
       const reserveInit = await testReserveInit();
       setResults(prev => ({ ...prev, reserveInit }));
 
       // Step 5: Check CAPTCHA risk and handle accordingly
+      console.log('🤖 [SimpleSignupTest] === STEP 5: CAPTCHA Risk Assessment ===');
       const captchaRisk = visionAnalysis?.captchaRisk || 0;
+      console.log('🔍 [SimpleSignupTest] CAPTCHA risk level:', captchaRisk);
+      
       if (captchaRisk >= 0.5) {
+        console.log('⚠️ [SimpleSignupTest] High CAPTCHA risk - testing human-assisted workflow');
         // High CAPTCHA risk - test human-assisted workflow
         const captchaHandling = await testCaptchaHandling();
         setResults(prev => ({ ...prev, captchaHandling }));
         setCurrentStep('⚠️ CAPTCHA detected - human assistance workflow activated');
       } else {
+        console.log('🤖 [SimpleSignupTest] Low CAPTCHA risk - testing automation');
         // Low CAPTCHA risk - attempt automation
         const automationResult = await attemptAutomation();
         setResults(prev => ({ ...prev, automationResult }));
@@ -167,7 +246,10 @@ export default function SimpleSignupTest() {
 
       setStatus('success');
       setCurrentStep('✅ Full signup optimization pipeline tested successfully');
+      console.log('🎉 [SimpleSignupTest] === TEST COMPLETED SUCCESSFULLY ===');
     } catch (err: any) {
+      console.error('❌ [SimpleSignupTest] Test failed with error:', err);
+      console.error('❌ [SimpleSignupTest] Error stack:', err.stack);
       setError(err.message);
       setStatus('error');
       setCurrentStep('❌ Test failed - reviewing for optimization opportunities');

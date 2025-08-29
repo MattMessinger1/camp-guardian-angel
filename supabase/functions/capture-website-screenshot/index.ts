@@ -15,6 +15,11 @@ serve(async (req) => {
     const { url, sessionId } = await req.json();
     
     console.log(`📸 Capturing screenshot for URL: ${url}`);
+    console.log(`🔧 Environment check:`, {
+      hasBrowserbaseToken: !!Deno.env.get('BROWSERBASE_TOKEN'),
+      hasBrowserbaseProject: !!Deno.env.get('BROWSERBASE_PROJECT'),
+      tokenLength: Deno.env.get('BROWSERBASE_TOKEN')?.length || 0
+    });
     
     if (!url) {
       return new Response(
@@ -34,11 +39,18 @@ serve(async (req) => {
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
     
     if (!browserbaseApiKey || !browserbaseProjectId) {
-      console.error('❌ Browserbase credentials not configured');
+      console.error('❌ Browserbase credentials not configured:', {
+        hasApiKey: !!browserbaseApiKey,
+        hasProjectId: !!browserbaseProjectId
+      });
       return new Response(
         JSON.stringify({ 
           error: 'Browserbase not configured',
-          details: 'BROWSERBASE_TOKEN and BROWSERBASE_PROJECT must be set'
+          details: 'BROWSERBASE_TOKEN and BROWSERBASE_PROJECT must be set in Supabase Edge Functions environment',
+          environment: {
+            hasApiKey: !!browserbaseApiKey,
+            hasProjectId: !!browserbaseProjectId
+          }
         }),
         { 
           status: 500,

@@ -15,7 +15,10 @@ serve(async (req) => {
   try {
     // Check if OpenAI API key exists
     const openAIKey = Deno.env.get('OPENAI_API_KEY');
-    console.log('OpenAI key exists:', !!openAIKey);
+    console.log('🔧 Environment check:', {
+      hasOpenAIKey: !!openAIKey,
+      keyLength: openAIKey?.length || 0
+    });
     
     const body = await req.json();
     const { screenshot, sessionId, model = 'gpt-4o', isolationTest = false } = body;
@@ -26,12 +29,13 @@ serve(async (req) => {
       screenshotStart: screenshot ? screenshot.substring(0, 100) : 'null',
       screenshotLength: screenshot?.length || 0,
       model,
-      sessionId
+      sessionId,
+      isolationTest
     });
 
     // If no API key, return mock data instead of failing
     if (!openAIKey) {
-      console.log('No OpenAI API key found, returning mock data');
+      console.log('❌ No OpenAI API key found, returning mock data');
       return new Response(JSON.stringify({
         success: true,
         analysis: "Mock mode - OpenAI not configured. This is a simulated analysis of the webpage screenshot.",
@@ -39,6 +43,7 @@ serve(async (req) => {
         sessionId,
         isolationTest,
         mock: true,
+        reason: 'No OpenAI API key configured',
         formComplexity: 5,
         captchaRisk: 0.3
       }), { 
