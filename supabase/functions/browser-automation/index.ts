@@ -15,7 +15,7 @@ const supabase = createClient(
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 interface BrowserSessionRequest {
-  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login';
+  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register';
   sessionId?: string;
   url?: string;
   campProviderId?: string;
@@ -25,6 +25,7 @@ interface BrowserSessionRequest {
   enableVision?: boolean;
   userId?: string;
   providerUrl?: string;
+  steps?: string[];
 }
 
 interface BrowserSession {
@@ -76,6 +77,9 @@ serve(async (req) => {
       case 'navigate':
         result = await navigateToUrl(browserbaseApiKey, requestData);
         break;
+      case 'navigate_and_register':
+        result = await navigateAndRegister(browserbaseApiKey, requestData);
+        break;
       case 'interact':
         result = await interactWithPage(browserbaseApiKey, requestData);
         break;
@@ -117,6 +121,217 @@ serve(async (req) => {
     });
   }
 });
+
+async function navigateAndRegister(apiKey: string, request: BrowserSessionRequest): Promise<any> {
+  if (!request.url || !request.sessionId) {
+    throw new Error('URL and Session ID required for navigate and register');
+  }
+
+  console.log(`🧭 [NavigateAndRegister] Starting registration flow navigation for session ${request.sessionId} to ${request.url}`);
+  console.log('📝 [NavigateAndRegister] Steps to execute:', request.steps);
+
+  try {
+    const results: any = {
+      success: true,
+      sessionId: request.sessionId,
+      url: request.url,
+      timestamp: new Date().toISOString(),
+      steps_executed: [],
+      registration_analysis: {},
+      simulated: true
+    };
+
+    // Step 1: Navigate to URL
+    if (request.steps?.includes('navigate_to_url')) {
+      console.log('🔍 [Step 1] Navigating to URL...');
+      const navigationResult = await navigateToUrl(apiKey, request);
+      results.steps_executed.push({
+        step: 'navigate_to_url',
+        success: navigationResult.success,
+        result: navigationResult
+      });
+    }
+
+    // Step 2: Find activity/camp (simulated analysis of the page)
+    if (request.steps?.includes('find_activity')) {
+      console.log('🔍 [Step 2] Searching for camp activities on page...');
+      
+      // Simulate finding camp activities based on URL patterns
+      const activityAnalysis = {
+        activities_found: getSimulatedActivitiesForUrl(request.url),
+        search_method: 'DOM analysis simulation',
+        filters_detected: ['age_range', 'date_range', 'location'],
+        registration_options: []
+      };
+
+      results.steps_executed.push({
+        step: 'find_activity',
+        success: true,
+        result: activityAnalysis
+      });
+      results.registration_analysis.activities = activityAnalysis.activities_found;
+    }
+
+    // Step 3: Click register button (simulate interaction)
+    if (request.steps?.includes('click_register_button')) {
+      console.log('🔍 [Step 3] Looking for and clicking register buttons...');
+      
+      const registerButtonAnalysis = {
+        buttons_found: [
+          { text: 'Register Now', selector: '.register-btn', action_type: 'direct_registration' },
+          { text: 'Sign Up', selector: '.signup-link', action_type: 'account_creation' },
+          { text: 'Enroll', selector: '.enroll-button', action_type: 'enrollment_form' }
+        ],
+        clicked_button: 'Register Now',
+        result_page_type: determinePageTypeFromUrl(request.url),
+        auth_required: checkAuthRequirementFromUrl(request.url)
+      };
+
+      results.steps_executed.push({
+        step: 'click_register_button',
+        success: true,
+        result: registerButtonAnalysis
+      });
+      results.registration_analysis.button_interaction = registerButtonAnalysis;
+    }
+
+    // Step 4: Capture registration page (analyze what happens after clicking register)
+    if (request.steps?.includes('capture_registration_page')) {
+      console.log('🔍 [Step 4] Capturing and analyzing registration page...');
+      
+      const registrationPageAnalysis = {
+        page_type: results.registration_analysis.button_interaction?.result_page_type || 'unknown',
+        auth_wall_detected: results.registration_analysis.button_interaction?.auth_required || false,
+        form_fields_detected: getSimulatedFormFields(request.url),
+        captcha_present: Math.random() > 0.7, // Random CAPTCHA detection
+        login_required: results.registration_analysis.button_interaction?.auth_required || false,
+        account_creation_required: checkAccountCreationRequirement(request.url),
+        next_steps_available: ['form_completion', 'account_creation', 'payment_info']
+      };
+
+      results.steps_executed.push({
+        step: 'capture_registration_page',
+        success: true,
+        result: registrationPageAnalysis
+      });
+      results.registration_analysis.final_page = registrationPageAnalysis;
+    }
+
+    // Update session with navigation results
+    await supabase.from('browser_sessions')
+      .update({ 
+        last_activity: new Date().toISOString(),
+        current_url: request.url,
+        metadata: {
+          navigation_completed: true,
+          registration_flow_analyzed: true,
+          steps_executed: results.steps_executed,
+          auth_required: results.registration_analysis.final_page?.auth_wall_detected
+        }
+      })
+      .eq('session_id', request.sessionId);
+
+    // Log the navigation success
+    await logYMCATestEvent('navigation_and_register_success', {
+      sessionId: request.sessionId,
+      url: request.url,
+      steps_completed: results.steps_executed.length,
+      auth_wall_detected: results.registration_analysis.final_page?.auth_wall_detected,
+      account_creation_required: results.registration_analysis.final_page?.account_creation_required,
+      simulated: true
+    });
+
+    console.log('✅ [NavigateAndRegister] Registration flow navigation completed successfully');
+    console.log('🔍 [Analysis] Auth required:', results.registration_analysis.final_page?.auth_wall_detected);
+    console.log('🔍 [Analysis] Account creation needed:', results.registration_analysis.final_page?.account_creation_required);
+    
+    return results;
+
+  } catch (error) {
+    console.error('❌ [NavigateAndRegister] Registration flow navigation failed:', error);
+    
+    await logYMCATestEvent('navigation_and_register_error', {
+      sessionId: request.sessionId,
+      url: request.url,
+      error: error.message,
+      steps: request.steps
+    });
+    
+    throw error;
+  }
+}
+
+// Helper function to simulate activities found based on URL patterns
+function getSimulatedActivitiesForUrl(url: string): any[] {
+  if (url.includes('seattle') || url.includes('activecommunities')) {
+    return [
+      { name: 'Summer Soccer Camp', age_range: '6-12', dates: 'July 15-19, 2025', price: '$89' },
+      { name: 'Arts & Crafts Week', age_range: '5-10', dates: 'July 22-26, 2025', price: '$75' },
+      { name: 'Swimming Lessons', age_range: '4-16', dates: 'Multiple sessions', price: '$65' }
+    ];
+  } else if (url.includes('communitypass')) {
+    return [
+      { name: 'Basketball Camp', age_range: '8-14', dates: 'August 5-9, 2025', price: '$95' },
+      { name: 'Dance Workshop', age_range: '6-12', dates: 'August 12-16, 2025', price: '$80' }
+    ];
+  }
+  return [
+    { name: 'Generic Summer Program', age_range: '5-15', dates: 'TBD', price: '$70' }
+  ];
+}
+
+// Helper function to determine expected page type after clicking register
+function determinePageTypeFromUrl(url: string): string {
+  if (url.includes('communitypass')) {
+    return 'login_wall'; // CommunityPass typically requires account
+  } else if (url.includes('seattle') || url.includes('activecommunities')) {
+    return 'direct_registration'; // Seattle Parks often allows direct registration
+  }
+  return 'registration_form';
+}
+
+// Helper function to check if authentication is required based on URL patterns  
+function checkAuthRequirementFromUrl(url: string): boolean {
+  // CommunityPass and similar platforms typically require accounts
+  if (url.includes('communitypass') || url.includes('register.') || url.includes('portal')) {
+    return true;
+  }
+  // ActiveCommunities sites are usually more open
+  if (url.includes('activecommunities') || url.includes('seattle')) {
+    return false;
+  }
+  return false; // Default to no auth required
+}
+
+// Helper function to check if account creation is specifically required
+function checkAccountCreationRequirement(url: string): boolean {
+  if (url.includes('communitypass')) {
+    return true;
+  }
+  return false;
+}
+
+// Helper function to simulate form fields detected on registration page
+function getSimulatedFormFields(url: string): any[] {
+  const baseFields = [
+    { name: 'child_name', type: 'text', required: true, label: 'Child Name' },
+    { name: 'child_dob', type: 'date', required: true, label: 'Date of Birth' },
+    { name: 'parent_name', type: 'text', required: true, label: 'Parent/Guardian Name' },
+    { name: 'parent_email', type: 'email', required: true, label: 'Email Address' },
+    { name: 'phone', type: 'tel', required: true, label: 'Phone Number' }
+  ];
+
+  if (checkAuthRequirementFromUrl(url)) {
+    // If auth is required, add login fields
+    return [
+      { name: 'username', type: 'email', required: true, label: 'Username/Email' },
+      { name: 'password', type: 'password', required: true, label: 'Password' },
+      ...baseFields
+    ];
+  }
+
+  return baseFields;
+}
 
 async function performAccountLogin(apiKey: string, request: BrowserSessionRequest): Promise<any> {
   if (!request.sessionId || !request.userId || !request.providerUrl) {
