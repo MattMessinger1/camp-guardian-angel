@@ -84,6 +84,18 @@ serve(async (req) => {
       case 'close':
         result = await handleCloseSession(browserbaseApiKey, requestData);
         break;
+      case 'save_checkpoint':
+        result = await handleSaveCheckpoint(browserbaseApiKey, browserbaseProjectId, requestData);
+        break;
+      case 'restore_checkpoint':
+        result = await handleRestoreCheckpoint(browserbaseApiKey, browserbaseProjectId, requestData);
+        break;
+      case 'navigate':
+        result = await handleNavigate(browserbaseApiKey, browserbaseProjectId, requestData);
+        break;
+      case 'extract':
+        result = await handleExtract(browserbaseApiKey, browserbaseProjectId, requestData);
+        break;
       default:
         result = {
           success: true,
@@ -840,3 +852,257 @@ function extractProviderFromUrl(url: string): string {
 
 // Import Supabase client for database operations
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+
+// New checkpoint and navigation handlers for enhanced session management
+
+async function handleSaveCheckpoint(apiKey: string, projectId: string, requestData: BrowserSessionRequest): Promise<any> {
+  console.log('💾 Saving session checkpoint:', requestData.sessionId);
+  
+  try {
+    // Get current browser state
+    const browserState = await getBrowserState(apiKey, requestData.sessionId!);
+    
+    // Create checkpoint data
+    const checkpoint = {
+      id: crypto.randomUUID(),
+      sessionId: requestData.sessionId!,
+      stepName: requestData.stepName || 'manual_checkpoint',
+      timestamp: new Date().toISOString(),
+      browserState,
+      workflowState: {
+        currentStage: requestData.currentStage || 'unknown',
+        completedStages: requestData.completedStages || [],
+        barriersPassed: requestData.barriersPassed || [],
+        remainingBarriers: requestData.remainingBarriers || [],
+        queuePosition: requestData.queuePosition,
+        queueToken: requestData.queueToken
+      },
+      providerContext: {
+        providerUrl: requestData.url || '',
+        providerId: requestData.campProviderId,
+        authRequired: requestData.authRequired || false,
+        accountCreated: requestData.accountCreated || false,
+        loggedIn: requestData.loggedIn || false,
+        captchasSolved: requestData.captchasSolved || 0,
+        complianceStatus: requestData.complianceStatus || 'green'
+      },
+      success: true,
+      metadata: requestData.metadata || {}
+    };
+
+    // Save via persistent session manager
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const { error } = await supabase.functions.invoke('persistent-session-manager', {
+      body: {
+        action: 'save',
+        sessionId: requestData.sessionId,
+        userId: requestData.userId,
+        checkpoint
+      }
+    });
+
+    if (error) throw error;
+
+    return {
+      success: true, 
+      checkpointId: checkpoint.id,
+      savedAt: checkpoint.timestamp
+    };
+
+  } catch (error: any) {
+    console.error('Failed to save checkpoint:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function handleRestoreCheckpoint(apiKey: string, projectId: string, requestData: BrowserSessionRequest): Promise<any> {
+  console.log('🔄 Restoring session checkpoint:', requestData.sessionId);
+  
+  try {
+    // Get session restoration data
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const { data, error } = await supabase.functions.invoke('persistent-session-manager', {
+      body: {
+        action: 'restore',
+        sessionId: requestData.sessionId,
+        userId: requestData.userId
+      }
+    });
+
+    if (error) throw error;
+
+    if (!data.sessionRestored) {
+      return {
+        success: false, 
+        error: 'No valid session state found for restoration',
+        canRecover: false
+      };
+    }
+
+    // Restore browser state if possible
+    const restoreResult = await restoreBrowserState(apiKey, requestData.sessionId!, data.lastValidCheckpoint);
+    
+    return {
+      success: true,
+      restored: restoreResult.success,
+      checkpointRestored: data.lastValidCheckpoint?.step_name,
+      sessionData: data.sessionState,
+      restoredAt: new Date().toISOString()
+    };
+
+  } catch (error: any) {
+    console.error('Failed to restore checkpoint:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function handleNavigate(apiKey: string, projectId: string, requestData: BrowserSessionRequest): Promise<any> {
+  console.log('🧭 Navigating to URL:', requestData.url);
+  
+  try {
+    // Auto-save checkpoint before navigation
+    if (requestData.autoCheckpoint !== false) {
+      await handleSaveCheckpoint(apiKey, projectId, {
+        ...requestData,
+        stepName: 'pre_navigation',
+        action: 'save_checkpoint'
+      });
+    }
+
+    const response = await fetch(`https://www.browserbase.com/v1/sessions/${requestData.sessionId}/navigate`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: requestData.url
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Navigation failed: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    return {
+      success: true,
+      sessionId: requestData.sessionId,
+      url: requestData.url,
+      navigatedAt: new Date().toISOString(),
+      result
+    };
+
+  } catch (error: any) {
+    console.error('Navigation failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function handleExtract(apiKey: string, projectId: string, requestData: BrowserSessionRequest): Promise<any> {
+  console.log('📤 Extracting page data from session:', requestData.sessionId);
+  
+  try {
+    const pageData = await getBrowserState(apiKey, requestData.sessionId!);
+    
+    return {
+      success: true,
+      sessionId: requestData.sessionId,
+      pageData,
+      extractedAt: new Date().toISOString()
+    };
+
+  } catch (error: any) {
+    console.error('Page data extraction failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Helper functions for enhanced session management
+
+async function getBrowserState(apiKey: string, sessionId: string): Promise<any> {
+  // Get current page state from Browserbase
+  const response = await fetch(`https://www.browserbase.com/v1/sessions/${sessionId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get browser state: ${response.status}`);
+  }
+
+  const sessionData = await response.json();
+  
+  return {
+    url: sessionData.url || '',
+    cookies: sessionData.cookies || [],
+    localStorage: sessionData.localStorage || {},
+    sessionStorage: sessionData.sessionStorage || {},
+    scrollPosition: { x: 0, y: 0 }, // Would need additional API call to get exact position
+    formData: sessionData.formData || {},
+    userAgent: sessionData.userAgent || '',
+    timestamp: new Date().toISOString()
+  };
+}
+
+async function restoreBrowserState(apiKey: string, sessionId: string, checkpoint: any): Promise<{ success: boolean; error?: string }> {
+  if (!checkpoint?.browser_state) {
+    return { success: false, error: 'No browser state to restore' };
+  }
+
+  try {
+    const browserState = checkpoint.browser_state;
+    
+    // Navigate to the saved URL
+    if (browserState.url) {
+      const navResponse = await fetch(`https://www.browserbase.com/v1/sessions/${sessionId}/navigate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: browserState.url }),
+      });
+      
+      if (!navResponse.ok) {
+        throw new Error(`Failed to navigate to saved URL: ${navResponse.status}`);
+      }
+    }
+
+    // Restore form data if available
+    if (browserState.formData && Object.keys(browserState.formData).length > 0) {
+      // Implementation would depend on Browserbase form filling capabilities
+      console.log('Form data restoration would be implemented here:', browserState.formData);
+    }
+
+    return { success: true };
+    
+  } catch (error: any) {
+    console.error('Browser state restoration failed:', error);
+    return { success: false, error: error.message };
+  }
+}

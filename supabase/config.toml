@@ -162,3 +162,6 @@ verify_jwt = false
 [functions.barrier-sequence-analyzer]
 verify_jwt = false
 
+[functions.persistent-session-manager]
+verify_jwt = false
+
