@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { SessionCard } from "@/components/ui/session-card";
 function useSEO(title: string, description: string, canonicalPath: string) {
   useEffect(() => {
     document.title = title;
@@ -35,6 +35,11 @@ interface SessionRow {
   upfront_fee_cents: number | null;
   registration_open_at: string | null;
   provider: { name: string | null } | null;
+  activities: {
+    name: string;
+    city: string;
+    state: string;
+  } | null;
 }
 
 export default function Sessions() {
@@ -68,7 +73,8 @@ export default function Sessions() {
         .from("sessions")
         .select(`
           id, title, start_at, end_at, capacity, upfront_fee_cents, registration_open_at,
-          provider:providers(name)
+          provider:providers(name),
+          activities(name, city, state)
         `)
         .order("start_at", { ascending: true });
       
@@ -129,26 +135,12 @@ export default function Sessions() {
         </div>
       )}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data && data.length > 0 && data.map((s) => (
-          <Link key={s.id} to={`/sessions/${s.id}`} data-testid="session-card">
-            <Card className="surface-card h-full hover:surface-hover transition-colors cursor-pointer">
-              <CardHeader>
-                <CardTitle className="line-clamp-1">{s.title || "Untitled"}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground space-y-1">
-                <div>Provider: {s.provider?.name || "—"}</div>
-                <div className="font-medium text-orange-600">
-                  Registration opens: {s.registration_open_at ? new Date(s.registration_open_at).toLocaleString() : "TBD"}
-                </div>
-                <div>
-                  <span className="font-medium">Dates:</span> {s.start_at ? new Date(s.start_at).toLocaleString() : "TBD"}
-                  {s.end_at ? ` – ${new Date(s.end_at).toLocaleString()}` : ""}
-                </div>
-                <div>Capacity: {s.capacity ?? "—"}</div>
-                <div>Fee due at signup: {typeof s.upfront_fee_cents === 'number' ? `$${(s.upfront_fee_cents/100).toFixed(2)}` : "—"}</div>
-              </CardContent>
-            </Card>
-          </Link>
+        {data && data.length > 0 && data.map((session) => (
+          <SessionCard
+            key={session.id}
+            session={session}
+            showGetReadyButton={true}
+          />
         ))}
       </div>
     </main>

@@ -213,6 +213,16 @@ export default function SignupSubmitted() {
               </div>
               
               <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="font-medium">Account Setup Complete</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your provider account credentials are securely stored. We'll automatically log you in during signup.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
                 <MessageSquare className="w-5 h-5 text-blue-500 mt-0.5" />
                 <div>
                   <p className="font-medium">Be Ready for Text Verification</p>

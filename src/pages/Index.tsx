@@ -8,12 +8,47 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 import { CheckCircle2, Shield, Zap, CalendarClock } from "lucide-react";
+import { SessionCard } from "@/components/ui/session-card";
 
 const Index = () => {
   const [pointer, setPointer] = useState({ x: 50, y: 50 });
   const { toast } = useToast();
   const [isSending, setIsSending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+
+  // Sample sessions for demo
+  const sampleSessions = [
+    {
+      id: "11111111-2222-3333-4444-555555555501",
+      title: "Summer Soccer Camp",
+      registration_open_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week from now
+      start_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 1 month from now
+      end_at: new Date(Date.now() + 37 * 24 * 60 * 60 * 1000).toISOString(), // 1 week later
+      capacity: 24,
+      upfront_fee_cents: 15000, // $150
+      provider: { name: "Elite Sports Academy" },
+      activities: {
+        name: "Summer Soccer Intensive",
+        city: "Austin",
+        state: "TX"
+      }
+    },
+    {
+      id: "11111111-2222-3333-4444-555555555502",
+      title: "Art & Creativity Workshop",
+      registration_open_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+      start_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks from now
+      end_at: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(), // 1 week later
+      capacity: 16,
+      upfront_fee_cents: 8500, // $85
+      provider: { name: "Creative Kids Studio" },
+      activities: {
+        name: "Young Artists Workshop",
+        city: "Seattle",
+        state: "WA"
+      }
+    }
+  ];
 
   const onMove = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -177,6 +212,28 @@ const Index = () => {
               <li>$20 success fee to our platform (charged on success)</li>
               <li>Optional $20 flat priority (if selected)</li>
             </ul>
+          </div>
+        </section>
+
+        {/* Featured Sessions */}
+        <section id="featured-sessions" className="container mx-auto py-8">
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-center mb-6">Get Ready for Popular Camps</h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              {sampleSessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  showGetReadyButton={true}
+                  variant="default"
+                />
+              ))}
+            </div>
+            <div className="text-center">
+              <Button asChild variant="outline" size="lg">
+                <a href="/sessions">View All Sessions</a>
+              </Button>
+            </div>
           </div>
         </section>
 

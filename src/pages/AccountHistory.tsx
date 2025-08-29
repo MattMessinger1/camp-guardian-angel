@@ -52,6 +52,9 @@ interface SignupHistoryRow {
   ageRange?: string;
   requiresTextVerification?: boolean;
   additionalInfoRequired?: string;
+  // Account setup tracking
+  accountSetupComplete?: boolean;
+  accountSetupProvider?: string | null;
 }
 
 // Component to handle async text verification status
@@ -126,9 +129,9 @@ const ActionsList = ({ row }: { row: SignupHistoryRow }) => {
               if (profile.captcha_expected) {
                 requiredActions.push('Be ready for a text at signup time');
               }
-              if (profile.login_type !== 'none') {
-                requiredActions.push('Create an account for Provider\'s website');
-              }
+            if (profile.login_type !== 'none' && !row.accountSetupComplete) {
+              requiredActions.push('Create an account for Provider\'s website');
+            }
             }
           } catch (error) {
             console.error('Error detecting platform for actions:', error);
@@ -392,8 +395,11 @@ export default function AccountHistory() {
               canonicalUrl: session?.activities?.canonical_url,
               location: session?.activities ? `${session.activities.city}, ${session.activities.state}` : undefined,
               ageRange: session ? `Ages ${session.age_min}-${session.age_max}` : undefined,
-              // Additional info requirements could be determined here
-              additionalInfoRequired: undefined // TODO: Implement logic to determine required info
+  // Additional info requirements could be determined here
+              additionalInfoRequired: undefined, // TODO: Implement logic to determine required info
+              // Check if account setup is complete
+              accountSetupComplete: reservation.metadata?.account_setup_complete || false,
+              accountSetupProvider: reservation.metadata?.account_setup_provider || null
             };
           });
           allData.push(...pendingData);
