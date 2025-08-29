@@ -70,6 +70,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
     AIContextTest: lazy(() => import('./pages/AIContextTest')),
     TestSignupPage: lazy(() => import('./pages/TestSignupPage')),
     E2ETestsPage: lazy(() => import('./pages/E2ETestsPage')),
+    RealCampTests: lazy(() => import('./components/RealCampTests')),
   };
 
 export default function App() {
@@ -115,6 +116,7 @@ export default function App() {
               <Route path="/ai-context-test" element={<DevPages.AIContextTest />} />
               <Route path="/test-signup" element={<DevPages.TestSignupPage />} />
               <Route path="/e2e-tests" element={<DevPages.E2ETestsPage />} />
+              <Route path="/real-camp-tests" element={<DevPages.RealCampTests />} />
               
               {/* Legacy Redirects */}
               <Route path="/accounthistory" element={<Navigate to="/account-history" replace />} />

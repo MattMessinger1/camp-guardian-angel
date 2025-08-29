@@ -512,6 +512,12 @@ const HomePage = () => {
                 >
                   ⚡ E2E Test Suite
                 </Link>
+                <Link 
+                  to="/real-camp-tests"
+                  className="block text-orange-400 hover:text-orange-300 transition-colors text-sm underline"
+                >
+                  🎯 Real Camp Tests
+                </Link>
               </div>
             </div>
           </div>
