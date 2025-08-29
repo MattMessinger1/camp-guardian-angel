@@ -19,7 +19,11 @@ test.describe('Complete User Journey - End-to-End', () => {
     console.log('📋 Setting up test sessions for Seattle Parks and Community Pass...');
     
     // Create Seattle Parks session
-    const seattleParksResponse = await request.post('/api/test-setup', {
+    const seattleParksResponse = await request.post('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/test-setup', {
+      headers: {
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dnd5ZnF0eWFud25veXltaGF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NjY5MjQsImV4cCI6MjA3MDQ0MjkyNH0.FxQZcpBxYVmnUI-yyE15N7y-ai6ADPiQV9X8szQtIjI',
+        'Content-Type': 'application/json'
+      },
       data: {
         action: 'create_session',
         session_data: {
@@ -49,7 +53,11 @@ test.describe('Complete User Journey - End-to-End', () => {
     testSessionId = seattleParksData.session_id;
     
     // Create Community Pass session
-    const communityPassResponse = await request.post('/api/test-setup', {
+    const communityPassResponse = await request.post('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/test-setup', {
+      headers: {
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dnd5ZnF0eWFud25veXltaGF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NjY5MjQsImV4cCI6MjA3MDQ0MjkyNH0.FxQZcpBxYVmnUI-yyE15N7y-ai6ADPiQV9X8szQtIjI',
+        'Content-Type': 'application/json'
+      },
       data: {
         action: 'create_session',
         session_data: {
@@ -86,7 +94,11 @@ test.describe('Complete User Journey - End-to-End', () => {
     console.log('🧹 Cleaning up test sessions...');
     
     try {
-      await request.post('/api/test-cleanup', {
+      await request.post('https://ezvwyfqtyanwnoyymhav.supabase.co/functions/v1/test-cleanup', {
+        headers: {
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dnd5ZnF0eWFud25veXltaGF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NjY5MjQsImV4cCI6MjA3MDQ0MjkyNH0.FxQZcpBxYVmnUI-yyE15N7y-ai6ADPiQV9X8szQtIjI',
+          'Content-Type': 'application/json'
+        },
         data: {
           action: 'delete_sessions',
           session_ids: [testSessionId, communityPassSessionId]
