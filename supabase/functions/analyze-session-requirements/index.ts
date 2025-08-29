@@ -42,6 +42,26 @@ interface RequirementsAnalysis {
   complexity_score: number;
   provider_type: string;
   last_analyzed: string;
+  // NEW: Comprehensive barrier detection
+  barriers: Array<{
+    type: 'account_creation' | 'login' | 'captcha' | 'document_upload' | 'payment' | 'verification';
+    stage: 'initial' | 'account_setup' | 'registration' | 'payment' | 'confirmation';
+    captcha_likelihood: number; // 0-1
+    required_fields: string[];
+    estimated_time_minutes: number;
+    complexity_level: 'low' | 'medium' | 'high' | 'expert';
+    human_intervention_required: boolean;
+    description: string;
+  }>;
+  estimated_interruptions: number;
+  total_estimated_time: number;
+  registration_flow: Array<{
+    step_number: number;
+    step_name: string;
+    barriers_in_step: string[];
+    automation_possible: boolean;
+    parent_assistance_likely: boolean;
+  }>;
 }
 
 serve(async (req) => {
@@ -190,6 +210,39 @@ function getProviderBaseAnalysis(url: string, providerType: string): Requirement
 
   switch (providerType) {
     case 'vscloud':
+      const vscBarriers = [
+        {
+          type: 'captcha' as const,
+          stage: 'initial' as const,
+          captcha_likelihood: 0.2,
+          required_fields: [],
+          estimated_time_minutes: 2,
+          complexity_level: 'low' as const,
+          human_intervention_required: false,
+          description: 'Initial page load CAPTCHA (low probability)'
+        },
+        {
+          type: 'document_upload' as const,
+          stage: 'registration' as const,
+          captcha_likelihood: 0.0,
+          required_fields: ['medical_waiver', 'emergency_contact'],
+          estimated_time_minutes: 5,
+          complexity_level: 'medium' as const,
+          human_intervention_required: true,
+          description: 'Medical waiver and emergency contact forms'
+        },
+        {
+          type: 'payment' as const,
+          stage: 'payment' as const,
+          captcha_likelihood: 0.3,
+          required_fields: ['credit_card', 'billing_address'],
+          estimated_time_minutes: 4,
+          complexity_level: 'medium' as const,
+          human_intervention_required: true,
+          description: 'Payment processing with possible CAPTCHA'
+        }
+      ];
+      
       return {
         session_id: url.split('id=')[1] || 'unknown',
         signup_url: url,
@@ -212,10 +265,71 @@ function getProviderBaseAnalysis(url: string, providerType: string): Requirement
         estimated_completion_time: 8,
         complexity_score: 6.5,
         provider_type: 'vscloud',
-        last_analyzed: new Date().toISOString()
+        last_analyzed: new Date().toISOString(),
+        barriers: vscBarriers,
+        estimated_interruptions: 2,
+        total_estimated_time: 11,
+        registration_flow: [
+          { step_number: 1, step_name: 'Initial Access', barriers_in_step: ['Initial CAPTCHA'], automation_possible: true, parent_assistance_likely: false },
+          { step_number: 2, step_name: 'Registration Form', barriers_in_step: ['Document Upload'], automation_possible: false, parent_assistance_likely: true },
+          { step_number: 3, step_name: 'Payment Processing', barriers_in_step: ['Payment CAPTCHA'], automation_possible: false, parent_assistance_likely: true }
+        ]
       };
 
     case 'community_pass':
+      const cpBarriers = [
+        {
+          type: 'account_creation' as const,
+          stage: 'account_setup' as const,
+          captcha_likelihood: 0.8,
+          required_fields: ['username', 'password', 'email', 'phone'],
+          estimated_time_minutes: 8,
+          complexity_level: 'high' as const,
+          human_intervention_required: true,
+          description: 'Account creation with high CAPTCHA probability'
+        },
+        {
+          type: 'login' as const,
+          stage: 'account_setup' as const,
+          captcha_likelihood: 0.4,
+          required_fields: ['username', 'password'],
+          estimated_time_minutes: 3,
+          complexity_level: 'medium' as const,
+          human_intervention_required: false,
+          description: 'Login verification with moderate CAPTCHA risk'
+        },
+        {
+          type: 'captcha' as const,
+          stage: 'registration' as const,
+          captcha_likelihood: 0.7,
+          required_fields: [],
+          estimated_time_minutes: 3,
+          complexity_level: 'high' as const,
+          human_intervention_required: true,
+          description: 'Registration form CAPTCHA (high probability)'
+        },
+        {
+          type: 'document_upload' as const,
+          stage: 'registration' as const,
+          captcha_likelihood: 0.1,
+          required_fields: ['liability_waiver', 'medical_form'],
+          estimated_time_minutes: 10,
+          complexity_level: 'high' as const,
+          human_intervention_required: true,
+          description: 'Multiple required document uploads'
+        },
+        {
+          type: 'payment' as const,
+          stage: 'payment' as const,
+          captcha_likelihood: 0.5,
+          required_fields: ['payment_method', 'billing_info'],
+          estimated_time_minutes: 5,
+          complexity_level: 'medium' as const,
+          human_intervention_required: true,
+          description: 'Payment with security verification'
+        }
+      ];
+      
       return {
         session_id: url.split('event_id=')[1] || 'unknown',
         signup_url: url,
@@ -240,10 +354,51 @@ function getProviderBaseAnalysis(url: string, providerType: string): Requirement
         estimated_completion_time: 15,
         complexity_score: 9.2,
         provider_type: 'community_pass',
-        last_analyzed: new Date().toISOString()
+        last_analyzed: new Date().toISOString(),
+        barriers: cpBarriers,
+        estimated_interruptions: 4,
+        total_estimated_time: 29,
+        registration_flow: [
+          { step_number: 1, step_name: 'Account Setup', barriers_in_step: ['Account Creation CAPTCHA', 'Login CAPTCHA'], automation_possible: false, parent_assistance_likely: true },
+          { step_number: 2, step_name: 'Registration Form', barriers_in_step: ['Registration CAPTCHA', 'Document Upload'], automation_possible: false, parent_assistance_likely: true },
+          { step_number: 3, step_name: 'Payment Processing', barriers_in_step: ['Payment CAPTCHA'], automation_possible: false, parent_assistance_likely: true }
+        ]
       };
 
     case 'municipal_parks':
+      const mpBarriers = [
+        {
+          type: 'verification' as const,
+          stage: 'initial' as const,
+          captcha_likelihood: 0.1,
+          required_fields: ['residency_proof'],
+          estimated_time_minutes: 3,
+          complexity_level: 'low' as const,
+          human_intervention_required: false,
+          description: 'Residency verification (optional)'
+        },
+        {
+          type: 'captcha' as const,
+          stage: 'registration' as const,
+          captcha_likelihood: 0.2,
+          required_fields: [],
+          estimated_time_minutes: 2,
+          complexity_level: 'low' as const,
+          human_intervention_required: false,
+          description: 'Low-probability CAPTCHA during registration'
+        },
+        {
+          type: 'payment' as const,
+          stage: 'confirmation' as const,
+          captcha_likelihood: 0.1,
+          required_fields: ['payment_method'],
+          estimated_time_minutes: 4,
+          complexity_level: 'low' as const,
+          human_intervention_required: true,
+          description: 'Deferred payment setup'
+        }
+      ];
+      
       return {
         session_id: url.split('id=')[1] || 'unknown',
         signup_url: url,
@@ -268,10 +423,31 @@ function getProviderBaseAnalysis(url: string, providerType: string): Requirement
         estimated_completion_time: 6,
         complexity_score: 5.8,
         provider_type: 'municipal_parks',
-        last_analyzed: new Date().toISOString()
+        last_analyzed: new Date().toISOString(),
+        barriers: mpBarriers,
+        estimated_interruptions: 1,
+        total_estimated_time: 9,
+        registration_flow: [
+          { step_number: 1, step_name: 'Initial Access', barriers_in_step: ['Residency Verification'], automation_possible: true, parent_assistance_likely: false },
+          { step_number: 2, step_name: 'Registration Form', barriers_in_step: ['Registration CAPTCHA'], automation_possible: true, parent_assistance_likely: false },
+          { step_number: 3, step_name: 'Confirmation', barriers_in_step: ['Payment Setup'], automation_possible: false, parent_assistance_likely: true }
+        ]
       };
 
     default:
+      const defaultBarriers = [
+        {
+          type: 'captcha' as const,
+          stage: 'registration' as const,
+          captcha_likelihood: 0.3,
+          required_fields: [],
+          estimated_time_minutes: 3,
+          complexity_level: 'medium' as const,
+          human_intervention_required: false,
+          description: 'Generic CAPTCHA challenge'
+        }
+      ];
+      
       return {
         session_id: 'unknown',
         signup_url: url,
@@ -287,7 +463,13 @@ function getProviderBaseAnalysis(url: string, providerType: string): Requirement
         estimated_completion_time: 5,
         complexity_score: 4.0,
         provider_type: 'unknown',
-        last_analyzed: new Date().toISOString()
+        last_analyzed: new Date().toISOString(),
+        barriers: defaultBarriers,
+        estimated_interruptions: 0,
+        total_estimated_time: 5,
+        registration_flow: [
+          { step_number: 1, step_name: 'Registration Form', barriers_in_step: ['Generic CAPTCHA'], automation_possible: true, parent_assistance_likely: false }
+        ]
       };
   }
 }

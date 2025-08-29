@@ -159,6 +159,6 @@ verify_jwt = false
 [functions.analyze-captcha-challenge]
 verify_jwt = false
 
-[functions.browser-automation-simple]
+[functions.barrier-sequence-analyzer]
 verify_jwt = false
 
