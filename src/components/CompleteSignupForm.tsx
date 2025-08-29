@@ -147,13 +147,10 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
 
     setSendingOtp(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // For signup flow, we might not have a session yet, so we'll create a temporary OTP
       const { data, error } = await supabase.functions.invoke('send-otp', {
         body: { 
           phone: phone.trim(),
-          signup_mode: true // Indicate this is during signup
+          signup_mode: true
         }
       });
 
@@ -201,7 +198,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
       const { data, error } = await supabase.functions.invoke('verify-otp', {
         body: { 
           code: otp.trim(),
-          signup_mode: true // Indicate this is during signup
+          signup_mode: true
         }
       });
 
@@ -243,7 +240,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     }
   };
 
-  // Save form data to localStorage - memoized to prevent infinite re-renders
+  // Save form data to localStorage
   const saveFormData = useCallback(() => {
     const formData = {
       email,
@@ -265,13 +262,12 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     }
   }, [formStorageKey, email, password, guardianName, children, hasPaymentMethod, phone, phoneVerified, consentGiven, upfrontPaymentConsent, successFeeConsent]);
 
-  // Restore form data from localStorage - memoized and only runs once
+  // Restore form data from localStorage
   const restoreFormData = useCallback(() => {
     try {
       const saved = localStorage.getItem(formStorageKey);
       if (saved) {
         const formData = JSON.parse(saved);
-        // Only restore if saved within last 30 minutes
         if (Date.now() - formData.timestamp < 30 * 60 * 1000) {
           setEmail(formData.email || "");
           setPassword(formData.password || "");
@@ -283,31 +279,18 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
           setConsentGiven(formData.consentGiven || false);
           setUpfrontPaymentConsent(formData.upfrontPaymentConsent || false);
           setSuccessFeeConsent(formData.successFeeConsent || false);
-          
-          // Scroll to payment section if returning from Stripe
-          if (formData.hasPaymentMethod) {
-            setTimeout(() => {
-              const paymentSection = document.querySelector('[data-section="payment"]');
-              if (paymentSection) {
-                paymentSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 100);
-          }
         } else {
-          // Clean up expired data
           localStorage.removeItem(formStorageKey);
         }
       }
     } catch (error) {
       console.warn('Failed to restore form data:', error);
-      // Clean up corrupted data
       localStorage.removeItem(formStorageKey);
     }
   }, [formStorageKey]);
 
-  // Auto-save form data when key fields change - now properly memoized
+  // Auto-save form data when key fields change
   useEffect(() => {
-    // Small delay to prevent excessive saves during rapid typing
     const timeoutId = setTimeout(() => {
       saveFormData();
     }, 300);
@@ -315,29 +298,25 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     return () => clearTimeout(timeoutId);
   }, [saveFormData]);
 
-  // Restore form data on component mount - only runs once
+  // Restore form data on component mount
   useEffect(() => {
     restoreFormData();
   }, [restoreFormData]);
 
-  // Load session-specific requirements with PHI blocking
+  // Load session-specific requirements
   useEffect(() => {
     const loadRequirements = () => {
-      // Check if this is a test scenario first
       const testScenario = sessionId ? getTestScenario(sessionId) : null;
       
       if (testScenario) {
         console.log('🧪 Using test scenario:', testScenario.name);
         
-        // Create requirements from test scenario
         const testRequirements: SessionRequirements = {
           required_fields: [
-            // Core account fields
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" },
             { field_name: "guardian_name", field_type: "text", required: true, label: "Parent/Guardian Name" },
             
-            // Add test scenario specific fields
             ...(testScenario.requirements?.required_parent_fields || []).map(field => ({
               field_name: field,
               field_type: field.includes('email') ? 'email' : field.includes('phone') ? 'tel' : 'text',
@@ -362,23 +341,16 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             testScenario.requirements.deposit_amount_cents / 100 : undefined
         };
         
-        console.log('💰 Test scenario payment amount:', testRequirements.payment_amount);
-        
         setRequirements(testRequirements);
         setRemainingFields(testScenario.requirements?.required_documents || []);
-        
-        // Check if CAPTCHA handling might be needed (assume yes for automated scenarios)
         setNeedsPhoneVerification(true);
-        
         setLoadingRequirements(false);
         return;
       }
 
-      // Use passed discoveredRequirements instead of calling API again
       if (discoveredRequirements) {
         console.log('📋 Using discovered requirements:', discoveredRequirements);
         
-        // Extract signup fields from discovery requirements structure
         let signupFields = [];
         let remainingFields = [];
         
@@ -389,9 +361,6 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             ...(discoveryReqs.required_child_fields || [])
           ];
           
-          console.log('📋 All required fields from YMCA:', allRequiredFields);
-          
-          // Map to our form field structure - only non-PHI signup fields
           const fieldMappings: Record<string, { type: string; label: string; options?: string[] }> = {
             parent_guardian_name: { type: 'text', label: 'Parent/Guardian Name' },
             parent_email: { type: 'email', label: 'Parent Email' },
@@ -401,10 +370,8 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
             camper_dob: { type: 'date', label: 'Camper Date of Birth' },
             emergency_contact_name: { type: 'text', label: 'Emergency Contact Name' },
             emergency_contact_phone: { type: 'tel', label: 'Emergency Contact Phone' },
-            swim_level: { type: 'select', label: 'Swimming Level', options: ['Beginner', 'Intermediate', 'Advanced'] }
           };
           
-          // Create signup fields for available mappings
           signupFields = allRequiredFields
             .filter(fieldName => fieldMappings[fieldName as keyof typeof fieldMappings])
             .map(fieldName => {
@@ -418,59 +385,34 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
               };
             });
           
-          // Identify remaining fields not yet supported (for future features)
           remainingFields = allRequiredFields.filter(fieldName => 
             !fieldMappings[fieldName as keyof typeof fieldMappings]
           );
           
-          // Add additional requirements from the extracted form data
-          const additionalRequirements = [];
-          if (discoveredRequirements.pageData?.requirements) {
-            const reqs = discoveredRequirements.pageData.requirements;
-            if (reqs.waiver) additionalRequirements.push('YMCA liability waiver');
-            if (reqs.medical_form) additionalRequirements.push('Medical form (required before first day)');
-          }
-          // Add optional YMCA Member ID for potential discount
-          additionalRequirements.push('YMCA Member ID (optional - for member discount)');
-          
-          remainingFields = [...remainingFields, ...additionalRequirements];
-          
-          console.log('✅ Signup fields available now:', signupFields);
-          console.log('⏳ Remaining items required for full signup:', remainingFields);
-          
-          // Set the remaining fields state
           setRemainingFields(remainingFields);
         }
 
-        // Convert to our requirements format with camp-specific fields
         const sessionReqs: SessionRequirements = {
           required_fields: [
-            // Core account fields (always needed)
             { field_name: "email", field_type: "email", required: true, label: "Email Address" },
             { field_name: "password", field_type: "password", required: true, label: "Password" },
-            // Add signup-specific fields (PHI filtered)
             ...signupFields
           ],
           phi_blocked_fields: discoveredRequirements.discovery?.phi_blocked_fields || [],
           communication_preferences: {
             sms_required: discoveredRequirements.discovery?.requirements?.sms_required || false,
-            email_required: true // Always require email for account
+            email_required: true
           },
           payment_required: discoveredRequirements.discovery?.requirements?.payment_required !== false,
           payment_amount: discoveredRequirements.discovery?.requirements?.deposit_amount_cents ? 
             discoveredRequirements.discovery.requirements.deposit_amount_cents / 100 : undefined
         };
 
-        console.log('✅ Camp-specific form requirements ready:', sessionReqs);
         setRequirements(sessionReqs);
-        
-        // Check if CAPTCHA handling might be needed (assume yes for automated sessions)
         setNeedsPhoneVerification(!!sessionId);
-        
         return;
       }
 
-      // Fallback if no discovered requirements
       console.log('ℹ️ No discovered requirements, using defaults');
       setRequirements({
         required_fields: [
@@ -480,45 +422,50 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
           { field_name: "password", field_type: "password", required: true, label: "Password" }
         ],
         phi_blocked_fields: [],
-        communication_preferences: { sms_required: false, email_required: true },
+        communication_preferences: {
+          sms_required: false,
+          email_required: true
+        },
         payment_required: true
       });
+      
+      setNeedsPhoneVerification(!!sessionId);
+      setLoadingRequirements(false);
     };
 
-    loadRequirements();
-  }, [discoveredRequirements]);
+    setLoadingRequirements(true);
+    setTimeout(loadRequirements, 100);
+  }, [sessionId, discoveredRequirements]);
 
-  const handleAddPaymentMethod = async () => {
+  const handleAddPayment = async () => {
     setPaymentLoading(true);
+    
     try {
-      // Construct return URL to come back to the signup page with sessionId
-      const currentUrl = new URL(window.location.href);
-      const returnUrl = sessionId 
-        ? `${currentUrl.origin}/signup?sessionId=${sessionId}`
-        : `${currentUrl.origin}/signup`;
-      
-      const { data, error } = await supabase.functions.invoke('create-setup-session', {
-        body: { return_url: returnUrl }
+      const { data, error } = await supabase.functions.invoke('create-setup-intent', {
+        body: {
+          email: email,
+          return_url: `${window.location.origin}/signup?sessionId=${sessionId}&paymentComplete=true`
+        }
       });
 
-      if (error) throw error;
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to set up payment. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (data?.url) {
-        // Open Stripe setup in new tab (simpler, more reliable)
-        window.open(data.url, '_blank');
-        toast({
-          title: "Payment setup opened",
-          description: "Complete the payment setup in the new tab, then come back here and refresh."
-        });
-        // Set payment method to true immediately since we opened Stripe
-        setHasPaymentMethod(true);
+        window.location.href = data.url;
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Payment setup error:', error);
       toast({
-        title: "Payment setup failed",
-        description: error.message || "Unable to set up payment method",
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to set up payment. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setPaymentLoading(false);
@@ -527,220 +474,53 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 Form submit clicked!');
-    console.log('📊 Current form state:', {
-      guardianName,
-      children,
-      hasPaymentMethod,
-      upfrontPaymentConsent,
-      successFeeConsent,
-      consentGiven,
-      loading
-    });
-
-    // Test bypass - add ?test=true to URL to skip form validation
-    if (window.location.search.includes('test=true')) {
-      console.log('🧪 Test mode activated, bypassing validation');
-      onComplete({ id: 'test-user' });
-      return;
-    }
-
-    // Validation
-    if (!guardianName.trim()) {
-      console.log('❌ Validation failed: Missing guardian name');
-      toast({ title: "Missing information", description: "Please enter your name." });
-      return;
-    }
-
-    if (children.some(child => !child.name.trim() || !child.dob)) {
-      console.log('❌ Validation failed: Missing child information');
-      toast({ title: "Missing information", description: "Please fill in all child names and birth dates." });
-      return;
-    }
-
-    if (!hasPaymentMethod) {
-      console.log('❌ Validation failed: Missing payment method');
-      toast({ title: "Payment method required", description: "Please add a payment method to complete signup." });
-      return;
-    }
-
-    if (needsPhoneVerification && !phoneVerified) {
-      console.log('❌ Validation failed: Phone not verified');
-      toast({ title: "Phone verification required", description: "Please verify your phone number for CAPTCHA notifications." });
-      return;
-    }
-
-    if (!upfrontPaymentConsent) {
-      console.log('❌ Validation failed: Missing upfront payment consent');
-      toast({ title: "Payment consent required", description: "Please agree to the upfront payment terms." });
-      return;
-    }
-
-    if (!successFeeConsent) {
-      console.log('❌ Validation failed: Missing success fee consent');
-      toast({ title: "Success fee consent required", description: "Please agree to the success fee terms." });
-      return;
-    }
-
-    if (!consentGiven) {
-      console.log('❌ Validation failed: Missing general consent');
-      toast({ title: "Consent required", description: "Please agree to receive signup assistance." });
-      return;
-    }
-
-    console.log('✅ All validations passed, proceeding with account creation');
-
-    // Check for potential duplicates and account limits before creating account
-    try {
-      const duplicateChecks = await Promise.all(
-        children.map(async (child) => {
-          const { data, error } = await supabase.functions.invoke('detect-child-duplicates', {
-            body: {
-              child_name: child.name.trim(),
-              child_dob: child.dob
-            }
-          });
-          
-          if (error) {
-            console.warn('Child duplicate check failed:', error);
-            return null;
-          }
-          
-          return data;
-        })
-      );
-
-      const duplicates = duplicateChecks.filter(result => result?.duplicate_found);
-      if (duplicates.length > 0) {
-        const duplicateNames = duplicates.map((_, index) => children[index].name).join(', ');
-        toast({
-          title: "Duplicate child detected",
-          description: `This child appears to already exist in our system: ${duplicateNames}. If this seems wrong, contact support.`,
-          variant: "destructive"
-        });
-        return;
-      }
-    } catch (error) {
-      console.warn('Duplicate detection failed, proceeding anyway:', error);
-    }
-
     setLoading(true);
 
     try {
-      // Create account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: { 
+        options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             guardian_name: guardianName,
             children: children,
-            phone_e164: phoneVerified ? phone : null,
-            phone_verified: phoneVerified
+            phone: phone,
+            phone_verified: phoneVerified,
+            account_setup_data: accountSetupData
           }
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Auth error:', authError);
+        toast({
+          title: "Error",
+          description: authError.message || "Failed to create account",
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (authData.user) {
-        toast({
-          title: "Account created successfully!",
-          description: hasPaymentMethod 
-            ? "Your account is ready for camp signups." 
-            : "Please check your email to verify your account."
-        });
-        
-        // If we have a sessionId, create a readiness assessment to link this session to the user
-        if (sessionId) {
-          try {
-            await supabase.from('readiness_assessments').insert({
-              user_id: authData.user.id,
-              session_id: sessionId,
-              assessment_data: {
-                signup_completed: true,
-                payment_method_added: hasPaymentMethod,
-                account_created: true,
-                children_count: children.length,
-                signup_timestamp: new Date().toISOString()
-              }
-            });
-          } catch (error) {
-            console.warn('Failed to create readiness assessment:', error);
-          }
-        }
-        
-        // Clear saved form data on successful signup
         localStorage.removeItem(formStorageKey);
+        toast({
+          title: "Success!",
+          description: "Account created successfully. Getting ready for registration...",
+        });
         
         onComplete(authData.user);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Signup error:', error);
-      
-      // Handle existing user case
-      if (error.message === "User already registered" || error.code === "user_already_exists") {
-        toast({
-          title: "Account already exists",
-          description: "Signing you in with existing credentials...",
-        });
-        
-        // Try to sign in with the existing account
-        try {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          
-          if (signInError) {
-            toast({
-              title: "Please check your password",
-              description: "An account exists with this email. Please enter the correct password or reset it.",
-              variant: "destructive"
-            });
-            return;
-          }
-          
-          if (signInData.user) {
-            toast({
-              title: "Signed in successfully!",
-              description: "Welcome back! Your account is ready."
-            });
-            
-            // Clear saved form data
-            localStorage.removeItem(formStorageKey);
-            onComplete(signInData.user);
-            return;
-          }
-        } catch (signInError: any) {
-          console.error('Sign in after existing user error:', signInError);
-          toast({
-            title: "Please sign in manually",
-            description: "An account exists with this email. Please go to the login page and sign in.",
-            variant: "destructive"
-          });
-        }
-      } else {
-        toast({
-          title: "Signup failed",
-          description: error.message || "Unable to create account",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Error",
+        description: "Failed to create account. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  };
-
-  const isFieldRequired = (fieldName: string) => {
-    return requirements?.required_fields.some(field => 
-      field.field_name === fieldName && field.required
-    ) || false;
-  };
-
-  const isFieldBlocked = (fieldName: string) => {
-    return requirements?.phi_blocked_fields.includes(fieldName) || false;
   };
 
   if (loadingRequirements) {
@@ -765,7 +545,6 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-2xl space-y-6">
-          {/* Progress indicator */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold">Camp Registration Setup</h1>
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -790,12 +569,11 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     );
   }
 
-  // Step 2: Profile Information (existing form content)
+  // Step 2: Profile Information
   if (currentStep === 'profile-info') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-2xl space-y-6">
-          {/* Progress indicator */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold">Profile Information</h1>
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -816,17 +594,9 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                 <User className="h-5 w-5" />
                 Required Information
               </CardTitle>
-              {requirementsError && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    {requirementsError} - Using default requirements.
-                  </AlertDescription>
-                </Alert>
-              )}
               {accountSetupData?.account_required && (
                 <Alert>
-                  <CheckCircle className="h-4 w-4" />
+                  <Check className="h-4 w-4" />
                   <AlertDescription>
                     Account setup complete for {accountSetupData.provider_name}. 
                     Your credentials are securely stored for automatic login.
@@ -950,7 +720,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                   </div>
                 </div>
 
-                {/* Phone Verification for CAPTCHA (when needed) */}
+                {/* Phone Verification */}
                 {needsPhoneVerification && (
                   <>
                     <Separator />
@@ -992,9 +762,6 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                                   onChange={(e) => setPhone(e.target.value)}
                                   disabled={sendingOtp}
                                 />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  US/Canada numbers supported. Format: (555) 123-4567
-                                </p>
                               </div>
                               
                               <Button
@@ -1015,12 +782,6 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                             </>
                           ) : (
                             <>
-                              <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
-                                <p className="text-sm text-blue-800">
-                                  Verification code sent to {formatPhoneDisplay(phone)}
-                                </p>
-                              </div>
-                              
                               <div>
                                 <Label htmlFor="otp">6-Digit Verification Code *</Label>
                                 <Input
@@ -1059,16 +820,6 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                                   Back
                                 </Button>
                               </div>
-                              
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={handleSendOtp}
-                                disabled={sendingOtp || verifyingOtp}
-                                className="w-full text-sm"
-                              >
-                                {sendingOtp ? "Sending..." : "Resend Code"}
-                              </Button>
                             </>
                           )}
                         </div>
@@ -1102,11 +853,10 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     );
   }
 
-  // Step 3: Payment (existing payment section)
+  // Step 3: Payment
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-2xl space-y-6">
-        {/* Progress indicator */}
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Payment Setup</h1>
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -1131,418 +881,137 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Participant */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-lg font-semibold">
-                <User className="h-5 w-5" />
-                Participant
-              </div>
               
-              <div className="space-y-3">
-                {children.map((child, index) => (
-                  <div key={index} className="flex gap-3 items-end">
-                    <div className="flex-1">
-                      <Label>Participant Name *</Label>
-                      <Input 
-                        value={child.name} 
-                        onChange={(e) => updateChild(index, "name", e.target.value)}
-                        placeholder="Enter participant's name"
-                        required 
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <Label>Birth Date *</Label>
-                      <Input 
-                        type="date" 
-                        value={child.dob} 
-                        onChange={(e) => updateChild(index, "dob", e.target.value)}
-                        required 
-                      />
-                    </div>
-                    {children.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeChild(index)}
-                        className="px-3"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addChild}
-                  disabled={children.length >= 5}
-                  className="w-fit"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Another Participant {children.length >= 5 && "(Max 5)"}
-                </Button>
-              </div>
-            </div>
+              {/* Payment Requirements */}
+              {requirements?.payment_required && (
+                <Alert>
+                  <CreditCard className="h-4 w-4" />
+                  <AlertDescription>
+                    This session requires payment setup. You'll need to add a payment method to secure your registration.
+                    {requirements.payment_amount && ` Amount: $${requirements.payment_amount}`}
+                  </AlertDescription>
+                </Alert>
+              )}
 
-            <Separator />
-
-            {/* YMCA-Specific Requirements */}
-            {requirements?.required_fields.some(field => 
-              !['email', 'password', 'guardian_name', 'children'].includes(field.field_name)
-            ) && (
-              <>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <User className="h-5 w-5" />
-                    {discoveredRequirements?.pageData?.provider === 'YMCA' ? 'YMCA-Specific Requirements' : 'Camp Requirements'}
-                  </div>
-                  {discoveredRequirements?.pageData?.provider === 'YMCA' && (
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        These fields are required by YMCA for camp registration and safety protocols.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <div className="grid gap-4">
-                    {requirements.required_fields
-                      .filter(field => !['email', 'password', 'guardian_name', 'children'].includes(field.field_name))
-                      .map((field) => (
-                        <div key={field.field_name}>
-                          <Label htmlFor={field.field_name}>
-                            {field.label} {field.required && '*'}
-                          </Label>
-                          {field.help_text && (
-                            <p className="text-xs text-muted-foreground mt-1">{field.help_text}</p>
-                          )}
-                          {field.field_type === 'select' && field.options ? (
-                            <select 
-                              id={field.field_name}
-                              className="w-full px-3 py-2 border border-input bg-background rounded-md"
-                              required={field.required}
-                            >
-                              <option value="">Select {field.label}</option>
-                              {field.options.map((option: string) => (
-                                <option key={option} value={option}>{option}</option>
-                              ))}
-                            </select>
-                          ) : field.field_type === 'textarea' ? (
-                            <textarea
-                              id={field.field_name}
-                              className="w-full px-3 py-2 border border-input bg-background rounded-md min-h-[80px]"
-                              placeholder={`Enter ${field.label.toLowerCase()}`}
-                              required={field.required}
-                            />
-                          ) : (
-                            <Input 
-                              id={field.field_name}
-                              type={field.field_type}
-                              placeholder={`Enter ${field.label.toLowerCase()}`}
-                              required={field.required}
-                            />
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                  
-                  {discoveredRequirements?.pageData?.requirements && (
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h4 className="font-semibold text-blue-900 mb-2">
-                        {discoveredRequirements?.pageData?.provider === 'YMCA' ? 'Additional YMCA Requirements:' : 'Additional Requirements:'}
-                      </h4>
-                      <ul className="text-sm text-blue-800 space-y-1">
-                        {Object.entries(discoveredRequirements.pageData.requirements).map(([key, value]) => (
-                          <li key={key}>• {value as string}</li>
-                        ))}
-                      </ul>
-                    </div>
-                   )}
-                   
-                 </div>
-                 <Separator />
-               </>
-             )}
-
-            {/* Account Information */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-lg font-semibold">
-                <Mail className="h-5 w-5" />
-                Password / Account Set Up
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Signup Assist account required. Your email is your Username.
-              </p>
-              
-              <div className="grid gap-4">
-                <div>
-                  <Label htmlFor="password">Password *</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Choose a secure password"
-                    required 
-                  />
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Phone Verification for CAPTCHA (when needed) */}
-            {needsPhoneVerification && (
-              <>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <Phone className="h-5 w-5" />
-                    Phone Verification for SMS Notifications
-                  </div>
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      This session may require CAPTCHA solving. Please verify your phone number to receive instant SMS notifications.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  {phoneVerified ? (
-                    <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
-                      <div className="flex items-center gap-3">
-                        <Check className="h-5 w-5 text-green-600" />
-                        <div>
-                          <p className="font-medium text-green-800">Phone Verified</p>
-                          <p className="text-sm text-green-600">
-                            {formatPhoneDisplay(phone)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {phoneStep === "input" ? (
-                        <>
-                          <div>
-                            <Label htmlFor="phone">Phone Number *</Label>
-                            <Input
-                              id="phone"
-                              type="tel"
-                              placeholder="(555) 123-4567"
-                              value={formatPhoneInput(phone)}
-                              onChange={(e) => setPhone(e.target.value)}
-                              disabled={sendingOtp}
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              US/Canada numbers supported. Format: (555) 123-4567
-                            </p>
-                          </div>
-                          
-                          <Button
-                            type="button"
-                            onClick={handleSendOtp}
-                            disabled={!phone.trim() || sendingOtp}
-                            className="w-full"
-                          >
-                            {sendingOtp ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Sending Code...
-                              </>
-                            ) : (
-                              "Send Verification Code"
-                            )}
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
-                            <p className="text-sm text-blue-800">
-                              Verification code sent to {formatPhoneDisplay(phone)}
-                            </p>
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor="otp">6-Digit Verification Code *</Label>
-                            <Input
-                              id="otp"
-                              type="text"
-                              placeholder="123456"
-                              value={otp}
-                              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                              disabled={verifyingOtp}
-                              maxLength={6}
-                            />
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              onClick={handleVerifyOtp}
-                              disabled={otp.length !== 6 || verifyingOtp}
-                              className="flex-1"
-                            >
-                              {verifyingOtp ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Verifying...
-                                </>
-                              ) : (
-                                "Verify Code"
-                              )}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setPhoneStep("input")}
-                              disabled={verifyingOtp}
-                            >
-                              Back
-                            </Button>
-                          </div>
-                          
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={handleSendOtp}
-                            disabled={sendingOtp || verifyingOtp}
-                            className="w-full text-sm"
-                          >
-                            {sendingOtp ? "Sending..." : "Resend Code"}
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
-              </>
-            )}
-
-            {/* Payment Information */}
-            <div className="space-y-6" data-section="payment">
-              <div className="flex items-center gap-2 text-lg font-semibold">
-                <CreditCard className="h-5 w-5" />
-                Payment Information
-              </div>
-              
-              {/* Upfront Payment Section */}
-              <div className="bg-muted/50 p-4 rounded-lg space-y-4">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-base">Payment Due upon Signup</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    
-                  </p>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Checkbox 
-                    id="upfrontConsent"
-                    checked={upfrontPaymentConsent}
-                    onCheckedChange={(checked) => setUpfrontPaymentConsent(checked === true)}
-                  />
-                   <div className="text-sm leading-relaxed">
-                     <Label htmlFor="upfrontConsent" className="cursor-pointer font-medium">
-                       I agree to pay the Provider {requirements?.payment_amount ? `$${requirements.payment_amount}` : '<<amount varies by activity>>'} *.
-                     </Label>
-                     <div className="text-xs text-muted-foreground italic mt-1">
-                       {sessionId && getTestScenario(sessionId) ? 
-                         `(Test scenario: ${getTestScenario(sessionId)?.name} - ${requirements?.payment_amount ? `$${requirements.payment_amount} deposit` : 'no deposit'} required)` :
-                         '(This activity requires a payment upon signup. You\'ll pay the remaining balance directly on the camp provider\'s website after signup.)'
-                       }
-                     </div>
-                   </div>
-                </div>
-              </div>
-
-              {/* Success Fee Section */}
-              <div className="bg-muted/50 p-4 rounded-lg space-y-4">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-base">Signup Success Fee</h4>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Checkbox 
-                    id="successFeeConsent"
-                    checked={successFeeConsent}
-                    onCheckedChange={(checked) => setSuccessFeeConsent(checked === true)}
-                  />
-                  <div className="text-sm leading-relaxed">
-                    <Label htmlFor="successFeeConsent" className="cursor-pointer font-medium">
-                      I agree to pay the $20 Signup Success service fee only if my child is successfully 
-                       registered for camp. No fee if registration is unsuccessful. *
-                    </Label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Method Setup */}
-              <div className="bg-muted/50 p-4 rounded-lg space-y-4">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-base">Payment Method Setup</h4>
-                   <p className="text-sm leading-relaxed">
-                      Your card will only be charged when we successfully complete a signup on your behalf.*
-                   </p>
+              {/* Payment Method Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <CreditCard className="h-5 w-5" />
+                  Payment Method
                 </div>
                 
                 {hasPaymentMethod ? (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
-                    <CreditCard className="h-4 w-4" />
-                    Payment method configured
+                  <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-2 text-green-800">
+                      <Check className="h-5 w-5" />
+                      <span className="font-medium">Payment method added successfully</span>
+                    </div>
                   </div>
                 ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddPaymentMethod}
-                    disabled={paymentLoading}
-                    className="w-full"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    {paymentLoading ? "Setting up..." : "Add Payment Method"}
-                  </Button>
+                  <div className="space-y-4">
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        You'll add your payment method on the next page. This ensures your information stays secure.
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <Button
+                      type="button"
+                      onClick={handleAddPayment}
+                      disabled={paymentLoading}
+                      className="w-full"
+                    >
+                      {paymentLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Loading Secure Payment...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Add Payment Method
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 )}
               </div>
-            </div>
 
-            <Separator />
+              <Separator />
 
-            {/* Consent */}
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <Checkbox 
-                  id="consent"
-                  checked={consentGiven}
-                  onCheckedChange={(checked) => setConsentGiven(checked === true)}
-                />
-                <div className="text-sm leading-relaxed">
-                  <Label htmlFor="consent" className="cursor-pointer">
-                    I understand that CampRush may need to send me instant notifications during 
-                     camp registration (via SMS/email) to help with captcha solving or other quick 
-                     human verification steps. I agree to receive these time-sensitive communications 
-                     to ensure successful registration. *
-                  </Label>
+              {/* Consent and Terms */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <Lock className="h-5 w-5" />
+                  Consent & Authorization
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="consent"
+                      checked={consentGiven}
+                      onCheckedChange={(checked) => setConsentGiven(checked as boolean)}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="consent" className="text-sm font-normal cursor-pointer">
+                        I authorize CampRush to assist with my camp registration, including form completion and payment processing when I approve it.
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="upfront-payment"
+                      checked={upfrontPaymentConsent}
+                      onCheckedChange={(checked) => setUpfrontPaymentConsent(checked as boolean)}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="upfront-payment" className="text-sm font-normal cursor-pointer">
+                        I understand there may be upfront costs (camp fees, deposits) that I authorize CampRush to process on my behalf.
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="success-fee"
+                      checked={successFeeConsent}
+                      onCheckedChange={(checked) => setSuccessFeeConsent(checked as boolean)}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="success-fee" className="text-sm font-normal cursor-pointer">
+                        I agree to pay CampRush's success fee only if my registration is successfully completed.
+                      </Label>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Submit Button */}
-            <Button 
-              type="submit" 
-              variant="hero" 
-              disabled={loading}
-              className="w-full"
-            >
-              <Lock className="h-4 w-4 mr-2" />
-              {loading ? "Creating Account..." : "Create Account & Get Ready"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentStep('profile-info')}
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+                
+                <Button 
+                  type="submit"
+                  disabled={loading || !consentGiven || !upfrontPaymentConsent || !successFeeConsent || (requirements?.payment_required && !hasPaymentMethod)}
+                  className="flex-1"
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  {loading ? "Creating Account..." : "Create Account & Get Ready"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
