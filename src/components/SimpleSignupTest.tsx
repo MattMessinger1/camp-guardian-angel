@@ -11,11 +11,44 @@ interface TestResults {
   approvalWorkflow?: any;
 }
 
+interface CampSite {
+  url: string;
+  name: string;
+  type: string;
+  searchQuery: string;
+  location: string;
+}
+
+const REAL_CAMP_SITES: CampSite[] = [
+  {
+    url: 'https://anc.apm.activecommunities.com/seattle/activity/search',
+    name: 'Seattle Parks',
+    type: 'No account required for browsing',
+    searchQuery: 'Seattle Parks summer camp',
+    location: 'Seattle, WA'
+  },
+  {
+    url: 'https://webreg.parks.sfgov.org/wbwsc/webtrac.wsc/splash.html',
+    name: 'SF Recreation',
+    type: 'Direct registration available',
+    searchQuery: 'San Francisco recreation camp',
+    location: 'San Francisco, CA'
+  },
+  {
+    url: 'https://register.communitypass.net/reg/index.cfm?locality_id=9817',
+    name: 'Community Pass',
+    type: 'Account required for registration',
+    searchQuery: 'Community Pass summer activities',
+    location: 'Various locations'
+  }
+];
+
 export default function SimpleSignupTest() {
   const [currentStep, setCurrentStep] = useState<string>('');
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [results, setResults] = useState<TestResults>({});
   const [error, setError] = useState<string>('');
+  const [selectedCamp, setSelectedCamp] = useState<CampSite>(REAL_CAMP_SITES[0]);
 
   const captureScreenshot = async (url: string) => {
     setCurrentStep('Capturing screenshot...');
@@ -47,8 +80,8 @@ export default function SimpleSignupTest() {
     setCurrentStep('Testing fast camp search...');
     const { data, error } = await supabase.functions.invoke('fast-camp-search', {
       body: { 
-        query: 'YMCA summer camp',
-        location: 'New York',
+        query: selectedCamp.searchQuery,
+        location: selectedCamp.location,
         ageRange: '8-12'
       }
     });
@@ -62,7 +95,7 @@ export default function SimpleSignupTest() {
     const { data, error } = await supabase.functions.invoke('reserve-init', {
       body: { 
         sessionId: `test-${Date.now()}`,
-        providerUrl: 'https://www.ymca.org/join'
+        providerUrl: selectedCamp.url
       }
     });
 
@@ -75,7 +108,7 @@ export default function SimpleSignupTest() {
     const { data, error } = await supabase.functions.invoke('test-browser-automation', {
       body: { 
         action: 'test_form_filling',
-        url: 'https://www.ymca.org/join'
+        url: selectedCamp.url
       }
     });
 
@@ -107,7 +140,7 @@ export default function SimpleSignupTest() {
       setResults(prev => ({ ...prev, fastSearch }));
 
       // Step 2: Capture screenshot for analysis
-      const screenshot = await captureScreenshot('https://www.ymca.org/join');
+      const screenshot = await captureScreenshot(selectedCamp.url);
       setResults(prev => ({ ...prev, screenshot }));
 
       // Step 3: AI vision analysis (accuracy optimization)
@@ -152,6 +185,34 @@ export default function SimpleSignupTest() {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="bg-background border rounded-lg p-6">
         <h2 className="text-2xl font-semibold mb-4">Camp Signup Automation Test</h2>
+        
+        {/* Camp Site Selector */}
+        <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+          <label htmlFor="camp-selector" className="block text-sm font-medium mb-2">
+            Select Camp Site to Test:
+          </label>
+          <select
+            id="camp-selector"
+            value={selectedCamp.url}
+            onChange={(e) => {
+              const camp = REAL_CAMP_SITES.find(c => c.url === e.target.value);
+              if (camp) setSelectedCamp(camp);
+            }}
+            disabled={status === 'running'}
+            className="w-full p-3 border rounded-md bg-background text-foreground disabled:opacity-50"
+          >
+            {REAL_CAMP_SITES.map((camp) => (
+              <option key={camp.url} value={camp.url}>
+                {camp.name} - {camp.type}
+              </option>
+            ))}
+          </select>
+          <div className="mt-2 text-sm text-muted-foreground">
+            <p><strong>Testing:</strong> {selectedCamp.name}</p>
+            <p><strong>URL:</strong> {selectedCamp.url}</p>
+            <p><strong>Type:</strong> {selectedCamp.type}</p>
+          </div>
+        </div>
         
         {/* Control Buttons */}
         <div className="flex gap-4 mb-6">
