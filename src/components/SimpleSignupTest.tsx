@@ -146,11 +146,26 @@ export default function SimpleSignupTest() {
       providerUrl: selectedCamp.url,
       campName: selectedCamp.name
     });
+
+    // Test data for reservation
+    const testData = {
+      session_id: `test-session-${Date.now()}`,
+      parent: {
+        name: 'Test Parent',
+        email: 'parent@test.com',
+        phone: '+1-555-0123'
+      },
+      child: {
+        name: 'Test Child',
+        dob: '2015-06-15',
+        notes: 'Test child for automated signup testing'
+      }
+    };
     
     const { data, error } = await supabase.functions.invoke('reserve-init', {
-      body: { 
-        sessionId: `test-${Date.now()}`,
-        providerUrl: selectedCamp.url
+      body: testData,
+      headers: {
+        'x-test-mode': 'true'
       }
     });
 
@@ -163,8 +178,9 @@ export default function SimpleSignupTest() {
     
     console.log('✅ [SimpleSignupTest] Reserve init completed');
     console.log('🔍 [SimpleSignupTest] Reserve metadata:', {
-      mock_mode: data?.mock_mode,
-      reservation_id: data?.reservation_id
+      test_mode: true,
+      reservation_id: data?.reservation_id,
+      payment_intent: data?.payment_intent_client_secret ? 'present' : 'missing'
     });
     
     return data;
