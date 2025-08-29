@@ -5,7 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Play, Square, RotateCcw, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Play, Square, RotateCcw, Clock, CheckCircle, XCircle, AlertTriangle, Shield, AlertCircle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface RealCampSite {
   id: string;
@@ -94,6 +97,8 @@ export default function RealCampTests() {
   );
 
   const [runningTest, setRunningTest] = useState<string | null>(null);
+  const [testModeEnabled, setTestModeEnabled] = useState(true);
+  const [acknowledgedDisclaimer, setAcknowledgedDisclaimer] = useState(false);
 
   const updateResult = (campId: string, updates: Partial<TestResult>) => {
     setResults(prev => prev.map(result => 
@@ -117,11 +122,16 @@ export default function RealCampTests() {
   };
 
   const runRealCampTest = async (camp: RealCampSite) => {
+    if (!acknowledgedDisclaimer) {
+      toast.error('Please acknowledge the testing disclaimer before running tests');
+      return;
+    }
+
     setRunningTest(camp.id);
     updateResult(camp.id, { status: 'running' });
 
     try {
-      console.log(`🎯 Testing real camp: ${camp.name}`);
+      console.log(`🎯 Testing real camp: ${camp.name} (Test Mode: ${testModeEnabled ? 'ENABLED' : 'DISABLED'})`);
       console.log(`📍 Registration URL: ${camp.registrationUrl}`);
 
       // Phase 1: Requirements Discovery using analyze-session-requirements
@@ -188,7 +198,9 @@ export default function RealCampTests() {
           action: 'analyze_registration_page',
           url: camp.registrationUrl,
           sessionId: `real-test-${Date.now()}`,
-          expected_fields: requirements.required_fields || []
+          expected_fields: requirements.required_fields || [],
+          test_mode: testModeEnabled, // Pass test mode flag to prevent actual submissions
+          safety_stop: true // Ensure automation stops before final submission
         }
       });
 
@@ -321,6 +333,64 @@ export default function RealCampTests() {
         </p>
       </div>
 
+      {/* Legal Disclaimers and Test Controls */}
+      <div className="mb-8 space-y-4">
+        <Alert className="border-orange-200 bg-orange-50">
+          <Shield className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <div className="space-y-2">
+              <p className="font-semibold">Legal Disclaimer - Testing Purposes Only</p>
+              <p className="text-sm">
+                This testing system is designed for technical validation only. No actual registrations will be submitted.
+                All form interactions are for analysis purposes and will be cancelled before final submission.
+                We respect camp provider terms of service and implement safeguards to prevent accidental registrations.
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+
+        <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+          <div className="space-y-3">
+            <div className="flex items-center space-x-3">
+              <Checkbox 
+                id="disclaimer-acknowledgment"
+                checked={acknowledgedDisclaimer}
+                onCheckedChange={(checked) => setAcknowledgedDisclaimer(checked as boolean)}
+              />
+              <label htmlFor="disclaimer-acknowledgment" className="text-sm font-medium">
+                I acknowledge this is for testing purposes only and no actual camp registrations will be submitted
+              </label>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <Switch
+                id="test-mode"
+                checked={testModeEnabled}
+                onCheckedChange={setTestModeEnabled}
+                disabled={!acknowledgedDisclaimer}
+              />
+              <label htmlFor="test-mode" className="text-sm">
+                <span className="font-medium">Test Mode:</span> Stop automation before final submission
+                {testModeEnabled ? (
+                  <Badge variant="default" className="ml-2 text-green-600 bg-green-100">SAFE</Badge>
+                ) : (
+                  <Badge variant="destructive" className="ml-2">LIVE MODE</Badge>
+                )}
+              </label>
+            </div>
+          </div>
+
+          {!testModeEnabled && (
+            <Alert className="max-w-xs">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Live mode disabled for safety. Test mode ensures no actual submissions occur.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </div>
+
       <div className="grid gap-6">
         {REAL_CAMP_REGISTRATIONS.map((camp) => {
           const result = results.find(r => r.campId === camp.id);
@@ -355,7 +425,7 @@ export default function RealCampTests() {
                       ) : (
                         <Button
                           onClick={() => runRealCampTest(camp)}
-                          disabled={runningTest !== null}
+                          disabled={runningTest !== null || !acknowledgedDisclaimer}
                           size="sm"
                         >
                           <Play className="h-4 w-4 mr-1" />

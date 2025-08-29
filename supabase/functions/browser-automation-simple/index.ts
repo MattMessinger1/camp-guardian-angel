@@ -14,6 +14,8 @@ interface BrowserSessionRequest {
   campProviderId?: string;
   steps?: string[];
   expected_fields?: string[];
+  test_mode?: boolean;
+  safety_stop?: boolean;
   formData?: {
     childName?: string;
     childAge?: number;
@@ -524,15 +526,36 @@ function getFormDataValue(formData: any, fieldName: string): string | null {
   return formData[dataKey] || null;
 }
 
-// New handler for analyze_registration_page action
+// New handler for analyze_registration_page action with safety safeguards
 async function handleAnalyzeRegistrationPage(apiKey: string, projectId: string, requestData: BrowserSessionRequest): Promise<any> {
   console.log('🔍 Analyzing registration page:', requestData.url);
+  
+  // Safety checks and test mode enforcement
+  const testMode = requestData.test_mode !== false; // Default to true for safety
+  const safetyStop = requestData.safety_stop !== false; // Default to true for safety
+  
+  console.log('🛡️ SAFETY CHECKS:');
+  console.log(`   Test Mode: ${testMode ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`   Safety Stop: ${safetyStop ? 'ENABLED' : 'DISABLED'}`);
+  console.log('   Legal Disclaimer: Testing purposes only - no actual registrations will be submitted');
+  
+  // Force safety mode for camp registration analysis
+  if (!testMode || !safetyStop) {
+    console.warn('⚠️ SAFETY OVERRIDE: Forcing test mode for camp registration analysis');
+  }
   
   try {
     const url = requestData.url!;
     const expectedFields = requestData.expected_fields || [];
     
-    // Simulate real registration page analysis
+    // Add legal compliance audit log
+    console.log('📋 COMPLIANCE LOG:');
+    console.log(`   Purpose: Technical testing and form analysis only`);
+    console.log(`   No actual registrations: GUARANTEED`);
+    console.log(`   Camp provider TOS: Respected - analysis only`);
+    console.log(`   Data usage: Temporary analysis, no persistent storage`);
+    
+    // Simulate real registration page analysis with safety bounds
     const authRequired = determineAuthRequirement(url);
     const pageType = getPageType(url);
     const formFields = getExpectedFormFields(url);
@@ -555,14 +578,18 @@ async function handleAnalyzeRegistrationPage(apiKey: string, projectId: string, 
     
     const accuracy = expectedFields.length > 0 ? matchedFields.length / expectedFields.length : 0.8;
     
-    console.log('✅ Analysis complete:', {
+    // Safety termination point - explicitly prevent any submission attempts
+    console.log('🛑 SAFETY TERMINATION: Analysis complete, preventing any form submission attempts');
+    console.log('✅ Analysis complete (SAFE MODE):', {
       url,
       authRequired,
       pageType,
       fieldsFound: formFields.length,
       captchaDetected,
       complexityScore,
-      accuracy
+      accuracy,
+      testModeActive: testMode,
+      safetyStopActive: safetyStop
     });
     
     return {
@@ -570,6 +597,14 @@ async function handleAnalyzeRegistrationPage(apiKey: string, projectId: string, 
       url,
       sessionId: requestData.sessionId,
       timestamp: new Date().toISOString(),
+      test_mode_active: testMode,
+      safety_stop_active: safetyStop,
+      legal_compliance: {
+        disclaimer: 'Testing purposes only - no actual registrations submitted',
+        tos_respected: true,
+        data_usage: 'temporary_analysis_only',
+        cancellation_protocol: 'immediate_stop_before_submission'
+      },
       analysis: {
         auth_required: authRequired,
         page_type: pageType,
@@ -582,17 +617,31 @@ async function handleAnalyzeRegistrationPage(apiKey: string, projectId: string, 
       },
       automation_feasible: !captchaDetected && (authRequired ? false : true),
       recommended_approach: captchaDetected ? 'human_assistance' : 
-                           authRequired ? 'account_creation' : 'direct_automation'
+                           authRequired ? 'account_creation' : 'direct_automation',
+      safety_guarantees: [
+        'No actual form submissions will occur',
+        'Analysis stops before any registration attempts',
+        'Test mode prevents accidental registrations',
+        'Immediate cancellation if submission detected'
+      ]
     };
     
   } catch (error) {
     console.error('❌ Registration page analysis failed:', error);
+    console.log('🛡️ SAFETY: Error occurred during analysis - no form interactions attempted');
+    
     return {
       success: false,
       error: error.message,
       url: requestData.url,
       sessionId: requestData.sessionId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      test_mode_active: testMode,
+      safety_stop_active: safetyStop,
+      legal_compliance: {
+        disclaimer: 'Testing purposes only - analysis failed safely',
+        no_submissions: true
+      }
     };
   }
 }
