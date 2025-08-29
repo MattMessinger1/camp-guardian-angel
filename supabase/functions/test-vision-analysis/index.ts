@@ -176,12 +176,15 @@ serve(async (req) => {
       )
     }
 
-    // For very small test images, return mock data instead of calling OpenAI
-    if (processedScreenshot.length < 1000 || isolationTest) {
-      console.log('🧪 Small test image detected, returning mock analysis');
+    // Force real OpenAI analysis for all screenshots (no more mock mode)
+    console.log('🤖 Proceeding with real OpenAI Vision analysis');
+    
+    // Only return mock data if isolationTest is explicitly true
+    if (isolationTest) {
+      console.log('🧪 Isolation test mode - returning mock analysis');
       return new Response(JSON.stringify({
         success: true,
-        analysis: "Test mode - Small test image detected. This webpage appears to have a registration form with moderate complexity. No CAPTCHA detected in this test scenario.",
+        analysis: "Isolation test mode - Mock analysis for testing workflow without OpenAI credits.",
         model: model + '-mock',
         sessionId,
         isolationTest: true,

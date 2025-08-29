@@ -56,25 +56,8 @@ serve(async (req) => {
   });
 
   try {
-    // Check if we're in public mode - allow testing with mock data
-    const publicDataMode = (Deno.env.get('PUBLIC_DATA_MODE') ?? 'true') === 'true';
-    if (publicDataMode) {
-      console.log('📊 PUBLIC_DATA_MODE: Returning mock reservation data for testing');
-      
-      // Return realistic mock response for testing
-      const mockReservationId = `mock-${Date.now()}`;
-      const mockPaymentIntent = `pi_mock_${Date.now()}`;
-      
-      return new Response(JSON.stringify({
-        reservation_id: mockReservationId,
-        payment_intent_client_secret: `${mockPaymentIntent}_secret_mock`,
-        mock_mode: true,
-        message: "Mock reservation created for testing - no real payment processing"
-      }), { 
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
+    // Real reservation processing (no more PUBLIC_DATA_MODE)
+    console.log('💼 Processing real reservation with Stripe integration');
 
     // Verify user authentication
     const { data: { user }, error: authError } = await userSupabase.auth.getUser();

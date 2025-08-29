@@ -211,6 +211,11 @@ export default function SimpleSignupTest() {
             <p><strong>Testing:</strong> {selectedCamp.name}</p>
             <p><strong>URL:</strong> {selectedCamp.url}</p>
             <p><strong>Type:</strong> {selectedCamp.type}</p>
+            <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
+              <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                🚀 Real Site Testing Mode: This will capture actual screenshots and analyze real forms
+              </p>
+            </div>
           </div>
         </div>
         
