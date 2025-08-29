@@ -56,16 +56,22 @@ serve(async (req) => {
   });
 
   try {
-    // Check if we're in public mode and block private operations
+    // Check if we're in public mode - allow testing with mock data
     const publicDataMode = (Deno.env.get('PUBLIC_DATA_MODE') ?? 'true') === 'true';
     if (publicDataMode) {
-      console.log('🚫 PUBLIC_DATA_MODE: Blocking private reserve-init operation');
-      return new Response(JSON.stringify({ 
-        error: "This feature is not available in public mode. Please visit the provider's website directly to make a reservation.",
-        publicMode: true,
-        redirectToProvider: true
+      console.log('📊 PUBLIC_DATA_MODE: Returning mock reservation data for testing');
+      
+      // Return realistic mock response for testing
+      const mockReservationId = `mock-${Date.now()}`;
+      const mockPaymentIntent = `pi_mock_${Date.now()}`;
+      
+      return new Response(JSON.stringify({
+        reservation_id: mockReservationId,
+        payment_intent_client_secret: `${mockPaymentIntent}_secret_mock`,
+        mock_mode: true,
+        message: "Mock reservation created for testing - no real payment processing"
       }), { 
-        status: 403,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
