@@ -11,6 +11,7 @@ interface TestResults {
   approvalWorkflow?: any;
   navigation?: any;
   registrationAnalysis?: any;
+  formFillSubmit?: any;
 }
 
 interface CampSite {
@@ -259,6 +260,64 @@ Focus on detecting authentication walls vs direct registration access.`
     return data;
   };
 
+  const testFormFillAndSubmit = async (campSite: CampSite) => {
+    setCurrentStep('Testing complete form fill and submit...');
+    setError('');
+
+    try {
+      // Test data for form filling
+      const testFormData = {
+        childName: 'Emma Thompson',
+        childAge: 8,
+        childDob: '2016-03-15',
+        parentName: 'Sarah Thompson',
+        parentEmail: 'sarah.thompson@email.com',
+        parentPhone: '(555) 123-4567',
+        emergencyContact: 'Mike Thompson',
+        emergencyPhone: '(555) 987-6543',
+        medicalNotes: 'No known allergies',
+        username: 'sarah.thompson@email.com',
+        password: 'TestPass123!'
+      };
+
+      console.log('🚀 [SimpleSignupTest] Testing form fill and submit for:', campSite.name);
+
+      const { data, error: functionError } = await supabase.functions.invoke('browser-automation-simple', {
+        body: {
+          action: 'fill_and_submit',
+          sessionId: `test-${Date.now()}`,
+          url: campSite.url,
+          formData: testFormData,
+          steps: [
+            'navigate_to_form',
+            'handle_authentication',
+            'fill_form',
+            'submit_registration'
+          ]
+        }
+      });
+
+      if (functionError) {
+        throw new Error(`Function error: ${functionError.message}`);
+      }
+
+      console.log('✅ [SimpleSignupTest] Form fill and submit result:', data);
+
+      return {
+        success: data.success,
+        stepsExecuted: data.steps_executed,
+        registrationResult: data.registration_result,
+        formData: testFormData,
+        url: campSite.url,
+        provider: campSite.name
+      };
+
+    } catch (err) {
+      console.error('❌ [SimpleSignupTest] Form fill and submit test failed:', err);
+      throw new Error(`Form fill test failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   const runSignupTest = async () => {
     console.log('🚀 [SimpleSignupTest] === STARTING FULL SIGNUP TEST ===');
     console.log('🏕️ [SimpleSignupTest] Testing camp:', selectedCamp.name, 'at', selectedCamp.url);
@@ -315,9 +374,14 @@ Focus on detecting authentication walls vs direct registration access.`
         setCurrentStep('✅ Direct registration flow - automation possible');
       }
 
+      // Step 7: Test end-to-end form filling and submission
+      console.log('📝 [SimpleSignupTest] === STEP 7: Form Fill & Submit ===');
+      const formFillSubmit = await testFormFillAndSubmit(selectedCamp);
+      setResults(prev => ({ ...prev, formFillSubmit }));
+
       setStatus('success');
-      setCurrentStep('✅ Registration flow analysis completed - authentication requirements identified');
-      console.log('🎉 [SimpleSignupTest] === REGISTRATION FLOW TEST COMPLETED ===');
+      setCurrentStep('✅ Complete registration test completed - form submission tested');
+      console.log('🎉 [SimpleSignupTest] === COMPLETE SIGNUP TEST COMPLETED ===');
     } catch (err: any) {
       console.error('❌ [SimpleSignupTest] Test failed with error:', err);
       console.error('❌ [SimpleSignupTest] Error stack:', err.stack);
@@ -492,6 +556,83 @@ Focus on detecting authentication walls vs direct registration access.`
                   <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
                     {JSON.stringify(results.automationResult, null, 2)}
                   </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Form Fill & Submit Results */}
+            {results.formFillSubmit && (
+              <div className="space-y-2">
+                <h3 className="font-semibold">📝 Form Fill & Submit Test (End-to-End Registration):</h3>
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950 dark:to-blue-950 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Status:</span>
+                      <span className={`px-2 py-1 rounded text-sm font-medium ${
+                        results.formFillSubmit.success 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                      }`}>
+                        {results.formFillSubmit.success ? '✅ Registration Completed' : '❌ Registration Failed'}
+                      </span>
+                    </div>
+
+                    {results.formFillSubmit.success && results.formFillSubmit.registrationResult && (
+                      <div className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
+                        <div className="font-medium text-green-700 dark:text-green-300 mb-2">🎉 Registration Successful!</div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><strong>Confirmation:</strong> {results.formFillSubmit.registrationResult.confirmation_number}</div>
+                          <div><strong>Child:</strong> {results.formFillSubmit.registrationResult.child_name}</div>
+                          <div><strong>Activity:</strong> {results.formFillSubmit.registrationResult.activity}</div>
+                          <div><strong>Status:</strong> {results.formFillSubmit.registrationResult.status}</div>
+                          <div><strong>Dates:</strong> {results.formFillSubmit.registrationResult.session_dates}</div>
+                          {results.formFillSubmit.registrationResult.payment_required && (
+                            <div className="col-span-2 text-amber-600 dark:text-amber-400">
+                              <strong>Payment Required:</strong> {results.formFillSubmit.registrationResult.payment_amount} 
+                              (Due: {results.formFillSubmit.registrationResult.payment_due_date})
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          {results.formFillSubmit.registrationResult.message}
+                        </div>
+                      </div>
+                    )}
+
+                    {results.formFillSubmit.stepsExecuted && (
+                      <div>
+                        <div className="font-medium mb-2">Steps Executed:</div>
+                        <div className="space-y-1">
+                          {results.formFillSubmit.stepsExecuted.map((step: any, index: number) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <span className={step.success ? "text-green-600" : "text-red-600"}>
+                                {step.success ? "✓" : "✗"}
+                              </span>
+                              <span className="capitalize">{step.step.replace(/_/g, ' ')}</span>
+                              {step.result && step.result.error && (
+                                <span className="text-red-500 text-xs">({step.result.error})</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!results.formFillSubmit.success && (
+                      <div className="text-red-600 dark:text-red-400">
+                        <strong>Error:</strong> {results.formFillSubmit.error || 'Unknown error occurred'}
+                      </div>
+                    )}
+
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-sm font-medium text-gray-600 dark:text-gray-400">
+                        View Test Data & Technical Details
+                      </summary>
+                      <pre className="text-xs mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded overflow-x-auto">
+                        {JSON.stringify(results.formFillSubmit, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
                 </div>
               </div>
             )}

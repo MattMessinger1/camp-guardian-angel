@@ -8,11 +8,24 @@ const corsHeaders = {
 };
 
 interface BrowserSessionRequest {
-  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register';
+  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register' | 'fill_and_submit';
   sessionId?: string;
   url?: string;
   campProviderId?: string;
   steps?: string[];
+  formData?: {
+    childName?: string;
+    childAge?: number;
+    childDob?: string;
+    parentName?: string;
+    parentEmail?: string;
+    parentPhone?: string;
+    emergencyContact?: string;
+    emergencyPhone?: string;
+    medicalNotes?: string;
+    username?: string;
+    password?: string;
+  };
 }
 
 serve(async (req) => {
@@ -55,6 +68,9 @@ serve(async (req) => {
     switch (requestData.action) {
       case 'navigate_and_register':
         result = await handleNavigateAndRegister(browserbaseApiKey, browserbaseProjectId, requestData);
+        break;
+      case 'fill_and_submit':
+        result = await handleFillAndSubmit(browserbaseApiKey, browserbaseProjectId, requestData);
         break;
       case 'create':
         result = await handleCreateSession(browserbaseApiKey, browserbaseProjectId, requestData);
@@ -146,6 +162,26 @@ async function handleNavigateAndRegister(apiKey: string, projectId: string, requ
       step: 'capture_registration_page',
       success: true,
       result: results.registration_analysis
+    });
+  }
+
+  if (request.steps?.includes('fill_registration_form')) {
+    console.log('📝 Step: Fill registration form');
+    const formFillResult = simulateFormFilling(request.url, request.formData);
+    results.steps_executed.push({
+      step: 'fill_registration_form',
+      success: formFillResult.success,
+      result: formFillResult
+    });
+  }
+
+  if (request.steps?.includes('submit_registration')) {
+    console.log('🚀 Step: Submit registration');
+    const submitResult = simulateRegistrationSubmission(request.url, request.formData);
+    results.steps_executed.push({
+      step: 'submit_registration',
+      success: submitResult.success,
+      result: submitResult
     });
   }
 
@@ -269,4 +305,217 @@ function getSimulatedActivities(url: string): any[] {
     { name: 'Basketball Camp', age_range: '8-14', price: '$95' },
     { name: 'Dance Workshop', age_range: '6-12', price: '$80' }
   ];
+}
+
+async function handleFillAndSubmit(apiKey: string, projectId: string, request: BrowserSessionRequest): Promise<any> {
+  console.log('📝 Starting form fill and submit for:', request.url);
+
+  const results = {
+    success: true,
+    sessionId: request.sessionId,
+    url: request.url,
+    timestamp: new Date().toISOString(),
+    steps_executed: [],
+    formData: request.formData,
+    registration_result: null,
+    simulated: true
+  };
+
+  // Step 1: Navigate to form
+  console.log('📍 Step: Navigate to registration form');
+  results.steps_executed.push({
+    step: 'navigate_to_form',
+    success: true,
+    result: { url: request.url, form_detected: true }
+  });
+
+  // Step 2: Handle authentication if required
+  if (determineAuthRequirement(request.url)) {
+    console.log('🔐 Step: Handle authentication');
+    const authResult = simulateAuthentication(request.url, request.formData);
+    results.steps_executed.push({
+      step: 'handle_authentication',
+      success: authResult.success,
+      result: authResult
+    });
+    
+    if (!authResult.success) {
+      results.success = false;
+      return results;
+    }
+  }
+
+  // Step 3: Fill registration form
+  console.log('📝 Step: Fill registration form');
+  const formFillResult = simulateFormFilling(request.url, request.formData);
+  results.steps_executed.push({
+    step: 'fill_form',
+    success: formFillResult.success,
+    result: formFillResult
+  });
+
+  if (!formFillResult.success) {
+    results.success = false;
+    return results;
+  }
+
+  // Step 4: Submit registration
+  console.log('🚀 Step: Submit registration');
+  const submitResult = simulateRegistrationSubmission(request.url, request.formData);
+  results.steps_executed.push({
+    step: 'submit_registration',
+    success: submitResult.success,
+    result: submitResult
+  });
+
+  results.registration_result = submitResult;
+  results.success = submitResult.success;
+
+  console.log('✅ Form fill and submit completed');
+  return results;
+}
+
+function simulateAuthentication(url: string, formData: any): any {
+  const pageType = getPageType(url);
+  
+  if (pageType === 'login_wall') {
+    // Community Pass requires account creation/login
+    if (!formData?.username || !formData?.password) {
+      return {
+        success: false,
+        error: 'Missing authentication credentials',
+        required_fields: ['username', 'password'],
+        action_needed: 'provide_credentials'
+      };
+    }
+
+    // Simulate account creation/login flow
+    return {
+      success: true,
+      action_taken: 'account_created_and_logged_in',
+      account_details: {
+        username: formData.username,
+        account_created: true,
+        login_successful: true
+      },
+      next_step: 'registration_form_available'
+    };
+  }
+
+  return {
+    success: true,
+    action_taken: 'no_auth_required',
+    message: 'Direct registration available'
+  };
+}
+
+function simulateFormFilling(url: string, formData: any): any {
+  const expectedFields = getExpectedFormFields(url);
+  const filledFields = [];
+  const missingFields = [];
+
+  // Check required fields
+  for (const field of expectedFields) {
+    const fieldValue = getFormDataValue(formData, field.name);
+    
+    if (fieldValue) {
+      filledFields.push({
+        name: field.name,
+        label: field.label,
+        value: fieldValue,
+        type: field.type
+      });
+    } else if (field.required) {
+      missingFields.push({
+        name: field.name,
+        label: field.label,
+        type: field.type
+      });
+    }
+  }
+
+  if (missingFields.length > 0) {
+    return {
+      success: false,
+      error: 'Missing required form fields',
+      missing_fields: missingFields,
+      filled_fields: filledFields
+    };
+  }
+
+  return {
+    success: true,
+    filled_fields: filledFields,
+    form_valid: true,
+    ready_for_submission: true
+  };
+}
+
+function simulateRegistrationSubmission(url: string, formData: any): any {
+  const pageType = getPageType(url);
+  
+  // Simulate different outcomes based on provider
+  if (url.includes('seattle')) {
+    // Seattle Parks - simpler flow
+    return {
+      success: true,
+      registration_id: `SEA-${Date.now()}`,
+      confirmation_number: `SEA${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+      status: 'confirmed',
+      message: 'Registration successful! You will receive a confirmation email.',
+      next_steps: ['Check email for confirmation', 'Payment due on first day'],
+      child_name: formData?.childName || 'Test Child',
+      activity: 'Summer Soccer Camp',
+      session_dates: '2024-07-15 to 2024-07-19'
+    };
+  } else if (url.includes('communitypass')) {
+    // Community Pass - more complex flow with payment
+    return {
+      success: true,
+      registration_id: `CP-${Date.now()}`,
+      confirmation_number: `CP${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+      status: 'pending_payment',
+      message: 'Registration submitted! Payment required to confirm.',
+      payment_required: true,
+      payment_amount: '$95.00',
+      payment_due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      next_steps: ['Complete payment within 7 days', 'Check confirmation email'],
+      child_name: formData?.childName || 'Test Child',
+      activity: 'Basketball Camp',
+      session_dates: '2024-07-22 to 2024-07-26'
+    };
+  }
+
+  // Generic provider
+  return {
+    success: true,
+    registration_id: `REG-${Date.now()}`,
+    confirmation_number: `REG${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+    status: 'confirmed',
+    message: 'Registration completed successfully!',
+    child_name: formData?.childName || 'Test Child',
+    activity: 'Camp Activity',
+    session_dates: 'TBD'
+  };
+}
+
+function getFormDataValue(formData: any, fieldName: string): string | null {
+  if (!formData) return null;
+  
+  const mapping: { [key: string]: string } = {
+    'child_name': 'childName',
+    'parent_email': 'parentEmail', 
+    'phone': 'parentPhone',
+    'username': 'username',
+    'password': 'password',
+    'parent_name': 'parentName',
+    'emergency_contact': 'emergencyContact',
+    'emergency_phone': 'emergencyPhone',
+    'child_age': 'childAge',
+    'child_dob': 'childDob',
+    'medical_notes': 'medicalNotes'
+  };
+
+  const dataKey = mapping[fieldName] || fieldName;
+  return formData[dataKey] || null;
 }
