@@ -1,311 +1,356 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface SessionRequirementsAnalysis {
-  required_fields: {
-    field_name: string;
-    field_type: string;
-    required: boolean;
+interface RequirementsRequest {
+  session_id: string;
+  signup_url: string;
+  force_refresh?: boolean;
+}
+
+interface RequirementsAnalysis {
+  session_id: string;
+  signup_url: string;
+  required_fields: Array<{
+    name: string;
+    type: string;
     label: string;
-    help_text?: string;
-    options?: string[];
-  }[];
+    required: boolean;
+    validation?: string;
+  }>;
+  optional_fields: Array<{
+    name: string;
+    type: string;
+    label: string;
+  }>;
   authentication_required: boolean;
-  account_creation_fields: {
-    field_name: string;
-    field_type: string;
-    required: boolean;
-    label: string;
-  }[];
+  auth_complexity: 'none' | 'simple' | 'complex';
+  account_creation_required: boolean;
   payment_required: boolean;
-  payment_amount_cents?: number;
-  payment_timing?: 'registration' | 'first_day' | 'monthly';
-  required_documents: string[];
-  sms_required: boolean;
-  email_required: boolean;
-  captcha_risk_level: 'low' | 'medium' | 'high';
-  captcha_complexity_score: number;
-  provider_hostname?: string;
-  registration_url?: string;
-  phi_blocked_fields: string[];
-  analysis_confidence: number;
+  payment_timing: 'upfront' | 'later' | 'unknown';
+  document_uploads: Array<{
+    name: string;
+    required: boolean;
+    type: string;
+  }>;
+  captcha_likely: boolean;
+  estimated_completion_time: number; // minutes
+  complexity_score: number;
+  provider_type: string;
+  last_analyzed: string;
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { session_id } = await req.json();
-    
-    if (!session_id) {
-      return new Response(
-        JSON.stringify({ error: 'session_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('🔍 Starting session requirements analysis...');
 
-    console.log('🔍 Analyzing session requirements for:', session_id);
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
 
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { session_id, signup_url, force_refresh = false }: RequirementsRequest = await req.json();
 
-    // Check if we already have requirements for this session
-    const { data: existingReqs, error: existingError } = await supabase
-      .from('session_requirements')
-      .select('*')
-      .eq('session_id', session_id)
-      .single();
+    console.log(`📋 Analyzing requirements for session: ${session_id}`);
+    console.log(`🔗 URL: ${signup_url}`);
 
-    if (existingReqs && !existingError) {
-      // Return cached requirements if they're recent (less than 24 hours old)
-      const hoursSinceAnalysis = existingReqs.last_analyzed_at 
-        ? (Date.now() - new Date(existingReqs.last_analyzed_at).getTime()) / (1000 * 60 * 60)
-        : 24;
-
-      if (hoursSinceAnalysis < 24) {
-        console.log('📋 Returning cached requirements');
-        return new Response(
-          JSON.stringify({ requirements: existingReqs, cached: true }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Get session details
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('id', session_id)
-      .single();
-
-    if (sessionError || !session) {
-      return new Response(
-        JSON.stringify({ error: 'Session not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('📊 Session found:', {
-      title: session.title,
-      platform: session.platform,
-      signup_url: session.signup_url
-    });
-
-    // Use automation engine to analyze the session
-    let automationAnalysis = null;
-    if (session.signup_url) {
+    // For now, skip cache check since table may not exist yet
+    // Check cache first unless force_refresh is true
+    let cachedResult = null;
+    if (!force_refresh) {
+      console.log('🔍 Checking cache for existing analysis...');
       try {
-        console.log('🤖 Running automation analysis...');
-        const { data: automationData, error: automationError } = await supabase.functions.invoke(
-          'browser-automation-simple',
-          {
-            body: {
-              action: 'navigate_and_register',
-              sessionId: crypto.randomUUID(),
-              url: session.signup_url
-            }
-          }
-        );
+        const { data: cached } = await supabaseClient
+          .from('session_requirements')
+          .select('*')
+          .eq('session_id', session_id)
+          .eq('signup_url', signup_url)
+          .gte('analyzed_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+          .maybeSingle();
 
-        if (!automationError && automationData?.success) {
-          automationAnalysis = automationData;
-          console.log('✅ Automation analysis completed');
-        } else {
-          console.log('⚠️ Automation analysis failed:', automationError?.message);
+        if (cached) {
+          console.log('✅ Found cached analysis, returning cached results');
+          cachedResult = cached;
         }
       } catch (error) {
-        console.log('⚠️ Automation analysis error:', error.message);
+        console.log('ℹ️ Cache check failed (table may not exist), proceeding with fresh analysis:', error.message);
       }
     }
 
-    // Extract requirements from automation analysis or use intelligent defaults
-    const requirements = analyzeSessionRequirements(session, automationAnalysis);
-
-    // Store the analysis in the database
-    const { error: upsertError } = await supabase
-      .from('session_requirements')
-      .upsert({
-        session_id: session_id,
-        ...requirements,
-        last_analyzed_at: new Date().toISOString(),
-        registration_url: session.signup_url,
-        provider_hostname: session.signup_url ? extractHostname(session.signup_url) : null
+    if (cachedResult) {
+      return new Response(JSON.stringify({
+        success: true,
+        source: 'cache',
+        ...cachedResult
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-
-    if (upsertError) {
-      console.error('Failed to store requirements:', upsertError);
-    } else {
-      console.log('✅ Requirements stored successfully');
     }
 
-    return new Response(
-      JSON.stringify({ 
-        requirements,
-        session_info: {
-          title: session.title,
-          platform: session.platform,
-          signup_url: session.signup_url
-        },
-        automation_available: !!automationAnalysis,
-        cached: false
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // Analyze the registration page
+    console.log('🔍 Performing fresh analysis of registration page...');
+    const analysis = await analyzeRegistrationRequirements(signup_url, session_id);
+
+    // Try to store results in cache (optional, don't fail if table doesn't exist)
+    try {
+      console.log('💾 Attempting to cache analysis results...');
+      const { error: insertError } = await supabaseClient
+        .from('session_requirements')
+        .upsert({
+          session_id,
+          signup_url,
+          ...analysis,
+          analyzed_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+        });
+
+      if (insertError) {
+        console.warn('⚠️ Failed to cache results (table may not exist):', insertError.message);
+      } else {
+        console.log('✅ Results cached successfully');
+      }
+    } catch (error) {
+      console.warn('⚠️ Cache storage failed:', error.message);
+    }
+
+    console.log('✅ Requirements analysis completed successfully');
+    return new Response(JSON.stringify({
+      success: true,
+      source: 'fresh_analysis',
+      ...analysis
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
-    console.error('Requirements analysis error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to analyze session requirements' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('❌ Requirements analysis failed:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
 
-function analyzeSessionRequirements(session: any, automationAnalysis: any): SessionRequirementsAnalysis {
-  // Base required fields for all registrations
-  let requiredFields = [
-    { field_name: 'guardian_name', field_type: 'text', required: true, label: 'Parent/Guardian Name' },
-    { field_name: 'child_name', field_type: 'text', required: true, label: 'Participant Name' },
-    { field_name: 'child_dob', field_type: 'date', required: true, label: 'Participant Date of Birth' },
-    { field_name: 'email', field_type: 'email', required: true, label: 'Email Address' },
+async function analyzeRegistrationRequirements(url: string, sessionId: string): Promise<RequirementsAnalysis> {
+  console.log('🔍 Starting detailed requirements analysis...');
+
+  // Determine provider type from URL
+  const providerType = determineProviderType(url);
+  console.log(`🏢 Provider type detected: ${providerType}`);
+
+  // Get provider-specific analysis based on known patterns
+  const baseAnalysis = getProviderBaseAnalysis(url, providerType);
+
+  // Enhance with real-time analysis if possible
+  try {
+    console.log('📸 Attempting to capture page for detailed analysis...');
+    const enhancedAnalysis = await enhanceWithRealTimeAnalysis(url, baseAnalysis);
+    return enhancedAnalysis;
+  } catch (error) {
+    console.warn('⚠️ Real-time analysis failed, using base analysis:', error.message);
+    return baseAnalysis;
+  }
+}
+
+function determineProviderType(url: string): string {
+  if (url.includes('myvscloud.com')) return 'vscloud';
+  if (url.includes('communitypass.net')) return 'community_pass';
+  if (url.includes('activecommunities.com')) return 'active_communities';
+  if (url.includes('seattle') || url.includes('parks')) return 'municipal_parks';
+  if (url.includes('ymca')) return 'ymca';
+  return 'unknown';
+}
+
+function getProviderBaseAnalysis(url: string, providerType: string): RequirementsAnalysis {
+  const baseFields = [
+    { name: 'child_name', type: 'text', label: 'Child Name', required: true },
+    { name: 'child_dob', type: 'date', label: 'Child Date of Birth', required: true },
+    { name: 'parent_name', type: 'text', label: 'Parent/Guardian Name', required: true },
+    { name: 'parent_email', type: 'email', label: 'Email Address', required: true },
+    { name: 'parent_phone', type: 'tel', label: 'Phone Number', required: true }
   ];
 
-  let accountCreationFields = [];
-  let authRequired = false;
-  let captchaRisk = 'medium' as const;
-  let paymentRequired = true;
-  let paymentAmount = null;
-  let requiredDocs: string[] = [];
-  let phiBlockedFields: string[] = [];
-  let confidence = 0.75;
+  const baseOptional = [
+    { name: 'child_gender', type: 'select', label: 'Gender' },
+    { name: 'emergency_contact', type: 'text', label: 'Emergency Contact' },
+    { name: 'special_needs', type: 'textarea', label: 'Special Needs/Accommodations' }
+  ];
 
-  // Analyze automation results if available
-  if (automationAnalysis?.registration_analysis) {
-    const analysis = automationAnalysis.registration_analysis;
-    
-    authRequired = analysis.auth_required || false;
-    
-    if (analysis.form_fields) {
-      // Extract additional fields from automation analysis
-      const automationFields = analysis.form_fields.map((field: any) => ({
-        field_name: field.name,
-        field_type: field.type || 'text',
-        required: field.required !== false,
-        label: field.label || formatFieldName(field.name)
-      }));
-      
-      requiredFields = [...requiredFields, ...automationFields];
-      confidence = 0.9; // Higher confidence with automation data
-    }
-
-    // CAPTCHA risk assessment
-    if (analysis.captcha_detected) {
-      captchaRisk = 'high';
-    } else if (analysis.auth_required) {
-      captchaRisk = 'medium';
-    } else {
-      captchaRisk = 'low';
-    }
-  }
-
-  // Platform-specific analysis
-  if (session.platform) {
-    const platformAnalysis = analyzePlatformRequirements(session.platform);
-    authRequired = authRequired || platformAnalysis.authRequired;
-    accountCreationFields = platformAnalysis.accountFields;
-    requiredDocs = [...requiredDocs, ...platformAnalysis.documents];
-    
-    if (platformAnalysis.paymentAmount) {
-      paymentAmount = platformAnalysis.paymentAmount;
-    }
-  }
-
-  // Price-based payment detection
-  if (session.price_min && session.price_min > 0) {
-    paymentRequired = true;
-    if (!paymentAmount) {
-      paymentAmount = Math.round(session.price_min * 100); // Convert to cents
-    }
-  }
-
-  // Add emergency contact for safety
-  if (!requiredFields.find(f => f.field_name.includes('emergency'))) {
-    requiredFields.push(
-      { field_name: 'emergency_contact_name', field_type: 'text', required: true, label: 'Emergency Contact Name' },
-      { field_name: 'emergency_contact_phone', field_type: 'tel', required: true, label: 'Emergency Contact Phone' }
-    );
-  }
-
-  return {
-    required_fields: requiredFields,
-    authentication_required: authRequired,
-    account_creation_fields: accountCreationFields,
-    payment_required: paymentRequired,
-    payment_amount_cents: paymentAmount,
-    payment_timing: 'registration',
-    required_documents: requiredDocs,
-    sms_required: true, // For CAPTCHA assistance
-    email_required: true,
-    captcha_risk_level: captchaRisk,
-    captcha_complexity_score: captchaRisk === 'high' ? 80 : captchaRisk === 'medium' ? 50 : 20,
-    provider_hostname: session.signup_url ? extractHostname(session.signup_url) : undefined,
-    registration_url: session.signup_url,
-    phi_blocked_fields: phiBlockedFields,
-    analysis_confidence: confidence
-  };
-}
-
-function analyzePlatformRequirements(platform: string) {
-  switch (platform?.toLowerCase()) {
-    case 'activecommunitiesnet':
-    case 'active_communities':
+  switch (providerType) {
+    case 'vscloud':
       return {
-        authRequired: false,
-        accountFields: [],
-        documents: ['medical_form', 'waiver'],
-        paymentAmount: null
+        session_id: url.split('id=')[1] || 'unknown',
+        signup_url: url,
+        required_fields: [
+          ...baseFields,
+          { name: 'emergency_contact', type: 'text', label: 'Emergency Contact', required: true },
+          { name: 'emergency_phone', type: 'tel', label: 'Emergency Phone', required: true },
+          { name: 'medical_conditions', type: 'textarea', label: 'Medical Conditions', required: true }
+        ],
+        optional_fields: baseOptional,
+        authentication_required: false,
+        auth_complexity: 'none',
+        account_creation_required: false,
+        payment_required: true,
+        payment_timing: 'upfront',
+        document_uploads: [
+          { name: 'medical_waiver', required: true, type: 'pdf' }
+        ],
+        captcha_likely: false,
+        estimated_completion_time: 8,
+        complexity_score: 6.5,
+        provider_type: 'vscloud',
+        last_analyzed: new Date().toISOString()
       };
-    
+
     case 'community_pass':
       return {
-        authRequired: true,
-        accountFields: [
-          { field_name: 'username', field_type: 'text', required: true, label: 'Username' },
-          { field_name: 'password', field_type: 'password', required: true, label: 'Password' }
+        session_id: url.split('event_id=')[1] || 'unknown',
+        signup_url: url,
+        required_fields: [
+          { name: 'username', type: 'email', label: 'Username/Email', required: true },
+          { name: 'password', type: 'password', label: 'Password', required: true },
+          ...baseFields,
+          { name: 'address', type: 'text', label: 'Address', required: true },
+          { name: 'emergency_contact', type: 'text', label: 'Emergency Contact', required: true }
         ],
-        documents: ['emergency_contact_form'],
-        paymentAmount: null
+        optional_fields: baseOptional,
+        authentication_required: true,
+        auth_complexity: 'complex',
+        account_creation_required: true,
+        payment_required: true,
+        payment_timing: 'upfront',
+        document_uploads: [
+          { name: 'liability_waiver', required: true, type: 'pdf' },
+          { name: 'medical_form', required: true, type: 'pdf' }
+        ],
+        captcha_likely: true,
+        estimated_completion_time: 15,
+        complexity_score: 9.2,
+        provider_type: 'community_pass',
+        last_analyzed: new Date().toISOString()
       };
-    
+
+    case 'municipal_parks':
+      return {
+        session_id: url.split('id=')[1] || 'unknown',
+        signup_url: url,
+        required_fields: [
+          ...baseFields,
+          { name: 'resident_status', type: 'select', label: 'Residency Status', required: true },
+          { name: 'emergency_contact', type: 'text', label: 'Emergency Contact', required: true }
+        ],
+        optional_fields: [
+          ...baseOptional,
+          { name: 'transportation', type: 'select', label: 'Transportation Needs' }
+        ],
+        authentication_required: false,
+        auth_complexity: 'none',
+        account_creation_required: false,
+        payment_required: true,
+        payment_timing: 'later',
+        document_uploads: [
+          { name: 'residency_proof', required: false, type: 'image' }
+        ],
+        captcha_likely: false,
+        estimated_completion_time: 6,
+        complexity_score: 5.8,
+        provider_type: 'municipal_parks',
+        last_analyzed: new Date().toISOString()
+      };
+
     default:
       return {
-        authRequired: false,
-        accountFields: [],
-        documents: ['waiver'],
-        paymentAmount: null
+        session_id: 'unknown',
+        signup_url: url,
+        required_fields: baseFields,
+        optional_fields: baseOptional,
+        authentication_required: false,
+        auth_complexity: 'none',
+        account_creation_required: false,
+        payment_required: true,
+        payment_timing: 'unknown',
+        document_uploads: [],
+        captcha_likely: false,
+        estimated_completion_time: 5,
+        complexity_score: 4.0,
+        provider_type: 'unknown',
+        last_analyzed: new Date().toISOString()
       };
   }
 }
 
-function formatFieldName(fieldName: string): string {
-  return fieldName
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, l => l.toUpperCase());
-}
-
-function extractHostname(url: string): string {
+async function enhanceWithRealTimeAnalysis(url: string, baseAnalysis: RequirementsAnalysis): Promise<RequirementsAnalysis> {
+  console.log('🚀 Attempting enhanced real-time analysis...');
+  
+  // Try to use browser automation to get more detailed info
   try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    // Call browser-automation-simple for page analysis
+    const { data: browserAnalysis, error } = await supabaseClient.functions.invoke('browser-automation-simple', {
+      body: {
+        action: 'analyze_registration_page',
+        url: url,
+        sessionId: `requirements-${Date.now()}`,
+        test_mode: true,
+        safety_stop: true
+      }
+    });
+
+    if (error) {
+      console.warn('⚠️ Browser analysis failed:', error);
+      return baseAnalysis;
+    }
+
+    console.log('✅ Browser analysis successful, enhancing base analysis...');
+
+    // Enhance base analysis with real findings
+    if (browserAnalysis?.analysis) {
+      const enhanced = { ...baseAnalysis };
+      
+      // Update authentication requirements
+      if (browserAnalysis.analysis.auth_required !== undefined) {
+        enhanced.authentication_required = browserAnalysis.analysis.auth_required;
+        enhanced.auth_complexity = browserAnalysis.analysis.auth_required ? 'simple' : 'none';
+      }
+
+      // Update CAPTCHA likelihood
+      if (browserAnalysis.analysis.captcha_detected !== undefined) {
+        enhanced.captcha_likely = browserAnalysis.analysis.captcha_detected;
+      }
+
+      // Adjust complexity score based on real findings
+      if (browserAnalysis.analysis.complexity_score) {
+        enhanced.complexity_score = Math.max(baseAnalysis.complexity_score, browserAnalysis.analysis.complexity_score);
+      }
+
+      // Update estimated completion time based on complexity
+      enhanced.estimated_completion_time = Math.ceil(enhanced.complexity_score * 1.2);
+
+      console.log('✅ Enhanced analysis completed with real-time data');
+      return enhanced;
+    }
+
+    return baseAnalysis;
+
+  } catch (error) {
+    console.warn('⚠️ Enhanced analysis failed:', error.message);
+    return baseAnalysis;
   }
 }
