@@ -9,6 +9,8 @@ interface TestResults {
   automationResult?: any;
   captchaHandling?: any;
   approvalWorkflow?: any;
+  navigation?: any;
+  registrationAnalysis?: any;
 }
 
 interface CampSite {
@@ -17,29 +19,37 @@ interface CampSite {
   type: string;
   searchQuery: string;
   location: string;
+  registrationFlow: string;
+  expectedAuth: boolean;
 }
 
 const REAL_CAMP_SITES: CampSite[] = [
   {
-    url: 'https://anc.apm.activecommunities.com/seattle/activity/search',
+    url: 'https://anc.apm.activecommunities.com/seattle/activity/search?activity_select_param=2&activity_keyword=summer+camp',
     name: 'Seattle Parks',
-    type: 'No account required for browsing',
+    type: 'Browse then register flow',
     searchQuery: 'Seattle Parks summer camp',
-    location: 'Seattle, WA'
-  },
-  {
-    url: 'https://webreg.parks.sfgov.org/wbwsc/webtrac.wsc/splash.html',
-    name: 'SF Recreation',
-    type: 'Direct registration available',
-    searchQuery: 'San Francisco recreation camp',
-    location: 'San Francisco, CA'
+    location: 'Seattle, WA',
+    registrationFlow: 'Search for camp, click register button, test if login required',
+    expectedAuth: false
   },
   {
     url: 'https://register.communitypass.net/reg/index.cfm?locality_id=9817',
     name: 'Community Pass',
-    type: 'Account required for registration',
+    type: 'Account-required registration',
     searchQuery: 'Community Pass summer activities',
-    location: 'Various locations'
+    location: 'Various locations',
+    registrationFlow: 'Navigate to programs, attempt registration, expect login wall',
+    expectedAuth: true
+  },
+  {
+    url: 'https://apm.activecommunities.com/jacksonvillebeach/activity/search?activity_select_param=2',
+    name: 'Jacksonville Beach',
+    type: 'ActiveNet platform test',
+    searchQuery: 'Jacksonville Beach summer programs',
+    location: 'Jacksonville Beach, FL',
+    registrationFlow: 'Search activities, click register, test authentication barrier',
+    expectedAuth: false
   }
 ];
 
@@ -50,9 +60,38 @@ export default function SimpleSignupTest() {
   const [error, setError] = useState<string>('');
   const [selectedCamp, setSelectedCamp] = useState<CampSite>(REAL_CAMP_SITES[0]);
 
+  const navigateToRegistration = async (url: string) => {
+    setCurrentStep('Navigating to registration flow...');
+    console.log('🧭 [SimpleSignupTest] Starting navigation to registration:', url);
+    
+    const { data, error } = await supabase.functions.invoke('browser-automation', {
+      body: { 
+        action: 'navigate_and_register',
+        url,
+        sessionId: `test-${Date.now()}`,
+        steps: [
+          'navigate_to_url',
+          'find_activity',
+          'click_register_button',
+          'capture_registration_page'
+        ]
+      }
+    });
+
+    console.log('🧭 [SimpleSignupTest] Navigation response:', { data, error });
+    
+    if (error) {
+      console.error('❌ [SimpleSignupTest] Navigation error:', error);
+      throw new Error(`Navigation failed: ${error.message}`);
+    }
+    
+    console.log('✅ [SimpleSignupTest] Navigation completed');
+    return data;
+  };
+
   const captureScreenshot = async (url: string) => {
-    setCurrentStep('Capturing screenshot...');
-    console.log('🚀 [SimpleSignupTest] Starting screenshot capture for:', url);
+    setCurrentStep('Capturing registration page screenshot...');
+    console.log('📸 [SimpleSignupTest] Starting screenshot capture for:', url);
     
     const { data, error } = await supabase.functions.invoke('capture-website-screenshot', {
       body: { url, sessionId: `test-${Date.now()}` }
@@ -79,9 +118,9 @@ export default function SimpleSignupTest() {
     return data.screenshot;
   };
 
-  const analyzeScreenshot = async (screenshot: string) => {
-    setCurrentStep('Analyzing screenshot with AI...');
-    console.log('🤖 [SimpleSignupTest] Starting AI vision analysis');
+  const analyzeRegistrationPage = async (screenshot: string) => {
+    setCurrentStep('Analyzing registration page for authentication requirements...');
+    console.log('🔐 [SimpleSignupTest] Starting registration page analysis');
     console.log('🔍 [SimpleSignupTest] Screenshot length for analysis:', screenshot?.length);
     
     const { data, error } = await supabase.functions.invoke('test-vision-analysis', {
@@ -89,23 +128,31 @@ export default function SimpleSignupTest() {
         screenshot, 
         sessionId: `test-${Date.now()}`,
         model: 'gpt-4o',
-        isolationTest: false // Force real analysis
+        isolationTest: false,
+        customPrompt: `Analyze this camp registration page and identify:
+1. LOGIN REQUIREMENTS: Does this page require login/account creation?
+2. AUTHENTICATION BARRIERS: Are there "Please log in", "Create Account", or "Sign In" prompts?
+3. REGISTRATION FLOW: Can you register directly or must create account first?
+4. FORM FIELDS: What information is required (name, email, account details)?
+5. CAPTCHA/VERIFICATION: Any CAPTCHA, reCAPTCHA, or verification challenges?
+6. NEXT STEPS: What would happen if you tried to proceed with registration?
+
+Focus on detecting authentication walls vs direct registration access.`
       }
     });
 
-    console.log('🤖 [SimpleSignupTest] Vision analysis response:', { data, error });
+    console.log('🔐 [SimpleSignupTest] Registration analysis response:', { data, error });
     
     if (error) {
-      console.error('❌ [SimpleSignupTest] Vision analysis error:', error);
-      throw new Error(`Vision analysis failed: ${error.message}`);
+      console.error('❌ [SimpleSignupTest] Registration analysis error:', error);
+      throw new Error(`Registration analysis failed: ${error.message}`);
     }
     
-    console.log('✅ [SimpleSignupTest] Vision analysis completed');
+    console.log('✅ [SimpleSignupTest] Registration analysis completed');
     console.log('🔍 [SimpleSignupTest] Analysis metadata:', {
-      mock: data?.mock,
+      authRequired: data?.authRequired,
       model: data?.model,
-      isolationTest: data?.isolationTest,
-      captchaRisk: data?.captchaRisk
+      registrationAccess: data?.registrationAccess
     });
     
     return data;
@@ -226,43 +273,51 @@ export default function SimpleSignupTest() {
       const fastSearch = await testFastCampSearch();
       setResults(prev => ({ ...prev, fastSearch }));
 
-      // Step 2: Capture screenshot for analysis
-      console.log('📸 [SimpleSignupTest] === STEP 2: Screenshot Capture ===');
+      // Step 2: Navigate to registration flow (simulate real user journey)
+      console.log('🧭 [SimpleSignupTest] === STEP 2: Navigate to Registration ===');
+      const navigation = await navigateToRegistration(selectedCamp.url);
+      setResults(prev => ({ ...prev, navigation }));
+
+      // Step 3: Capture screenshot of registration page
+      console.log('📸 [SimpleSignupTest] === STEP 3: Registration Page Screenshot ===');
       const screenshot = await captureScreenshot(selectedCamp.url);
       setResults(prev => ({ ...prev, screenshot }));
 
-      // Step 3: AI vision analysis (accuracy optimization)
-      console.log('🤖 [SimpleSignupTest] === STEP 3: AI Vision Analysis ===');
-      const visionAnalysis = await analyzeScreenshot(screenshot);
-      setResults(prev => ({ ...prev, visionAnalysis }));
+      // Step 4: Analyze registration page for authentication requirements
+      console.log('🔐 [SimpleSignupTest] === STEP 4: Authentication Analysis ===');
+      const registrationAnalysis = await analyzeRegistrationPage(screenshot);
+      setResults(prev => ({ ...prev, registrationAnalysis }));
 
-      // Step 4: Initialize reservation (security optimization)
-      console.log('🔒 [SimpleSignupTest] === STEP 4: Reservation Init ===');
+      // Step 5: Initialize reservation (security optimization)
+      console.log('🔒 [SimpleSignupTest] === STEP 5: Reservation Init ===');
       const reserveInit = await testReserveInit();
       setResults(prev => ({ ...prev, reserveInit }));
 
-      // Step 5: Check CAPTCHA risk and handle accordingly
-      console.log('🤖 [SimpleSignupTest] === STEP 5: CAPTCHA Risk Assessment ===');
-      const captchaRisk = visionAnalysis?.captchaRisk || 0;
-      console.log('🔍 [SimpleSignupTest] CAPTCHA risk level:', captchaRisk);
+      // Step 6: Authentication & CAPTCHA assessment
+      console.log('🔐 [SimpleSignupTest] === STEP 6: Authentication & CAPTCHA Assessment ===');
+      const authRequired = registrationAnalysis?.authRequired || selectedCamp.expectedAuth;
+      const captchaRisk = registrationAnalysis?.captchaRisk || 0;
+      console.log('🔍 [SimpleSignupTest] Auth required:', authRequired, 'CAPTCHA risk:', captchaRisk);
       
-      if (captchaRisk >= 0.5) {
+      if (authRequired) {
+        console.log('🔐 [SimpleSignupTest] Authentication required - testing account creation workflow');
+        setCurrentStep('🔐 Authentication barrier detected - account creation required');
+        // TODO: Test account creation workflow
+      } else if (captchaRisk >= 0.5) {
         console.log('⚠️ [SimpleSignupTest] High CAPTCHA risk - testing human-assisted workflow');
-        // High CAPTCHA risk - test human-assisted workflow
         const captchaHandling = await testCaptchaHandling();
         setResults(prev => ({ ...prev, captchaHandling }));
         setCurrentStep('⚠️ CAPTCHA detected - human assistance workflow activated');
       } else {
-        console.log('🤖 [SimpleSignupTest] Low CAPTCHA risk - testing automation');
-        // Low CAPTCHA risk - attempt automation
+        console.log('✅ [SimpleSignupTest] Direct registration available - testing automation');
         const automationResult = await attemptAutomation();
         setResults(prev => ({ ...prev, automationResult }));
-        setCurrentStep('✅ Automated signup flow completed');
+        setCurrentStep('✅ Direct registration flow - automation possible');
       }
 
       setStatus('success');
-      setCurrentStep('✅ Full signup optimization pipeline tested successfully');
-      console.log('🎉 [SimpleSignupTest] === TEST COMPLETED SUCCESSFULLY ===');
+      setCurrentStep('✅ Registration flow analysis completed - authentication requirements identified');
+      console.log('🎉 [SimpleSignupTest] === REGISTRATION FLOW TEST COMPLETED ===');
     } catch (err: any) {
       console.error('❌ [SimpleSignupTest] Test failed with error:', err);
       console.error('❌ [SimpleSignupTest] Error stack:', err.stack);
@@ -309,9 +364,11 @@ export default function SimpleSignupTest() {
             <p><strong>Testing:</strong> {selectedCamp.name}</p>
             <p><strong>URL:</strong> {selectedCamp.url}</p>
             <p><strong>Type:</strong> {selectedCamp.type}</p>
+            <p><strong>Flow:</strong> {selectedCamp.registrationFlow}</p>
+            <p><strong>Expected Auth:</strong> {selectedCamp.expectedAuth ? 'Login Required' : 'Direct Registration'}</p>
             <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
               <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                🚀 Real Site Testing Mode: This will capture actual screenshots and analyze real forms
+                🎯 Registration Flow Testing: This will navigate to actual registration pages and test authentication barriers
               </p>
             </div>
           </div>
@@ -324,7 +381,7 @@ export default function SimpleSignupTest() {
             disabled={status === 'running'}
             className="bg-primary text-primary-foreground px-6 py-2 rounded-md hover:bg-primary/90 disabled:opacity-50"
           >
-            {status === 'running' ? 'Testing...' : 'Test Camp Signup'}
+            {status === 'running' ? 'Testing Registration Flow...' : 'Test Registration Flow'}
           </button>
           
           <button
@@ -379,13 +436,25 @@ export default function SimpleSignupTest() {
               </div>
             )}
 
-            {/* Vision Analysis */}
-            {results.visionAnalysis && (
+            {/* Navigation Results */}
+            {results.navigation && (
               <div className="space-y-2">
-                <h3 className="font-semibold">🎯 AI Vision Analysis (Accuracy Optimization):</h3>
+                <h3 className="font-semibold">🧭 Registration Navigation:</h3>
+                <div className="bg-amber-50 dark:bg-amber-950 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(results.navigation, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Registration Analysis */}
+            {results.registrationAnalysis && (
+              <div className="space-y-2">
+                <h3 className="font-semibold">🔐 Registration Page Analysis:</h3>
                 <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                   <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
-                    {JSON.stringify(results.visionAnalysis, null, 2)}
+                    {JSON.stringify(results.registrationAnalysis, null, 2)}
                   </pre>
                 </div>
               </div>
