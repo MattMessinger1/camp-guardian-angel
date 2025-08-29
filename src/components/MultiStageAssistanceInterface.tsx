@@ -451,17 +451,16 @@ export function MultiStageAssistanceInterface({
         <TabsContent value="captcha">
           <CaptchaIntelligentFlow
             sessionId={sessionId}
-            context={currentRequest?.context}
-            onComplete={(response) => {
+            onResolved={() => {
               const requestIndex = assistanceRequests.findIndex(req => req.type === 'captcha' && req.status === 'active');
               if (requestIndex !== -1) {
-                completeRequest(requestIndex, response);
+                completeRequest(requestIndex, { resolved: true });
               }
             }}
-            onError={(error) => {
+            onFailed={() => {
               const requestIndex = assistanceRequests.findIndex(req => req.type === 'captcha' && req.status === 'active');
               if (requestIndex !== -1) {
-                failRequest(requestIndex, error);
+                failRequest(requestIndex, "CAPTCHA solving failed");
               }
             }}
           />
