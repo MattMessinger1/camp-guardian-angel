@@ -67,6 +67,9 @@ serve(async (req) => {
       sessionId: requestData.sessionId,
       url: requestData.url 
     });
+    console.log('DEBUG: Action type:', typeof requestData.action);
+    console.log('DEBUG: Action value:', JSON.stringify(requestData.action));
+    console.log('DEBUG: Action === "navigate_and_register":', requestData.action === 'navigate_and_register');
 
     let result;
     
