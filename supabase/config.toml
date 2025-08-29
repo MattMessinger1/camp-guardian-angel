@@ -156,3 +156,9 @@ verify_jwt = false
 [functions.test-minimal]
 verify_jwt = false
 
+[functions.analyze-captcha-challenge]
+verify_jwt = false
+
+[functions.browser-automation-simple]
+verify_jwt = false
+
