@@ -2,7 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-test-mode',
+  'Access-Control-Max-Age': '86400',
 };
 
 interface BrowserSessionRequest {
@@ -14,12 +16,17 @@ interface BrowserSessionRequest {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests FIRST - before any other processing
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    console.log('✅ CORS preflight request received');
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
   try {
-    console.log('🚀 Browser automation simple - starting...');
+    console.log('🚀 Browser automation simple - starting...', req.method, req.url);
     
     const browserbaseApiKey = Deno.env.get('BROWSERBASE_TOKEN');
     const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
