@@ -85,68 +85,105 @@ serve(async (req) => {
       
       const session = await sessionResponse.json();
       console.log('✅ Browserbase session created:', session.id);
+      console.log('🔗 Session details:', JSON.stringify(session, null, 2));
       
-      // Navigate to URL using CDP 
-      console.log(`🌐 Navigating to ${url}...`);
+      // Navigate to URL and take screenshot using WebSocket CDP connection
+      console.log(`🌐 Connecting to browser via WebSocket: ${session.connectUrl}`);
       
-      // Use CDP to navigate to the page
-      const navigateResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}/cdp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-BB-API-Key': browserbaseApiKey,
-        },
-        body: JSON.stringify({
-          method: 'Page.navigate',
-          params: {
-            url: url
+      // Create WebSocket connection to CDP
+      const wsUrl = session.connectUrl;
+      const ws = new WebSocket(wsUrl);
+      
+      let screenshot = null;
+      let wsError = null;
+      
+      const cdpPromise = new Promise((resolve, reject) => {
+        let messageId = 1;
+        
+        ws.onopen = () => {
+          console.log('✅ WebSocket connection established');
+          
+          // Enable Page domain
+          ws.send(JSON.stringify({
+            id: messageId++,
+            method: 'Page.enable'
+          }));
+          
+          // Navigate to the URL
+          setTimeout(() => {
+            console.log(`🌐 Navigating to ${url}...`);
+            ws.send(JSON.stringify({
+              id: messageId++,
+              method: 'Page.navigate',
+              params: { url }
+            }));
+          }, 500);
+          
+          // Wait for page load and take screenshot
+          setTimeout(() => {
+            console.log('📸 Taking screenshot...');
+            ws.send(JSON.stringify({
+              id: messageId++,
+              method: 'Page.captureScreenshot',
+              params: {
+                format: 'png',
+                quality: 90,
+                fullPage: false
+              }
+            }));
+          }, 5000);
+        };
+        
+        ws.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          console.log('📥 CDP message:', message.method || `Response ${message.id}`);
+          
+          if (message.method === 'Page.loadEventFired') {
+            console.log('✅ Page loaded');
           }
-        })
+          
+          if (message.result && message.result.data) {
+            screenshot = `data:image/png;base64,${message.result.data}`;
+            console.log(`✅ Screenshot captured (${message.result.data.length} chars)`);
+            ws.close();
+            resolve(screenshot);
+          }
+          
+          if (message.error) {
+            console.error('❌ CDP error:', message.error);
+            reject(new Error(`CDP error: ${message.error.message}`));
+          }
+        };
+        
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket error:', error);
+          reject(new Error('WebSocket connection failed'));
+        };
+        
+        ws.onclose = () => {
+          console.log('🔌 WebSocket connection closed');
+          if (!screenshot && !wsError) {
+            reject(new Error('WebSocket closed without capturing screenshot'));
+          }
+        };
+        
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close();
+          }
+          reject(new Error('Screenshot capture timeout'));
+        }, 30000);
       });
       
-      if (!navigateResponse.ok) {
-        const errorText = await navigateResponse.text();
-        console.error('❌ Navigation failed:', navigateResponse.status, errorText);
-        // Continue anyway - navigation might work even if response is not perfect
+      try {
+        screenshot = await cdpPromise;
+      } catch (cdpError) {
+        console.error('❌ CDP connection error:', cdpError);
+        throw new Error(`CDP connection failed: ${cdpError.message}`);
       }
       
-      // Wait for page to load
-      console.log('⏳ Waiting for page to load...');
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Take screenshot using CDP
-      const screenshotResponse = await fetch(`https://api.browserbase.com/v1/sessions/${session.id}/cdp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-BB-API-Key': browserbaseApiKey,
-        },
-        body: JSON.stringify({
-          method: 'Page.captureScreenshot',
-          params: {
-            format: 'png',
-            quality: 90,
-            fullPage: false
-          }
-        })
-      });
-      
-      if (!screenshotResponse.ok) {
-        const errorText = await screenshotResponse.text();
-        console.error('❌ Browserbase screenshot failed:', screenshotResponse.status, errorText);
-        throw new Error(`Screenshot capture failed: ${screenshotResponse.status} ${errorText}`);
-      }
-      
-      const screenshotResult = await screenshotResponse.json();
-      
-      if (!screenshotResult.result?.data) {
-        console.error('❌ No screenshot data in response:', screenshotResult);
-        throw new Error('No screenshot data returned from Browserbase');
-      }
-      
-      const screenshot = `data:image/png;base64,${screenshotResult.result.data}`;
-      
-      console.log(`✅ Real screenshot captured (${screenshotResult.result.data.length} chars)`);
+      console.log(`✅ Real screenshot captured successfully`);
       
       // Clean up session
       try {
