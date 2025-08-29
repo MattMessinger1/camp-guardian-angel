@@ -826,6 +826,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
                 
                 <Button 
                   type="submit"
+                  data-testid="submit-signup-form"
                   disabled={loading || !consentGiven || !upfrontPaymentConsent || !successFeeConsent || (requirements?.payment_required && !hasPaymentMethod)}
                   className="flex-1"
                 >

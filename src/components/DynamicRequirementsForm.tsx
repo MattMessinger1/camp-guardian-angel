@@ -72,9 +72,9 @@ export default function DynamicRequirementsForm({
 
   if (!requirements) {
     return (
-      <Alert>
+      <Alert data-testid="fallback-requirements-form">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
+        <AlertDescription data-testid="requirements-error-notice">
           Unable to load session requirements. Using default form.
         </AlertDescription>
       </Alert>
@@ -100,14 +100,17 @@ export default function DynamicRequirementsForm({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="dynamic-requirements-form">
       {/* Session Analysis Summary */}
-      <Card>
+      <Card data-testid="session-analysis-summary">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Shield className="h-5 w-5" />
             <span>Registration Analysis</span>
             {cached && <Badge variant="secondary">Cached</Badge>}
+            {requirements.authentication_required && (
+              <Badge variant="secondary" data-testid="auth-required-indicator">Auth Required</Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -163,7 +166,7 @@ export default function DynamicRequirementsForm({
         <CardHeader>
           <CardTitle>Required Information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4" data-testid="required-fields-container">
           {requirements.required_fields.map((field, index) => (
             <div key={`${field.field_name}-${index}`} className="space-y-2">
               <Label 
