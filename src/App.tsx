@@ -7,6 +7,7 @@ import { Suspense, lazy } from 'react';
 import HomePage from "./pages/Home";
 import Auth from "./pages/Auth";
 import AutomatedSignupPage from "./pages/AutomatedSignupPage";
+import EnhancedSignupPage from "./pages/EnhancedSignupPage";
 import SignupSubmitted from './pages/SignupSubmitted';
 import AccountHistory from './pages/AccountHistory';
 import Settings from "./pages/Settings";
@@ -97,7 +98,7 @@ export default function App() {
             <Routes>
               {/* Core V1.0 Production Routes - Always Available */}
               <Route path="/" element={<HomePage />} />
-              <Route path="/signup" element={<AutomatedSignupPage />} />
+              <Route path="/signup" element={<EnhancedSignupPage />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/settings" element={
                 <ProtectedRoute>

@@ -79,7 +79,11 @@ export function useWorkflowIntegration(options: UseWorkflowIntegrationOptions) {
     try {
       // Analyze session requirements to determine barriers
       const { data, error } = await supabase.functions.invoke('analyze-session-requirements', {
-        body: { sessionId, userId, providerUrl }
+        body: { 
+          session_id: sessionId, 
+          signup_url: providerUrl || 'https://example.com/signup',
+          force_refresh: false
+        }
       });
 
       if (error) throw error;

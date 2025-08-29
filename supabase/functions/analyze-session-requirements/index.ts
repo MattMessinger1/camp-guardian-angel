@@ -185,6 +185,7 @@ async function analyzeRegistrationRequirements(url: string, sessionId: string): 
 }
 
 function determineProviderType(url: string): string {
+  if (!url) return 'unknown';
   if (url.includes('myvscloud.com')) return 'vscloud';
   if (url.includes('communitypass.net')) return 'community_pass';
   if (url.includes('activecommunities.com')) return 'active_communities';
