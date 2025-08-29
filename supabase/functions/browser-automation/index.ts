@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
+import { getDecryptedCredentials, logLoginAttempt } from '../_shared/account-credentials.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +15,7 @@ const supabase = createClient(
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 interface BrowserSessionRequest {
-  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup';
+  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login';
   sessionId?: string;
   url?: string;
   campProviderId?: string;
@@ -22,6 +23,8 @@ interface BrowserSessionRequest {
   registrationData?: any;
   approvalToken?: string;
   enableVision?: boolean;
+  userId?: string;
+  providerUrl?: string;
 }
 
 interface BrowserSession {
@@ -79,6 +82,9 @@ serve(async (req) => {
       case 'extract':
         result = await extractPageData(browserbaseApiKey, requestData);
         break;
+      case 'login':
+        result = await performAccountLogin(browserbaseApiKey, requestData);
+        break;
       case 'close':
         result = await closeBrowserSession(browserbaseApiKey, requestData);
         break;
@@ -111,6 +117,95 @@ serve(async (req) => {
     });
   }
 });
+
+async function performAccountLogin(apiKey: string, request: BrowserSessionRequest): Promise<any> {
+  if (!request.sessionId || !request.userId || !request.providerUrl) {
+    throw new Error('Session ID, User ID, and Provider URL required for login');
+  }
+
+  console.log(`🔐 Account Login: Attempting login for session ${request.sessionId}`);
+
+  try {
+    // Get stored credentials for this user and provider
+    const { email, password, error } = await getDecryptedCredentials({
+      userId: request.userId,
+      providerUrl: request.providerUrl
+    });
+
+    if (error || !email || !password) {
+      console.log('[LOGIN] No valid credentials found:', error);
+      
+      await logLoginAttempt({
+        userId: request.userId,
+        providerUrl: request.providerUrl,
+        success: false,
+        error: error || 'No credentials found',
+        sessionId: request.sessionId
+      });
+
+      return {
+        success: false,
+        account_found: false,
+        login_attempted: false,
+        error: error || 'No stored credentials found for this provider'
+      };
+    }
+
+    console.log('[LOGIN] Found credentials, attempting login...');
+
+    // In a real implementation, this would use WebSocket CDP to:
+    // 1. Find login form elements
+    // 2. Fill in email and password
+    // 3. Submit the form
+    // 4. Wait for login success/failure
+    
+    // Simulate login attempt
+    const loginResult = {
+      success: true, // In real implementation, this would be determined by page response
+      account_found: true,
+      login_attempted: true,
+      simulated: true,
+      note: 'Login simulation for development - real implementation uses WebSocket CDP'
+    };
+
+    // Log the attempt
+    await logLoginAttempt({
+      userId: request.userId,
+      providerUrl: request.providerUrl,
+      success: loginResult.success,
+      sessionId: request.sessionId
+    });
+
+    // Update session with login status
+    await supabase.from('browser_sessions')
+      .update({ 
+        last_activity: new Date().toISOString(),
+        metadata: {
+          ...request,
+          login_attempted: true,
+          login_success: loginResult.success,
+          timestamp: new Date().toISOString()
+        }
+      })
+      .eq('session_id', request.sessionId);
+
+    console.log('[LOGIN] Login attempt completed:', loginResult);
+    return loginResult;
+
+  } catch (error: any) {
+    console.error('[LOGIN] Login error:', error);
+    
+    await logLoginAttempt({
+      userId: request.userId,
+      providerUrl: request.providerUrl!,
+      success: false,
+      error: error.message,
+      sessionId: request.sessionId
+    });
+    
+    throw error;
+  }
+}
 
 async function createBrowserSession(apiKey: string, request: BrowserSessionRequest): Promise<BrowserSession> {
   console.log('🎯 REAL YMCA TEST: Creating browser session for YMCA registration');

@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getTestScenario } from "@/lib/test-scenarios";
 import { PreRegistrationAccountSetup } from "@/components/PreRegistrationAccountSetup";
+import { AutomatedSignupStatus } from "@/components/AutomatedSignupStatus";
+import { CaptchaAssistanceFlow } from "@/components/CaptchaAssistanceFlow";
 
 interface Child {
   name: string;
@@ -36,6 +38,15 @@ interface SessionRequirements {
   };
   payment_required: boolean;
   payment_amount?: number;
+}
+
+interface AutomationStep {
+  id: string;
+  name: string;
+  status: 'pending' | 'active' | 'completed' | 'failed' | 'requires_action';
+  description?: string;
+  timestamp?: string;
+  requiresUserAction?: boolean;
 }
 
 interface CompleteSignupFormProps {
@@ -87,6 +98,13 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
   // Account setup state
   const [currentStep, setCurrentStep] = useState<'account-setup' | 'profile-info' | 'payment'>('account-setup');
   const [accountSetupData, setAccountSetupData] = useState<any>(null);
+  const [showAutomationStatus, setShowAutomationStatus] = useState(false);
+  const [automationSteps, setAutomationSteps] = useState<AutomationStep[]>([
+    { id: 'account_login', name: 'Account Login', status: 'pending' },
+    { id: 'form_analysis', name: 'Form Analysis', status: 'pending' },
+    { id: 'captcha_handling', name: 'CAPTCHA Handling', status: 'pending', requiresUserAction: true },
+    { id: 'form_submission', name: 'Form Submission', status: 'pending' },
+  ]);
 
   const addChild = () => {
     if (children.length >= 5) {
@@ -120,6 +138,16 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     if (accountData.account_email) {
       setEmail(accountData.account_email);
     }
+
+    // Show automation status when account setup is complete
+    setShowAutomationStatus(true);
+    
+    // Update automation steps to show account login is ready
+    setAutomationSteps(prev => prev.map(step => 
+      step.id === 'account_login' 
+        ? { ...step, status: 'completed' as const, description: 'Account credentials stored securely' }
+        : step
+    ));
   };
 
   // Phone formatting utilities
@@ -562,8 +590,39 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
           <PreRegistrationAccountSetup
             sessionId={sessionId}
             onAccountSetupComplete={handleAccountSetupComplete}
-            campUrl={discoveredRequirements?.pageData?.url}
           />
+          
+          {/* Automation Status Display */}
+          {showAutomationStatus && accountSetupData && (
+            <div className="space-y-4">
+              <AutomatedSignupStatus
+                steps={automationSteps}
+                currentStep="account_login"
+                overallProgress={25}
+                sessionId={sessionId}
+                accountSetupComplete={true}
+              />
+              
+              {/* CAPTCHA Assistance for complex scenarios */}
+              <CaptchaAssistanceFlow
+                sessionId={sessionId || 'default'}
+                onCaptchaResolved={() => {
+                  setAutomationSteps(prev => prev.map(step => 
+                    step.id === 'captcha_handling' 
+                      ? { ...step, status: 'completed' }
+                      : step
+                  ));
+                }}
+                onCaptchaFailed={() => {
+                  setAutomationSteps(prev => prev.map(step => 
+                    step.id === 'captcha_handling' 
+                      ? { ...step, status: 'failed' }
+                      : step
+                  ));
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     );

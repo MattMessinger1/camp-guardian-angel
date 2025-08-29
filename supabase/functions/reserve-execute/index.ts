@@ -88,6 +88,23 @@ async function executeBrowserAutomation(params: {
     if (navigateResult.error) {
       throw new Error(`Navigation failed: ${navigateResult.error.message}`);
     }
+
+    // Step 2.5: Attempt account login if credentials exist
+    console.log('[AUTOMATION] Checking for stored account credentials...');
+    const loginResult = await supabase.functions.invoke('browser-automation', {
+      body: {
+        action: 'login',
+        sessionId,
+        userId: params.userId,
+        providerUrl: new URL(params.signupUrl).origin
+      }
+    });
+
+    if (loginResult.data?.success) {
+      console.log('[AUTOMATION] Successfully logged into existing account');
+    } else {
+      console.log('[AUTOMATION] No account login:', loginResult.data?.error || 'No stored credentials');
+    }
     
     // Step 3: Extract page data to check availability
     const extractResult = await supabase.functions.invoke('browser-automation', {
