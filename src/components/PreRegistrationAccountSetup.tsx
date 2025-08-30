@@ -57,6 +57,47 @@ export function PreRegistrationAccountSetup({
 }: PreRegistrationAccountSetupProps) {
   const { toast } = useToast();
   
+  // Debug function for testing credential storage
+  const runQuickTest = async () => {
+    console.log('=== QUICK DEBUG TEST ===');
+    
+    try {
+      // Check user authentication
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('1. User check:', { user: user?.email, authError });
+      
+      if (!user) {
+        console.log('❌ Not authenticated - need to login first');
+        return;
+      }
+      
+      // Test the edge function (using the actual function name)
+      console.log('2. Testing store-camp-credentials function...');
+      const { data, error } = await supabase.functions.invoke('store-camp-credentials', {
+        body: {
+          session_id: sessionId,
+          provider_url: 'https://debug-test.com',
+          email: 'debug@test.com',
+          password: 'test123',
+          provider_name: 'Debug Test Provider'
+        }
+      });
+      
+      if (error) {
+        console.error('❌ Function failed:', {
+          message: error.message,
+          status: error.status,
+          details: error
+        });
+      } else {
+        console.log('✅ Function succeeded:', data);
+      }
+      
+    } catch (err) {
+      console.error('❌ Test exception:', err);
+    }
+  };
+  
   // AI Analysis State
   const [analyzing, setAnalyzing] = useState(false);
   const [accountRequirement, setAccountRequirement] = useState<AccountRequirement | null>(null);
@@ -320,6 +361,14 @@ export function PreRegistrationAccountSetup({
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Debug button for testing */}
+          <button 
+            onClick={runQuickTest}
+            className="mb-4 px-4 py-2 bg-red-500 text-white rounded text-sm"
+          >
+            🔧 Debug Test
+          </button>
+          
           <Alert>
             <Shield className="h-4 w-4" />
             <AlertDescription>
