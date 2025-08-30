@@ -41,8 +41,20 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
+    console.log('Environment check:');
+    console.log('- Perplexity API key exists:', !!perplexityApiKey);
+    console.log('- Perplexity API key length:', perplexityApiKey ? perplexityApiKey.length : 0);
+    console.log('- Supabase URL:', !!supabaseUrl);
+    console.log('- Supabase Service Key:', !!supabaseKey);
+    
     if (!perplexityApiKey) {
+      console.error('PERPLEXITY_API_KEY not found in environment');
       throw new Error('PERPLEXITY_API_KEY not configured');
+    }
+    
+    if (perplexityApiKey.length < 10) {
+      console.error('PERPLEXITY_API_KEY appears to be invalid (too short)');
+      throw new Error('PERPLEXITY_API_KEY appears to be invalid');
     }
     
     const supabase = createClient(supabaseUrl!, supabaseKey!);
