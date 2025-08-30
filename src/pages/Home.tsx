@@ -24,7 +24,7 @@ const HomePage = () => {
   const [searchResults, setSearchResults] = useState([])
   const [isSearchLoading, setIsSearchLoading] = useState(false)
   
-  // Hybrid search function - fast search first, then AI fallback
+  // Hybrid search function - fast search first, then AI fallback, then internet search
   const handleAISearch = useCallback(async (query) => {
     if (!query.trim()) return;
 
@@ -67,48 +67,89 @@ const HomePage = () => {
         component: 'Home'
       });
 
-      if (aiSearchResponse.error) {
-        logger.error('AI search failed', { error: aiSearchResponse.error, component: 'Home' });
-        throw new Error(aiSearchResponse.error.message || 'AI search failed');
+      if (aiSearchResponse.data?.success && aiSearchResponse.data?.results?.length > 0) {
+        const aiData = aiSearchResponse.data;
+        // Transform AI results to match our interface if needed
+        const results = (aiData.results || []).map((result: any) => ({
+          sessionId: result.session_id || result.camp_id || result.sessionId,
+          campName: result.camp_name || result.campName,
+          providerName: result.provider_name || result.providerName || 'Camp Provider',
+          location: result.location_name || result.location ? 
+            (typeof result.location === 'string' ? {
+              city: result.location.split(',')[0]?.trim() || '',
+              state: result.location.split(',')[1]?.trim() || ''
+            } : result.location) : undefined,
+          registrationOpensAt: result.registration_opens_at || result.registrationOpensAt,
+          sessionDates: (result.start_date && result.end_date) || result.sessionDates ? {
+            start: result.start_date || result.sessionDates?.start,
+            end: result.end_date || result.sessionDates?.end
+          } : undefined,
+          capacity: result.capacity,
+          price: result.price_min || result.price,
+          ageRange: (result.age_min && result.age_max) || result.ageRange ? {
+            min: result.age_min || result.ageRange?.min,
+            max: result.age_max || result.ageRange?.max
+          } : undefined,
+          confidence: result.confidence || 0.5,
+          reasoning: result.reasoning || 'AI match found'
+        }));
+
+        logger.info('Processed AI results', { resultCount: results.length, component: 'Home' });
+        setSearchResults(results);
+        return;
       }
 
-      const aiData = aiSearchResponse.data;
-      if (!aiData.success) {
-        logger.error('AI search failed', { error: aiData.error, component: 'Home' });
-        throw new Error(aiData.error || 'AI search failed');
-      }
+      // Step 3: Final fallback to internet search using Perplexity
+      logger.info('Database searches found no results, searching the entire internet', { component: 'Home' });
+      const internetSearchResponse = await supabase.functions.invoke('internet-activity-search', {
+        body: { query: query.trim(), limit: 8 }
+      });
 
-      // Transform AI results to match our interface if needed
-      const results = (aiData.results || []).map((result: any) => ({
-        sessionId: result.session_id || result.camp_id || result.sessionId,
-        campName: result.camp_name || result.campName,
-        providerName: result.provider_name || result.providerName || 'Camp Provider',
-        location: result.location_name || result.location ? 
-          (typeof result.location === 'string' ? {
+      logger.info('Internet search response received', { 
+        success: internetSearchResponse?.data?.success,
+        resultCount: internetSearchResponse?.data?.results?.length || 0,
+        component: 'Home'
+      });
+
+      if (internetSearchResponse.data?.success && internetSearchResponse.data?.results?.length > 0) {
+        // Transform internet results to match our SearchResult interface
+        const internetResults = internetSearchResponse.data.results.map((result: any) => ({
+          sessionId: `internet-${Date.now()}-${Math.random()}`, // Generate unique ID for internet results
+          campName: result.title,
+          providerName: result.provider,
+          location: result.location ? {
             city: result.location.split(',')[0]?.trim() || '',
             state: result.location.split(',')[1]?.trim() || ''
-          } : result.location) : undefined,
-        registrationOpensAt: result.registration_opens_at || result.registrationOpensAt,
-        sessionDates: (result.start_date && result.end_date) || result.sessionDates ? {
-          start: result.start_date || result.sessionDates?.start,
-          end: result.end_date || result.sessionDates?.end
-        } : undefined,
-        capacity: result.capacity,
-        price: result.price_min || result.price,
-        ageRange: (result.age_min && result.age_max) || result.ageRange ? {
-          min: result.age_min || result.ageRange?.min,
-          max: result.age_max || result.ageRange?.max
-        } : undefined,
-        confidence: result.confidence || 0.5,
-        reasoning: result.reasoning || 'AI match found'
-      }));
+          } : undefined,
+          registrationOpensAt: undefined, // Internet results don't have specific registration times
+          sessionDates: result.estimatedDates ? {
+            start: result.estimatedDates,
+            end: result.estimatedDates
+          } : undefined,
+          capacity: undefined,
+          price: result.estimatedPrice ? parseFloat(result.estimatedPrice.replace(/[^0-9.]/g, '')) || undefined : undefined,
+          ageRange: result.estimatedAgeRange ? {
+            min: parseInt(result.estimatedAgeRange.split('-')[0]) || 0,
+            max: parseInt(result.estimatedAgeRange.split('-')[1]) || 18
+          } : undefined,
+          confidence: result.confidence || 0.6,
+          reasoning: `Found via internet search • ${result.description}`,
+          // Add internet-specific data for later use
+          internetResult: {
+            url: result.url,
+            canAutomate: result.canAutomate,
+            automationComplexity: result.automationComplexity
+          }
+        }));
 
-      logger.info('Processed AI results', { resultCount: results.length, component: 'Home' });
-      setSearchResults(results);
-      logger.performance('AI search fallback completed', 0, { 
-        resultCount: results.length, 
-        component: 'Home' 
-      });
+        logger.info('Processed internet results', { resultCount: internetResults.length, component: 'Home' });
+        setSearchResults(internetResults);
+        return;
+      }
+
+      // If all searches failed, show no results
+      setSearchResults([]);
+      logger.info('All search methods exhausted, no results found', { component: 'Home' });
       
     } catch (error) {
       logger.error('Search error occurred', { error, component: 'Home' });
@@ -122,7 +163,30 @@ const HomePage = () => {
   }, []);
 
   const handleRegister = (sessionId: string) => {
-    // Navigate to signup page with sessionId for requirements completion
+    // Check if this is an internet result (starts with 'internet-')
+    if (sessionId.startsWith('internet-')) {
+      // Find the corresponding result to get the internet data
+      const result = searchResults.find(r => r.sessionId === sessionId);
+      if (result && result.internetResult) {
+        // Navigate to automation initiation with internet result data
+        navigate('/initiate-automation', { 
+          state: { 
+            internetResult: {
+              title: result.campName,
+              url: result.internetResult.url,
+              provider: result.providerName,
+              description: result.reasoning,
+              canAutomate: result.internetResult.canAutomate,
+              automationComplexity: result.internetResult.automationComplexity,
+              confidence: result.confidence
+            }
+          }
+        });
+        return;
+      }
+    }
+    
+    // Regular database result - navigate to signup page with sessionId for requirements completion
     navigate(`/signup?sessionId=${sessionId}`);
   };
 
