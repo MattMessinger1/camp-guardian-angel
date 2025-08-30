@@ -117,6 +117,33 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     { id: 'form_submission', name: 'Form Submission', status: 'pending' },
   ]);
 
+  // Handle payment completion callback from Stripe
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('paymentComplete') === 'true') {
+      setHasPaymentMethod(true);
+      toast({
+        title: "Payment Method Added!",
+        description: "Your payment method has been saved successfully.",
+      });
+      
+      // Clean up URL parameters
+      const newUrl = window.location.pathname + '?sessionId=' + sessionId;
+      window.history.replaceState({}, '', newUrl);
+    }
+    if (urlParams.get('paymentCanceled') === 'true') {
+      toast({
+        title: "Payment Setup Canceled",
+        description: "You can add your payment method later.",
+        variant: "destructive",
+      });
+      
+      // Clean up URL parameters
+      const newUrl = window.location.pathname + '?sessionId=' + sessionId;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [sessionId]);
+
   const addChild = () => {
     if (children.length >= 5) {
       toast({ 
