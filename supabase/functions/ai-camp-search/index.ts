@@ -146,8 +146,24 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
     });
 
     // Step 1: Parse query using AI
-    const parsedIntent = await chatParse(request.query);
-    console.log('Parsed intent:', parsedIntent);
+    console.log('Calling chatParse with query:', request.query);
+    let parsedIntent;
+    try {
+      parsedIntent = await chatParse(request.query);
+      console.log('Parsed intent successfully:', parsedIntent);
+    } catch (parseError) {
+      console.error('Error parsing query:', parseError);
+      // Fall back to basic parsing if AI fails
+      parsedIntent = {
+        campNames: [],
+        city: null,
+        state: null,
+        weekDateISO: null,
+        clarifyingQuestions: [],
+        isAmbiguous: false
+      };
+      console.log('Using fallback parsed intent:', parsedIntent);
+    }
 
     // Step 2: Calculate child age if DOB provided
     let childAge = request.child?.age;
@@ -406,13 +422,20 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
 }
 
 serve(async (req) => {
+  console.log('=== AI CAMP SEARCH FUNCTION CALLED ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     if (req.method !== 'POST') {
+      console.error('Method not allowed:', req.method);
       return new Response(
         JSON.stringify({ success: false, error: 'Method not allowed' }),
         { 
@@ -422,9 +445,49 @@ serve(async (req) => {
       );
     }
 
-    // Parse and validate request
-    const body = await req.json();
-    const request = SearchRequestSchema.parse(body);
+    // Parse and validate request body
+    console.log('Parsing request body...');
+    let body;
+    try {
+      body = await req.json();
+      console.log('Raw request body:', JSON.stringify(body, null, 2));
+    } catch (parseError) {
+      console.error('Failed to parse JSON body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid JSON in request body',
+          details: parseError.message 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Validate request schema
+    console.log('Validating request schema...');
+    let request;
+    try {
+      request = SearchRequestSchema.parse(body);
+      console.log('Schema validation passed:', request);
+    } catch (validationError) {
+      console.error('Schema validation failed:', validationError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Request validation failed',
+          details: validationError instanceof z.ZodError 
+            ? validationError.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+            : validationError.message
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     // Extract user ID from auth header if available
     const authHeader = req.headers.get('authorization');
