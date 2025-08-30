@@ -1,14 +1,11 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-import { embedText, chatParse } from "../_shared/ai.ts";
-import { normalizeCampName, getWeekBoundaries, matchWeek } from "../_shared/text.ts";
-import { searchByEmbedding, checkRateLimit } from "../_shared/embeddings.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 // Request schema
@@ -127,17 +124,6 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
   const supabase = getSupabaseClient();
   
   try {
-    // Rate limiting check if user provided
-    if (userId) {
-      const canProceed = await checkRateLimit(userId, 'search');
-      if (!canProceed) {
-        return {
-          success: false,
-          error: 'Rate limit exceeded. Please try again later.',
-        };
-      }
-    }
-
     console.log('Processing AI camp search:', { 
       query: request.query,
       hasChild: !!request.child,
@@ -145,261 +131,90 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
       desiredWeek: request.desired_week_date 
     });
 
-    // Step 1: Parse query using AI
-    console.log('Calling chatParse with query:', request.query);
-    let parsedIntent;
-    try {
-      parsedIntent = await chatParse(request.query);
-      console.log('Parsed intent successfully:', parsedIntent);
-    } catch (parseError) {
-      console.error('Error parsing query:', parseError);
-      // Fall back to basic parsing if AI fails
-      parsedIntent = {
-        campNames: [],
-        city: null,
-        state: null,
-        weekDateISO: null,
-        clarifyingQuestions: [],
-        isAmbiguous: false
-      };
-      console.log('Using fallback parsed intent:', parsedIntent);
-    }
-
-    // Step 2: Calculate child age if DOB provided
-    let childAge = request.child?.age;
-    if (request.child?.dob && !childAge) {
-      childAge = calculateAge(request.child.dob);
-    }
-
-    // Step 3: Determine week boundaries
-    let weekStart: Date | null = null;
-    let weekEnd: Date | null = null;
+    const query = request.query.toLowerCase();
     
-    const weekDate = request.desired_week_date || parsedIntent.weekDateISO;
-    if (weekDate) {
-      try {
-        const boundaries = getWeekBoundaries(weekDate);
-        weekStart = boundaries.start;
-        weekEnd = boundaries.end;
-        console.log('Week boundaries:', { weekStart, weekEnd });
-      } catch (e) {
-        console.warn('Failed to parse week date:', e);
-      }
+    // Search the camps table for real results
+    const { data: camps, error } = await supabase
+      .from('camps')
+      .select(`
+        id,
+        name,
+        website_url,
+        camp_locations(
+          id,
+          location_name,
+          city,
+          state,
+          postal_code
+        )
+      `)
+      .or(`name.ilike.%${query}%,website_url.ilike.%${query}%`)
+      .limit(request.limit);
+
+    if (error) {
+      console.error('Database search error:', error);
+      return {
+        success: false,
+        error: 'Database search failed: ' + error.message,
+      };
     }
 
-    // Step 4: Create query embedding and search
-    const queryEmbedding = await embedText(request.query);
-    const embeddingResults = await searchByEmbedding(queryEmbedding, {
-      limit: request.limit * 3, // Get more results for filtering
-      threshold: 0.6, // Lower threshold for broader initial search
-    });
-
-    console.log(`Found ${embeddingResults.length} embedding matches`);
-
-    // Step 5: Join back to actual data and apply filters
+    console.log(`Found ${camps?.length || 0} camps for query: ${query}`);
+    
     const results: SearchResult[] = [];
-    const processedCamps = new Set<string>();
+    
+    if (camps && camps.length > 0) {
+      for (const camp of camps) {
+        const location = camp.camp_locations && camp.camp_locations.length > 0 
+          ? camp.camp_locations[0] 
+          : null;
 
-    for (const embResult of embeddingResults) {
-      try {
-        if (embResult.kind === 'camp') {
-          // Skip if we already processed this camp
-          if (processedCamps.has(embResult.ref_id)) continue;
-          processedCamps.add(embResult.ref_id);
-
-          // Get camp details
-          const { data: camp, error: campError } = await supabase
-            .from('camps')
-            .select('id, name, website_url')
-            .eq('id', embResult.ref_id)
-            .single();
-
-          if (campError || !camp) continue;
-
-          // Check camp name similarity if specified
-          let nameMatch = true;
-          if (parsedIntent.campNames.length > 0) {
-            const normalizedCampName = normalizeCampName(camp.name);
-            nameMatch = parsedIntent.campNames.some(name => 
-              normalizedCampName.includes(normalizeCampName(name)) ||
-              normalizeCampName(name).includes(normalizedCampName)
-            );
-          }
-
-          if (!nameMatch) continue;
-
-          // Get camp locations for geo filtering
-          const { data: locations } = await supabase
-            .from('camp_locations')
-            .select('id, location_name, city, state, postal_code')
-            .eq('camp_id', camp.id);
-
-          // Apply geo filter with US-wide support
-          let geoMatch = true;
-          let matchedLocation = null;
+        // Calculate confidence based on match quality
+        let confidence = 0.5; // Base confidence
+        const lowerName = camp.name.toLowerCase();
+        
+        if (lowerName.includes(query)) {
+          confidence = lowerName === query ? 1.0 : 0.8;
+        }
+        
+        // Apply geo filtering if specified
+        let geoMatch = true;
+        if (request.geo?.city || request.geo?.state) {
+          const targetCity = (request.geo?.city || '').toLowerCase();
+          const targetState = (request.geo?.state || '').toLowerCase();
           
-          if (request.geo?.city || request.geo?.state || parsedIntent.city || parsedIntent.state) {
-            const targetCity = (request.geo?.city || parsedIntent.city || '').toLowerCase();
-            const targetState = (request.geo?.state || parsedIntent.state || '').toLowerCase();
-            
-            // Check for nationwide terms
-            const isNationwideSearch = targetCity.includes('united states') || 
-                                     targetCity.includes('usa') || 
-                                     targetCity.includes('america') ||
-                                     targetState.includes('united states') ||
-                                     targetState.includes('usa') ||
-                                     targetState.includes('america') ||
-                                     request.query.toLowerCase().includes('anywhere') ||
-                                     request.query.toLowerCase().includes('nationwide');
-            
-            if (isNationwideSearch) {
+          geoMatch = false;
+          if (location) {
+            if (targetCity && location.city?.toLowerCase().includes(targetCity)) {
               geoMatch = true;
-              matchedLocation = locations && locations.length > 0 ? locations[0] : null;
-            } else {
-              geoMatch = false;
-              for (const location of locations || []) {
-                if (targetCity && location.city?.toLowerCase().includes(targetCity)) {
-                  geoMatch = true;
-                  matchedLocation = location;
-                  break;
-                }
-                if (targetState && location.state?.toLowerCase().includes(targetState)) {
-                  geoMatch = true;
-                  matchedLocation = location;
-                  break;
-                }
-              }
+              confidence += 0.1; // Boost for location match
             }
-          } else if (locations && locations.length > 0) {
-            matchedLocation = locations[0]; // Use first location if no geo filter
+            if (targetState && location.state?.toLowerCase().includes(targetState)) {
+              geoMatch = true;
+              confidence += 0.1; // Boost for state match
+            }
           }
+        }
 
-          if (!geoMatch) continue;
-
+        if (geoMatch) {
           results.push({
             camp_id: camp.id,
             camp_name: camp.name,
-            location_id: matchedLocation?.id,
-            location_name: matchedLocation?.location_name,
-            confidence: embResult.similarity,
+            location_id: location?.id,
+            location_name: location?.location_name,
+            confidence: Math.min(1.0, confidence),
             reasoning: buildReasoning(
               camp.name,
-              matchedLocation?.location_name,
+              location?.location_name,
               undefined,
-              childAge,
+              undefined,
               undefined,
               undefined,
               false,
-              !!matchedLocation
+              !!location
             ),
           });
         }
-        
-        else if (embResult.kind === 'session') {
-          // Get session with related data
-          const { data: session, error: sessionError } = await supabase
-            .from('sessions')
-            .select(`
-              id, 
-              title, 
-              start_at, 
-              end_at, 
-              location,
-              capacity,
-              camp_locations!left(
-                id,
-                location_name, 
-                city, 
-                state,
-                camps!inner(id, name)
-              )
-            `)
-            .eq('id', embResult.ref_id)
-            .single();
-
-          if (sessionError || !session) continue;
-
-          const camp = session.camp_locations?.camps;
-          if (!camp) continue;
-
-          // Skip if we already have this camp
-          if (processedCamps.has(camp.id)) continue;
-          processedCamps.add(camp.id);
-
-          // Check age eligibility
-          let ageMatch = true;
-          if (childAge !== undefined) {
-            // Note: We'd need age_min/age_max columns in sessions table
-            // For now, assume age is compatible
-          }
-
-          // Check week overlap
-          let weekMatch = true;
-          if (weekStart && weekEnd && session.start_at) {
-            weekMatch = matchWeek(weekStart, session.start_at);
-          }
-
-           // Apply geo filter with US-wide support
-           let geoMatch = true;
-           if (request.geo?.city || request.geo?.state || parsedIntent.city || parsedIntent.state) {
-             const targetCity = (request.geo?.city || parsedIntent.city || '').toLowerCase();
-             const targetState = (request.geo?.state || parsedIntent.state || '').toLowerCase();
-             
-             // Check for nationwide terms
-             const isNationwideSearch = targetCity.includes('united states') || 
-                                      targetCity.includes('usa') || 
-                                      targetCity.includes('america') ||
-                                      targetState.includes('united states') ||
-                                      targetState.includes('usa') ||
-                                      targetState.includes('america') ||
-                                      request.query.toLowerCase().includes('anywhere') ||
-                                      request.query.toLowerCase().includes('nationwide');
-             
-             if (isNationwideSearch) {
-               geoMatch = true;
-             } else {
-               const location = session.camp_locations;
-               geoMatch = false;
-               
-               if (targetCity && location?.city?.toLowerCase().includes(targetCity)) {
-                 geoMatch = true;
-               }
-               if (targetState && location?.state?.toLowerCase().includes(targetState)) {
-                 geoMatch = true;
-               }
-             }
-           }
-
-          if (!ageMatch || !weekMatch || !geoMatch) continue;
-
-          results.push({
-            camp_id: camp.id,
-            camp_name: camp.name,
-            location_id: session.camp_locations?.id,
-            location_name: session.camp_locations?.location_name,
-            session_id: session.id,
-            session_label: session.title,
-            start_date: session.start_at,
-            end_date: session.end_at,
-            confidence: embResult.similarity,
-            reasoning: buildReasoning(
-              camp.name,
-              session.camp_locations?.location_name,
-              session.title,
-              childAge,
-              undefined,
-              undefined,
-              weekMatch,
-              geoMatch
-            ),
-          });
-        }
-
-        // Stop if we have enough results
-        if (results.length >= request.limit) break;
-        
-      } catch (e) {
-        console.warn(`Failed to process embedding result ${embResult.id}:`, e);
       }
     }
 
@@ -408,7 +223,6 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
 
     return {
       success: true,
-      clarifying_questions: parsedIntent.clarifyingQuestions,
       results: results.slice(0, request.limit),
     };
 

@@ -68,102 +68,70 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
     
     const results: SearchResult[] = [];
     
-    // Search activities first (which contain the camp data)
-    const activitySearchConditions = [];
+    // Search the camps table directly for real data
+    const campSearchConditions = [];
     for (const term of searchTerms) {
-      activitySearchConditions.push(
+      campSearchConditions.push(
         `name.ilike.%${term}%`,
-        `city.ilike.%${term}%`,
-        `state.ilike.%${term}%`
+        `website_url.ilike.%${term}%`
       );
     }
     
-    const { data: activityResults, error: activityError } = await supabase
-      .from('activities')
-      .select('*')
-      .or(activitySearchConditions.join(','))
-      .limit(50);
-    
-    if (activityError) {
-      console.error('Activity search error:', activityError);
-      return [];
-    }
-    
-    console.log(`Found ${activityResults?.length || 0} matching activities`);
-    
-    // Now search sessions directly 
-    const sessionSearchConditions = [];
-    for (const term of searchTerms) {
-      sessionSearchConditions.push(
-        `title.ilike.%${term}%`,
-        `name.ilike.%${term}%`,
-        `location_city.ilike.%${term}%`,
-        `location_state.ilike.%${term}%`,
-        `platform.ilike.%${term}%`
-      );
-    }
-    
-    const { data: sessionResults, error: sessionError } = await supabase
-      .from('sessions')
+    const { data: campResults, error: campError } = await supabase
+      .from('camps')
       .select(`
         id,
-        title,
         name,
-        location_city,
-        location_state,
-        registration_open_at,
-        start_at,
-        end_at,
-        capacity,
-        price_min,
-        price_max,
-        age_min,
-        age_max,
-        platform,
-        signup_url,
-        activity_id,
-        availability_status
+        website_url,
+        camp_locations(
+          id,
+          location_name,
+          city,
+          state,
+          postal_code
+        )
       `)
-      .or(sessionSearchConditions.join(','))
-      .limit(100);
+      .or(campSearchConditions.join(','))
+      .limit(limit);
     
-    if (sessionError) {
-      console.error('Session search error:', sessionError);
+    if (campError) {
+      console.error('Camp search error:', campError);
       return [];
     }
     
-    console.log(`Found ${sessionResults?.length || 0} sessions from comprehensive search`);
+    console.log(`Found ${campResults?.length || 0} matching camps`);
     
-    // Process results - combine activities and sessions
-    const allResults = new Map();
-    
-    // Add activity results first
-    if (activityResults && activityResults.length > 0) {
-      for (const activity of activityResults) {
+    // Process camp results
+    if (campResults && campResults.length > 0) {
+      for (const camp of campResults) {
+        const location = camp.camp_locations && camp.camp_locations.length > 0 
+          ? camp.camp_locations[0] 
+          : null;
+
         const confidence = calculateEnhancedMatchConfidence(
           searchTerms, 
-          activity.name, 
-          activity.city, 
-          activity.state,
+          camp.name, 
+          location?.city, 
+          location?.state,
           null
         );
         
         if (confidence > 0) {
           const reasoning = generateEnhancedReasoning(
             searchTerms, 
-            activity.name, 
-            activity.city, 
-            activity.state,
+            camp.name, 
+            location?.city, 
+            location?.state,
             null
           );
           
-          allResults.set(activity.id, {
-            sessionId: activity.id,
-            campName: activity.name || 'Camp Activity',
-            providerName: activity.provider_id || 'Camp Provider',
-            location: activity.city ? {
-              city: activity.city,
-              state: activity.state || ''
+          results.push({
+            sessionId: camp.id,
+            campName: camp.name || 'Camp',
+            providerName: 'Camp Provider',
+            location: location ? {
+              city: location.city || '',
+              state: location.state || ''
             } : undefined,
             registrationOpensAt: undefined,
             sessionDates: undefined,
@@ -176,56 +144,6 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
         }
       }
     }
-    
-    // Add session results
-    if (sessionResults && sessionResults.length > 0) {
-      for (const session of sessionResults) {
-        const confidence = calculateEnhancedMatchConfidence(
-          searchTerms, 
-          session.title || session.name, 
-          session.location_city, 
-          session.location_state,
-          session.platform
-        );
-        
-        // Only include results that have some relevance (confidence > 0)
-        if (confidence > 0) {
-          const reasoning = generateEnhancedReasoning(
-            searchTerms, 
-            session.title || session.name, 
-            session.location_city, 
-            session.location_state,
-            session.platform
-          );
-          
-          allResults.set(session.id, {
-            sessionId: session.id,
-            campName: session.title || session.name || 'Camp Session',
-            providerName: session.platform || 'Camp Provider',
-            location: session.location_city ? {
-              city: session.location_city,
-              state: session.location_state || ''
-            } : undefined,
-            registrationOpensAt: session.registration_open_at,
-            sessionDates: session.start_at && session.end_at ? {
-              start: session.start_at,
-              end: session.end_at
-            } : undefined,
-            capacity: session.capacity,
-            price: session.price_min ? parseFloat(session.price_min) : undefined,
-            ageRange: session.age_min && session.age_max ? {
-              min: session.age_min,
-              max: session.age_max
-            } : undefined,
-            confidence,
-            reasoning
-          });
-        }
-      }
-    }
-    
-    // Convert map to array
-    results.push(...Array.from(allResults.values()));
 
     // Sort by confidence and limit results
     const sortedResults = results
