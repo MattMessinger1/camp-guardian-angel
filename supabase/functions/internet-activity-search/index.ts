@@ -126,70 +126,95 @@ function buildSearchQuery(request: SearchRequest): string {
 
 async function searchWithPerplexity(apiKey: string, query: string) {
   console.log('Searching with Perplexity:', query);
+  console.log('API Key available:', !!apiKey);
   
-  const response = await fetch('https://api.perplexity.ai/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.1-sonar-large-128k-online',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a camp and activity finder. Search for camps, classes, programs, and activities that match the user's query. 
-
-          PRIORITIZE results that have:
-          1. Official websites with clear registration processes
-          2. Specific dates and pricing information  
-          3. Currently accepting registrations
-          4. Well-established organizations
-          5. Clear contact information
-
-          Focus on finding the TOP 5-10 BEST OPTIONS, not just any results. Quality over quantity.
-
-          For each result, provide:
-          - Exact organization/camp name
-          - Official website URL (must be working)
-          - Clear description of what they offer
-          - Registration details and deadlines
-          - Dates, pricing, and age ranges when available
-          - Location details
-
-          Prioritize camps that are actively promoting registration for upcoming sessions.`
-        },
-        {
-          role: 'user',
-          content: `Find the BEST camps and activities for: ${query}. 
-          
-          Please provide the TOP QUALITY options with:
-          - Organization/camp name (be specific)
-          - Official website URL that works
-          - Clear description of programs
-          - Registration information and deadlines
-          - Dates and pricing if available
-          - Age ranges accepted
-          - Exact location
-
-          Focus on camps that are currently accepting registrations or will be soon.`
-        }
-      ],
-      temperature: 0.1,
-      top_p: 0.9,
-      max_tokens: 2500,
-      return_images: false,
-      return_related_questions: false,
-      search_recency_filter: 'month'
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Perplexity API error: ${response.status}`);
+  if (!apiKey) {
+    throw new Error('Perplexity API key is not configured');
   }
+  
+  const requestBody = {
+    model: 'llama-3.1-sonar-large-128k-online',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a camp and activity finder. Search for camps, classes, programs, and activities that match the user's query. 
 
-  const data = await response.json();
-  return data.choices[0].message.content;
+        PRIORITIZE results that have:
+        1. Official websites with clear registration processes
+        2. Specific dates and pricing information  
+        3. Currently accepting registrations
+        4. Well-established organizations
+        5. Clear contact information
+
+        Focus on finding the TOP 5-10 BEST OPTIONS, not just any results. Quality over quantity.
+
+        For each result, provide:
+        - Exact organization/camp name
+        - Official website URL (must be working)
+        - Clear description of what they offer
+        - Registration details and deadlines
+        - Dates, pricing, and age ranges when available
+        - Location details
+
+        Prioritize camps that are actively promoting registration for upcoming sessions.`
+      },
+      {
+        role: 'user',
+        content: `Find the BEST camps and activities for: ${query}. 
+        
+        Please provide the TOP QUALITY options with:
+        - Organization/camp name (be specific)
+        - Official website URL that works
+        - Clear description of programs
+        - Registration information and deadlines
+        - Dates and pricing if available
+        - Age ranges accepted
+        - Exact location
+
+        Focus on camps that are currently accepting registrations or will be soon.`
+      }
+    ],
+    temperature: 0.1,
+    top_p: 0.9,
+    max_tokens: 2500,
+    return_images: false,
+    return_related_questions: false,
+    search_recency_filter: 'month'
+  };
+  
+  console.log('Request body:', JSON.stringify(requestBody, null, 2));
+  
+  try {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('Perplexity response status:', response.status);
+    console.log('Perplexity response headers:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Perplexity API error details:', errorText);
+      throw new Error(`Perplexity API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Perplexity response data:', JSON.stringify(data, null, 2));
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response format from Perplexity API');
+    }
+    
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('Error in searchWithPerplexity:', error);
+    throw error;
+  }
 }
 
 async function processSearchResults(rawResults: string, originalQuery: SearchRequest): Promise<InternetSearchResult[]> {
