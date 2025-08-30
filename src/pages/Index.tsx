@@ -193,29 +193,12 @@ const Index = () => {
   const handleRegister = (sessionId: string) => {
     // Check if this is an internet result (starts with 'internet-')
     if (sessionId.startsWith('internet-')) {
-      // Find the corresponding result to get the internet data
-      const result = searchResults.find(r => r.sessionId === sessionId);
-      if (result && result.internetResult) {
-        // Navigate to automation initiation with internet result data
-        navigate('/initiate-automation', { 
-          state: { 
-            internetResult: {
-              title: result.campName,
-              url: result.internetResult.url,
-              provider: result.providerName,
-              description: result.reasoning,
-              canAutomate: result.internetResult.canAutomate,
-              automationComplexity: result.internetResult.automationComplexity,
-              confidence: result.confidence
-            }
-          }
-        });
-        return;
-      }
+      // Navigate to enhanced signup page with session ID
+      navigate(`/enhanced-signup?sessionId=${sessionId}`);
+    } else {
+      // Regular database result - navigate to signup page with sessionId for requirements completion
+      navigate(`/signup?sessionId=${sessionId}`);
     }
-    
-    // Regular database result - navigate to signup page with sessionId for requirements completion
-    navigate(`/signup?sessionId=${sessionId}`);
   };
 
   const sendTestEmail = async () => {
