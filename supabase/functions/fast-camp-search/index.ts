@@ -68,21 +68,46 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
     
     const results: SearchResult[] = [];
     
-    // Single comprehensive query: Search sessions with provider names
-    // First, get provider IDs that match any search term
-    const { data: matchingProviders } = await supabase
-      .from('providers')
-      .select('id')
-      .or(searchTerms.map(term => `name.ilike.%${term}%`).join(','));
+    // Search activities first (which contain the camp data)
+    const activitySearchConditions = [];
+    for (const term of searchTerms) {
+      activitySearchConditions.push(
+        `name.ilike.%${term}%`,
+        `city.ilike.%${term}%`,
+        `state.ilike.%${term}%`
+      );
+    }
     
-    const providerIds = matchingProviders?.map(p => p.id) || [];
-    console.log(`Found ${providerIds.length} matching providers`);
+    const { data: activityResults, error: activityError } = await supabase
+      .from('activities')
+      .select('*')
+      .or(activitySearchConditions.join(','))
+      .limit(50);
     
-    // Build search conditions for sessions
-    let sessionQuery = supabase
+    if (activityError) {
+      console.error('Activity search error:', activityError);
+      return [];
+    }
+    
+    console.log(`Found ${activityResults?.length || 0} matching activities`);
+    
+    // Now search sessions directly 
+    const sessionSearchConditions = [];
+    for (const term of searchTerms) {
+      sessionSearchConditions.push(
+        `title.ilike.%${term}%`,
+        `name.ilike.%${term}%`,
+        `location_city.ilike.%${term}%`,
+        `location_state.ilike.%${term}%`,
+        `platform.ilike.%${term}%`
+      );
+    }
+    
+    const { data: sessionResults, error: sessionError } = await supabase
       .from('sessions')
       .select(`
         id,
+        title,
         name,
         location_city,
         location_state,
@@ -91,65 +116,92 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
         end_at,
         capacity,
         price_min,
+        price_max,
         age_min,
         age_max,
-        providers!inner(id, name),
-        activities(id, name)
-      `);
-    
-    // Create OR conditions for session name, location, and provider matches
-    const searchConditions = [];
-    
-    // Add session name and location conditions
-    for (const term of searchTerms) {
-      searchConditions.push(
-        `name.ilike.%${term}%`,
-        `location_city.ilike.%${term}%`,
-        `location_state.ilike.%${term}%`
-      );
-    }
-    
-    // Add provider ID conditions if we found matching providers
-    if (providerIds.length > 0) {
-      searchConditions.push(`provider_id.in.(${providerIds.join(',')})`);
-    }
-    
-    const { data: sessionResults, error } = await sessionQuery
-      .or(searchConditions.join(','))
+        platform,
+        signup_url,
+        activity_id,
+        availability_status
+      `)
+      .or(sessionSearchConditions.join(','))
       .limit(100);
     
-    if (error) {
-      console.error('Session search error:', error);
+    if (sessionError) {
+      console.error('Session search error:', sessionError);
       return [];
     }
     
     console.log(`Found ${sessionResults?.length || 0} sessions from comprehensive search`);
     
-    // Process results
+    // Process results - combine activities and sessions
+    const allResults = new Map();
+    
+    // Add activity results first
+    if (activityResults && activityResults.length > 0) {
+      for (const activity of activityResults) {
+        const confidence = calculateEnhancedMatchConfidence(
+          searchTerms, 
+          activity.name, 
+          activity.city, 
+          activity.state,
+          null
+        );
+        
+        if (confidence > 0) {
+          const reasoning = generateEnhancedReasoning(
+            searchTerms, 
+            activity.name, 
+            activity.city, 
+            activity.state,
+            null
+          );
+          
+          allResults.set(activity.id, {
+            sessionId: activity.id,
+            campName: activity.name || 'Camp Activity',
+            providerName: activity.provider_id || 'Camp Provider',
+            location: activity.city ? {
+              city: activity.city,
+              state: activity.state || ''
+            } : undefined,
+            registrationOpensAt: undefined,
+            sessionDates: undefined,
+            capacity: undefined,
+            price: undefined,
+            ageRange: undefined,
+            confidence,
+            reasoning
+          });
+        }
+      }
+    }
+    
+    // Add session results
     if (sessionResults && sessionResults.length > 0) {
       for (const session of sessionResults) {
         const confidence = calculateEnhancedMatchConfidence(
           searchTerms, 
-          session.name, 
+          session.title || session.name, 
           session.location_city, 
           session.location_state,
-          session.providers?.name
+          session.platform
         );
         
         // Only include results that have some relevance (confidence > 0)
         if (confidence > 0) {
           const reasoning = generateEnhancedReasoning(
             searchTerms, 
-            session.name, 
+            session.title || session.name, 
             session.location_city, 
             session.location_state,
-            session.providers?.name
+            session.platform
           );
           
-          results.push({
+          allResults.set(session.id, {
             sessionId: session.id,
-            campName: session.name || session.activities?.name || 'Camp Session',
-            providerName: session.providers?.name || 'Camp Provider',
+            campName: session.title || session.name || 'Camp Session',
+            providerName: session.platform || 'Camp Provider',
             location: session.location_city ? {
               city: session.location_city,
               state: session.location_state || ''
@@ -171,6 +223,9 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
         }
       }
     }
+    
+    // Convert map to array
+    results.push(...Array.from(allResults.values()));
 
     // Sort by confidence and limit results
     const sortedResults = results
