@@ -26,10 +26,12 @@ const HomePage = () => {
   
   // Hybrid search function - fast search first, then AI fallback, then internet search
   const handleAISearch = useCallback(async (query) => {
+    console.log('🔍 SEARCH STARTED:', query);
     if (!query.trim()) return;
 
     logger.info('Search initiated for query', { query, component: 'Home' });
     setIsSearchLoading(true);
+    console.log('🔄 Search loading set to true');
 
     try {
       // Step 1: Try fast search first for high-intent users
@@ -164,22 +166,26 @@ const HomePage = () => {
           }
         }));
 
+        console.log('✅ INTERNET SEARCH SUCCESS:', internetResults.length, 'results');
         logger.info('Processed internet results', { resultCount: internetResults.length, component: 'Home' });
         setSearchResults(internetResults);
         return;
       }
 
       // If all searches failed, show no results
+      console.log('❌ ALL SEARCHES EXHAUSTED - NO RESULTS');
       setSearchResults([]);
       logger.info('All search methods exhausted, no results found', { component: 'Home' });
       
     } catch (error) {
+      console.log('💥 SEARCH ERROR:', error);
       logger.error('Search error occurred', { error, component: 'Home' });
       setSearchResults([]);
       // Optional: Show a toast notification for errors
       // toast({ title: "Search Error", description: "Unable to search at this time.", variant: "destructive" });
     } finally {
       setIsSearchLoading(false);
+      console.log('⏹️ Search loading set to false');
       logger.info('Search completed, loading state reset', { component: 'Home' });
     }
   }, []);
