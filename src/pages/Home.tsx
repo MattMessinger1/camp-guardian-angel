@@ -45,14 +45,26 @@ const HomePage = () => {
       });
 
       if (fastSearchResponse.data?.success && fastSearchResponse.data?.results?.length > 0) {
-        // Fast search found results - use them immediately
-        logger.performance('Fast search completed successfully', 
-          fastSearchResponse.data.duration_ms, {
-            resultCount: fastSearchResponse.data.results.length,
-            component: 'Home'
-          });
-        setSearchResults(fastSearchResponse.data.results);
-        return;
+        // Check if we have high-confidence results (score > 0.7) before stopping
+        const highConfidenceResults = fastSearchResponse.data.results.filter(
+          (result: any) => (result.confidence || 0) > 0.7
+        );
+        
+        if (highConfidenceResults.length > 0) {
+          // Fast search found good results - use them immediately
+          logger.performance('Fast search completed successfully', 
+            fastSearchResponse.data.duration_ms, {
+              resultCount: highConfidenceResults.length,
+              component: 'Home'
+            });
+          setSearchResults(highConfidenceResults);
+          return;
+        }
+        
+        logger.info('Fast search found results but confidence too low, continuing to AI search', { 
+          component: 'Home',
+          lowConfidenceCount: fastSearchResponse.data.results.length 
+        });
       }
 
       // Step 2: Fallback to AI search for complex/natural language queries
@@ -69,7 +81,8 @@ const HomePage = () => {
 
       if (aiSearchResponse.data?.success && aiSearchResponse.data?.results?.length > 0) {
         const aiData = aiSearchResponse.data;
-        // Transform AI results to match our interface if needed
+        
+        // Check if AI results have good confidence before stopping
         const results = (aiData.results || []).map((result: any) => ({
           sessionId: result.session_id || result.camp_id || result.sessionId,
           campName: result.camp_name || result.campName,
@@ -94,9 +107,18 @@ const HomePage = () => {
           reasoning: result.reasoning || 'AI match found'
         }));
 
-        logger.info('Processed AI results', { resultCount: results.length, component: 'Home' });
-        setSearchResults(results);
-        return;
+        const highConfidenceAiResults = results.filter(result => result.confidence > 0.6);
+        
+        if (highConfidenceAiResults.length > 0) {
+          logger.info('Processed AI results', { resultCount: highConfidenceAiResults.length, component: 'Home' });
+          setSearchResults(highConfidenceAiResults);
+          return;
+        }
+        
+        logger.info('AI search found results but confidence too low, continuing to internet search', { 
+          component: 'Home',
+          lowConfidenceCount: results.length 
+        });
       }
 
       // Step 3: Final fallback to internet search using Perplexity
