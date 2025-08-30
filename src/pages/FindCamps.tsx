@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { CampSearchBox, SearchResults } from '@/components/camp-search/CampSearchComponents';
+import { InternetSearchToggle } from '@/components/InternetSearchToggle';
+import { InternetSearchResults } from '@/components/InternetSearchResults';
 import { ClarifyingQuestionsCard } from '@/components/camp-search/ClarifyingQuestionsCard';
 
 interface SearchResult {
@@ -31,6 +33,20 @@ interface SearchResult {
   reasoning: string;
 }
 
+interface InternetSearchResult {
+  title: string;
+  description: string;
+  url: string;
+  provider: string;
+  estimatedDates?: string;
+  estimatedPrice?: string;
+  estimatedAgeRange?: string;
+  location?: string;
+  confidence: number;
+  canAutomate: boolean;
+  automationComplexity: 'low' | 'medium' | 'high';
+}
+
 interface SearchResponse {
   success: boolean;
   clarifying_questions?: string[];
@@ -40,10 +56,12 @@ interface SearchResponse {
 
 const FindCamps: React.FC = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [internetResults, setInternetResults] = useState<InternetSearchResult[]>([]);
   const [clarifyingQuestions, setClarifyingQuestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastQuery, setLastQuery] = useState('');
   const [searchParams, setSearchParams] = useState<any>({});
+  const [useInternetSearch, setUseInternetSearch] = useState(false);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -61,46 +79,91 @@ const FindCamps: React.FC = () => {
     try {
       logger.info('Performing search', { 
         query, 
+        searchType: useInternetSearch ? 'internet' : 'database',
         city: additionalParams.city,
         state: additionalParams.state,
         component: 'FindCamps' 
       });
 
-      const searchPayload = {
-        query: query.trim(),
-        limit: 10,
-        ...additionalParams,
-      };
+      if (useInternetSearch) {
+        // Search the entire internet
+        const searchPayload = {
+          query: query.trim(),
+          location: additionalParams.city ? `${additionalParams.city}, ${additionalParams.state || ''}` : undefined,
+          dateRange: additionalParams.desired_week_date,
+          ageRange: additionalParams.child?.age ? `${additionalParams.child.age}` : undefined,
+          limit: 10,
+        };
 
-      const { data, error } = await supabase.functions.invoke('ai-camp-search', {
-        body: searchPayload
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      const response: SearchResponse = data;
-
-      if (!response.success) {
-        throw new Error(response.error || 'Search failed');
-      }
-
-      logger.info('Search response received', {
-        success: !!response.success,
-        resultCount: response.results?.length || 0,
-        hasError: !response.success,
-        component: 'FindCamps'
-      });
-
-      setSearchResults(response.results || []);
-      setClarifyingQuestions(response.clarifying_questions || []);
-
-      if (response.results?.length === 0) {
-        toast({
-          title: "No matches found",
-          description: "Try a different search term or add a camp link to expand our database.",
+        const { data, error } = await supabase.functions.invoke('internet-activity-search', {
+          body: searchPayload
         });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        const response = data;
+
+        if (!response.success) {
+          throw new Error(response.error || 'Internet search failed');
+        }
+
+        logger.info('Internet search response received', {
+          success: !!response.success,
+          resultCount: response.results?.length || 0,
+          component: 'FindCamps'
+        });
+
+        setInternetResults(response.results || []);
+        setSearchResults([]); // Clear database results when using internet search
+        setClarifyingQuestions([]); // Internet search doesn't have clarifying questions
+
+        if (response.results?.length === 0) {
+          toast({
+            title: "No internet results found",
+            description: "Try different search terms or switch to database search.",
+          });
+        }
+      } else {
+        // Search our database
+        const searchPayload = {
+          query: query.trim(),
+          limit: 10,
+          ...additionalParams,
+        };
+
+        const { data, error } = await supabase.functions.invoke('ai-camp-search', {
+          body: searchPayload
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        const response: SearchResponse = data;
+
+        if (!response.success) {
+          throw new Error(response.error || 'Search failed');
+        }
+
+        logger.info('Database search response received', {
+          success: !!response.success,
+          resultCount: response.results?.length || 0,
+          hasError: !response.success,
+          component: 'FindCamps'
+        });
+
+        setSearchResults(response.results || []);
+        setInternetResults([]); // Clear internet results when using database search
+        setClarifyingQuestions(response.clarifying_questions || []);
+
+        if (response.results?.length === 0) {
+          toast({
+            title: "No matches found",
+            description: "Try a different search term or enable internet search to find any camp worldwide.",
+          });
+        }
       }
 
     } catch (error) {
@@ -111,11 +174,12 @@ const FindCamps: React.FC = () => {
         variant: "destructive",
       });
       setSearchResults([]);
+      setInternetResults([]);
       setClarifyingQuestions([]);
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, useInternetSearch]);
 
   const handleSearch = useCallback((query: string, additionalData: any = {}) => {
     // Clear previous timeout
@@ -164,6 +228,21 @@ const FindCamps: React.FC = () => {
     navigate(`/signup?sessionId=${sessionId}`);
   };
 
+  const handleInternetResultSelect = (result: InternetSearchResult) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to start the automation process.",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+
+    // Start automation workflow for this internet result
+    navigate(`/signup?campUrl=${encodeURIComponent(result.url)}&campName=${encodeURIComponent(result.title)}`);
+  };
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -198,6 +277,14 @@ const FindCamps: React.FC = () => {
           </div>
         </div>
 
+        {/* Internet Search Toggle */}
+        <div className="mb-6">
+          <InternetSearchToggle
+            enabled={useInternetSearch}
+            onToggle={setUseInternetSearch}
+          />
+        </div>
+
         {/* Search Box */}
         <div className="mb-8">
           <CampSearchBox
@@ -206,8 +293,8 @@ const FindCamps: React.FC = () => {
           />
         </div>
 
-        {/* Clarifying Questions */}
-        {clarifyingQuestions.length > 0 && !isLoading && (
+        {/* Clarifying Questions - only for database search */}
+        {clarifyingQuestions.length > 0 && !isLoading && !useInternetSearch && (
           <div className="mb-8">
             <ClarifyingQuestionsCard
               questions={clarifyingQuestions}
@@ -217,12 +304,19 @@ const FindCamps: React.FC = () => {
         )}
 
         {/* Search Results */}
-        {(searchResults.length > 0 || (!isLoading && lastQuery)) && (
+        {(searchResults.length > 0 || internetResults.length > 0 || (!isLoading && lastQuery)) && (
           <div className="mb-8">
-            <SearchResults
-              results={searchResults}
-              onRegister={handleRegister}
-            />
+            {useInternetSearch ? (
+              <InternetSearchResults
+                results={internetResults}
+                onSelect={handleInternetResultSelect}
+              />
+            ) : (
+              <SearchResults
+                results={searchResults}
+                onRegister={handleRegister}
+              />
+            )}
           </div>
         )}
 
