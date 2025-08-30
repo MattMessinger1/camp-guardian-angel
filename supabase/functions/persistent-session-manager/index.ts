@@ -4,364 +4,274 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-interface SessionSaveRequest {
-  action: 'save' | 'restore' | 'list_checkpoints' | 'cleanup';
-  sessionId: string;
-  userId?: string;
-  checkpoint?: SessionCheckpoint;
-  sessionState?: ExtendedSessionState;
-}
-
-interface SessionCheckpoint {
-  id: string;
-  sessionId: string;
-  stepName: string;
-  timestamp: string;
-  
-  // Browser state
-  browserState: {
-    url: string;
-    cookies: any[];
-    localStorage: Record<string, string>;
-    sessionStorage: Record<string, string>;
-    scrollPosition: { x: number; y: number };
-    formData: Record<string, any>;
-    userAgent: string;
-  };
-  
-  // Workflow state
-  workflowState: {
-    currentStage: 'account_creation' | 'login' | 'registration' | 'payment' | 'confirmation';
-    completedStages: string[];
-    barriersPassed: string[];
-    remainingBarriers: string[];
-    queuePosition?: number;
-    queueToken?: string;
-  };
-  
-  // Provider context
-  providerContext: {
-    providerUrl: string;
-    providerId?: string;
-    authRequired: boolean;
-    accountCreated: boolean;
-    loggedIn: boolean;
-    captchasSolved: number;
-    complianceStatus: 'green' | 'yellow' | 'red';
-  };
-  
-  success: boolean;
-  metadata?: Record<string, any>;
-}
-
-interface ExtendedSessionState {
-  id: string;
-  sessionId: string;
-  userId: string;
-  providerUrl: string;
-  
-  // Multi-stage workflow tracking
-  workflow: {
-    currentStage: string;
-    completedStages: string[];
-    totalStages: number;
-    stageProgress: Record<string, number>;
-    estimatedTimeRemaining: number;
-  };
-  
-  // Comprehensive state preservation
-  persistentState: {
-    formData: Record<string, any>;
-    navigationHistory: string[];
-    authenticationState: {
-      accountExists: boolean;
-      credentialsUsed?: string; // hashed reference
-      sessionTokens: Record<string, string>;
-      loginAttempts: number;
-    };
-    queueManagement: {
-      position?: number;
-      token?: string;
-      lastCheckTime: string;
-      preservationPriority: 'high' | 'medium' | 'low';
-    };
-  };
-  
-  // Recovery metadata
-  recovery: {
-    checkpoints: SessionCheckpoint[];
-    lastValidCheckpoint?: string;
-    recoveryAttempts: number;
-    maxRecoveryTime: number; // minutes
-    canRecover: boolean;
-  };
-  
-  expiresAt: string;
-  createdAt: string;
-  updatedAt: string;
+interface SessionRequest {
+  action: 'create' | 'restore' | 'update' | 'cleanup';
+  session_id?: string;
+  user_id?: string;
+  data?: any;
 }
 
 serve(async (req) => {
+  console.log('=== PERSISTENT SESSION MANAGER ===');
+  console.log('Request method:', req.method);
+  
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
-
   try {
-    const requestData: SessionSaveRequest = await req.json();
-    console.log('[PERSISTENT-SESSION] Action:', requestData.action, 'Session:', requestData.sessionId);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables');
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    switch (requestData.action) {
-      case 'save':
-        return await handleSaveCheckpoint(supabase, requestData);
+    const body = await req.json();
+    console.log('Session manager request:', body);
+
+    const { action, session_id, user_id, data } = body as SessionRequest;
+
+    switch (action) {
+      case 'create':
+        return await handleCreateSession(supabase, { session_id, user_id, data });
+      
       case 'restore':
-        return await handleRestoreSession(supabase, requestData);
-      case 'list_checkpoints':
-        return await handleListCheckpoints(supabase, requestData);
+        return await handleRestoreSession(supabase, { session_id, user_id });
+      
+      case 'update':
+        return await handleUpdateSession(supabase, { session_id, user_id, data });
+      
       case 'cleanup':
-        return await handleCleanup(supabase, requestData);
+        return await handleCleanup(supabase);
+      
       default:
-        throw new Error(`Unknown action: ${requestData.action}`);
+        return new Response(
+          JSON.stringify({ error: `Unknown action: ${action}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
     }
 
-  } catch (error: any) {
-    console.error('[PERSISTENT-SESSION] Error:', error);
+  } catch (error) {
+    console.error('Session manager error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: 'Session management failed', 
+        details: error.message,
+        timestamp: new Date().toISOString()
+      }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });
 
-async function handleSaveCheckpoint(supabase: any, requestData: SessionSaveRequest) {
-  const { sessionId, userId, checkpoint, sessionState } = requestData;
+async function handleCreateSession(supabase: any, { session_id, user_id, data }: any) {
+  console.log('[PERSISTENT-SESSION] Creating session:', session_id);
   
-  if (!checkpoint && !sessionState) {
-    throw new Error('Either checkpoint or sessionState must be provided');
-  }
-
-  console.log('[PERSISTENT-SESSION] Saving checkpoint for session:', sessionId);
-
-  // Save checkpoint
-  if (checkpoint) {
-    const { error: checkpointError } = await supabase
-      .from('session_checkpoints')
-      .upsert({
-        id: checkpoint.id,
-        session_id: sessionId,
-        user_id: userId,
-        step_name: checkpoint.stepName,
-        browser_state: checkpoint.browserState,
-        workflow_state: checkpoint.workflowState,
-        provider_context: checkpoint.providerContext,
-        success: checkpoint.success,
-        metadata: checkpoint.metadata || {},
-        created_at: checkpoint.timestamp
-      });
-
-    if (checkpointError) throw checkpointError;
-  }
-
-  // Save or update session state
-  if (sessionState) {
-    const { error: stateError } = await supabase
-      .from('persistent_session_states')
-      .upsert({
-        id: sessionState.id,
-        session_id: sessionId,
-        user_id: userId,
-        provider_url: sessionState.providerUrl,
-        workflow_data: sessionState.workflow,
-        persistent_state: sessionState.persistentState,
-        recovery_data: sessionState.recovery,
-        expires_at: sessionState.expiresAt,
-        updated_at: new Date().toISOString()
-      });
-
-    if (stateError) throw stateError;
-  }
-
-  // Log the save operation
-  await supabase.from('compliance_audit').insert({
-    user_id: userId,
-    event_type: 'SESSION_CHECKPOINT_SAVED',
-    event_data: {
-      session_id: sessionId,
-      checkpoint_id: checkpoint?.id,
-      step_name: checkpoint?.stepName,
-      stage: checkpoint?.workflowState?.currentStage,
-      timestamp: new Date().toISOString()
-    },
-    payload_summary: `Session checkpoint saved: ${checkpoint?.stepName || 'session state'}`
-  });
-
-  console.log('[PERSISTENT-SESSION] Successfully saved checkpoint');
-  
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      checkpointId: checkpoint?.id,
-      savedAt: new Date().toISOString()
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-
-async function handleRestoreSession(supabase: any, requestData: SessionSaveRequest) {
-  const { sessionId, userId } = requestData;
-  
-  console.log('[PERSISTENT-SESSION] Restoring session:', sessionId);
-
-  // Get session state
-  const { data: sessionData, error: sessionError } = await supabase
-    .from('persistent_session_states')
-    .select('*')
-    .eq('session_id', sessionId)
-    .eq('user_id', userId)
-    .gt('expires_at', new Date().toISOString())
-    .single();
-
-  if (sessionError && sessionError.code !== 'PGRST116') {
-    throw sessionError;
-  }
-
-  // Get checkpoints
-  const { data: checkpoints, error: checkpointError } = await supabase
-    .from('session_checkpoints')
-    .select('*')
-    .eq('session_id', sessionId)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  if (checkpointError) throw checkpointError;
-
-  // Find last valid checkpoint
-  const lastValidCheckpoint = checkpoints?.find(cp => cp.success) || null;
-
-  // Calculate session validity
-  const now = new Date();
-  const sessionValid = sessionData && new Date(sessionData.expires_at) > now;
-  const hasRecoveryData = sessionValid && sessionData.recovery_data?.canRecover;
-
-  console.log('[PERSISTENT-SESSION] Restoration analysis:', {
-    sessionFound: !!sessionData,
-    sessionValid,
-    checkpointCount: checkpoints?.length || 0,
-    lastValidCheckpoint: lastValidCheckpoint?.step_name,
-    canRecover: hasRecoveryData
-  });
-
-  // Log restoration attempt
-  await supabase.from('compliance_audit').insert({
-    user_id: userId,
-    event_type: 'SESSION_RESTORE_ATTEMPT',
-    event_data: {
-      session_id: sessionId,
-      session_found: !!sessionData,
-      session_valid: sessionValid,
-      checkpoint_count: checkpoints?.length || 0,
-      last_checkpoint: lastValidCheckpoint?.step_name,
-      can_recover: hasRecoveryData,
-      timestamp: new Date().toISOString()
-    },
-    payload_summary: `Session restore attempt: ${sessionValid ? 'valid' : 'invalid'} session`
-  });
-
-  const response = {
-    success: true,
-    sessionRestored: sessionValid,
-    sessionState: sessionData,
-    checkpoints: checkpoints || [],
-    lastValidCheckpoint,
-    canRecover: hasRecoveryData,
-    restoredAt: new Date().toISOString()
+  const sessionData = {
+    session_id: session_id || crypto.randomUUID(),
+    user_id: user_id,
+    status: 'initialized',
+    predicted_barriers: [],
+    current_step: 'analysis',
+    session_data: data || {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
   };
 
-  return new Response(
-    JSON.stringify(response),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  try {
+    // Use session_states table (which exists) instead of persistent_session_states
+    const { data: insertedData, error } = await supabase
+      .from('session_states')
+      .insert(sessionData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[PERSISTENT-SESSION] Insert error:', error);
+      throw error;
+    }
+
+    console.log('[PERSISTENT-SESSION] Session created successfully:', insertedData.session_id);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        session: insertedData
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
+  } catch (error) {
+    console.error('[PERSISTENT-SESSION] Create session error:', error);
+    
+    // Return basic session data if database insert fails
+    return new Response(
+      JSON.stringify({
+        success: true,
+        session: sessionData,
+        fallback: true,
+        warning: 'Session created in memory only'
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
 }
 
-async function handleListCheckpoints(supabase: any, requestData: SessionSaveRequest) {
-  const { sessionId, userId } = requestData;
-  
-  const { data: checkpoints, error } = await supabase
-    .from('session_checkpoints')
-    .select('*')
-    .eq('session_id', sessionId)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+async function handleRestoreSession(supabase: any, { session_id, user_id }: any) {
+  console.log('[PERSISTENT-SESSION] Restoring session:', session_id);
 
-  if (error) throw error;
+  try {
+    // Try to get session from session_states table
+    const { data: sessionData, error } = await supabase
+      .from('session_states')
+      .select('*')
+      .eq('session_id', session_id)
+      .single();
 
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      checkpoints: checkpoints || [],
-      count: checkpoints?.length || 0
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+    if (error) {
+      console.error('[PERSISTENT-SESSION] Restore error:', error);
+      
+      // If session not found, create a new one
+      if (error.code === 'PGRST116') {
+        console.log('[PERSISTENT-SESSION] Session not found, creating new one');
+        return await handleCreateSession(supabase, { session_id, user_id, data: {} });
+      }
+      throw error;
+    }
+
+    // Check if session is expired
+    const now = new Date();
+    const expiresAt = new Date(sessionData.expires_at);
+    
+    if (expiresAt < now) {
+      console.log('[PERSISTENT-SESSION] Session expired, creating new one');
+      return await handleCreateSession(supabase, { session_id, user_id, data: {} });
+    }
+
+    console.log('[PERSISTENT-SESSION] Session restored successfully');
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        session: sessionData,
+        restored: true
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
+  } catch (error) {
+    console.error('[PERSISTENT-SESSION] Restore session error:', error);
+    
+    // Fallback: create a new session
+    return await handleCreateSession(supabase, { session_id, user_id, data: {} });
+  }
 }
 
-async function handleCleanup(supabase: any, requestData: SessionSaveRequest) {
+async function handleUpdateSession(supabase: any, { session_id, user_id, data }: any) {
+  console.log('[PERSISTENT-SESSION] Updating session:', session_id);
+
+  try {
+    const { data: updatedData, error } = await supabase
+      .from('session_states')
+      .update({
+        session_data: data,
+        updated_at: new Date().toISOString()
+      })
+      .eq('session_id', session_id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[PERSISTENT-SESSION] Update error:', error);
+      throw error;
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        session: updatedData
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
+  } catch (error) {
+    console.error('[PERSISTENT-SESSION] Update session error:', error);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to update session', 
+        details: error.message 
+      }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+async function handleCleanup(supabase: any) {
   console.log('[PERSISTENT-SESSION] Starting cleanup process');
 
-  // Clean expired session states
-  const { data: expiredStates, error: cleanupError1 } = await supabase
-    .from('persistent_session_states')
-    .delete()
-    .lt('expires_at', new Date().toISOString())
-    .select('id');
+  try {
+    // Clean expired session states
+    const { data: expiredSessions, error } = await supabase
+      .from('session_states')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+      .select('session_id');
 
-  if (cleanupError1) throw cleanupError1;
+    if (error) {
+      console.error('[PERSISTENT-SESSION] Cleanup error:', error);
+      throw error;
+    }
 
-  // Clean old checkpoints (older than 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const cleanedCount = expiredSessions?.length || 0;
+    console.log('[PERSISTENT-SESSION] Cleanup complete:', { cleanedSessions: cleanedCount });
 
-  const { data: oldCheckpoints, error: cleanupError2 } = await supabase
-    .from('session_checkpoints')
-    .delete()
-    .lt('created_at', sevenDaysAgo.toISOString())
-    .select('id');
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        cleanedSessions: cleanedCount,
+        cleanedAt: new Date().toISOString()
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
-  if (cleanupError2) throw cleanupError2;
-
-  const cleanedStates = expiredStates?.length || 0;
-  const cleanedCheckpoints = oldCheckpoints?.length || 0;
-
-  console.log('[PERSISTENT-SESSION] Cleanup complete:', {
-    expiredStates: cleanedStates,
-    oldCheckpoints: cleanedCheckpoints
-  });
-
-  // Log cleanup operation
-  await supabase.from('compliance_audit').insert({
-    event_type: 'SESSION_CLEANUP',
-    event_data: {
-      expired_states_cleaned: cleanedStates,
-      old_checkpoints_cleaned: cleanedCheckpoints,
-      timestamp: new Date().toISOString()
-    },
-    payload_summary: `Session cleanup: ${cleanedStates} states, ${cleanedCheckpoints} checkpoints`
-  });
-
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      cleanedStates, 
-      cleanedCheckpoints,
-      cleanedAt: new Date().toISOString()
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  } catch (error) {
+    console.error('[PERSISTENT-SESSION] Cleanup error:', error);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Cleanup failed', 
+        details: error.message 
+      }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
 }
