@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useNavigate } from 'react-router-dom';
 import heroImg from "@/assets/hero-camp.jpg";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CampSearchBox, SearchResults } from '@/components/camp-search/CampSearchComponents';
+import { logger } from "@/lib/log";
 
 import { CheckCircle2, Shield, Zap, CalendarClock } from "lucide-react";
 import { SessionCard } from "@/components/ui/session-card";
@@ -13,8 +16,11 @@ import { SessionCard } from "@/components/ui/session-card";
 const Index = () => {
   const [pointer, setPointer] = useState({ x: 50, y: 50 });
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isSending, setIsSending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
 
   // Sample sessions for demo
   const sampleSessions = [
@@ -55,6 +61,161 @@ const Index = () => {
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     setPointer({ x, y });
+  };
+
+  // Hybrid search function - fast search first, then AI fallback, then internet search
+  const handleAISearch = useCallback(async (query) => {
+    if (!query.trim()) return;
+
+    logger.info('Search initiated for query', { query, component: 'Index' });
+    setIsSearchLoading(true);
+
+    try {
+      // Step 1: Try fast search first for high-intent users
+      logger.info('Attempting fast search first', { component: 'Index' });
+      const fastSearchResponse = await supabase.functions.invoke('fast-camp-search', {
+        body: { query: query.trim(), limit: 10 }
+      });
+
+      if (fastSearchResponse.data?.success && fastSearchResponse.data?.results?.length > 0) {
+        // Check if we have high-confidence results (score > 0.7) before stopping
+        const highConfidenceResults = fastSearchResponse.data.results.filter(
+          (result: any) => (result.confidence || 0) > 0.7
+        );
+        
+        if (highConfidenceResults.length > 0) {
+          setSearchResults(highConfidenceResults);
+          return;
+        }
+        
+        logger.info('Fast search found results but confidence too low, continuing to AI search', { 
+          component: 'Index',
+          lowConfidenceCount: fastSearchResponse.data.results.length 
+        });
+      }
+
+      // Step 2: Fallback to AI search for complex/natural language queries
+      logger.info('Fast search found no results, falling back to AI search', { component: 'Index' });
+      const aiSearchResponse = await supabase.functions.invoke('ai-camp-search', {
+        body: { query: query.trim(), limit: 10 }
+      });
+
+      if (aiSearchResponse.data?.success && aiSearchResponse.data?.results?.length > 0) {
+        const results = (aiSearchResponse.data.results || []).map((result: any) => ({
+          sessionId: result.session_id || result.camp_id || result.sessionId,
+          campName: result.camp_name || result.campName,
+          providerName: result.provider_name || result.providerName || 'Camp Provider',
+          location: result.location_name || result.location ? 
+            (typeof result.location === 'string' ? {
+              city: result.location.split(',')[0]?.trim() || '',
+              state: result.location.split(',')[1]?.trim() || ''
+            } : result.location) : undefined,
+          registrationOpensAt: result.registration_opens_at || result.registrationOpensAt,
+          sessionDates: (result.start_date && result.end_date) || result.sessionDates ? {
+            start: result.start_date || result.sessionDates?.start,
+            end: result.end_date || result.sessionDates?.end
+          } : undefined,
+          capacity: result.capacity,
+          price: result.price_min || result.price,
+          ageRange: (result.age_min && result.age_max) || result.ageRange ? {
+            min: result.age_min || result.ageRange?.min,
+            max: result.age_max || result.ageRange?.max
+          } : undefined,
+          confidence: result.confidence || 0.5,
+          reasoning: result.reasoning || 'AI match found'
+        }));
+
+        const highConfidenceAiResults = results.filter(result => result.confidence > 0.6);
+        
+        if (highConfidenceAiResults.length > 0) {
+          setSearchResults(highConfidenceAiResults);
+          return;
+        }
+        
+        logger.info('AI search found results but confidence too low, continuing to internet search', { 
+          component: 'Index',
+          lowConfidenceCount: results.length 
+        });
+      }
+
+      // Step 3: Final fallback to internet search using Perplexity
+      logger.info('Database searches found no results, searching the entire internet', { component: 'Index' });
+      const internetSearchResponse = await supabase.functions.invoke('internet-activity-search', {
+        body: { query: query.trim(), limit: 8 }
+      });
+
+      if (internetSearchResponse.data?.success && internetSearchResponse.data?.results?.length > 0) {
+        // Transform internet results to match our SearchResult interface
+        const internetResults = internetSearchResponse.data.results.map((result: any) => ({
+          sessionId: `internet-${Date.now()}-${Math.random()}`, // Generate unique ID for internet results
+          campName: result.title,
+          providerName: result.provider,
+          location: result.location ? {
+            city: result.location.split(',')[0]?.trim() || '',
+            state: result.location.split(',')[1]?.trim() || ''
+          } : undefined,
+          registrationOpensAt: undefined, // Internet results don't have specific registration times
+          sessionDates: result.estimatedDates ? {
+            start: result.estimatedDates,
+            end: result.estimatedDates
+          } : undefined,
+          capacity: undefined,
+          price: result.estimatedPrice ? parseFloat(result.estimatedPrice.replace(/[^0-9.]/g, '')) || undefined : undefined,
+          ageRange: result.estimatedAgeRange ? {
+            min: parseInt(result.estimatedAgeRange.split('-')[0]) || 0,
+            max: parseInt(result.estimatedAgeRange.split('-')[1]) || 18
+          } : undefined,
+          confidence: result.confidence || 0.6,
+          reasoning: `Found via internet search • ${result.description}`,
+          // Add internet-specific data for later use
+          internetResult: {
+            url: result.url,
+            canAutomate: result.canAutomate,
+            automationComplexity: result.automationComplexity
+          }
+        }));
+
+        setSearchResults(internetResults);
+        return;
+      }
+
+      // If all searches failed, show no results
+      setSearchResults([]);
+      
+    } catch (error) {
+      logger.error('Search error occurred', { error, component: 'Index' });
+      setSearchResults([]);
+    } finally {
+      setIsSearchLoading(false);
+    }
+  }, []);
+
+  const handleRegister = (sessionId: string) => {
+    // Check if this is an internet result (starts with 'internet-')
+    if (sessionId.startsWith('internet-')) {
+      // Find the corresponding result to get the internet data
+      const result = searchResults.find(r => r.sessionId === sessionId);
+      if (result && result.internetResult) {
+        // Navigate to automation initiation with internet result data
+        navigate('/initiate-automation', { 
+          state: { 
+            internetResult: {
+              title: result.campName,
+              url: result.internetResult.url,
+              provider: result.providerName,
+              description: result.reasoning,
+              canAutomate: result.internetResult.canAutomate,
+              automationComplexity: result.internetResult.automationComplexity,
+              confidence: result.confidence
+            }
+          }
+        });
+        return;
+      }
+    }
+    
+    // Regular database result - navigate to signup page with sessionId for requirements completion
+    navigate(`/signup?sessionId=${sessionId}`);
   };
 
   const sendTestEmail = async () => {
@@ -164,6 +325,25 @@ const Index = () => {
                 />
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Search Section */}
+        <section className="container mx-auto py-16 md:py-24">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-4">Find Your Perfect Camp</h2>
+            <p className="text-lg text-muted-foreground mb-8">
+              Search our database or the entire internet for camps and activities
+            </p>
+          </div>
+          
+          <CampSearchBox
+            onSearch={handleAISearch}
+            isLoading={isSearchLoading}
+          />
+          
+          <div className="mt-8">
+            <SearchResults results={searchResults} onRegister={handleRegister} />
           </div>
         </section>
 
