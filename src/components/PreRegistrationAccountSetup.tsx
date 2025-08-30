@@ -131,14 +131,16 @@ export function PreRegistrationAccountSetup({
     }
 
     try {
-      // Store credentials securely (encrypted)
+      // Store credentials securely (encrypted)  
+      const providerUrl = accountRequirement?.provider_url || campUrl || 'https://seattle.gov/parks-recreation/registration';
+      
       const { error } = await supabase.functions.invoke('store-camp-credentials', {
         body: {
           session_id: sessionId,
-          provider_url: accountRequirement?.provider_url || campUrl,
+          provider_url: providerUrl,
           email: accountEmail,
           password: accountPassword, // Will be encrypted server-side
-          provider_name: accountRequirement?.provider_name
+          provider_name: accountRequirement?.provider_name || 'Camp Provider'
         }
       });
 
