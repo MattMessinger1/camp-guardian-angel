@@ -138,32 +138,46 @@ async function searchWithPerplexity(apiKey: string, query: string) {
       messages: [
         {
           role: 'system',
-          content: `You are a camp and activity finder. Search for camps, classes, programs, and activities that match the user's query. Focus on finding:
-          1. Specific camp/program names and organizations
-          2. Their official websites
-          3. Registration/signup information
-          4. Dates, ages, and pricing when available
-          5. Location details
+          content: `You are a camp and activity finder. Search for camps, classes, programs, and activities that match the user's query. 
 
-          Return results in a structured format with clear titles, descriptions, websites, and practical details for registration.`
+          PRIORITIZE results that have:
+          1. Official websites with clear registration processes
+          2. Specific dates and pricing information  
+          3. Currently accepting registrations
+          4. Well-established organizations
+          5. Clear contact information
+
+          Focus on finding the TOP 5-10 BEST OPTIONS, not just any results. Quality over quantity.
+
+          For each result, provide:
+          - Exact organization/camp name
+          - Official website URL (must be working)
+          - Clear description of what they offer
+          - Registration details and deadlines
+          - Dates, pricing, and age ranges when available
+          - Location details
+
+          Prioritize camps that are actively promoting registration for upcoming sessions.`
         },
         {
           role: 'user',
-          content: `Find camps and activities for: ${query}. 
+          content: `Find the BEST camps and activities for: ${query}. 
           
-          Please provide specific camps/programs with:
-          - Organization/camp name
-          - Official website URL
-          - Brief description
-          - Registration details
+          Please provide the TOP QUALITY options with:
+          - Organization/camp name (be specific)
+          - Official website URL that works
+          - Clear description of programs
+          - Registration information and deadlines
           - Dates and pricing if available
-          - Age ranges
-          - Location`
+          - Age ranges accepted
+          - Exact location
+
+          Focus on camps that are currently accepting registrations or will be soon.`
         }
       ],
-      temperature: 0.2,
+      temperature: 0.1,
       top_p: 0.9,
-      max_tokens: 2000,
+      max_tokens: 2500,
       return_images: false,
       return_related_questions: false,
       search_recency_filter: 'month'
