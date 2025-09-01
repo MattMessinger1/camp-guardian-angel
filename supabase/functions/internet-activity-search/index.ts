@@ -1,4 +1,5 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -121,8 +122,21 @@ serve(async (req) => {
       console.log('Citations:', JSON.stringify(data.citations, null, 2));
     }
     
-    const results = createResultsFromContent(content, searchQuery);
-    console.log('Parsed results count:', results.length);
+    // Process with OpenAI for enhanced parsing
+    console.log('Sending to OpenAI for parsing:', {
+      query: searchQuery,
+      contentPreview: content.substring(0, 200)
+    });
+    
+    const openaiResult = await processWithOpenAI(content, searchQuery);
+    console.log('OpenAI parsing result:', JSON.stringify(openaiResult, null, 2));
+    
+    // Use OpenAI results if available, otherwise fall back to basic parsing
+    const results = openaiResult && openaiResult.length > 0 
+      ? openaiResult 
+      : createResultsFromContent(content, searchQuery);
+      
+    console.log('Final results count:', results.length);
     console.log('First result sample:', results[0] ? JSON.stringify(results[0], null, 2) : 'No results');
     
     return new Response(
@@ -506,4 +520,94 @@ function extractAddress(text: string): string | null {
   }
   
   return null;
+}
+
+async function processWithOpenAI(content: string, searchQuery: string): Promise<InternetSearchResult[] | null> {
+  try {
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      console.log('OpenAI API key not found, falling back to basic parsing');
+      return null;
+    }
+
+    const prompt = `Parse this activity search content for "${searchQuery}" and extract structured information about each activity/camp. Return ONLY a JSON array of objects with this exact structure:
+
+[
+  {
+    "title": "Provider Name + Activity Type",
+    "description": "Brief description from content",
+    "url": "extracted URL or https://example.com/camp-registration",
+    "provider": "Business/Organization Name",
+    "location": "City or neighborhood",
+    "session_dates": ["2025-09-15", "2025-09-22"],
+    "session_times": ["9:00 AM", "6:00 PM"],
+    "street_address": "Full street address or null",
+    "signup_cost": 25,
+    "total_cost": 100,
+    "confidence": 0.9,
+    "canAutomate": true,
+    "automationComplexity": "medium"
+  }
+]
+
+Extract real provider names (SoulCycle, NYU Athletics, etc), actual addresses, pricing (distinguish signup cost vs total cost), and session times. Return empty array if no activities found.
+
+Content to parse:
+${content}`;
+
+    console.log('Making OpenAI request...');
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-5-2025-08-07',
+        messages: [
+          { role: 'system', content: 'You are a data extraction assistant that parses activity/camp information into structured JSON. Always return valid JSON arrays.' },
+          { role: 'user', content: prompt }
+        ],
+        max_completion_tokens: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const content_result = data.choices?.[0]?.message?.content;
+    
+    console.log('OpenAI raw response:', content_result);
+
+    if (!content_result) {
+      console.log('No content in OpenAI response');
+      return null;
+    }
+
+    // Try to parse JSON from the response
+    try {
+      // Clean the response to extract JSON
+      const jsonMatch = content_result.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.log('No JSON array found in OpenAI response');
+        return null;
+      }
+
+      const parsedResults = JSON.parse(jsonMatch[0]);
+      console.log('Successfully parsed OpenAI results:', parsedResults.length, 'items');
+      
+      return Array.isArray(parsedResults) ? parsedResults : null;
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI JSON response:', parseError);
+      return null;
+    }
+
+  } catch (error) {
+    console.error('OpenAI processing error:', error);
+    return null;
+  }
 }
