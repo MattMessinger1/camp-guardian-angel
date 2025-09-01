@@ -90,27 +90,28 @@ const HomePage = () => {
         if (internetSearchResponse.data?.results?.length > 0) {
           // Transform internet results to match our SearchResult interface
           const internetResults = internetSearchResponse.data.results.map((result: any) => ({
-            sessionId: `internet-${Date.now()}-${Math.random()}`, // Generate unique ID for internet results
-            campName: result.title,
+            sessionId: `internet-${Date.now()}-${Math.random()}`,
+            name: result.name, // Map backend name field
+            campName: result.name || result.title, // Use name as primary
             providerName: result.provider,
-            location: result.location ? {
+            signup_cost: result.signup_cost, // Map signup cost
+            total_cost: result.total_cost, // Map total cost
+            sessions: result.sessions || [], // Map sessions array
+            sessionDates: result.sessions?.map(s => s.date) || [],
+            sessionTimes: result.sessions?.map(s => s.time) || [],
+            location: result.location ? (typeof result.location === 'string' ? {
               city: result.location.split(',')[0]?.trim() || '',
               state: result.location.split(',')[1]?.trim() || ''
-            } : undefined,
-            registrationOpensAt: undefined, // Internet results don't have specific registration times
-            sessionDates: result.estimatedDates ? {
-              start: result.estimatedDates,
-              end: result.estimatedDates
-            } : undefined,
+            } : result.location) : undefined,
+            registrationOpensAt: undefined,
             capacity: undefined,
-            price: result.estimatedPrice ? parseFloat(result.estimatedPrice.replace(/[^0-9.]/g, '')) || undefined : undefined,
+            price: result.signup_cost || result.total_cost,
             ageRange: result.estimatedAgeRange ? {
               min: parseInt(result.estimatedAgeRange.split('-')[0]) || 0,
               max: parseInt(result.estimatedAgeRange.split('-')[1]) || 18
             } : undefined,
             confidence: result.confidence || 0.6,
             reasoning: `Found via internet search • ${result.description}`,
-            // Add internet-specific data for later use
             internetResult: {
               url: result.url,
               canAutomate: result.canAutomate,
