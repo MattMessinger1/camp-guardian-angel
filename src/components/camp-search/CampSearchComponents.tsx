@@ -334,29 +334,33 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
 
                 {/* Session Details Column */}
                 <div className="space-y-4">
-                  {/* Session Date */}
-                  {sessionDates.length > 0 && (
+                  {/* Single Session Date & Time Dropdown */}
+                  {availableSessions.length > 0 && (
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">
-                        Session Date
-                        {hasMultipleDates && selectedDate && (
-                          <span className="ml-2 text-xs text-primary bg-primary/10 px-2 py-1 rounded">
-                            Selected
-                          </span>
-                        )}
+                        Session Date & Time
                       </label>
-                      {hasMultipleDates ? (
+                      {availableSessions.length > 1 ? (
                         <Select 
-                          value={selectedDate} 
-                          onValueChange={(value) => handleSessionSelection(resultId, 'date', value)}
+                          value={`${selectedDate}-${selectedTime}`}
+                          onValueChange={(value) => {
+                            const [date, time] = value.split('-');
+                            setSelectedSessions(prev => ({
+                              ...prev,
+                              [resultId]: { date, time }
+                            }));
+                          }}
                         >
                           <SelectTrigger className="w-full bg-background border border-border">
-                            <SelectValue placeholder="Choose date" />
+                            <SelectValue placeholder="Choose session" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border border-border shadow-lg z-50">
-                            {sessionDates.map((date, idx) => (
-                              <SelectItem key={idx} value={date} className="hover:bg-muted">
-                                {formatDate(date)}
+                            {availableSessions.slice(0, 50).map((session, idx) => (
+                              <SelectItem key={idx} value={`${session.date}-${session.time}`} className="hover:bg-muted">
+                                <span>
+                                  {formatDate(session.date)} - {session.time}
+                                  {session.availability && ` - ${session.availability} spots`}
+                                </span>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -364,55 +368,10 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       ) : (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          {formatDate(sessionDates[0])}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Session Time */}
-                  {sessionTimes.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">
-                        Session Time
-                        {hasMultipleTimes && selectedTime && (
-                          <span className="ml-2 text-xs text-primary bg-primary/10 px-2 py-1 rounded">
-                            Selected
+                          <span>
+                            {formatDate(availableSessions[0].date)} - {availableSessions[0].time}
+                            {availableSessions[0].availability && ` - ${availableSessions[0].availability} spots`}
                           </span>
-                        )}
-                      </label>
-                      {hasMultipleTimes ? (
-                        <Select 
-                          value={selectedTime} 
-                          onValueChange={(value) => handleSessionSelection(resultId, 'time', value)}
-                        >
-                          <SelectTrigger className="w-full bg-background border border-border">
-                            <SelectValue placeholder="Choose time" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border border-border shadow-lg z-50">
-                            {availableSessions.map((session, idx) => (
-                              <SelectItem key={idx} value={session.time} className="hover:bg-muted">
-                                <div className="flex flex-col gap-1">
-                                  <div className="font-medium">
-                                    {formatDate(session.date)} - {session.time}
-                                  </div>
-                                  {session.availability && (
-                                    <div className="text-xs text-muted-foreground">
-                                      {session.availability} spots available
-                                    </div>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4" />
-                          <span>{sessionTimes[0]}</span>
-                          {selectedSession?.availability && (
-                            <span className="text-xs">({selectedSession.availability} spots)</span>
-                          )}
                         </div>
                       )}
                     </div>
