@@ -168,3 +168,6 @@ verify_jwt = false
 [functions.smart-notification-manager]
 verify_jwt = false
 
+[functions.internet-activity-search]
+verify_jwt = false
+
