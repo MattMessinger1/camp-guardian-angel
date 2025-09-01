@@ -180,14 +180,58 @@ const HomePage = () => {
     }
   }, []);
 
-  const handleRegister = (sessionId: string) => {
-    // Check if this is an internet result (starts with 'internet-')
-    if (sessionId.startsWith('internet-')) {
-      // Navigate to enhanced signup page with session ID
-      navigate(`/enhanced-signup?sessionId=${sessionId}`);
+  const handleRegister = (sessionIdOrResult: string | any, selectedSession?: {date?: string, time?: string}, searchResult?: any) => {
+    // Handle both old and new signatures
+    let result: any;
+    
+    if (typeof sessionIdOrResult === 'string') {
+      // Old signature: just sessionId
+      result = {
+        id: sessionIdOrResult,
+        selectedDate: selectedSession?.date,
+        selectedTime: selectedSession?.time
+      };
     } else {
-      // Regular database result - navigate to signup page with sessionId for requirements completion
-      navigate(`/signup?sessionId=${sessionId}`);
+      // New signature: full result object
+      result = sessionIdOrResult;
+    }
+
+    // Extract session selection data
+    const sessionData = {
+      selectedDate: result.selectedDate,
+      selectedTime: result.selectedTime,
+      businessName: result.name || result.title || result.camp_name,
+      location: result.location,
+      signupCost: result.signup_cost || result.signupCost,
+      totalCost: result.total_cost || result.totalCost
+    };
+
+    console.log('📅 Registration with session data:', sessionData);
+    
+    // Check if this is an internet result
+    if (result.id?.startsWith('internet-') || result.id?.startsWith('perplexity-')) {
+      // Navigate to enhanced signup page with complete session data
+      const searchParams = new URLSearchParams({
+        sessionId: result.id || 'internet-unknown',
+        businessName: sessionData.businessName || '',
+        location: sessionData.location || '',
+        selectedDate: sessionData.selectedDate || '',
+        selectedTime: sessionData.selectedTime || '',
+        signupCost: sessionData.signupCost?.toString() || '',
+        totalCost: sessionData.totalCost?.toString() || ''
+      });
+      navigate(`/enhanced-signup?${searchParams.toString()}`);
+    } else {
+      // Regular database result - navigate to signup page with session data
+      const searchParams = new URLSearchParams({
+        sessionId: result.id || result.session_id || 'unknown',
+        selectedDate: sessionData.selectedDate || '',
+        selectedTime: sessionData.selectedTime || '',
+        businessName: sessionData.businessName || '',
+        signupCost: sessionData.signupCost?.toString() || '',
+        totalCost: sessionData.totalCost?.toString() || ''
+      });
+      navigate(`/signup?${searchParams.toString()}`);
     }
   };
 

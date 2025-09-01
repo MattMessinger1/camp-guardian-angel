@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLink, Search, Zap, Calendar, Clock } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface InternetSearchResult {
   id?: string;
@@ -60,7 +61,32 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
 
   const handleSelect = (result: InternetSearchResult, index: number) => {
     const selectedSession = selectedSessions[index];
-    onSelect({ ...result, selectedDate: selectedSession?.date, selectedTime: selectedSession?.time });
+    
+    // Validation: Check if session selection is required and missing
+    const needsDateSelection = result.session_dates && result.session_dates.length > 1;
+    const needsTimeSelection = result.session_times && result.session_times.length > 1;
+    
+    if (needsDateSelection && !selectedSession?.date) {
+      toast.error("Please select a date before proceeding with signup");
+      return; // Prevent signup from proceeding
+    }
+    
+    if (needsTimeSelection && !selectedSession?.time) {
+      toast.error("Please select a time before proceeding with signup");
+      return; // Prevent signup from proceeding
+    }
+    
+    // Use first available options as defaults if not multi-option
+    const finalDate = selectedSession?.date || result.session_dates?.[0];
+    const finalTime = selectedSession?.time || result.session_times?.[0];
+    
+    console.log('✅ Session validation passed:', { date: finalDate, time: finalTime });
+    
+    onSelect({ 
+      ...result, 
+      selectedDate: finalDate, 
+      selectedTime: finalTime 
+    });
   };
 
   if (results.length === 0) {

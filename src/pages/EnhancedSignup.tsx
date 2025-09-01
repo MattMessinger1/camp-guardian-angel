@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { WorkflowStatusCard } from '@/components/WorkflowStatusCard';
+import { SessionInfo } from '@/components/SessionInfo';
 import { Brain, Zap, Shield, Clock, Target } from 'lucide-react';
 
 export default function EnhancedSignup() {
@@ -18,6 +19,10 @@ export default function EnhancedSignup() {
   const sessionId = searchParams.get('sessionId') || '';
   const selectedDate = searchParams.get('selectedDate');
   const selectedTime = searchParams.get('selectedTime');
+  const businessName = searchParams.get('businessName');
+  const location = searchParams.get('location');
+  const signupCost = searchParams.get('signupCost') ? parseFloat(searchParams.get('signupCost')!) : undefined;
+  const totalCost = searchParams.get('totalCost') ? parseFloat(searchParams.get('totalCost')!) : undefined;
   const predictedBarriers = searchParams.get('predictedBarriers') ? 
     JSON.parse(searchParams.get('predictedBarriers')!) : [];
   const credentialRequirements = searchParams.get('credentialRequirements') ? 
@@ -120,23 +125,15 @@ export default function EnhancedSignup() {
           </div>
 
           {/* Session Selection Display */}
-          {(selectedDate || selectedTime) && (
-            <div className="mt-4 p-3 bg-background/50 rounded-lg border">
-              <h4 className="font-medium mb-2">Selected Session</h4>
-              <div className="flex gap-4">
-                {selectedDate && (
-                  <Badge variant="secondary">
-                    📅 {new Date(selectedDate).toLocaleDateString()}
-                  </Badge>
-                )}
-                {selectedTime && (
-                  <Badge variant="secondary">
-                    ⏰ {selectedTime}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
+          <SessionInfo
+            businessName={businessName || undefined}
+            location={location || undefined}
+            selectedDate={selectedDate || undefined}
+            selectedTime={selectedTime || undefined}
+            signupCost={signupCost}
+            totalCost={totalCost}
+            className="mt-4"
+          />
         </CardContent>
       </Card>
 
