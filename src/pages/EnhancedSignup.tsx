@@ -77,13 +77,13 @@ export default function EnhancedSignup() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Intelligence Indicators */}
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
               <div className="text-sm">
-                <div className="font-medium">Barriers Predicted</div>
-                <div className="text-muted-foreground">{predictedBarriers.length} identified</div>
+                <div className="font-medium">We'll Handle the Details</div>
+                <div className="text-muted-foreground">Registration Made Simple</div>
               </div>
             </div>
             
@@ -95,15 +95,6 @@ export default function EnhancedSignup() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" />
-              <div className="text-sm">
-                <div className="font-medium">Complexity Score</div>
-                <div className="text-muted-foreground">
-                  {complexityScore ? `${(complexityScore * 100).toFixed(0)}%` : 'Medium'}
-                </div>
-              </div>
-            </div>
             
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-primary" />
@@ -129,30 +120,42 @@ export default function EnhancedSignup() {
         </CardContent>
       </Card>
 
-      {/* Predicted Barriers Preview */}
-      {predictedBarriers.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5" />
-              Predicted Registration Steps
-            </CardTitle>
-            <CardDescription>
-              AI analysis identified these likely barriers based on provider intelligence
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {predictedBarriers.map((barrier: string, index: number) => (
-                <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                  <div className="w-2 h-2 rounded-full bg-primary/60" />
-                  <span className="text-sm capitalize">{barrier.replace(/_/g, ' ')}</span>
-                </div>
-              ))}
+      {/* Helpful Guidance Steps */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            Here's How We Make Camp Registration Effortless
+          </CardTitle>
+          <CardDescription>
+            We'll guide you through each step to secure your child's spot
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-sm font-medium">Account Setup</span>
+              <span className="text-xs text-muted-foreground ml-auto">We'll help you create your profile</span>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-sm font-medium">Payment Processing</span>
+              <span className="text-xs text-muted-foreground ml-auto">Secure checkout with multiple options</span>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-sm font-medium">Schedule Confirmation</span>
+              <span className="text-xs text-muted-foreground ml-auto">We'll sync with your calendar</span>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-sm font-medium">Documentation</span>
+              <span className="text-xs text-muted-foreground ml-auto">We'll gather any required forms</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Workflow Status */}
       {signupStarted && (
@@ -176,10 +179,7 @@ export default function EnhancedSignup() {
         <CardHeader>
           <CardTitle>Ready to Begin?</CardTitle>
           <CardDescription>
-            {enhancedWorkflow.hasSearchIntelligence 
-              ? 'Start your AI-optimized registration experience with pre-populated barriers and intelligent assistance.'
-              : 'Begin your registration with enhanced workflow management and barrier detection.'
-            }
+            Start your personalized registration experience - we'll handle the details so you can focus on what matters most.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -191,8 +191,7 @@ export default function EnhancedSignup() {
                   <span className="font-medium">Enhanced Intelligence Active</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  This registration has been pre-analyzed with {predictedBarriers.length} predicted barriers, 
-                  {credentialRequirements.length} credential requirements, and platform-specific optimizations.
+                  Your registration is personalized and ready to go - we've prepared everything you need for a smooth experience.
                 </p>
               </div>
             )}
