@@ -30,7 +30,7 @@ const SearchTest = () => {
       
       const startTime = performance.now();
       
-      const { data, error: apiError } = await supabase.functions.invoke('ai-camp-search', {
+      const { data, error: apiError } = await supabase.functions.invoke('internet-activity-search', {
         body: {
           query: query.trim(),
           limit: 5,

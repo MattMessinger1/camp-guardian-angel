@@ -111,7 +111,7 @@ const FindCamps: React.FC = () => {
           ...additionalParams,
         };
 
-        const { data, error } = await supabase.functions.invoke('ai-camp-search', {
+        const { data, error } = await supabase.functions.invoke('internet-activity-search', {
           body: searchPayload
         });
 

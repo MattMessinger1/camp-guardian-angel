@@ -24,7 +24,7 @@ const HomePage = () => {
   const [searchResults, setSearchResults] = useState([])
   const [isSearchLoading, setIsSearchLoading] = useState(false)
   
-  // Hybrid search function - fast search first, then AI fallback, then internet search
+  // Hybrid search function - fast search first, then internet search
   const handleAISearch = useCallback(async (query) => {
     console.log('🔍 SEARCH STARTED:', query);
     if (!query.trim()) return;
@@ -63,67 +63,13 @@ const HomePage = () => {
           return;
         }
         
-        logger.info('Fast search found results but confidence too low, continuing to AI search', { 
+        logger.info('Fast search found results but confidence too low, continuing to internet search', { 
           component: 'Home',
           lowConfidenceCount: fastSearchResponse.data.results.length 
         });
       }
 
-      // Step 2: Fallback to AI search for complex/natural language queries
-      logger.info('Fast search found no results, falling back to AI search', { component: 'Home' });
-      const aiSearchResponse = await supabase.functions.invoke('ai-camp-search', {
-        body: { query: query.trim(), limit: 10 }
-      });
-
-      logger.info('AI search response received', { 
-        success: aiSearchResponse?.data?.success,
-        resultCount: aiSearchResponse?.data?.results?.length || 0,
-        component: 'Home'
-      });
-
-      if (aiSearchResponse.data?.success && aiSearchResponse.data?.results?.length > 0) {
-        const aiData = aiSearchResponse.data;
-        
-        // Check if AI results have good confidence before stopping
-        const results = (aiData.results || []).map((result: any) => ({
-          sessionId: result.session_id || result.camp_id || result.sessionId,
-          campName: result.camp_name || result.campName,
-          providerName: result.provider_name || result.providerName || 'Camp Provider',
-          location: result.location_name || result.location ? 
-            (typeof result.location === 'string' ? {
-              city: result.location.split(',')[0]?.trim() || '',
-              state: result.location.split(',')[1]?.trim() || ''
-            } : result.location) : undefined,
-          registrationOpensAt: result.registration_opens_at || result.registrationOpensAt,
-          sessionDates: (result.start_date && result.end_date) || result.sessionDates ? {
-            start: result.start_date || result.sessionDates?.start,
-            end: result.end_date || result.sessionDates?.end
-          } : undefined,
-          capacity: result.capacity,
-          price: result.price_min || result.price,
-          ageRange: (result.age_min && result.age_max) || result.ageRange ? {
-            min: result.age_min || result.ageRange?.min,
-            max: result.age_max || result.ageRange?.max
-          } : undefined,
-          confidence: result.confidence || 0.5,
-          reasoning: result.reasoning || 'AI match found'
-        }));
-
-        const highConfidenceAiResults = results.filter(result => result.confidence > 0.6);
-        
-        if (highConfidenceAiResults.length > 0) {
-          logger.info('Processed AI results', { resultCount: highConfidenceAiResults.length, component: 'Home' });
-          setSearchResults(highConfidenceAiResults);
-          return;
-        }
-        
-        logger.info('AI search found results but confidence too low, continuing to internet search', { 
-          component: 'Home',
-          lowConfidenceCount: results.length 
-        });
-      }
-
-      // Step 3: Final fallback to internet search using Perplexity
+      // Step 2: Direct fallback to internet search using Perplexity
       logger.info('Database searches found no results, searching the entire internet', { component: 'Home' });
       
       try {
