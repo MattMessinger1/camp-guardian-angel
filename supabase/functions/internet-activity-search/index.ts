@@ -31,20 +31,13 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "llama-3.1-sonar-small-128k-online",
+        model: "sonar-pro",
         messages: [
           {
-            role: "system",
-            content: "Find fitness studios and return information as structured data. Be specific about studio names, addresses, and pricing."
-          },
-          {
-            role: "user", 
-            content: `Find 3 fitness studios or gyms for "${query}". Include: studio name, street address, price per class, and brief description.`
+            role: "user",
+            content: `Find 3 spinning or cycling studios in "${query}". Include studio name, street address, and price per class if available.`
           }
-        ],
-        max_tokens: 1000,
-        temperature: 0.2,
-        return_citations: true
+        ]
       })
     });
 
