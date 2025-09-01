@@ -134,13 +134,24 @@ export function useEnhancedWorkflowIntegration(options: UseEnhancedWorkflowInteg
 
         if (error) throw error;
 
-        const requirements = data.requirements;
+        // Defensive coding: Handle undefined/null response data
+        const requirements = data?.requirements;
+        if (!requirements) {
+          console.log('⚠️ No requirements data returned from analysis, using empty barriers');
+        }
         console.log('📊 Fallback: Session requirements analyzed:', requirements);
 
-        const barriers = requirements.predicted_barriers || [];
+        // Safe access to predicted_barriers with fallback
+        const barriers = requirements?.predicted_barriers || [];
         barriers.forEach((barrier: any, index: number) => {
+          // Additional safety check for barrier object
+          if (!barrier || typeof barrier !== 'object') {
+            console.warn('⚠️ Invalid barrier object detected, skipping:', barrier);
+            return;
+          }
+          
           workflow.actions.queueAssistanceRequest({
-            type: barrier.type,
+            type: barrier.type || 'form_completion',
             stage: barrier.stage || 'registration',
             priority: barrier.urgent ? 'high' : 'medium',
             context: barrier.context || {},
