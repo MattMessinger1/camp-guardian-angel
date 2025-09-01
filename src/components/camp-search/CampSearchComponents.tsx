@@ -22,6 +22,13 @@ export interface SearchResult {
   registrationOpensAt?: string;
   sessionDates?: string[];
   sessionTimes?: string[];
+  sessions?: Array<{
+    id?: string;
+    date: string;
+    time: string;
+    availability?: number;
+    price?: number;
+  }>;
   streetAddress?: string;
   signupCost?: number; // Database results (camelCase)
   signup_cost?: number; // Internet search results (snake_case)
@@ -177,10 +184,21 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
       
       {results.map((result, index) => {
         const resultId = `${result.sessionId}-${index}`;
-        const hasMultipleDates = result.sessionDates && result.sessionDates.length > 1;
-        const hasMultipleTimes = result.sessionTimes && result.sessionTimes.length > 1;
-        const selectedDate = selectedSessions[resultId]?.date || result.sessionDates?.[0];
-        const selectedTime = selectedSessions[resultId]?.time || result.sessionTimes?.[0];
+        
+        // Handle both new sessions array and legacy sessionDates/sessionTimes
+        const availableSessions = result.sessions || [];
+        const sessionDates = result.sessions?.map(s => s.date) || result.sessionDates || [];
+        const sessionTimes = result.sessions?.map(s => s.time) || result.sessionTimes || [];
+        
+        const hasMultipleDates = sessionDates.length > 1;
+        const hasMultipleTimes = sessionTimes.length > 1;
+        const selectedDate = selectedSessions[resultId]?.date || sessionDates[0];
+        const selectedTime = selectedSessions[resultId]?.time || sessionTimes[0];
+        
+        // Find selected session for pricing
+        const selectedSession = availableSessions.find(s => 
+          s.date === selectedDate && s.time === selectedTime
+        );
 
         return (
           <Card key={resultId} className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-all duration-200">
@@ -235,7 +253,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 {/* Session Details Column */}
                 <div className="space-y-4">
                   {/* Session Date */}
-                  {result.sessionDates && result.sessionDates.length > 0 && (
+                  {sessionDates.length > 0 && (
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">
                         Session Date
@@ -254,7 +272,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                             <SelectValue placeholder="Choose date" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border border-border shadow-lg z-50">
-                            {result.sessionDates.map((date, idx) => (
+                            {sessionDates.map((date, idx) => (
                               <SelectItem key={idx} value={date} className="hover:bg-muted">
                                 {formatDate(date)}
                               </SelectItem>
@@ -264,14 +282,14 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       ) : (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          {formatDate(result.sessionDates[0])}
+                          {formatDate(sessionDates[0])}
                         </div>
                       )}
                     </div>
                   )}
 
                   {/* Session Time */}
-                  {result.sessionTimes && result.sessionTimes.length > 0 && (
+                  {sessionTimes.length > 0 && (
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">
                         Session Time
@@ -290,17 +308,30 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                             <SelectValue placeholder="Choose time" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border border-border shadow-lg z-50">
-                            {result.sessionTimes.map((time, idx) => (
-                              <SelectItem key={idx} value={time} className="hover:bg-muted">
-                                {time}
-                              </SelectItem>
-                            ))}
+                            {sessionTimes.map((time, idx) => {
+                              const session = availableSessions.find(s => s.time === time);
+                              return (
+                                <SelectItem key={idx} value={time} className="hover:bg-muted">
+                                  <div className="flex justify-between items-center w-full">
+                                    <span>{time}</span>
+                                    {session?.availability && (
+                                      <span className="text-xs text-muted-foreground ml-2">
+                                        {session.availability} spots
+                                      </span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       ) : (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="h-4 w-4" />
-                          {result.sessionTimes[0]}
+                          <span>{sessionTimes[0]}</span>
+                          {selectedSession?.availability && (
+                            <span className="text-xs">({selectedSession.availability} spots)</span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -318,7 +349,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       <span className="text-sm font-medium">
                         {(result.signup_cost !== undefined || result.signupCost !== undefined)
                           ? formatCurrency(result.signup_cost ?? result.signupCost ?? 0)
-                          : 'TBD'
+                          : selectedSession?.price !== undefined
+                            ? formatCurrency(selectedSession.price)
+                            : 'TBD'
                         }
                       </span>
                     </div>
@@ -331,7 +364,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                           ? formatCurrency(result.total_cost ?? result.totalCost ?? 0)
                           : (result.signup_cost !== undefined || result.signupCost !== undefined)
                             ? formatCurrency(result.signup_cost ?? result.signupCost ?? 0)
-                            : 'TBD'
+                            : selectedSession?.price !== undefined
+                              ? formatCurrency(selectedSession.price)
+                              : 'TBD'
                         }
                       </span>
                     </div>
@@ -359,6 +394,13 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                   {result.ageRange && (
                     <div className="flex items-center gap-1">
                       <span>Ages: {result.ageRange.min}-{result.ageRange.max}</span>
+                    </div>
+                  )}
+                  
+                  {selectedSession?.availability && (
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      <span>Available spots: {selectedSession.availability}</span>
                     </div>
                   )}
                 </div>
