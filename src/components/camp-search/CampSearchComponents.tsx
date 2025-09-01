@@ -173,10 +173,24 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
         }
       });
       
-      // Remove duplicates based on date + time combination
-      const uniqueSessions = allSessions.filter((session, index, arr) => 
-        arr.findIndex(s => s.date === session.date && s.time === session.time) === index
-      );
+      // Remove duplicates based on date + time combination and merge availability/pricing
+      const sessionMap = new Map<string, {date: string, time: string, availability?: number, price?: number}>();
+      allSessions.forEach(session => {
+        const key = `${session.date}-${session.time}`;
+        const existing = sessionMap.get(key);
+        if (!existing) {
+          sessionMap.set(key, session);
+        } else {
+          // Merge data - take the one with more complete information
+          sessionMap.set(key, {
+            ...existing,
+            availability: session.availability || existing.availability,
+            price: session.price || existing.price
+          });
+        }
+      });
+      
+      const uniqueSessions = Array.from(sessionMap.values());
       
       return {
         ...primaryResult,
@@ -364,21 +378,23 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                             <SelectValue placeholder="Choose time" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border border-border shadow-lg z-50">
-                            {sessionTimes.map((time, idx) => {
-                              const session = availableSessions.find(s => s.time === time);
-                              return (
-                                <SelectItem key={idx} value={time} className="hover:bg-muted">
-                                  <div className="flex justify-between items-center w-full">
-                                    <span>{time}</span>
-                                    {session?.availability && (
-                                      <span className="text-xs text-muted-foreground ml-2">
-                                        {session.availability} spots
-                                      </span>
+                            {availableSessions.map((session, idx) => (
+                              <SelectItem key={idx} value={session.time} className="hover:bg-muted">
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {formatDate(session.date)} - {session.time}
+                                  </span>
+                                  <div className="flex gap-4 text-xs text-muted-foreground">
+                                    {session.availability && (
+                                      <span>{session.availability} spots available</span>
+                                    )}
+                                    {session.price && (
+                                      <span>{formatCurrency(session.price)}</span>
                                     )}
                                   </div>
-                                </SelectItem>
-                              );
-                            })}
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       ) : (
