@@ -141,18 +141,29 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
   const groupedResults = React.useMemo(() => {
     if (results.length === 0) return [];
     
-    const groups: { [key: string]: SearchResult[] } = {};
+    const groups: { [key: string]: { displayName: string; results: SearchResult[] } } = {};
     
     results.forEach(result => {
-      const businessName = result.name || result.providerName || result.campName || 'Unknown';
+      // More robust business name extraction with normalization
+      let businessName = (result.name || result.providerName || result.campName || 'Unknown')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' '); // Normalize whitespace
+      
+      // Convert back to title case for display
+      const displayName = (result.name || result.providerName || result.campName || 'Unknown').trim();
+      
       if (!groups[businessName]) {
-        groups[businessName] = [];
+        groups[businessName] = {
+          displayName,
+          results: []
+        };
       }
-      groups[businessName].push(result);
+      groups[businessName].results.push(result);
     });
     
     // Consolidate sessions for each business
-    return Object.entries(groups).map(([businessName, businessResults]) => {
+    return Object.entries(groups).map(([normalizedName, { displayName, results: businessResults }]) => {
       const primaryResult = businessResults[0];
       
       // Combine all sessions from all results for this business
@@ -194,6 +205,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
       
       return {
         ...primaryResult,
+        name: displayName, // Use normalized display name
         sessions: uniqueSessions,
         sessionDates: uniqueSessions.map(s => s.date),
         sessionTimes: uniqueSessions.map(s => s.time)
