@@ -93,8 +93,8 @@ export function useEnhancedWorkflowIntegration(options: UseEnhancedWorkflowInteg
         providerPlatform: options.providerPlatform
       });
 
-      // Pre-populate barriers from search intelligence if available
-      if (options.predictedBarriers && options.predictedBarriers.length > 0) {
+      // Pre-populate barriers from search intelligence if available (with defensive checks)
+      if (options.predictedBarriers && Array.isArray(options.predictedBarriers) && options.predictedBarriers.length > 0) {
         // Queue predicted barriers directly from search results
         options.predictedBarriers.forEach((barrierType, index) => {
           // Map to known barrier types

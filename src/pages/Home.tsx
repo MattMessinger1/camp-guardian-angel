@@ -211,7 +211,7 @@ const HomePage = () => {
     
     // Check if this is an internet result
     if (result.id?.startsWith('internet-') || result.id?.startsWith('perplexity-')) {
-      // Navigate to enhanced signup page with complete session data
+      // Navigate to enhanced signup page with complete session data AND intelligence data
       const searchParams = new URLSearchParams({
         sessionId: result.id || 'internet-unknown',
         businessName: sessionData.businessName || '',
@@ -219,7 +219,15 @@ const HomePage = () => {
         selectedDate: sessionData.selectedDate || '',
         selectedTime: sessionData.selectedTime || '',
         signupCost: sessionData.signupCost?.toString() || '',
-        totalCost: sessionData.totalCost?.toString() || ''
+        totalCost: sessionData.totalCost?.toString() || '',
+        // Add barrier intelligence data to prevent crashes
+        predictedBarriers: JSON.stringify(result.predicted_barriers || []),
+        credentialRequirements: JSON.stringify(result.credential_requirements || []),
+        complexityScore: result.complexity_score?.toString() || '0.5',
+        workflowEstimate: result.workflow_estimate?.toString() || '10',
+        providerPlatform: result.provider_platform || 'custom',
+        expectedInterventionPoints: JSON.stringify(result.expected_intervention_points || []),
+        formComplexitySignals: JSON.stringify(result.form_complexity_signals || [])
       });
       navigate(`/enhanced-signup?${searchParams.toString()}`);
     } else {

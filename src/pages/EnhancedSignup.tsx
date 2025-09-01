@@ -24,10 +24,24 @@ export default function EnhancedSignup() {
   const location = searchParams.get('location');
   const signupCost = searchParams.get('signupCost') ? parseFloat(searchParams.get('signupCost')!) : undefined;
   const totalCost = searchParams.get('totalCost') ? parseFloat(searchParams.get('totalCost')!) : undefined;
-  const predictedBarriers = searchParams.get('predictedBarriers') ? 
-    JSON.parse(searchParams.get('predictedBarriers')!) : [];
-  const credentialRequirements = searchParams.get('credentialRequirements') ? 
-    JSON.parse(searchParams.get('credentialRequirements')!) : [];
+  // Safely parse JSON parameters with fallbacks
+  const predictedBarriers = (() => {
+    try {
+      const param = searchParams.get('predictedBarriers');
+      return param ? JSON.parse(param) : [];
+    } catch {
+      return [];
+    }
+  })();
+  
+  const credentialRequirements = (() => {
+    try {
+      const param = searchParams.get('credentialRequirements');
+      return param ? JSON.parse(param) : [];
+    } catch {
+      return [];
+    }
+  })();
   const complexityScore = searchParams.get('complexityScore') ? 
     parseFloat(searchParams.get('complexityScore')!) : undefined;
   const workflowEstimate = searchParams.get('workflowEstimate') ? 
