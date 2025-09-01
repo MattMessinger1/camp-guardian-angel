@@ -14,6 +14,7 @@ export interface SearchResult {
   sessionId: string;
   campName: string;
   providerName?: string;
+  name?: string; // For internet search results
   location?: {
     city: string;
     state: string;
@@ -22,8 +23,10 @@ export interface SearchResult {
   sessionDates?: string[];
   sessionTimes?: string[];
   streetAddress?: string;
-  signupCost?: number;
-  totalCost?: number;
+  signupCost?: number; // Database results (camelCase)
+  signup_cost?: number; // Internet search results (snake_case)
+  totalCost?: number; // Database results (camelCase)
+  total_cost?: number; // Internet search results (snake_case)
   capacity?: number;
   price?: number;
   ageRange?: {
@@ -187,7 +190,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 <div className="flex-1">
                   {/* Provider Name - Bold, Larger Text */}
                   <h2 className="text-2xl font-bold text-foreground mb-1">
-                    {result.providerName || result.campName}
+                    {result.name || result.providerName || result.campName}
                   </h2>
                   
                   {/* Camp Name (if different from provider) */}
@@ -313,8 +316,8 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-muted-foreground">Due at signup:</span>
                       <span className="text-sm font-medium">
-                        {result.signupCost !== undefined 
-                          ? formatCurrency(result.signupCost)
+                        {(result.signup_cost !== undefined || result.signupCost !== undefined)
+                          ? formatCurrency(result.signup_cost ?? result.signupCost ?? 0)
                           : 'TBD'
                         }
                       </span>
@@ -324,10 +327,10 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     <div className="flex justify-between items-center pt-2 border-t border-border">
                       <span className="text-sm font-medium text-foreground">Total cost:</span>
                       <span className="text-lg font-bold text-foreground">
-                        {result.totalCost !== undefined 
-                          ? formatCurrency(result.totalCost)
-                          : result.signupCost !== undefined 
-                            ? formatCurrency(result.signupCost)
+                        {(result.total_cost !== undefined || result.totalCost !== undefined)
+                          ? formatCurrency(result.total_cost ?? result.totalCost ?? 0)
+                          : (result.signup_cost !== undefined || result.signupCost !== undefined)
+                            ? formatCurrency(result.signup_cost ?? result.signupCost ?? 0)
                             : 'TBD'
                         }
                       </span>
