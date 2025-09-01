@@ -70,6 +70,7 @@ const HomePage = () => {
       }
 
       // Step 2: Direct fallback to internet search using Perplexity
+      console.log('🌐 STARTING INTERNET SEARCH for:', query.trim());
       logger.info('Database searches found no results, searching the entire internet', { component: 'Home' });
       
       try {
@@ -77,7 +78,16 @@ const HomePage = () => {
           body: { query: query.trim(), limit: 8 }
         });
 
-        if (internetSearchResponse.data?.success && internetSearchResponse.data?.results?.length > 0) {
+        console.log('🌐 INTERNET SEARCH RESPONSE:', internetSearchResponse);
+        console.log('🌐 Response data:', internetSearchResponse.data);
+        console.log('🌐 Response error:', internetSearchResponse.error);
+
+        if (internetSearchResponse.error) {
+          console.log('🌐 Internet search function error:', internetSearchResponse.error);
+          throw new Error(`Function error: ${internetSearchResponse.error.message}`);
+        }
+
+        if (internetSearchResponse.data?.results?.length > 0) {
           // Transform internet results to match our SearchResult interface
           const internetResults = internetSearchResponse.data.results.map((result: any) => ({
             sessionId: `internet-${Date.now()}-${Math.random()}`, // Generate unique ID for internet results
