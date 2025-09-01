@@ -137,52 +137,10 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
     setSelectedSessions({});
   }, [results]);
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  const handleSessionSelection = (resultId: string, type: 'date' | 'time', value: string) => {
-    setSelectedSessions(prev => ({
-      ...prev,
-      [resultId]: {
-        ...prev[resultId],
-        [type]: value
-      }
-    }));
-  };
-
-  if (results.length === 0) {
-    return (
-      <Card className="text-center p-8">
-        <CardContent>
-          <div className="text-muted-foreground">
-            <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg mb-2">No upcoming camps found</p>
-            <p className="text-sm">Try a different search term or location. We only show camps happening in the next 60 days.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Group results by business name to deduplicate
+  // Group results by business name to deduplicate - MUST be before early returns
   const groupedResults = React.useMemo(() => {
+    if (results.length === 0) return [];
+    
     const groups: { [key: string]: SearchResult[] } = {};
     
     results.forEach(result => {
@@ -228,6 +186,50 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
       };
     });
   }, [results]);
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  const handleSessionSelection = (resultId: string, type: 'date' | 'time', value: string) => {
+    setSelectedSessions(prev => ({
+      ...prev,
+      [resultId]: {
+        ...prev[resultId],
+        [type]: value
+      }
+    }));
+  };
+
+  if (results.length === 0) {
+    return (
+      <Card className="text-center p-8">
+        <CardContent>
+          <div className="text-muted-foreground">
+            <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="text-lg mb-2">No upcoming camps found</p>
+            <p className="text-sm">Try a different search term or location. We only show camps happening in the next 60 days.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
