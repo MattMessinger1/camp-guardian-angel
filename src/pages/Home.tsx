@@ -197,14 +197,14 @@ const HomePage = () => {
       result = sessionIdOrResult;
     }
 
-    // Extract session selection data
+    // Extract session selection data from multiple sources
     const sessionData = {
-      selectedDate: result.selectedDate,
-      selectedTime: result.selectedTime,
-      businessName: result.name || result.title || result.camp_name,
-      location: result.location,
-      signupCost: result.signup_cost || result.signupCost,
-      totalCost: result.total_cost || result.totalCost
+      selectedDate: selectedSession?.date || result.selectedDate,
+      selectedTime: selectedSession?.time || result.selectedTime,
+      businessName: result.businessName || result.name || result.title || result.camp_name,
+      location: result.locationString || result.location,
+      signupCost: result.signupCost || result.signup_cost,
+      totalCost: result.totalCost || result.total_cost
     };
 
     console.log('📅 Registration with session data:', sessionData);

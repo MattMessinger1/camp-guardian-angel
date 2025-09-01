@@ -36,7 +36,7 @@ export default function EnhancedSignup() {
   // Initialize enhanced workflow with search intelligence
   const enhancedWorkflow = useEnhancedWorkflowIntegration({
     sessionId,
-    userId: user?.id || '',
+    userId: user?.id || 'guest-user', // Allow guest users to start signup
     providerUrl: 'https://example.com/signup', // This would come from session data
     predictedBarriers,
     credentialRequirements,
@@ -56,17 +56,9 @@ export default function EnhancedSignup() {
     await enhancedWorkflow.startEnhancedAutomation();
   };
 
+  // Allow guest users to proceed with signup - they can authenticate during the process
   if (!user) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Authentication Required</CardTitle>
-            <CardDescription>Please sign in to access the enhanced signup experience.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
+    console.log('Guest user accessing signup flow');
   }
 
   return (
