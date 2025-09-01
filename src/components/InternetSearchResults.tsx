@@ -4,17 +4,22 @@ import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Search, Zap } from "lucide-react";
 
 interface InternetSearchResult {
-  title: string;
+  id?: string;
+  name?: string;
+  title?: string;
   description: string;
-  url: string;
+  url?: string;
   provider: string;
   estimatedDates?: string;
   estimatedPrice?: string;
   estimatedAgeRange?: string;
   location?: string;
-  confidence: number;
-  canAutomate: boolean;
-  automationComplexity: 'low' | 'medium' | 'high';
+  street_address?: string;
+  signup_cost?: number;
+  total_cost?: number;
+  confidence?: number;
+  canAutomate?: boolean;
+  automationComplexity?: 'low' | 'medium' | 'high';
 }
 
 interface InternetSearchResultsProps {
@@ -48,7 +53,7 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-foreground mb-2">
-                {result.title}
+                {result.name || result.title}
               </h2>
               
               <p className="text-muted-foreground mb-3">
@@ -59,9 +64,9 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
                 {result.description}
               </p>
               
-              {result.location && (
+              {(result.location || result.street_address) && (
                 <p className="text-muted-foreground mb-2">
-                  Location: {result.location}
+                  Location: {result.street_address || result.location}
                 </p>
               )}
               
@@ -77,45 +82,65 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
                 </p>
               )}
               
-              {result.estimatedPrice && (
-                <p className="text-muted-foreground mb-4">
-                  Estimated Fee: {result.estimatedPrice}
-                </p>
-              )}
-              
-              <div className="flex gap-2 mb-3">
-                <Badge variant="outline" className="text-xs">
-                  {Math.round(result.confidence * 100)}% match
-                </Badge>
+              <div className="mb-4 space-y-1">
+                {(result.signup_cost !== undefined && result.signup_cost !== null) ? (
+                  <p className="text-muted-foreground">
+                    Due at signup: <span className="font-medium">${result.signup_cost}</span>
+                  </p>
+                ) : result.estimatedPrice && (
+                  <p className="text-muted-foreground">
+                    Estimated Fee: {result.estimatedPrice}
+                  </p>
+                )}
                 
-                <Badge variant="secondary" className="text-xs">
-                  {result.automationComplexity} automation
-                </Badge>
+                {(result.total_cost !== undefined && result.total_cost !== null) && (
+                  <p className="text-muted-foreground">
+                    Total cost: <span className="font-medium">${result.total_cost}</span>
+                  </p>
+                )}
               </div>
               
-              <p className="text-xs text-muted-foreground italic mb-2">
-                Found via internet search • Click to view website: {result.url}
-              </p>
+              <div className="flex gap-2 mb-3">
+                {result.confidence && (
+                  <Badge variant="outline" className="text-xs">
+                    {Math.round(result.confidence * 100)}% match
+                  </Badge>
+                )}
+                
+                {result.automationComplexity && (
+                  <Badge variant="secondary" className="text-xs">
+                    {result.automationComplexity} automation
+                  </Badge>
+                )}
+              </div>
+              
+              {result.url && (
+                <p className="text-xs text-muted-foreground italic mb-2">
+                  Found via internet search • Click to view website: {result.url}
+                </p>
+              )}
             </div>
             
             <div className="ml-6 flex flex-col items-start gap-2">
               <Button 
                 onClick={() => onSelect(result)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
-                disabled={!result.canAutomate}
+                disabled={result.canAutomate === false}
               >
                 Get ready for signup
               </Button>
               
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(result.url, '_blank')}
-                className="text-xs"
-              >
-                <ExternalLink className="h-3 w-3 mr-1" />
-                Visit Site
-              </Button>
+              {result.url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(result.url, '_blank')}
+                  className="text-xs"
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Visit Site
+                </Button>
+              )}
             </div>
           </div>
         </Card>
