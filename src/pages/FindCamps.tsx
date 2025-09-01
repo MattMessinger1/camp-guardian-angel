@@ -191,7 +191,7 @@ const FindCamps: React.FC = () => {
     setSearchParams(prev => ({ ...prev, ...additionalParams }));
   };
 
-  const handleRegister = (sessionId: string) => {
+  const handleRegister = (sessionId: string, selectedSession?: {date?: string, time?: string}) => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -202,8 +202,19 @@ const FindCamps: React.FC = () => {
       return;
     }
 
-    // Navigate to signup page with sessionId for requirements completion
-    navigate(`/signup?sessionId=${sessionId}`);
+    // Build URL parameters including session selection data
+    const params = new URLSearchParams({ sessionId });
+    
+    if (selectedSession?.date) {
+      params.append('selectedDate', selectedSession.date);
+    }
+    
+    if (selectedSession?.time) {
+      params.append('selectedTime', selectedSession.time);
+    }
+
+    // Navigate to signup page with sessionId and selected session data
+    navigate(`/signup?${params.toString()}`);
   };
 
   const handleInternetResultSelect = (result: InternetSearchResult) => {

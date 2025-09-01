@@ -107,7 +107,7 @@ export const CampSearchBox: React.FC<CampSearchBoxProps> = ({
 
 interface SearchResultsProps {
   results: SearchResult[];
-  onRegister: (sessionId: string) => void;
+  onRegister: (sessionId: string, selectedSession?: {date?: string, time?: string}) => void;
 }
 
 export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegister }) => {
@@ -190,7 +190,10 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 </div>
                 
                 <Button 
-                  onClick={() => onRegister(result.sessionId)}
+                  onClick={() => onRegister(result.sessionId, {
+                    date: selectedDate,
+                    time: selectedTime
+                  })}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 ml-4"
                 >
                   Get ready for signup
@@ -224,6 +227,11 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">
                         Session Date
+                        {hasMultipleDates && selectedDate && (
+                          <span className="ml-2 text-xs text-primary bg-primary/10 px-2 py-1 rounded">
+                            Selected
+                          </span>
+                        )}
                       </label>
                       {hasMultipleDates ? (
                         <Select 
@@ -255,6 +263,11 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">
                         Session Time
+                        {hasMultipleTimes && selectedTime && (
+                          <span className="ml-2 text-xs text-primary bg-primary/10 px-2 py-1 rounded">
+                            Selected
+                          </span>
+                        )}
                       </label>
                       {hasMultipleTimes ? (
                         <Select 
