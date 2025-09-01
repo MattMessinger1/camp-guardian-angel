@@ -52,6 +52,15 @@ interface SearchResult {
   };
   confidence: number;
   reasoning: string;
+  // Enhanced barrier intelligence
+  predicted_barriers?: string[];
+  credential_requirements?: string[];
+  complexity_score?: number;
+  workflow_estimate?: number;
+  provider_platform?: string;
+  expected_intervention_points?: string[];
+  form_complexity_signals?: string[];
+  historical_patterns?: any;
 }
 
 interface SearchResponse {
@@ -138,6 +147,99 @@ function buildReasoning(
   }
   
   return parts.join(', ');
+}
+
+// Enhanced barrier intelligence extraction using OpenAI
+async function enhanceWithBarrierIntelligence(campResult: SearchResult): Promise<SearchResult> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openAIApiKey) {
+    console.warn('OpenAI API key not found, skipping barrier intelligence enhancement');
+    return campResult;
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{
+          role: 'system',
+          content: `Analyze this camp registration and predict barriers. Focus on:
+          - Authentication requirements (account creation, login types)
+          - Form complexity (number of fields, required documents)
+          - Payment timing (upfront, deposit, multiple payments)
+          - CAPTCHA likelihood based on provider type
+          - Platform indicators (custom sites vs known platforms)
+          - Historical barrier patterns for similar providers
+          
+          Return JSON with:
+          {
+            "predicted_barriers": ["barrier1", "barrier2"],
+            "credential_requirements": ["email", "phone", "emergency_contact"],
+            "complexity_score": 0.1-1.0,
+            "workflow_estimate": minutes_number,
+            "provider_platform": "custom|community_pass|active|municipal",
+            "expected_intervention_points": ["point1", "point2"],
+            "form_complexity_signals": ["signal1", "signal2"],
+            "historical_patterns": {}
+          }`
+        }, {
+          role: 'user', 
+          content: JSON.stringify({
+            campName: campResult.campName,
+            providerName: campResult.providerName,
+            signupCost: campResult.signupCost,
+            totalCost: campResult.totalCost,
+            ageRange: campResult.ageRange,
+            location: campResult.location
+          })
+        }],
+        max_tokens: 1000,
+        temperature: 0.3
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('OpenAI API error:', response.status, response.statusText);
+      return campResult;
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+    
+    if (!content) {
+      console.warn('No content from OpenAI response');
+      return campResult;
+    }
+
+    try {
+      const barrierAnalysis = JSON.parse(content);
+      
+      return {
+        ...campResult,
+        predicted_barriers: barrierAnalysis.predicted_barriers || [],
+        credential_requirements: barrierAnalysis.credential_requirements || [],
+        complexity_score: barrierAnalysis.complexity_score || 0.5,
+        workflow_estimate: barrierAnalysis.workflow_estimate || 10,
+        provider_platform: barrierAnalysis.provider_platform || 'unknown',
+        expected_intervention_points: barrierAnalysis.expected_intervention_points || [],
+        form_complexity_signals: barrierAnalysis.form_complexity_signals || [],
+        historical_patterns: barrierAnalysis.historical_patterns || {}
+      };
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI barrier analysis:', parseError);
+      return campResult;
+    }
+
+  } catch (error) {
+    console.error('Error enhancing with barrier intelligence:', error);
+    return campResult;
+  }
 }
 
 // Main search function
@@ -260,7 +362,7 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
 
             const firstSession = upcomingSessions[0];
 
-            results.push({
+            const baseResult: SearchResult = {
               sessionId: firstSession?.id || camp.id, // Use session ID as sessionId
               campName: camp.name,
               providerName: location?.location_name,
@@ -290,7 +392,11 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
                 false,
                 !!location
               ),
-            });
+            };
+
+            // Enhance with barrier intelligence
+            const enhancedResult = await enhanceWithBarrierIntelligence(baseResult);
+            results.push(enhancedResult);
           }
         }
       }

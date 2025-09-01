@@ -8,6 +8,7 @@ import HomePage from "./pages/Home";
 import Auth from "./pages/Auth";
 import AutomatedSignupPage from "./pages/AutomatedSignupPage";
 import EnhancedSignupPage from "./pages/EnhancedSignupPage";
+import EnhancedSignup from "./pages/EnhancedSignup";
 import SignupSubmitted from './pages/SignupSubmitted';
 import AccountHistory from './pages/AccountHistory';
 import Settings from "./pages/Settings";
@@ -99,6 +100,7 @@ export default function App() {
               {/* Core V1.0 Production Routes - Always Available */}
               <Route path="/" element={<HomePage />} />
               <Route path="/signup" element={<EnhancedSignupPage />} />
+              <Route path="/enhanced-signup" element={<EnhancedSignup />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/settings" element={
                 <ProtectedRoute>

@@ -191,7 +191,7 @@ const FindCamps: React.FC = () => {
     setSearchParams(prev => ({ ...prev, ...additionalParams }));
   };
 
-  const handleRegister = (sessionId: string, selectedSession?: {date?: string, time?: string}) => {
+  const handleRegister = (sessionId: string, selectedSession?: {date?: string, time?: string}, searchResult?: any) => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -202,7 +202,7 @@ const FindCamps: React.FC = () => {
       return;
     }
 
-    // Build URL parameters including session selection data
+    // Build URL parameters including session selection data and barrier intelligence
     const params = new URLSearchParams({ sessionId });
     
     if (selectedSession?.date) {
@@ -213,8 +213,29 @@ const FindCamps: React.FC = () => {
       params.append('selectedTime', selectedSession.time);
     }
 
-    // Navigate to signup page with sessionId and selected session data
-    navigate(`/signup?${params.toString()}`);
+    // Pass barrier intelligence for workflow pre-population
+    if (searchResult?.predicted_barriers) {
+      params.append('predictedBarriers', JSON.stringify(searchResult.predicted_barriers));
+    }
+    
+    if (searchResult?.credential_requirements) {
+      params.append('credentialRequirements', JSON.stringify(searchResult.credential_requirements));
+    }
+    
+    if (searchResult?.complexity_score) {
+      params.append('complexityScore', searchResult.complexity_score.toString());
+    }
+    
+    if (searchResult?.workflow_estimate) {
+      params.append('workflowEstimate', searchResult.workflow_estimate.toString());
+    }
+    
+    if (searchResult?.provider_platform) {
+      params.append('providerPlatform', searchResult.provider_platform);
+    }
+
+    // Navigate to enhanced signup page with barrier intelligence
+    navigate(`/enhanced-signup?${params.toString()}`);
   };
 
   const handleInternetResultSelect = (result: InternetSearchResult) => {

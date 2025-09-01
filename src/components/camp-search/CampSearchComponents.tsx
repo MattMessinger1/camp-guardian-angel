@@ -32,6 +32,15 @@ export interface SearchResult {
   };
   confidence: number;
   reasoning: string;
+  // Enhanced barrier intelligence
+  predicted_barriers?: string[];
+  credential_requirements?: string[];
+  complexity_score?: number;
+  workflow_estimate?: number;
+  provider_platform?: string;
+  expected_intervention_points?: string[];
+  form_complexity_signals?: string[];
+  historical_patterns?: any;
 }
 
 interface SearchResponse {
@@ -107,7 +116,7 @@ export const CampSearchBox: React.FC<CampSearchBoxProps> = ({
 
 interface SearchResultsProps {
   results: SearchResult[];
-  onRegister: (sessionId: string, selectedSession?: {date?: string, time?: string}) => void;
+  onRegister: (sessionId: string, selectedSession?: {date?: string, time?: string}, searchResult?: SearchResult) => void;
 }
 
 export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegister }) => {
@@ -193,7 +202,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                   onClick={() => onRegister(result.sessionId, {
                     date: selectedDate,
                     time: selectedTime
-                  })}
+                  }, result)}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 ml-4"
                 >
                   Get ready for signup
