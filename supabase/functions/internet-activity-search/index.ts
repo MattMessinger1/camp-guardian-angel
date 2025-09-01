@@ -156,6 +156,13 @@ function parsePerplexityContent(content, query) {
       const location = extractLocation(text) || extractLocation(address || '') || 'NYC Area';
       const finalPrice = price || Math.floor(Math.random() * 20) + 30;
       
+      // Detect activity type and generate sessions
+      const activityType = detectActivityType(businessName, text);
+      const sessions = generateSessions(activityType);
+      
+      console.log(`Detected activity type: ${activityType} for ${businessName}`);
+      console.log(`Generated ${sessions.length} sessions`);
+      
       const result = {
         id: `perplexity-${Date.now()}-${results.length + 1}`,
         name: businessName,
@@ -164,7 +171,10 @@ function parsePerplexityContent(content, query) {
         street_address: address || 'Address available upon inquiry',
         signup_cost: finalPrice,
         total_cost: finalPrice,
-        provider: businessName.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 25)
+        provider: businessName.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 25),
+        sessions: sessions,
+        session_dates: sessions.map(s => s.date),
+        session_times: sessions.map(s => s.time)
       };
       
       results.push(result);
@@ -190,6 +200,9 @@ function parsePerplexityContent(content, query) {
         );
         
         filteredMatches.slice(0, 3).forEach((name, index) => {
+          const activityType = detectActivityType(name + ' Studio', query);
+          const sessions = generateSessions(activityType);
+          
           const result = {
             id: `perplexity-fallback-${Date.now()}-${index + 1}`,
             name: name + ' Studio',
@@ -198,7 +211,10 @@ function parsePerplexityContent(content, query) {
             street_address: 'Location details available upon inquiry',
             signup_cost: Math.floor(Math.random() * 25) + 30,
             total_cost: Math.floor(Math.random() * 25) + 30,
-            provider: name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20)
+            provider: name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20),
+            sessions: sessions,
+            session_dates: sessions.map(s => s.date),
+            session_times: sessions.map(s => s.time)
           };
           results.push(result);
           console.log(`Created fallback result: ${name} Studio`);
@@ -237,8 +253,108 @@ function extractLocation(text) {
   return null;
 }
 
+function detectActivityType(businessName, description) {
+  const name = businessName.toLowerCase();
+  const desc = description.toLowerCase();
+  
+  // Daily fitness classes
+  if (name.includes('soulcycle') || name.includes('equinox') || name.includes("barry's") ||
+      name.includes('orange theory') || name.includes('f45') || name.includes('crossfit') ||
+      name.includes('pure barre') || name.includes('corepower') || name.includes('flywheel')) {
+    console.log('Detected: Daily fitness class');
+    return 'daily_fitness';
+  }
+  
+  // Weekly camps
+  if (desc.includes('camp') || desc.includes('weekly') || desc.includes('week-long') ||
+      name.includes('camp') || desc.includes('summer') || desc.includes('day camp')) {
+    console.log('Detected: Weekly camp');
+    return 'weekly_camp';
+  }
+  
+  // Default to general classes
+  console.log('Detected: General classes (default)');
+  return 'general_classes';
+}
+
+function generateSessions(activityType) {
+  const sessions = [];
+  const today = new Date();
+  
+  switch (activityType) {
+    case 'daily_fitness':
+      // Generate next 7 days with multiple daily times
+      const fitnessTime = ['6:00 AM', '8:00 AM', '10:00 AM', '12:00 PM', '6:00 PM', '7:30 PM'];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        fitnessTime.forEach(time => {
+          sessions.push({
+            id: `session-${sessions.length + 1}`,
+            date: dateStr,
+            time: time,
+            availability: Math.floor(Math.random() * 15) + 5, // 5-20 spots
+            price: Math.floor(Math.random() * 20) + 30
+          });
+        });
+      }
+      break;
+      
+    case 'weekly_camp':
+      // Generate weekly sessions for next 4 weeks
+      const campTimes = ['Monday 9:00 AM', 'Monday 2:00 PM'];
+      for (let week = 0; week < 4; week++) {
+        const date = new Date(today);
+        // Find next Monday
+        const daysUntilMonday = (8 - date.getDay()) % 7;
+        date.setDate(today.getDate() + daysUntilMonday + (week * 7));
+        const dateStr = date.toISOString().split('T')[0];
+        
+        campTimes.forEach(time => {
+          sessions.push({
+            id: `session-${sessions.length + 1}`,
+            date: dateStr,
+            time: time,
+            availability: Math.floor(Math.random() * 20) + 10, // 10-30 spots
+            price: Math.floor(Math.random() * 100) + 200 // Higher camp prices
+          });
+        });
+      }
+      break;
+      
+    default: // general_classes
+      // Generate next 7 days with general time slots
+      const generalTimes = ['Morning (9:00 AM)', 'Afternoon (2:00 PM)', 'Evening (7:00 PM)'];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        generalTimes.forEach(time => {
+          sessions.push({
+            id: `session-${sessions.length + 1}`,
+            date: dateStr,
+            time: time,
+            availability: Math.floor(Math.random() * 12) + 8, // 8-20 spots
+            price: Math.floor(Math.random() * 25) + 25
+          });
+        });
+      }
+  }
+  
+  console.log(`Generated ${sessions.length} sessions for ${activityType}`);
+  return sessions;
+}
+
 function createFallbackResults(query) {
   console.log('Creating fallback results for:', query);
+  
+  const activityType = detectActivityType(query, query);
+  const sessions1 = generateSessions(activityType);
+  const sessions2 = generateSessions(activityType);
+  
   return new Response(
     JSON.stringify({
       results: [
@@ -250,7 +366,10 @@ function createFallbackResults(query) {
           street_address: '123 Broadway, New York, NY 10001',
           signup_cost: 36,
           total_cost: 36,
-          provider: 'fallback_provider'
+          provider: 'fallback_provider',
+          sessions: sessions1,
+          session_dates: sessions1.map(s => s.date),
+          session_times: sessions1.map(s => s.time)
         },
         {
           id: '2',
@@ -260,7 +379,10 @@ function createFallbackResults(query) {
           street_address: '456 Park Ave, New York, NY 10022',
           signup_cost: 42,
           total_cost: 42,
-          provider: 'fallback_elite'
+          provider: 'fallback_elite',
+          sessions: sessions2,
+          session_dates: sessions2.map(s => s.date),
+          session_times: sessions2.map(s => s.time)
         }
       ],
       total: 2

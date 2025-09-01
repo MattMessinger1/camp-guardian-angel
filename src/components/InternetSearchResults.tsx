@@ -20,6 +20,15 @@ interface InternetSearchResult {
   confidence?: number;
   canAutomate?: boolean;
   automationComplexity?: 'low' | 'medium' | 'high';
+  sessions?: Array<{
+    id: string;
+    date: string;
+    time: string;
+    availability: number;
+    price: number;
+  }>;
+  session_dates?: string[];
+  session_times?: string[];
 }
 
 interface InternetSearchResultsProps {
@@ -99,6 +108,26 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
                   </p>
                 )}
               </div>
+              
+              {result.sessions && result.sessions.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  <p className="text-sm font-medium text-foreground">Available Sessions:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                    {result.sessions.slice(0, 6).map((session, idx) => (
+                      <div key={idx} className="text-xs bg-muted p-2 rounded">
+                        <div className="font-medium">{new Date(session.date).toLocaleDateString()}</div>
+                        <div className="text-muted-foreground">{session.time}</div>
+                        <div className="text-muted-foreground">{session.availability} spots • ${session.price}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {result.sessions.length > 6 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{result.sessions.length - 6} more sessions available
+                    </p>
+                  )}
+                </div>
+              )}
               
               <div className="flex gap-2 mb-3">
                 {result.confidence && (
