@@ -45,6 +45,37 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
   // Track selected sessions for each result
   const [selectedSessions, setSelectedSessions] = useState<Record<string, { date?: string; time?: string }>>({});
 
+  // Get unique dates and times from sessions array
+  const getSessionData = (result: InternetSearchResult) => {
+    if (!result.sessions || result.sessions.length === 0) {
+      return { dates: [], times: [], sessions: [] };
+    }
+
+    const uniqueDates = [...new Set(result.sessions.map(s => s.date))];
+    const uniqueTimes = [...new Set(result.sessions.map(s => s.time))];
+    
+    return { 
+      dates: uniqueDates, 
+      times: uniqueTimes, 
+      sessions: result.sessions 
+    };
+  };
+
+  // Get selected session details including price
+  const getSelectedSessionDetails = (result: InternetSearchResult, index: number) => {
+    const selectedSession = selectedSessions[index];
+    const { sessions } = getSessionData(result);
+    
+    if (selectedSession?.date && selectedSession?.time) {
+      const matchingSession = sessions.find(s => 
+        s.date === selectedSession.date && s.time === selectedSession.time
+      );
+      return matchingSession;
+    }
+    
+    return sessions[0]; // Default to first session
+  };
+
   const handleDateChange = (resultIndex: number, date: string) => {
     setSelectedSessions(prev => ({
       ...prev,
@@ -60,11 +91,12 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
   };
 
   const handleSelect = (result: InternetSearchResult, index: number) => {
+    const { dates, times } = getSessionData(result);
     const selectedSession = selectedSessions[index];
     
     // Validation: Check if session selection is required and missing
-    const needsDateSelection = result.session_dates && result.session_dates.length > 1;
-    const needsTimeSelection = result.session_times && result.session_times.length > 1;
+    const needsDateSelection = dates.length > 1;
+    const needsTimeSelection = times.length > 1;
     
     if (needsDateSelection && !selectedSession?.date) {
       toast.error("Please select a date before proceeding with signup");
@@ -77,8 +109,8 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
     }
     
     // Use first available options as defaults if not multi-option
-    const finalDate = selectedSession?.date || result.session_dates?.[0];
-    const finalTime = selectedSession?.time || result.session_times?.[0];
+    const finalDate = selectedSession?.date || dates[0];
+    const finalTime = selectedSession?.time || times[0];
     
     console.log('✅ Session validation passed:', { date: finalDate, time: finalTime });
     
@@ -109,7 +141,11 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
         Found {results.length} {results.length === 1 ? 'match' : 'matches'} from across the internet
       </div>
       
-      {results.map((result, index) => (
+      {results.map((result, index) => {
+        const { dates, times } = getSessionData(result);
+        const selectedSessionDetails = getSelectedSessionDetails(result, index);
+        
+        return (
         <Card key={index} className="p-6 w-full hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start">
             <div className="flex-1">
@@ -144,7 +180,7 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
               )}
               
               {/* Session Selection Dropdowns */}
-              {(result.session_dates && result.session_dates.length > 1) && (
+              {dates.length > 1 && (
                 <div className="mb-3">
                   <label className="text-sm font-medium text-foreground mb-1 block">
                     <Calendar className="inline h-4 w-4 mr-1" />
@@ -155,7 +191,7 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
                       <SelectValue placeholder="Choose a date" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border-input z-50">
-                      {result.session_dates.map((date, idx) => (
+                      {dates.map((date, idx) => (
                         <SelectItem key={idx} value={date} className="hover:bg-muted">
                           {new Date(date).toLocaleDateString('en-US', { 
                             weekday: 'short', 
@@ -169,7 +205,7 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
                 </div>
               )}
 
-              {(result.session_times && result.session_times.length > 1) && (
+              {times.length > 1 && (
                 <div className="mb-3">
                   <label className="text-sm font-medium text-foreground mb-1 block">
                     <Clock className="inline h-4 w-4 mr-1" />
@@ -180,7 +216,7 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
                       <SelectValue placeholder="Choose a time" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border-input z-50">
-                      {result.session_times.map((time, idx) => (
+                      {times.map((time, idx) => (
                         <SelectItem key={idx} value={time} className="hover:bg-muted">
                           {time}
                         </SelectItem>
@@ -191,15 +227,24 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
               )}
               
               <div className="mb-4 space-y-1">
-                {(result.signup_cost !== undefined && result.signup_cost !== null) ? (
+                {selectedSessionDetails ? (
+                  <>
+                    <p className="text-muted-foreground">
+                      Session cost: <span className="font-medium">${selectedSessionDetails.price}</span>
+                    </p>
+                    <p className="text-muted-foreground">
+                      Available spots: <span className="font-medium">{selectedSessionDetails.availability}</span>
+                    </p>
+                  </>
+                ) : (result.signup_cost !== undefined && result.signup_cost !== null) ? (
                   <p className="text-muted-foreground">
                     Due at signup: <span className="font-medium">${result.signup_cost}</span>
                   </p>
-                ) : result.estimatedPrice && (
+                ) : result.estimatedPrice ? (
                   <p className="text-muted-foreground">
                     Estimated Fee: {result.estimatedPrice}
                   </p>
-                )}
+                ) : null}
                 
                 {(result.total_cost !== undefined && result.total_cost !== null) && (
                   <p className="text-muted-foreground">
@@ -272,7 +317,8 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
             </div>
           </div>
         </Card>
-      ))}
+        );
+      })}
       
       <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
         <div className="flex items-start gap-3">
