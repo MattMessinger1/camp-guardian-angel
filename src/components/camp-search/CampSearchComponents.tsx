@@ -141,6 +141,8 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
   const groupedResults = React.useMemo(() => {
     if (results.length === 0) return [];
     
+    console.log('Raw results:', results.map(r => ({ name: r.name, providerName: r.providerName, campName: r.campName })));
+    
     const groups: { [key: string]: { displayName: string; results: SearchResult[] } } = {};
     
     results.forEach(result => {
@@ -162,8 +164,10 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
       groups[businessName].results.push(result);
     });
     
+    console.log('Groups created:', Object.keys(groups));
+    
     // Consolidate sessions for each business
-    return Object.entries(groups).map(([normalizedName, { displayName, results: businessResults }]) => {
+    const consolidatedResults = Object.entries(groups).map(([normalizedName, { displayName, results: businessResults }]) => {
       const primaryResult = businessResults[0];
       
       // Combine all sessions from all results for this business
@@ -211,6 +215,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
         sessionTimes: uniqueSessions.map(s => s.time)
       };
     });
+    
+    console.log('Consolidated results:', consolidatedResults.length, consolidatedResults.map(r => r.name));
+    return consolidatedResults;
   }, [results]);
 
   const formatDate = (dateStr: string) => {
@@ -288,13 +295,13 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
               {/* Header Section */}
               <div className="flex justify-between items-start mb-6">
                 <div className="flex-1">
-                  {/* Provider Name - Bold, Larger Text */}
+                  {/* Business Name - Bold, Larger Text */}
                   <h2 className="text-2xl font-bold text-foreground mb-1">
                     {result.name || result.providerName || result.campName}
                   </h2>
                   
-                  {/* Camp Name (if different from provider) */}
-                  {result.providerName && result.providerName !== result.campName && (
+                  {/* Camp Name (if different from business name) */}
+                  {result.campName && result.campName !== (result.name || result.providerName) && (
                     <p className="text-lg text-muted-foreground mb-3">
                       {result.campName}
                     </p>
