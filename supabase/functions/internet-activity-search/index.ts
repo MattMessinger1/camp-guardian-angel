@@ -109,11 +109,21 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log('Perplexity success - content length:', data.choices?.[0]?.message?.content?.length || 0);
-    
-    // Simple result creation for now
     const content = data.choices?.[0]?.message?.content || '';
+    
+    // Detailed logging for debugging
+    console.log('Full Perplexity content received:', content);
+    console.log('Content length:', content.length);
+    console.log('Perplexity response structure:', JSON.stringify(data, null, 2));
+    
+    if (data.citations) {
+      console.log('Citations found:', data.citations.length);
+      console.log('Citations:', JSON.stringify(data.citations, null, 2));
+    }
+    
     const results = createResultsFromContent(content, searchQuery);
+    console.log('Parsed results count:', results.length);
+    console.log('First result sample:', results[0] ? JSON.stringify(results[0], null, 2) : 'No results');
     
     return new Response(
       JSON.stringify({
