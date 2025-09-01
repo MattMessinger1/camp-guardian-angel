@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { WorkflowStatusCard } from '@/components/WorkflowStatusCard';
 import { SessionInfo } from '@/components/SessionInfo';
+import { AdaptiveRegistrationForm } from '@/components/registration/AdaptiveRegistrationForm';
 import { Brain, Zap, Shield, Clock, Target } from 'lucide-react';
 
 export default function EnhancedSignup() {
@@ -53,7 +54,6 @@ export default function EnhancedSignup() {
 
   const handleStartSignup = async () => {
     setSignupStarted(true);
-    await enhancedWorkflow.startEnhancedAutomation();
   };
 
   // Allow guest users to proceed with signup - they can authenticate during the process
@@ -157,66 +157,67 @@ export default function EnhancedSignup() {
         </CardContent>
       </Card>
 
-      {/* Workflow Status */}
-      {signupStarted && (
-        <WorkflowStatusCard
-          sessionId={sessionId}
-          userId={user?.id || ''}
-          providerUrl="https://example.com/signup"
-          overallProgress={enhancedWorkflow.overallProgress}
-          assistanceQueue={enhancedWorkflow.workflow.state.assistanceQueue}
-          currentRequestIndex={enhancedWorkflow.workflow.state.currentRequestIndex}
-          isProcessing={enhancedWorkflow.isProcessing}
-          canResume={enhancedWorkflow.canResume}
-          onResumeWorkflow={enhancedWorkflow.workflow.actions.resumeWorkflow}
-          onPauseWorkflow={enhancedWorkflow.workflow.actions.pauseWorkflow}
-          onRetryFailedRequest={(requestId) => enhancedWorkflow.workflow.actions.retryFailedRequest(requestId)}
+      {/* Registration Form or Workflow Status */}
+      {signupStarted ? (
+        <AdaptiveRegistrationForm
+          sessionData={{
+            businessName: businessName || 'Camp',
+            selectedDate: selectedDate || '',
+            selectedTime: selectedTime || '',
+            signupCost: signupCost || 0,
+            location: location || ''
+          }}
+          onComplete={(formData) => {
+            console.log('✅ Registration form completed:', formData);
+            // Here you would handle the completed registration
+            enhancedWorkflow.startEnhancedAutomation();
+          }}
         />
-      )}
-
-      {/* Action Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ready to Begin?</CardTitle>
-          <CardDescription>
-            Start your personalized registration experience - we'll handle the details so you can focus on what matters most.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {enhancedWorkflow.hasSearchIntelligence && (
-              <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-                <div className="flex items-center gap-2 text-primary mb-2">
-                  <Brain className="h-4 w-4" />
-                  <span className="font-medium">Enhanced Intelligence Active</span>
+      ) : (
+        /* Action Section */
+        <Card>
+          <CardHeader>
+            <CardTitle>Ready to Begin?</CardTitle>
+            <CardDescription>
+              Start your personalized registration experience - we'll handle the details so you can focus on what matters most.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {enhancedWorkflow.hasSearchIntelligence && (
+                <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                  <div className="flex items-center gap-2 text-primary mb-2">
+                    <Brain className="h-4 w-4" />
+                    <span className="font-medium">Enhanced Intelligence Active</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your registration is personalized and ready to go - we've prepared everything you need for a smooth experience.
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Your registration is personalized and ready to go - we've prepared everything you need for a smooth experience.
-                </p>
-              </div>
-            )}
-            
-            <Button 
-              onClick={handleStartSignup}
-              size="lg"
-              disabled={signupStarted}
-              className="w-full"
-            >
-              {signupStarted ? (
-                <>
-                  <Zap className="mr-2 h-4 w-4 animate-pulse" />
-                  Registration in Progress...
-                </>
-              ) : (
-                <>
-                  <Brain className="mr-2 h-4 w-4" />
-                  Start Enhanced Registration
-                </>
               )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              
+              <Button 
+                onClick={handleStartSignup}
+                size="lg"
+                disabled={signupStarted}
+                className="w-full"
+              >
+                {signupStarted ? (
+                  <>
+                    <Zap className="mr-2 h-4 w-4 animate-pulse" />
+                    Registration in Progress...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="mr-2 h-4 w-4" />
+                    Start Enhanced Registration
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
