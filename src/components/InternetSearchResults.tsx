@@ -1,7 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Search, Zap } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ExternalLink, Search, Zap, Calendar, Clock } from "lucide-react";
+import { useState } from "react";
 
 interface InternetSearchResult {
   id?: string;
@@ -29,6 +31,8 @@ interface InternetSearchResult {
   }>;
   session_dates?: string[];
   session_times?: string[];
+  selectedDate?: string;
+  selectedTime?: string;
 }
 
 interface InternetSearchResultsProps {
@@ -37,6 +41,28 @@ interface InternetSearchResultsProps {
 }
 
 export function InternetSearchResults({ results, onSelect }: InternetSearchResultsProps) {
+  // Track selected sessions for each result
+  const [selectedSessions, setSelectedSessions] = useState<Record<string, { date?: string; time?: string }>>({});
+
+  const handleDateChange = (resultIndex: number, date: string) => {
+    setSelectedSessions(prev => ({
+      ...prev,
+      [resultIndex]: { ...prev[resultIndex], date }
+    }));
+  };
+
+  const handleTimeChange = (resultIndex: number, time: string) => {
+    setSelectedSessions(prev => ({
+      ...prev,
+      [resultIndex]: { ...prev[resultIndex], time }
+    }));
+  };
+
+  const handleSelect = (result: InternetSearchResult, index: number) => {
+    const selectedSession = selectedSessions[index];
+    onSelect({ ...result, selectedDate: selectedSession?.date, selectedTime: selectedSession?.time });
+  };
+
   if (results.length === 0) {
     return (
       <Card className="text-center p-8">
@@ -89,6 +115,53 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
                 <p className="text-muted-foreground mb-2">
                   Age Range: {result.estimatedAgeRange}
                 </p>
+              )}
+              
+              {/* Session Selection Dropdowns */}
+              {(result.session_dates && result.session_dates.length > 1) && (
+                <div className="mb-3">
+                  <label className="text-sm font-medium text-foreground mb-1 block">
+                    <Calendar className="inline h-4 w-4 mr-1" />
+                    Select Date
+                  </label>
+                  <Select onValueChange={(value) => handleDateChange(index, value)}>
+                    <SelectTrigger className="w-full bg-background border-input">
+                      <SelectValue placeholder="Choose a date" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border-input z-50">
+                      {result.session_dates.map((date, idx) => (
+                        <SelectItem key={idx} value={date} className="hover:bg-muted">
+                          {new Date(date).toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {(result.session_times && result.session_times.length > 1) && (
+                <div className="mb-3">
+                  <label className="text-sm font-medium text-foreground mb-1 block">
+                    <Clock className="inline h-4 w-4 mr-1" />
+                    Select Time
+                  </label>
+                  <Select onValueChange={(value) => handleTimeChange(index, value)}>
+                    <SelectTrigger className="w-full bg-background border-input">
+                      <SelectValue placeholder="Choose a time" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border-input z-50">
+                      {result.session_times.map((time, idx) => (
+                        <SelectItem key={idx} value={time} className="hover:bg-muted">
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
               
               <div className="mb-4 space-y-1">
@@ -152,7 +225,7 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
             
             <div className="ml-6 flex flex-col items-start gap-2">
               <Button 
-                onClick={() => onSelect(result)}
+                onClick={() => handleSelect(result, index)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
                 disabled={result.canAutomate === false}
               >
