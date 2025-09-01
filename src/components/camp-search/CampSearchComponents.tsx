@@ -181,13 +181,62 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
     );
   }
 
+  // Group results by business name to deduplicate
+  const groupedResults = React.useMemo(() => {
+    const groups: { [key: string]: SearchResult[] } = {};
+    
+    results.forEach(result => {
+      const businessName = result.name || result.providerName || result.campName || 'Unknown';
+      if (!groups[businessName]) {
+        groups[businessName] = [];
+      }
+      groups[businessName].push(result);
+    });
+    
+    // Consolidate sessions for each business
+    return Object.entries(groups).map(([businessName, businessResults]) => {
+      const primaryResult = businessResults[0];
+      
+      // Combine all sessions from all results for this business
+      const allSessions: Array<{date: string, time: string, availability?: number, price?: number}> = [];
+      
+      businessResults.forEach(result => {
+        if (result.sessions?.length) {
+          allSessions.push(...result.sessions);
+        } else if (result.sessionDates?.length || result.sessionTimes?.length) {
+          // Handle legacy format
+          const dates = result.sessionDates || ['TBD'];
+          const times = result.sessionTimes || ['TBD'];
+          dates.forEach(date => {
+            times.forEach(time => {
+              allSessions.push({ date, time });
+            });
+          });
+        }
+      });
+      
+      // Remove duplicates based on date + time combination
+      const uniqueSessions = allSessions.filter((session, index, arr) => 
+        arr.findIndex(s => s.date === session.date && s.time === session.time) === index
+      );
+      
+      return {
+        ...primaryResult,
+        sessions: uniqueSessions,
+        sessionDates: uniqueSessions.map(s => s.date),
+        sessionTimes: uniqueSessions.map(s => s.time)
+      };
+    });
+  }, [results]);
+
   return (
     <div className="space-y-6">
       <div className="text-sm text-muted-foreground">
-        Found {results.length} upcoming {results.length === 1 ? 'camp' : 'camps'}
+        Found {results.length} upcoming {results.length === 1 ? 'result' : 'results'} 
+        {groupedResults.length !== results.length && ` (${groupedResults.length} unique ${groupedResults.length === 1 ? 'business' : 'businesses'})`}
       </div>
       
-      {results.map((result, index) => {
+      {groupedResults.map((result, index) => {
         const resultId = `${result.sessionId}-${index}`;
         
         // Handle both new sessions array and legacy sessionDates/sessionTimes
