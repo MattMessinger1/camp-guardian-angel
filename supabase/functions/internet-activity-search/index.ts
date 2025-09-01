@@ -51,7 +51,14 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content || '';
+    const content = data?.choices?.[0]?.message?.content;
+    
+    // Validate content exists and is a string
+    if (!content || typeof content !== 'string') {
+      console.log('No valid content from Perplexity, using fallback');
+      return createFallbackResults(query);
+    }
+    
     console.log('Perplexity content received, length:', content.length);
     console.log('Raw content preview:', content.substring(0, 200));
     
@@ -82,14 +89,17 @@ function parsePerplexityContent(content, query) {
   const results = [];
   
   // Split content into sentences and paragraphs for better parsing
-  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
-  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 20);
+  const sentences = content.split(/[.!?]+/).filter(s => s && typeof s === 'string' && s.trim().length > 20);
+  const paragraphs = content.split(/\n\s*\n/).filter(p => p && typeof p === 'string' && p.trim().length > 20);
   const allText = [...sentences, ...paragraphs];
   
   console.log(`Processing ${allText.length} text segments`);
   
   for (const text of allText) {
     if (results.length >= 3) break;
+    
+    // Safety check for text
+    if (!text || typeof text !== 'string') continue;
     
     console.log('Analyzing text segment:', text.substring(0, 100) + '...');
     
@@ -108,10 +118,13 @@ function parsePerplexityContent(content, query) {
     let businessName = null;
     for (const pattern of businessPatterns) {
       const matches = text.match(pattern);
-      if (matches && matches.length > 0) {
-        businessName = matches[0].replace(/^\d+[\.\)\s]*/, '').trim();
-        console.log('Found business name:', businessName);
-        break;
+      if (matches && matches.length > 0 && matches[0]) {
+        businessName = matches[0].replace(/^\d+[\.\)\s]*/, '');
+        if (businessName && typeof businessName === 'string') {
+          businessName = businessName.trim();
+          console.log('Found business name:', businessName);
+          break;
+        }
       }
     }
     
@@ -126,7 +139,7 @@ function parsePerplexityContent(content, query) {
     let address = null;
     for (const pattern of addressPatterns) {
       const match = text.match(pattern);
-      if (match) {
+      if (match && match[1] && typeof match[1] === 'string') {
         address = match[1].trim();
         console.log('Found address:', address);
         break;
@@ -171,7 +184,7 @@ function parsePerplexityContent(content, query) {
       const result = {
         id: `perplexity-${Date.now()}-${results.length + 1}`,
         name: businessName,
-        description: text.trim().substring(0, 150) + (text.length > 150 ? '...' : ''),
+        description: (text && typeof text === 'string') ? text.trim().substring(0, 150) + (text.length > 150 ? '...' : '') : 'Professional fitness classes',
         location: location,
         street_address: address || 'Address available upon inquiry',
         signup_cost: finalPrice,
