@@ -11,9 +11,13 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let body = null;
+  let query = 'fitness classes';
+
   try {
-    const body = await req.json();
-    const query = body.query || 'fitness classes';
+    // Parse request body first
+    body = await req.json();
+    query = body.query || 'fitness classes';
     
     console.log('INTERNET SEARCH CALLED:', query);
     
@@ -63,7 +67,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Function error:', error.message);
-    return createFallbackResults(body?.query || 'fitness');
+    // Use query if available, otherwise fallback to 'fitness'
+    return createFallbackResults(query);
   }
 });
 
