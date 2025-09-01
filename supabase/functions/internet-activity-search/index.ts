@@ -139,6 +139,19 @@ serve(async (req) => {
     console.log('Final results count:', results.length);
     console.log('First result sample:', results[0] ? JSON.stringify(results[0], null, 2) : 'No results');
     
+    // Log structured results summary for debugging
+    console.log('Final parsed results:', results.map(r => ({
+      title: r.title,
+      provider: r.provider,
+      location: r.location,
+      street_address: r.street_address,
+      signup_cost: r.signup_cost,
+      total_cost: r.total_cost,
+      session_dates: r.session_dates,
+      session_times: r.session_times,
+      confidence: r.confidence
+    })));
+    
     return new Response(
       JSON.stringify({
         success: true,
