@@ -132,6 +132,11 @@ interface SearchResultsProps {
 export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegister }) => {
   const [selectedSessions, setSelectedSessions] = useState<{[key: string]: {date?: string, time?: string}}>({});
 
+  // Reset selected sessions when results change
+  React.useEffect(() => {
+    setSelectedSessions({});
+  }, [results]);
+
   const formatDate = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleDateString('en-US', {
