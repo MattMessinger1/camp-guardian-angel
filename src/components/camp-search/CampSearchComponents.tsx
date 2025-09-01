@@ -130,7 +130,7 @@ interface SearchResultsProps {
 }
 
 export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegister }) => {
-  const [selectedSessions, setSelectedSessions] = useState<{[key: string]: {date?: string, time?: string}}>({});
+  const [selectedSessions, setSelectedSessions] = useState<{[key: string]: {date?: string, time?: string, sessionKey?: string}}>({});
 
   // Reset selected sessions when results change
   React.useEffect(() => {
@@ -276,18 +276,13 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
         
         // Handle both new sessions array and legacy sessionDates/sessionTimes
         const availableSessions = result.sessions || [];
-        const sessionDates = [...new Set(result.sessions?.map(s => s.date) || result.sessionDates || [])]; // Remove duplicates
-        const sessionTimes = [...new Set(result.sessions?.map(s => s.time) || result.sessionTimes || [])]; // Remove duplicates
         
-        const hasMultipleDates = sessionDates.length > 1;
-        const hasMultipleTimes = sessionTimes.length > 1;
-        const selectedDate = selectedSessions[resultId]?.date || sessionDates[0];
-        const selectedTime = selectedSessions[resultId]?.time || sessionTimes[0];
-        
-        // Find selected session for pricing
-        const selectedSession = availableSessions.find(s => 
-          s.date === selectedDate && s.time === selectedTime
-        );
+        // Get selected session or default to first
+        const selectedSessionKey = selectedSessions[resultId]?.sessionKey;
+        const defaultSession = availableSessions[0];
+        const selectedSession = selectedSessionKey 
+          ? availableSessions.find(s => `${s.date}-${s.time}` === selectedSessionKey) || defaultSession
+          : defaultSession;
 
         return (
           <Card key={resultId} className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-all duration-200">
@@ -309,10 +304,21 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 </div>
                 
                 <Button 
-                  onClick={() => onRegister(result.sessionId, {
-                    date: selectedDate,
-                    time: selectedTime
-                  }, result)}
+                  onClick={() => {
+                    // Create enhanced result with additional properties for signup flow
+                    const enhancedResult = {
+                      ...result,
+                      businessName: result.name || result.providerName || result.campName,
+                      locationString: result.location ? `${result.location.city}, ${result.location.state}` : undefined,
+                      signupCost: result.signup_cost || result.signupCost || selectedSession?.price || 0,
+                      totalCost: result.total_cost || result.totalCost || result.signup_cost || result.signupCost || selectedSession?.price || 0
+                    } as SearchResult & { businessName: string; locationString?: string; };
+                    
+                    onRegister(result.sessionId, {
+                      date: selectedSession?.date,
+                      time: selectedSession?.time
+                    }, enhancedResult);
+                  }}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 ml-4"
                 >
                   Get ready for signup
@@ -349,12 +355,12 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       </label>
                       {availableSessions.length > 1 ? (
                         <Select 
-                          value={`${selectedDate}-${selectedTime}`}
-                          onValueChange={(value) => {
-                            const [date, time] = value.split('-');
+                          value={selectedSessionKey || `${defaultSession?.date}-${defaultSession?.time}`}
+                          onValueChange={(sessionKey) => {
+                            const [date, time] = sessionKey.split('-');
                             setSelectedSessions(prev => ({
                               ...prev,
-                              [resultId]: { date, time }
+                              [resultId]: { date, time, sessionKey }
                             }));
                           }}
                         >
