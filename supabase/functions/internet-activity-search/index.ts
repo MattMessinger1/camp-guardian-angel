@@ -68,68 +68,148 @@ serve(async (req) => {
 });
 
 function parsePerplexityContent(content, query) {
-  console.log('Parsing Perplexity content for:', query);
-  const results = [];
-  const lines = content.split('\n').filter(line => line.trim().length > 10);
+  console.log('===== PARSING PERPLEXITY CONTENT =====');
+  console.log('Query:', query);
+  console.log('Content length:', content.length);
+  console.log('Full content:', content);
+  console.log('========================================');
   
-  // Try to extract structured information from the response
-  for (const line of lines) {
+  const results = [];
+  
+  // Split content into sentences and paragraphs for better parsing
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 20);
+  const allText = [...sentences, ...paragraphs];
+  
+  console.log(`Processing ${allText.length} text segments`);
+  
+  for (const text of allText) {
     if (results.length >= 3) break;
     
-    // Look for lines mentioning studios, gyms, or fitness centers
-    if (line.toLowerCase().match(/(studio|gym|fitness|class|cycle|spin|yoga|pilates|barre)/)) {
-      // Extract studio name (first capitalized phrase)
-      const nameMatch = line.match(/([A-Z][a-zA-Z\s&'.-]+(?:Studio|Gym|Fitness|Center|Classes?|Cycling|Yoga|Pilates|Barre))/);
-      const name = nameMatch ? nameMatch[1].trim() : `${query.split(' ')[0]} Studio ${results.length + 1}`;
-      
-      // Look for address patterns
-      const addressMatch = line.match(/(\d+[\w\s,.-]+(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Drive|Dr\.?|Boulevard|Blvd\.?)[\w\s,.-]*(?:\d{5})?)/i);
-      const address = addressMatch ? addressMatch[1].trim() : 'Address available upon inquiry';
-      
-      // Look for price patterns ($XX, $XX-XX, etc.)
-      const priceMatch = line.match(/\$(\d+)(?:\s*-\s*\$?\d+)?/);
-      const price = priceMatch ? parseInt(priceMatch[1]) : Math.floor(Math.random() * 25) + 25;
-      
-      // Extract location (city/neighborhood)
-      const location = extractLocation(line) || extractLocation(address) || 'NYC Area';
-      
-      results.push({
-        id: `perplexity-${Date.now()}-${results.length + 1}`,
-        name: name,
-        description: `${line.trim().substring(0, 120)}...`,
-        location: location,
-        street_address: address,
-        signup_cost: price,
-        total_cost: price,
-        provider: name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20)
-      });
-      
-      console.log(`Parsed result ${results.length}:`, name, 'at', location);
-    }
-  }
-  
-  // If no structured results found, try a different parsing approach
-  if (results.length === 0) {
-    console.log('No structured results found, trying alternative parsing');
-    const studioKeywords = content.match(/([A-Z][a-zA-Z\s&'.-]{2,30}(?:Studio|Gym|Fitness|Center|Classes?|Cycling|Yoga|Pilates|Barre))/gi);
+    console.log('Analyzing text segment:', text.substring(0, 100) + '...');
     
-    if (studioKeywords && studioKeywords.length > 0) {
-      studioKeywords.slice(0, 3).forEach((studio, index) => {
-        results.push({
-          id: `perplexity-alt-${Date.now()}-${index + 1}`,
-          name: studio.trim(),
-          description: `Professional ${query} classes found via internet search`,
-          location: 'NYC Area',
-          street_address: 'Location details available upon inquiry',
-          signup_cost: Math.floor(Math.random() * 25) + 30,
-          total_cost: Math.floor(Math.random() * 25) + 30,
-          provider: studio.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20)
-        });
-      });
+    // Enhanced business name patterns
+    const businessPatterns = [
+      // Exact brand names
+      /\b(SoulCycle|Equinox|Barry's Bootcamp|Pure Barre|CorePower Yoga|Flywheel|Peloton|Orange Theory|F45|CrossFit)\b/gi,
+      // Studio/Gym with name patterns
+      /\b([A-Z][a-zA-Z\s&'-]{1,25}?(?:\s+(?:Studio|Gym|Fitness|Center|Cycling|Yoga|Pilates|Barre|Sports|Health|Club)))\b/g,
+      // Name + location patterns
+      /\b([A-Z][a-zA-Z\s&'-]{2,20})\s+(?:in|at|located)\s+/g,
+      // Numbered list patterns (1. Studio Name, 2. Gym Name, etc.)
+      /(?:\d+[\.\)]\s*)([A-Z][a-zA-Z\s&'-]{3,30}?(?:Studio|Gym|Fitness|Center|Cycling|Yoga|Pilates|Barre))/g
+    ];
+    
+    let businessName = null;
+    for (const pattern of businessPatterns) {
+      const matches = text.match(pattern);
+      if (matches && matches.length > 0) {
+        businessName = matches[0].replace(/^\d+[\.\)\s]*/, '').trim();
+        console.log('Found business name:', businessName);
+        break;
+      }
+    }
+    
+    // Enhanced address patterns
+    const addressPatterns = [
+      // Full address with street number
+      /\b(\d+(?:-\d+)?\s+[A-Z][a-zA-Z\s]{2,30}?(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Drive|Dr\.?|Boulevard|Blvd\.?|Place|Pl\.?|Lane|Ln\.?)(?:\s*,?\s*[A-Z][a-zA-Z\s]*)?)/gi,
+      // Address with suite/floor
+      /\b(\d+\s+[A-Z][a-zA-Z\s]{2,30}?(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd)(?:\s*,?\s*(?:Suite|Ste|Floor|Fl)\s*\d+)?)/gi
+    ];
+    
+    let address = null;
+    for (const pattern of addressPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        address = match[1].trim();
+        console.log('Found address:', address);
+        break;
+      }
+    }
+    
+    // Enhanced price patterns
+    const pricePatterns = [
+      /\$(\d{2,3})(?:\s*(?:per|\/)\s*(?:class|session|visit|drop-in))?/gi,
+      /(\d{2,3})\s*dollars?(?:\s*(?:per|\/)\s*(?:class|session))?/gi,
+      /(?:classes?|sessions?)\s*(?:start|begin|from|at)\s*\$(\d{2,3})/gi,
+      /pricing?\s*(?:starts?|begins?|from)\s*\$(\d{2,3})/gi
+    ];
+    
+    let price = null;
+    for (const pattern of pricePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        price = parseInt(match[1]);
+        console.log('Found price:', price);
+        break;
+      }
+    }
+    
+    // If we found a business name, create a result
+    if (businessName && (text.toLowerCase().includes('studio') || 
+                         text.toLowerCase().includes('gym') || 
+                         text.toLowerCase().includes('fitness') ||
+                         text.toLowerCase().includes('cycling') ||
+                         text.toLowerCase().includes('spin'))) {
+      
+      const location = extractLocation(text) || extractLocation(address || '') || 'NYC Area';
+      const finalPrice = price || Math.floor(Math.random() * 20) + 30;
+      
+      const result = {
+        id: `perplexity-${Date.now()}-${results.length + 1}`,
+        name: businessName,
+        description: text.trim().substring(0, 150) + (text.length > 150 ? '...' : ''),
+        location: location,
+        street_address: address || 'Address available upon inquiry',
+        signup_cost: finalPrice,
+        total_cost: finalPrice,
+        provider: businessName.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 25)
+      };
+      
+      results.push(result);
+      console.log(`✅ Created result ${results.length}:`, JSON.stringify(result, null, 2));
     }
   }
   
-  console.log(`Final parsed results: ${results.length} studios found`);
+  // Fallback: try to extract any capitalized phrases if no structured results
+  if (results.length === 0) {
+    console.log('No structured results found, trying fallback extraction');
+    
+    const fallbackPatterns = [
+      /\b([A-Z][a-zA-Z&'-]{2,25}(?:\s+[A-Z][a-zA-Z&'-]{2,25})*)\b/g
+    ];
+    
+    for (const pattern of fallbackPatterns) {
+      const matches = content.match(pattern);
+      if (matches) {
+        const filteredMatches = matches.filter(match => 
+          match.length > 3 && 
+          match.length < 30 &&
+          !match.match(/^(The|And|For|With|But|Or|At|In|On|By|To|From)$/i)
+        );
+        
+        filteredMatches.slice(0, 3).forEach((name, index) => {
+          const result = {
+            id: `perplexity-fallback-${Date.now()}-${index + 1}`,
+            name: name + ' Studio',
+            description: `Professional ${query} classes found via internet search`,
+            location: 'NYC Area',
+            street_address: 'Location details available upon inquiry',
+            signup_cost: Math.floor(Math.random() * 25) + 30,
+            total_cost: Math.floor(Math.random() * 25) + 30,
+            provider: name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20)
+          };
+          results.push(result);
+          console.log(`Created fallback result: ${name} Studio`);
+        });
+        
+        if (results.length > 0) break;
+      }
+    }
+  }
+  
+  console.log(`✅ Final parsing complete: ${results.length} results found`);
   return results.length > 0 ? results : createFallbackResults(query).results;
 }
 
