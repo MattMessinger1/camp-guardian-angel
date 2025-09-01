@@ -44,44 +44,42 @@ serve(async (req) => {
     
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
     console.log('🔑 Perplexity API key exists:', !!perplexityApiKey);
-    console.log('🔑 API key first 10 chars:', perplexityApiKey?.substring(0, 10));
     
     if (!perplexityApiKey) {
       console.error('❌ No Perplexity API key found');
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          query: searchQuery,
-          searchType: 'internet',
-          results: [], 
-          totalFound: 0,
-          searchedAt: new Date().toISOString(),
-          error: 'No Perplexity API key',
-          debug: true 
-        }), 
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createFallbackResponse(searchQuery, 'No Perplexity API key');
     }
 
     console.log('📞 Making Perplexity API call...');
+    
+    const perplexityRequest = {
+      model: "sonar",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant that finds information about youth camps and activities."
+        },
+        {
+          role: "user", 
+          content: `Find youth camps, activities, or programs for "${searchQuery}". List 3-5 results with names, locations, and descriptions. Focus on actual camps and programs that exist.`
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.1,
+      top_p: 1,
+      return_citations: true,
+      return_images: false,
+      return_related_questions: false
+    };
     
     const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${perplexityApiKey}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online',
-        messages: [
-          {
-            role: 'user',
-            content: `Find youth camps, activities, and programs for "${searchQuery}". Include camp name, location, description, age group, and website/registration URL if available. Focus on actual camps and programs that exist.`
-          }
-        ],
-        max_tokens: 1500,
-        temperature: 0.2
-      })
+      body: JSON.stringify(perplexityRequest)
     });
 
     console.log('📊 Perplexity response status:', perplexityResponse.status);
@@ -250,6 +248,22 @@ function parsePerplexityContent(content: string, query: string): InternetSearchR
   
   console.log(`📊 Successfully parsed ${results.length} results from Perplexity content`);
   return results;
+}
+
+function createFallbackResponse(query: string, error: string) {
+  return new Response(
+    JSON.stringify({ 
+      success: true,
+      query: query,
+      searchType: 'internet',
+      results: [], 
+      totalFound: 0,
+      searchedAt: new Date().toISOString(),
+      error: error,
+      debug: true 
+    }), 
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
 
 function cleanCampName(text: string): string {
