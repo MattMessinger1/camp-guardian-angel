@@ -19,10 +19,11 @@ interface SearchResult {
     state: string;
   };
   registrationOpensAt?: string;
-  sessionDates?: {
-    start: string;
-    end: string;
-  };
+  sessionDates?: string[];
+  sessionTimes?: string[];
+  streetAddress?: string;
+  signupCost?: number;
+  totalCost?: number;
   capacity?: number;
   price?: number;
   ageRange?: {
