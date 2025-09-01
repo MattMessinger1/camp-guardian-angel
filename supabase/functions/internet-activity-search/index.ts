@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -23,9 +24,25 @@ interface InternetSearchResult {
   estimatedPrice?: string;
   estimatedAgeRange?: string;
   location?: string;
+  session_dates?: string[];
+  session_times?: string[];
+  street_address?: string;
+  signup_cost?: number;
+  total_cost?: number;
   confidence: number;
   canAutomate: boolean;
   automationComplexity: 'low' | 'medium' | 'high';
+}
+
+function getDateRange() {
+  const today = new Date();
+  const endDate = new Date();
+  endDate.setDate(today.getDate() + 60);
+  
+  return {
+    start: today.toISOString().split('T')[0],
+    end: endDate.toISOString().split('T')[0]
+  };
 }
 
 serve(async (req) => {
@@ -36,8 +53,10 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const searchQuery = body.query || body.searchQuery;
+    const dateRange = getDateRange();
     
     console.log('Search query:', searchQuery);
+    console.log('Date range filter:', dateRange);
     
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
     console.log('API key present:', !!perplexityApiKey);
@@ -46,17 +65,17 @@ serve(async (req) => {
       return createFallbackResults(searchQuery);
     }
 
-    // Fix the Perplexity API request format
+    // Updated Perplexity API request format with date filtering
     const perplexityRequest = {
       model: "sonar",
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that finds information about youth camps and activities."
+          content: "You are a helpful assistant that finds information about youth camps and activities happening in the next 60 days."
         },
         {
           role: "user", 
-          content: `Find youth camps, activities, or programs for "${searchQuery}". List 3-5 results with names and descriptions.`
+          content: `Find youth camps, activities, or programs for "${searchQuery}" happening between ${dateRange.start} and ${dateRange.end}. Include specific dates, times, addresses, and costs when available. List 3-5 results with names, descriptions, dates, and pricing.`
         }
       ],
       max_tokens: 1000,
@@ -104,7 +123,8 @@ serve(async (req) => {
         results: results,
         totalFound: results.length,
         searchedAt: new Date().toISOString(),
-        source: 'perplexity'
+        source: 'perplexity',
+        dateRange
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -116,6 +136,8 @@ serve(async (req) => {
 });
 
 function createFallbackResults(query: string) {
+  const dateRange = getDateRange();
+  
   return new Response(
     JSON.stringify({
       success: true,
@@ -123,18 +145,24 @@ function createFallbackResults(query: string) {
       searchType: 'internet',
       results: [
         {
-          title: `${query} - Dynamic Result 1`,
-          description: `Search results for ${query} would appear here`,
+          title: `${query} - Upcoming Program`,
+          description: `Search results for ${query} happening in the next 60 days would appear here`,
           url: 'https://example.com/camp-registration',
           provider: 'Fallback Provider',
           location: 'Various Locations',
+          session_dates: [dateRange.start],
+          session_times: ['9:00 AM'],
+          street_address: 'Address TBD',
+          signup_cost: 0,
+          total_cost: 0,
           confidence: 0.5,
           canAutomate: false,
           automationComplexity: 'low' as const
         }
       ],
       totalFound: 1,
-      searchedAt: new Date().toISOString()
+      searchedAt: new Date().toISOString(),
+      dateRange
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
@@ -144,6 +172,7 @@ function createResultsFromContent(content: string, query: string): InternetSearc
   if (!content) return [];
   
   const results: InternetSearchResult[] = [];
+  const dateRange = getDateRange();
   
   // Split content into paragraphs and look for camp-like content
   const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 20);
@@ -164,8 +193,10 @@ function createResultsFromContent(content: string, query: string): InternetSearc
       description = description.substring(0, 200) + '...';
     }
     
-    // Try to extract location
+    // Try to extract location and pricing
     const location = extractLocation(paragraph, query);
+    const pricing = extractPricing(paragraph);
+    const dates = extractDates(paragraph, dateRange);
     
     results.push({
       title: title || `${query} Program ${i + 1}`,
@@ -173,6 +204,11 @@ function createResultsFromContent(content: string, query: string): InternetSearc
       url: 'https://example.com/camp-registration',
       provider: 'Perplexity Search',
       location: location,
+      session_dates: dates.dates,
+      session_times: dates.times,
+      street_address: extractAddress(paragraph) || 'Address TBD',
+      signup_cost: pricing.signup || 0,
+      total_cost: pricing.total || 0,
       confidence: 0.8 - (i * 0.1),
       canAutomate: true,
       automationComplexity: 'medium' as const
@@ -187,6 +223,11 @@ function createResultsFromContent(content: string, query: string): InternetSearc
       url: 'https://example.com/camp-registration',
       provider: 'Perplexity Search',
       location: extractLocation(content, query),
+      session_dates: [dateRange.start],
+      session_times: ['TBD'],
+      street_address: 'Address TBD',
+      signup_cost: 0,
+      total_cost: 0,
       confidence: 0.8,
       canAutomate: true,
       automationComplexity: 'medium' as const
@@ -218,4 +259,106 @@ function extractLocation(text: string, query: string): string {
   }
   
   return 'Location TBD';
+}
+
+function extractPricing(text: string): { signup: number; total: number } {
+  const pricePatterns = [
+    /\$(\d+(?:,\d{3})*(?:\.\d{2})?)/g,
+    /(\d+(?:,\d{3})*(?:\.\d{2})?)\s*dollars?/gi
+  ];
+  
+  const prices: number[] = [];
+  
+  for (const pattern of pricePatterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const price = parseFloat(match[1].replace(/,/g, ''));
+      if (price > 0 && price < 10000) { // Reasonable price range
+        prices.push(price);
+      }
+    }
+  }
+  
+  if (prices.length > 0) {
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    return {
+      signup: minPrice,
+      total: maxPrice > minPrice ? maxPrice : minPrice
+    };
+  }
+  
+  return { signup: 0, total: 0 };
+}
+
+function extractDates(text: string, dateRange: { start: string; end: string }): { dates: string[]; times: string[] } {
+  const datePatterns = [
+    /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/g,
+    /\b(\d{4}-\d{2}-\d{2})\b/g,
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b/gi
+  ];
+  
+  const timePatterns = [
+    /\b(\d{1,2}:\d{2}\s*(?:AM|PM))\b/gi,
+    /\b(\d{1,2}\s*(?:AM|PM))\b/gi
+  ];
+  
+  const dates: string[] = [];
+  const times: string[] = [];
+  
+  // Extract dates
+  for (const pattern of datePatterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match[1]) {
+        dates.push(match[1]);
+      } else if (match[2] && match[3] && match[4]) {
+        // Handle month name format
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthIndex = monthNames.findIndex(m => m.toLowerCase() === match[2].toLowerCase());
+        if (monthIndex >= 0) {
+          const date = new Date(parseInt(match[4]), monthIndex, parseInt(match[3]));
+          dates.push(date.toISOString().split('T')[0]);
+        }
+      }
+    }
+  }
+  
+  // Extract times
+  for (const pattern of timePatterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      times.push(match[1]);
+    }
+  }
+  
+  // Filter dates to only include those within our 60-day range
+  const startDate = new Date(dateRange.start);
+  const endDate = new Date(dateRange.end);
+  const filteredDates = dates.filter(dateStr => {
+    const date = new Date(dateStr);
+    return date >= startDate && date <= endDate;
+  });
+  
+  return {
+    dates: filteredDates.length > 0 ? filteredDates : [dateRange.start],
+    times: times.length > 0 ? times : ['TBD']
+  };
+}
+
+function extractAddress(text: string): string | null {
+  const addressPatterns = [
+    /\b\d+\s+[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Place|Pl|Court|Ct)\b/gi,
+    /\b[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Place|Pl|Court|Ct)\s+\d+\b/gi
+  ];
+  
+  for (const pattern of addressPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+  
+  return null;
 }

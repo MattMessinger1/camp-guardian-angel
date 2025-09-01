@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Search, Calendar, Users, MapPin, Loader2 } from 'lucide-react';
+import { Search, Calendar, Users, MapPin, Loader2, Clock, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,10 +18,11 @@ interface SearchResult {
     state: string;
   };
   registrationOpensAt?: string;
-  sessionDates?: {
-    start: string;
-    end: string;
-  };
+  sessionDates?: string[];
+  sessionTimes?: string[];
+  streetAddress?: string;
+  signupCost?: number;
+  totalCost?: number;
   capacity?: number;
   price?: number;
   ageRange?: {
@@ -90,6 +92,14 @@ export const CampSearchBox: React.FC<CampSearchBoxProps> = ({
           )}
         </Button>
       </form>
+      
+      <div className="text-sm text-muted-foreground text-center">
+        <Badge variant="outline" className="mr-2">
+          <Calendar className="h-3 w-3 mr-1" />
+          Next 60 days
+        </Badge>
+        Showing camps and activities happening in the next 60 days only
+      </div>
     </div>
   );
 };
@@ -100,14 +110,33 @@ interface SearchResultsProps {
 }
 
 export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegister }) => {
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
   if (results.length === 0) {
     return (
       <Card className="text-center p-8">
         <CardContent>
           <div className="text-muted-foreground">
             <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg mb-2">No camps found</p>
-            <p className="text-sm">Try a different search term or location.</p>
+            <p className="text-lg mb-2">No upcoming camps found</p>
+            <p className="text-sm">Try a different search term or location. We only show camps happening in the next 60 days.</p>
           </div>
         </CardContent>
       </Card>
@@ -117,7 +146,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
   return (
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground">
-        Found {results.length} {results.length === 1 ? 'match' : 'matches'}
+        Found {results.length} upcoming {results.length === 1 ? 'camp' : 'camps'}
       </div>
       
       {results.map((result, index) => (
@@ -133,6 +162,60 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                   Provider: {result.providerName}
                 </p>
               )}
+
+              {/* Location */}
+              {result.location && (
+                <div className="flex items-center text-muted-foreground mb-2">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  <span>{result.location.city}, {result.location.state}</span>
+                </div>
+              )}
+
+              {/* Street Address */}
+              {result.streetAddress && (
+                <div className="text-sm text-muted-foreground mb-2">
+                  📍 {result.streetAddress}
+                </div>
+              )}
+
+              {/* Session Dates */}
+              {result.sessionDates && result.sessionDates.length > 0 && (
+                <div className="flex items-center text-muted-foreground mb-2">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <span>
+                    {result.sessionDates.length === 1 
+                      ? formatDate(result.sessionDates[0])
+                      : `${formatDate(result.sessionDates[0])} - ${formatDate(result.sessionDates[result.sessionDates.length - 1])}`
+                    }
+                  </span>
+                </div>
+              )}
+
+              {/* Session Times */}
+              {result.sessionTimes && result.sessionTimes.length > 0 && (
+                <div className="flex items-center text-muted-foreground mb-2">
+                  <Clock className="h-4 w-4 mr-2" />
+                  <span>{result.sessionTimes.join(', ')}</span>
+                </div>
+              )}
+
+              {/* Pricing */}
+              {(result.signupCost !== undefined || result.totalCost !== undefined) && (
+                <div className="flex items-center text-muted-foreground mb-2">
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  <span>
+                    {result.signupCost !== undefined && result.signupCost > 0 && (
+                      <>Signup: {formatCurrency(result.signupCost)}</>
+                    )}
+                    {result.totalCost !== undefined && result.totalCost > 0 && result.totalCost !== result.signupCost && (
+                      <> • Total: {formatCurrency(result.totalCost)}</>
+                    )}
+                    {(result.signupCost === 0 && result.totalCost === 0) && (
+                      <>Free</>
+                    )}
+                  </span>
+                </div>
+              )}
               
               {result.registrationOpensAt && (
                 <p className="text-orange-600 font-medium mb-3">
@@ -146,33 +229,16 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 </p>
               )}
               
-              {result.sessionDates && (
-                <p className="text-muted-foreground mb-2">
-                  Dates: {new Date(result.sessionDates.start).toLocaleDateString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                  })} – {new Date(result.sessionDates.end).toLocaleDateString('en-US', {
-                    month: 'numeric', 
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                  })}
-                </p>
-              )}
-              
               {result.capacity && (
                 <p className="text-muted-foreground mb-2">
+                  <Users className="h-4 w-4 inline mr-2" />
                   Capacity: {result.capacity}
                 </p>
               )}
-              
-              {result.price && (
-                <p className="text-muted-foreground mb-4">
-                  Fee due at signup: ${result.price.toFixed(2)}
+
+              {result.ageRange && (
+                <p className="text-muted-foreground mb-2">
+                  Ages: {result.ageRange.min}-{result.ageRange.max}
                 </p>
               )}
               

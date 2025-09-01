@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
@@ -38,6 +39,11 @@ interface SearchResult {
   session_label?: string;
   start_date?: string;
   end_date?: string;
+  session_dates?: string[];
+  session_times?: string[];
+  street_address?: string;
+  signup_cost?: number;
+  total_cost?: number;
   age_min?: number;
   age_max?: number;
   confidence: number;
@@ -61,6 +67,17 @@ function getSupabaseClient() {
   }
   
   return createClient(supabaseUrl, supabaseKey);
+}
+
+function getDateRange() {
+  const today = new Date();
+  const endDate = new Date();
+  endDate.setDate(today.getDate() + 60);
+  
+  return {
+    start: today.toISOString(),
+    end: endDate.toISOString()
+  };
 }
 
 // Calculate child age from date of birth
@@ -122,18 +139,20 @@ function buildReasoning(
 // Main search function
 async function aiCampSearch(request: SearchRequest, userId?: string): Promise<SearchResponse> {
   const supabase = getSupabaseClient();
+  const dateRange = getDateRange();
   
   try {
     console.log('Processing AI camp search:', { 
       query: request.query,
       hasChild: !!request.child,
       hasGeo: !!request.geo,
-      desiredWeek: request.desired_week_date 
+      desiredWeek: request.desired_week_date,
+      dateRange
     });
 
     const query = request.query.toLowerCase();
     
-    // Search the camps table for real results
+    // Search the camps table with sessions for real results
     const { data: camps, error } = await supabase
       .from('camps')
       .select(`
@@ -145,10 +164,24 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
           location_name,
           city,
           state,
-          postal_code
+          postal_code,
+          address
+        ),
+        sessions!inner(
+          id,
+          start_at,
+          end_at,
+          price_min,
+          price_max,
+          capacity,
+          age_min,
+          age_max,
+          registration_open_at
         )
       `)
       .or(`name.ilike.%${query}%,website_url.ilike.%${query}%`)
+      .gte('sessions.start_at', dateRange.start)
+      .lte('sessions.start_at', dateRange.end)
       .limit(request.limit);
 
     if (error) {
@@ -159,7 +192,7 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
       };
     }
 
-    console.log(`Found ${camps?.length || 0} camps for query: ${query}`);
+    console.log(`Found ${camps?.length || 0} camps for query: ${query} with upcoming sessions`);
     
     const results: SearchResult[] = [];
     
@@ -169,51 +202,83 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
           ? camp.camp_locations[0] 
           : null;
 
-        // Calculate confidence based on match quality
-        let confidence = 0.5; // Base confidence
-        const lowerName = camp.name.toLowerCase();
-        
-        if (lowerName.includes(query)) {
-          confidence = lowerName === query ? 1.0 : 0.8;
-        }
-        
-        // Apply geo filtering if specified
-        let geoMatch = true;
-        if (request.geo?.city || request.geo?.state) {
-          const targetCity = (request.geo?.city || '').toLowerCase();
-          const targetState = (request.geo?.state || '').toLowerCase();
+        // Filter sessions within date range
+        const upcomingSessions = camp.sessions.filter((session: any) => {
+          const sessionStart = new Date(session.start_at);
+          const today = new Date();
+          const futureLimit = new Date();
+          futureLimit.setDate(today.getDate() + 60);
+          return sessionStart >= today && sessionStart <= futureLimit;
+        });
+
+        if (upcomingSessions.length > 0) {
+          // Calculate confidence based on match quality
+          let confidence = 0.5; // Base confidence
+          const lowerName = camp.name.toLowerCase();
           
-          geoMatch = false;
-          if (location) {
-            if (targetCity && location.city?.toLowerCase().includes(targetCity)) {
-              geoMatch = true;
-              confidence += 0.1; // Boost for location match
-            }
-            if (targetState && location.state?.toLowerCase().includes(targetState)) {
-              geoMatch = true;
-              confidence += 0.1; // Boost for state match
+          if (lowerName.includes(query)) {
+            confidence = lowerName === query ? 1.0 : 0.8;
+          }
+          
+          // Apply geo filtering if specified
+          let geoMatch = true;
+          if (request.geo?.city || request.geo?.state) {
+            const targetCity = (request.geo?.city || '').toLowerCase();
+            const targetState = (request.geo?.state || '').toLowerCase();
+            
+            geoMatch = false;
+            if (location) {
+              if (targetCity && location.city?.toLowerCase().includes(targetCity)) {
+                geoMatch = true;
+                confidence += 0.1; // Boost for location match
+              }
+              if (targetState && location.state?.toLowerCase().includes(targetState)) {
+                geoMatch = true;
+                confidence += 0.1; // Boost for state match
+              }
             }
           }
-        }
 
-        if (geoMatch) {
-          results.push({
-            camp_id: camp.id,
-            camp_name: camp.name,
-            location_id: location?.id,
-            location_name: location?.location_name,
-            confidence: Math.min(1.0, confidence),
-            reasoning: buildReasoning(
-              camp.name,
-              location?.location_name,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              false,
-              !!location
-            ),
-          });
+          if (geoMatch) {
+            // Create session dates and times arrays
+            const sessionDates = upcomingSessions.map((s: any) => s.start_at?.split('T')[0]).filter(Boolean);
+            const sessionTimes = upcomingSessions.map((s: any) => {
+              if (s.start_at) {
+                const time = new Date(s.start_at).toLocaleTimeString('en-US', { 
+                  hour: 'numeric', 
+                  minute: '2-digit',
+                  hour12: true 
+                });
+                return time;
+              }
+              return null;
+            }).filter(Boolean);
+
+            const firstSession = upcomingSessions[0];
+
+            results.push({
+              camp_id: camp.id,
+              camp_name: camp.name,
+              location_id: location?.id,
+              location_name: location?.location_name,
+              session_dates,
+              session_times,
+              street_address: location?.address || 'Address TBD',
+              signup_cost: firstSession?.price_min || 0,
+              total_cost: firstSession?.price_max || firstSession?.price_min || 0,
+              confidence: Math.min(1.0, confidence),
+              reasoning: buildReasoning(
+                camp.name,
+                location?.location_name,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                false,
+                !!location
+              ),
+            });
+          }
         }
       }
     }
