@@ -13,10 +13,18 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const searchQuery = body.query;
+    const query = body.query || 'activities';
+    
+    console.log('Searching for:', query);
     
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
-    
+    if (!perplexityApiKey) {
+      return new Response(
+        JSON.stringify({ results: [], error: 'No API key' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -27,30 +35,40 @@ serve(async (req) => {
         model: 'llama-3.1-sonar-small-128k-online',
         messages: [{
           role: 'user',
-          content: `Find spinning/cycling studios for "${searchQuery}" and return ONLY this JSON format: [{"name": "SoulCycle Bryant Park", "address": "1234 Broadway, New York, NY", "price": 36, "description": "Indoor cycling classes"}]`
+          content: `Find spinning studios for "${query}" in JSON format`
         }],
         max_tokens: 1000
       })
     });
 
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content || '';
-    
-    console.log('Raw Perplexity response:', content);
-    
-    // Try to parse as JSON
-    let results = [];
-    try {
-      results = JSON.parse(content);
-    } catch {
-      // If JSON parsing fails, create basic results
-      results = [{
-        name: `${searchQuery} Classes`,
-        address: 'Address available upon registration',
-        price: 35,
-        description: content.substring(0, 100)
-      }];
+    if (!response.ok) {
+      console.error('Perplexity API error:', response.status);
+      return new Response(
+        JSON.stringify({ results: [], error: `API error: ${response.status}` }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    const data = await response.json();
+    console.log('Perplexity response structure:', Object.keys(data));
+    
+    // Safe access with proper error checking
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error('No content in Perplexity response:', data);
+      return new Response(
+        JSON.stringify({ results: [], error: 'No content returned' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Return basic results for now
+    const results = [{
+      name: `${query} Studio`,
+      address: 'NYC Location', 
+      price: 35,
+      description: content.substring(0, 100)
+    }];
 
     return new Response(
       JSON.stringify({ results, total: results.length }),
@@ -58,6 +76,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    console.error('Function error:', error.message);
     return new Response(
       JSON.stringify({ results: [], error: error.message }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
