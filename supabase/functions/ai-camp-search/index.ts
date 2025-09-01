@@ -31,21 +31,25 @@ type SearchRequest = z.infer<typeof SearchRequestSchema>;
 
 // Response schema
 interface SearchResult {
-  camp_id: string;
-  camp_name: string;
-  location_id?: string;
-  location_name?: string;
-  session_id?: string;
-  session_label?: string;
-  start_date?: string;
-  end_date?: string;
-  session_dates?: string[];
-  session_times?: string[];
-  street_address?: string;
-  signup_cost?: number;
-  total_cost?: number;
-  age_min?: number;
-  age_max?: number;
+  sessionId: string;
+  campName: string;
+  providerName?: string;
+  location?: {
+    city: string;
+    state: string;
+  };
+  registrationOpensAt?: string;
+  sessionDates?: string[];
+  sessionTimes?: string[];
+  streetAddress?: string;
+  signupCost?: number;
+  totalCost?: number;
+  capacity?: number;
+  price?: number;
+  ageRange?: {
+    min: number;
+    max: number;
+  };
   confidence: number;
   reasoning: string;
 }
@@ -257,15 +261,24 @@ async function aiCampSearch(request: SearchRequest, userId?: string): Promise<Se
             const firstSession = upcomingSessions[0];
 
             results.push({
-              camp_id: camp.id,
-              camp_name: camp.name,
-              location_id: location?.id,
-              location_name: location?.location_name,
-              session_dates,
-              session_times,
-              street_address: location?.address || 'Address TBD',
-              signup_cost: firstSession?.price_min || 0,
-              total_cost: firstSession?.price_max || firstSession?.price_min || 0,
+              sessionId: firstSession?.id || camp.id, // Use session ID as sessionId
+              campName: camp.name,
+              providerName: location?.location_name,
+              location: location ? {
+                city: location.city || '',
+                state: location.state || ''
+              } : undefined,
+              registrationOpensAt: firstSession?.registration_open_at,
+              sessionDates,
+              sessionTimes,
+              streetAddress: location?.address || 'Address TBD',
+              signupCost: firstSession?.price_min || 0,
+              totalCost: firstSession?.price_max || firstSession?.price_min || 0,
+              capacity: firstSession?.capacity,
+              ageRange: (firstSession?.age_min !== null && firstSession?.age_max !== null) ? {
+                min: firstSession.age_min,
+                max: firstSession.age_max
+              } : undefined,
               confidence: Math.min(1.0, confidence),
               reasoning: buildReasoning(
                 camp.name,

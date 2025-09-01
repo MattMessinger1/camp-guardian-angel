@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ClarifyingQuestionsCard } from './ClarifyingQuestionsCard';
 
-interface SearchResult {
+export interface SearchResult {
   sessionId: string;
   campName: string;
   providerName?: string;

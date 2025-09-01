@@ -6,33 +6,10 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { CampSearchBox, SearchResults } from '@/components/camp-search/CampSearchComponents';
+import type { SearchResult } from '@/components/camp-search/CampSearchComponents';
 import { InternetSearchToggle } from '@/components/InternetSearchToggle';
 import { InternetSearchResults } from '@/components/InternetSearchResults';
 import { ClarifyingQuestionsCard } from '@/components/camp-search/ClarifyingQuestionsCard';
-
-interface SearchResult {
-  sessionId: string;
-  campName: string;
-  providerName?: string;
-  location?: {
-    city: string;
-    state: string;
-  };
-  registrationOpensAt?: string;
-  sessionDates?: string[];
-  sessionTimes?: string[];
-  streetAddress?: string;
-  signupCost?: number;
-  totalCost?: number;
-  capacity?: number;
-  price?: number;
-  ageRange?: {
-    min: number;
-    max: number;
-  };
-  confidence: number;
-  reasoning: string;
-}
 
 interface InternetSearchResult {
   title: string;
