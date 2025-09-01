@@ -174,88 +174,183 @@ function createResultsFromContent(content: string, query: string): InternetSearc
   const results: InternetSearchResult[] = [];
   const dateRange = getDateRange();
   
-  // Split content into paragraphs and look for camp-like content
-  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 20);
+  // Enhanced parsing: Split by common delimiters for separate programs
+  const sections = content.split(/\n(?=\d+\.|\*\*|## |### )|(?:\n\s*\n)+/).filter(s => s.trim().length > 30);
   
-  for (let i = 0; i < Math.min(paragraphs.length, 3); i++) {
-    const paragraph = paragraphs[i].trim();
+  for (let i = 0; i < Math.min(sections.length, 5); i++) {
+    const section = sections[i].trim();
     
-    // Extract title from first line or create one
-    const lines = paragraph.split('\n');
-    let title = lines[0];
-    if (title.length > 80) {
-      title = title.substring(0, 80) + '...';
-    }
+    // Extract provider name (business name, gym name, etc.)
+    const providerName = extractProviderName(section, query);
     
-    // Use full paragraph as description
-    let description = paragraph;
-    if (description.length > 200) {
-      description = description.substring(0, 200) + '...';
-    }
+    // Create title from provider name and program type
+    const title = createTitle(section, providerName, query);
     
-    // Try to extract location and pricing
-    const location = extractLocation(paragraph, query);
-    const pricing = extractPricing(paragraph);
-    const dates = extractDates(paragraph, dateRange);
+    // Clean description
+    const description = createDescription(section);
+    
+    // Extract structured data
+    const location = extractLocation(section, query);
+    const pricing = extractPricing(section);
+    const dates = extractDates(section, dateRange);
+    const address = extractAddress(section);
     
     results.push({
-      title: title || `${query} Program ${i + 1}`,
+      title: title,
       description: description,
-      url: 'https://example.com/camp-registration',
-      provider: 'Perplexity Search',
+      url: extractUrl(section) || 'https://example.com/camp-registration',
+      provider: providerName,
       location: location,
       session_dates: dates.dates,
       session_times: dates.times,
-      street_address: extractAddress(paragraph) || 'Address TBD',
+      street_address: address || 'Address TBD',
       signup_cost: pricing.signup || 0,
       total_cost: pricing.total || 0,
-      confidence: 0.8 - (i * 0.1),
+      confidence: 0.9 - (i * 0.1),
       canAutomate: true,
       automationComplexity: 'medium' as const
     });
   }
   
-  // If no paragraphs found, create a simple result
+  // If no good sections found, try basic paragraph parsing
   if (results.length === 0) {
-    results.push({
-      title: `${query} Programs`,
-      description: content.substring(0, 200) + '...',
-      url: 'https://example.com/camp-registration',
-      provider: 'Perplexity Search',
-      location: extractLocation(content, query),
-      session_dates: [dateRange.start],
-      session_times: ['TBD'],
-      street_address: 'Address TBD',
-      signup_cost: 0,
-      total_cost: 0,
-      confidence: 0.8,
-      canAutomate: true,
-      automationComplexity: 'medium' as const
-    });
+    const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 20);
+    
+    for (let i = 0; i < Math.min(paragraphs.length, 3); i++) {
+      const paragraph = paragraphs[i].trim();
+      const providerName = extractProviderName(paragraph, query);
+      
+      results.push({
+        title: createTitle(paragraph, providerName, query),
+        description: createDescription(paragraph),
+        url: 'https://example.com/camp-registration',
+        provider: providerName,
+        location: extractLocation(paragraph, query),
+        session_dates: extractDates(paragraph, dateRange).dates,
+        session_times: extractDates(paragraph, dateRange).times,
+        street_address: extractAddress(paragraph) || 'Address TBD',
+        signup_cost: extractPricing(paragraph).signup || 0,
+        total_cost: extractPricing(paragraph).total || 0,
+        confidence: 0.8 - (i * 0.1),
+        canAutomate: true,
+        automationComplexity: 'medium' as const
+      });
+    }
   }
   
   return results;
 }
 
-function extractLocation(text: string, query: string): string {
-  // Look for city names in the query first
-  const cityMatch = query.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/);
-  if (cityMatch) {
-    return cityMatch[1];
+function extractProviderName(text: string, query: string): string {
+  // Look for business names, gym names, organization names
+  const businessPatterns = [
+    // Direct business names (SoulCycle, NYU Athletics, etc.)
+    /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\s+(?:Athletics|Fitness|Gym|Studio|Center|Club|Academy|School)))\b/g,
+    // Names with location (SoulCycle Bryant Park)
+    /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\s+(?:Bryant Park|Times Square|Upper East Side|Downtown|Midtown)/g,
+    // Organization names
+    /\b([A-Z]{2,}(?:\s+[A-Z][a-zA-Z]+)*)\b/g,
+    // Studio/Center names
+    /\b([A-Z][a-zA-Z]+\s+(?:Studio|Center|Gym|Fitness|Club))\b/g
+  ];
+  
+  for (const pattern of businessPatterns) {
+    const matches = Array.from(text.matchAll(pattern));
+    for (const match of matches) {
+      const name = match[1];
+      // Filter out common words that aren't business names
+      if (name && !['The', 'And', 'For', 'With', 'New York', 'York'].includes(name)) {
+        return name;
+      }
+    }
   }
   
-  // Look for location patterns in text
+  // Fallback: look for capitalized words
+  const words = text.split(/\s+/);
+  for (let i = 0; i < words.length - 1; i++) {
+    const word1 = words[i];
+    const word2 = words[i + 1];
+    if (word1.match(/^[A-Z][a-z]+$/) && word2.match(/^[A-Z][a-z]+$/)) {
+      return `${word1} ${word2}`;
+    }
+  }
+  
+  return 'Activity Provider';
+}
+
+function createTitle(text: string, providerName: string, query: string): string {
+  // Look for specific program or class names
+  const programPatterns = [
+    new RegExp(`${providerName}\\s+([A-Z][a-zA-Z\\s]+)`, 'i'),
+    /\b(spin|yoga|fitness|dance|swimming|tennis|basketball|soccer|football|baseball|camp)\s+(?:class|program|session|camp|clinic|lessons?)\b/gi,
+    /\b([A-Z][a-zA-Z\\s]{5,30})\s+(?:class|program|session|camp|clinic|lessons?)\b/gi
+  ];
+  
+  for (const pattern of programPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      return `${providerName} ${match[1].trim()}`;
+    }
+  }
+  
+  // If provider name looks like it already includes the program type, use it
+  if (providerName.includes(query.toLowerCase()) || query.toLowerCase().includes(providerName.toLowerCase())) {
+    return providerName;
+  }
+  
+  // Create title from query and provider
+  return `${providerName} ${query}`;
+}
+
+function createDescription(text: string): string {
+  // Clean up the text for description
+  let description = text.replace(/^\d+\.\s*/, ''); // Remove list numbers
+  description = description.replace(/^\*\*([^*]+)\*\*\s*/, ''); // Remove markdown bold headers
+  description = description.replace(/^#{1,6}\s+[^\n]+\n/, ''); // Remove markdown headers
+  
+  // Limit length
+  if (description.length > 250) {
+    description = description.substring(0, 250) + '...';
+  }
+  
+  return description.trim();
+}
+
+function extractUrl(text: string): string | null {
+  const urlPattern = /https?:\/\/[^\s]+/g;
+  const match = text.match(urlPattern);
+  return match ? match[0] : null;
+}
+
+function extractLocation(text: string, query: string): string {
+  // Enhanced location extraction patterns
   const locationPatterns = [
-    /\bin\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/,
-    /([A-Z][a-z]+),\s*[A-Z]{2}/,
-    /located\s+in\s+([A-Z][a-z]+)/i
+    // NYC neighborhoods and specific areas
+    /\b(Bryant Park|Times Square|Upper East Side|Upper West Side|Downtown|Midtown|Brooklyn|Queens|Bronx|Staten Island|Manhattan)\b/gi,
+    // City, State format
+    /\b([A-Z][a-z]+),\s*([A-Z]{2})\b/g,
+    // "in [City]" format
+    /\bin\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g,
+    // "located in/at [Location]"
+    /located\s+(?:in|at)\s+([A-Z][a-zA-Z\s]+)/gi,
+    // Address-based location extraction
+    /\b([A-Z][a-z]+),?\s+(?:New York|NY)\b/gi
   ];
   
   for (const pattern of locationPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return match[1];
+    const matches = Array.from(text.matchAll(pattern));
+    for (const match of matches) {
+      const location = match[1];
+      if (location && location.length > 2) {
+        return location;
+      }
     }
+  }
+  
+  // Look for city names in the query
+  const queryLocationMatch = query.match(/\b(NYC|New York|Manhattan|Brooklyn|Queens|Bronx|[A-Z][a-z]+)\b/);
+  if (queryLocationMatch) {
+    return queryLocationMatch[1] === 'NYC' ? 'New York' : queryLocationMatch[1];
   }
   
   return 'Location TBD';
@@ -263,11 +358,19 @@ function extractLocation(text: string, query: string): string {
 
 function extractPricing(text: string): { signup: number; total: number } {
   const pricePatterns = [
+    // Standard dollar amounts
     /\$(\d+(?:,\d{3})*(?:\.\d{2})?)/g,
-    /(\d+(?:,\d{3})*(?:\.\d{2})?)\s*dollars?/gi
+    // Per class/session pricing
+    /(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:per\s+class|per\s+session|each)/gi,
+    // Deposit/registration fees
+    /(?:deposit|registration|signup|fee).*?\$?(\d+(?:,\d{3})*(?:\.\d{2})?)/gi,
+    // Total cost indicators
+    /(?:total|full\s+cost|complete\s+cost).*?\$?(\d+(?:,\d{3})*(?:\.\d{2})?)/gi
   ];
   
   const prices: number[] = [];
+  const signupPrices: number[] = [];
+  const totalPrices: number[] = [];
   
   for (const pattern of pricePatterns) {
     let match;
@@ -275,17 +378,39 @@ function extractPricing(text: string): { signup: number; total: number } {
       const price = parseFloat(match[1].replace(/,/g, ''));
       if (price > 0 && price < 10000) { // Reasonable price range
         prices.push(price);
+        
+        // Categorize pricing based on context
+        const context = match[0].toLowerCase();
+        if (context.includes('deposit') || context.includes('registration') || context.includes('signup')) {
+          signupPrices.push(price);
+        } else if (context.includes('total') || context.includes('full') || context.includes('complete')) {
+          totalPrices.push(price);
+        }
       }
     }
   }
   
   if (prices.length > 0) {
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    return {
-      signup: minPrice,
-      total: maxPrice > minPrice ? maxPrice : minPrice
-    };
+    let signup = 0;
+    let total = 0;
+    
+    // Determine signup cost (usually the smaller amount or specific deposit)
+    if (signupPrices.length > 0) {
+      signup = Math.min(...signupPrices);
+    } else {
+      signup = Math.min(...prices);
+    }
+    
+    // Determine total cost (usually the larger amount or specific total)
+    if (totalPrices.length > 0) {
+      total = Math.max(...totalPrices);
+    } else if (prices.length > 1) {
+      total = Math.max(...prices);
+    } else {
+      total = signup; // Same amount for both if only one price found
+    }
+    
+    return { signup, total };
   }
   
   return { signup: 0, total: 0 };
@@ -349,14 +474,24 @@ function extractDates(text: string, dateRange: { start: string; end: string }): 
 
 function extractAddress(text: string): string | null {
   const addressPatterns = [
-    /\b\d+\s+[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Place|Pl|Court|Ct)\b/gi,
-    /\b[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Place|Pl|Court|Ct)\s+\d+\b/gi
+    // Standard street addresses with numbers
+    /\b(\d+\s+[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Place|Pl|Court|Ct)(?:\s*,?\s*[\w\s]*)?)\b/gi,
+    // Broadway and other major NYC streets
+    /\b(\d+\s+Broadway(?:\s*,?\s*[\w\s]*)?)\b/gi,
+    // Named locations with addresses
+    /\b([\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr)\s*,?\s*(?:New York|NYC|NY))\b/gi,
+    // Building/venue names with addresses
+    /(?:at|located at)\s+([^,\n]+(?:\d+|Street|St|Avenue|Ave|Broadway)[^,\n]*)/gi
   ];
   
   for (const pattern of addressPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return match[0];
+    const matches = Array.from(text.matchAll(pattern));
+    for (const match of matches) {
+      const address = match[1].trim();
+      if (address && address.length > 5) {
+        // Clean up the address
+        return address.replace(/\s+/g, ' ').replace(/,$/, '');
+      }
     }
   }
   
