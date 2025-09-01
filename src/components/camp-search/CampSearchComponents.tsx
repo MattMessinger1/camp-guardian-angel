@@ -347,11 +347,13 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-muted-foreground">Due at signup:</span>
                       <span className="text-sm font-medium">
-                        {(result.signup_cost !== undefined || result.signupCost !== undefined)
-                          ? formatCurrency(result.signup_cost ?? result.signupCost ?? 0)
-                          : selectedSession?.price !== undefined
-                            ? formatCurrency(selectedSession.price)
-                            : 'TBD'
+                        {result.signup_cost !== undefined
+                          ? formatCurrency(result.signup_cost)
+                          : result.signupCost !== undefined
+                            ? formatCurrency(result.signupCost)
+                            : selectedSession?.price !== undefined
+                              ? formatCurrency(selectedSession.price)
+                              : formatCurrency(0)
                         }
                       </span>
                     </div>
@@ -360,13 +362,17 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     <div className="flex justify-between items-center pt-2 border-t border-border">
                       <span className="text-sm font-medium text-foreground">Total cost:</span>
                       <span className="text-lg font-bold text-foreground">
-                        {(result.total_cost !== undefined || result.totalCost !== undefined)
-                          ? formatCurrency(result.total_cost ?? result.totalCost ?? 0)
-                          : (result.signup_cost !== undefined || result.signupCost !== undefined)
-                            ? formatCurrency(result.signup_cost ?? result.signupCost ?? 0)
-                            : selectedSession?.price !== undefined
-                              ? formatCurrency(selectedSession.price)
-                              : 'TBD'
+                        {result.total_cost !== undefined
+                          ? formatCurrency(result.total_cost)
+                          : result.totalCost !== undefined
+                            ? formatCurrency(result.totalCost)
+                            : result.signup_cost !== undefined
+                              ? formatCurrency(result.signup_cost)
+                              : result.signupCost !== undefined
+                                ? formatCurrency(result.signupCost)
+                                : selectedSession?.price !== undefined
+                                  ? formatCurrency(selectedSession.price)
+                                  : formatCurrency(0)
                         }
                       </span>
                     </div>
