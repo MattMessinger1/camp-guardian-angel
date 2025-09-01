@@ -269,8 +269,8 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
         
         // Handle both new sessions array and legacy sessionDates/sessionTimes
         const availableSessions = result.sessions || [];
-        const sessionDates = result.sessions?.map(s => s.date) || result.sessionDates || [];
-        const sessionTimes = result.sessions?.map(s => s.time) || result.sessionTimes || [];
+        const sessionDates = [...new Set(result.sessions?.map(s => s.date) || result.sessionDates || [])]; // Remove duplicates
+        const sessionTimes = [...new Set(result.sessions?.map(s => s.time) || result.sessionTimes || [])]; // Remove duplicates
         
         const hasMultipleDates = sessionDates.length > 1;
         const hasMultipleTimes = sessionTimes.length > 1;
@@ -390,21 +390,20 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                             <SelectValue placeholder="Choose time" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border border-border shadow-lg z-50">
-                            {sessionTimes.map((time, idx) => {
-                              const session = availableSessions.find(s => s.time === time);
-                              return (
-                                <SelectItem key={idx} value={time} className="hover:bg-muted">
-                                  <div className="flex justify-between items-center w-full">
-                                    <span>{time}</span>
-                                    {session?.availability && (
-                                      <span className="text-xs text-muted-foreground ml-2">
-                                        {session.availability} spots
-                                      </span>
-                                    )}
+                            {availableSessions.map((session, idx) => (
+                              <SelectItem key={idx} value={session.time} className="hover:bg-muted">
+                                <div className="flex flex-col gap-1">
+                                  <div className="font-medium">
+                                    {formatDate(session.date)} - {session.time}
                                   </div>
-                                </SelectItem>
-                              );
-                            })}
+                                  {session.availability && (
+                                    <div className="text-xs text-muted-foreground">
+                                      {session.availability} spots available
+                                    </div>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       ) : (
