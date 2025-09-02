@@ -11,6 +11,9 @@ import { AlertCircle, Clock, CheckCircle, ArrowRight, User, CreditCard, FileText
 import { useSimpleReadiness } from '@/hooks/useSimpleReadiness';
 import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from '@/components/ui/progress';
+import { ParentContactSection } from '@/components/registration/ParentContactSection';
+import { ChildInfoSection } from '@/components/registration/ChildInfoSection';
+import { PaymentSection } from '@/components/registration/PaymentSection';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -25,9 +28,19 @@ export default function ReadyToSignup() {
   const [error, setError] = useState<string | null>(null);
   const [signupTime, setSignupTime] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // User information state
+  const [userInfo, setUserInfo] = useState({
+    parent: {},
+    child: {},
+    payment: {}
+  });
 
-  // Get readiness assessment
-  const { assessment, isLoading: assessmentLoading } = useSimpleReadiness(sessionData);
+  // Get readiness assessment (pass userInfo to help with readiness calculation)
+  const { assessment, isLoading: assessmentLoading } = useSimpleReadiness({
+    ...sessionData,
+    userInfo
+  });
 
   // Load session data
   useEffect(() => {
@@ -163,6 +176,11 @@ export default function ReadyToSignup() {
     }
   };
 
+  // Handle user info updates
+  const updateUserInfo = (section: string, data: any) => {
+    setUserInfo(prev => ({ ...prev, [section]: data }));
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -270,6 +288,67 @@ export default function ReadyToSignup() {
           </CardContent>
         </Card>
 
+        {/* User Information Collection */}
+        {hasSignupTime && (
+          <>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2">Complete Your Information</h3>
+                    <p className="text-muted-foreground">Provide the required details for registration</p>
+                  </div>
+
+                  {/* Parent Contact Information */}
+                  <Card className="border-dashed">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <User className="w-5 h-5 text-primary" />
+                        <h4 className="font-semibold">Parent Contact Information</h4>
+                      </div>
+                      <ParentContactSection
+                        sessionData={sessionData}
+                        data={userInfo.parent}
+                        onChange={(data) => updateUserInfo('parent', data)}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Child Information */}
+                  <Card className="border-dashed">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <User className="w-5 h-5 text-primary" />
+                        <h4 className="font-semibold">Child Information</h4>
+                      </div>
+                      <ChildInfoSection
+                        sessionData={sessionData}
+                        data={userInfo.child}
+                        onChange={(data) => updateUserInfo('child', data)}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Payment Information */}
+                  <Card className="border-dashed">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <CreditCard className="w-5 h-5 text-primary" />
+                        <h4 className="font-semibold">Payment Method</h4>
+                      </div>
+                      <PaymentSection
+                        sessionData={sessionData}
+                        data={userInfo.payment}
+                        onChange={(data) => updateUserInfo('payment', data)}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
         {/* Readiness Assessment */}
         {hasSignupTime && assessment && !assessmentLoading && (
           <>
@@ -366,7 +445,7 @@ export default function ReadyToSignup() {
                     {assessment.signupReadiness.canSignupNow ? (
                       <Button 
                         onClick={() => {
-                          // Navigate to enhanced signup with all the stored parameters
+                          // Navigate to enhanced signup with all the stored parameters AND user info
                           const enhancedParams = new URLSearchParams({
                             sessionId: sessionId || '',
                             businessName: searchParams.get('businessName') || '',
@@ -381,7 +460,9 @@ export default function ReadyToSignup() {
                             workflowEstimate: searchParams.get('workflowEstimate') || '10',
                             providerPlatform: searchParams.get('providerPlatform') || 'custom',
                             expectedInterventionPoints: searchParams.get('expectedInterventionPoints') || '[]',
-                            formComplexitySignals: searchParams.get('formComplexitySignals') || '[]'
+                            formComplexitySignals: searchParams.get('formComplexitySignals') || '[]',
+                            // Pass collected user information
+                            userInfo: JSON.stringify(userInfo)
                           });
                           navigate(`/enhanced-signup?${enhancedParams.toString()}`);
                         }}
