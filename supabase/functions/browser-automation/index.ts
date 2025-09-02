@@ -15,7 +15,7 @@ const supabase = createClient(
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 interface BrowserSessionRequest {
-  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register';
+  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register' | 'book_class';
   sessionId?: string;
   url?: string;
   campProviderId?: string;
@@ -91,6 +91,9 @@ serve(async (req) => {
         break;
       case 'login':
         result = await performAccountLogin(browserbaseApiKey, requestData);
+        break;
+      case 'book_class':
+        result = await performClassBooking(browserbaseApiKey, requestData);
         break;
       case 'close':
         result = await closeBrowserSession(browserbaseApiKey, requestData);
@@ -908,6 +911,316 @@ async function checkPostLoginState(connectUrl: string, request: BrowserSessionRe
       error: error.message 
     };
   }
+}
+
+// Handle class booking after login
+async function performClassBooking(apiKey: string, request: BrowserSessionRequest): Promise<any> {
+  if (!request.sessionId) {
+    throw new Error('Session ID required for class booking');
+  }
+
+  console.log(`📅 Class Booking: Attempting to book class for session ${request.sessionId}`);
+
+  try {
+    // Get session connection URL for WebSocket control
+    const sessionResponse = await fetch(`https://api.browserbase.com/v1/sessions/${request.sessionId}`, {
+      headers: { 'X-BB-API-Key': apiKey }
+    });
+
+    if (!sessionResponse.ok) {
+      throw new Error(`Failed to get session: ${sessionResponse.status}`);
+    }
+
+    const session = await sessionResponse.json();
+    const connectUrl = session.connectUrl;
+    
+    if (!connectUrl) {
+      throw new Error('No WebSocket connection URL available');
+    }
+
+    // Connect to WebSocket for browser control
+    const ws = new WebSocket(connectUrl);
+    
+    return new Promise((resolve, reject) => {
+      let timeoutId: number;
+      
+      ws.onopen = async () => {
+        console.log('[BOOKING] WebSocket connected');
+        
+        timeoutId = setTimeout(() => {
+          ws.close();
+          reject(new Error('Booking operation timeout'));
+        }, 30000);
+        
+        try {
+          // Step 1: Look for booking buttons using common selectors
+          const bookingSelectors = [
+            'button:contains("Book")',
+            'button:contains("Register")',
+            'button:contains("Sign Up")',
+            'a:contains("Book")',
+            'a:contains("Register")',
+            '[data-testid*="book"]',
+            '[class*="book"]',
+            '[id*="book"]',
+            'input[type="submit"][value*="Book"]',
+            'input[type="submit"][value*="Register"]'
+          ];
+          
+          console.log('[BOOKING] Looking for booking buttons...');
+          
+          // Find and click booking button
+          for (const selector of bookingSelectors) {
+            const findResult = await executeScript(ws, `
+              const elements = document.querySelectorAll('${selector}');
+              const visibleElements = Array.from(elements).filter(el => 
+                el.offsetWidth > 0 && el.offsetHeight > 0 && 
+                window.getComputedStyle(el).visibility !== 'hidden'
+              );
+              return visibleElements.length > 0 ? visibleElements[0].outerHTML : null;
+            `);
+            
+            if (findResult) {
+              console.log('[BOOKING] Found booking button:', selector);
+              await executeScript(ws, `
+                const elements = document.querySelectorAll('${selector}');
+                const visibleElements = Array.from(elements).filter(el => 
+                  el.offsetWidth > 0 && el.offsetHeight > 0
+                );
+                if (visibleElements.length > 0) {
+                  visibleElements[0].click();
+                  return true;
+                }
+                return false;
+              `);
+              
+              // Wait for page to respond
+              await new Promise(r => setTimeout(r, 2000));
+              break;
+            }
+          }
+          
+          // Step 2: Handle slot/time selection if present
+          console.log('[BOOKING] Checking for time slot selection...');
+          const slotSelectors = [
+            'select[name*="time"]',
+            'select[name*="slot"]',
+            '[class*="time-slot"]',
+            '[class*="schedule"]',
+            'input[type="radio"][name*="time"]'
+          ];
+          
+          for (const selector of slotSelectors) {
+            const hasSlots = await executeScript(ws, `
+              return document.querySelectorAll('${selector}').length > 0;
+            `);
+            
+            if (hasSlots) {
+              console.log('[BOOKING] Found time selection, selecting first available...');
+              await executeScript(ws, `
+                const element = document.querySelector('${selector}');
+                if (element.tagName === 'SELECT') {
+                  element.selectedIndex = 1; // Skip first option (usually placeholder)
+                  element.dispatchEvent(new Event('change', { bubbles: true }));
+                } else if (element.type === 'radio') {
+                  element.checked = true;
+                  element.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              `);
+              await new Promise(r => setTimeout(r, 1000));
+              break;
+            }
+          }
+          
+          // Step 3: Check for CAPTCHA
+          console.log('[BOOKING] Checking for CAPTCHA...');
+          const captchaDetected = await executeScript(ws, `
+            return document.querySelector('iframe[src*="captcha"], [class*="captcha"], [id*="captcha"]') !== null;
+          `);
+          
+          if (captchaDetected) {
+            console.log('[BOOKING] CAPTCHA detected, creating assistance event...');
+            
+            // Capture screenshot for CAPTCHA analysis
+            const screenshot = await captureScreenshot(apiKey, request.sessionId, connectUrl);
+            
+            const captchaEvent = await createCaptchaEvent(request, 'BOOKING_CAPTCHA', {
+              url: await executeScript(ws, `return window.location.href;`),
+              pageTitle: await executeScript(ws, `return document.title;`),
+              bookingStep: 'captcha_verification',
+              screenshot: screenshot
+            });
+            
+            // Notify parent via SMS
+            await supabase.functions.invoke('notify-parent', {
+              body: {
+                userId: request.userId,
+                captchaEventId: captchaEvent.id,
+                message: 'Class booking requires CAPTCHA verification. Please complete verification to continue.',
+                actionUrl: `https://your-app.com/captcha/${captchaEvent.id}`
+              }
+            });
+            
+            clearTimeout(timeoutId);
+            ws.close();
+            resolve({
+              bookingSuccess: false,
+              needs_user_action: true,
+              captcha_event_id: captchaEvent.id,
+              message: 'CAPTCHA verification required'
+            });
+            return;
+          }
+          
+          // Step 4: Proceed through checkout
+          console.log('[BOOKING] Looking for checkout/continue buttons...');
+          const checkoutSelectors = [
+            'button:contains("Continue")',
+            'button:contains("Next")',
+            'button:contains("Checkout")',
+            'button:contains("Confirm")',
+            'input[type="submit"][value*="Continue"]',
+            '[data-testid*="continue"]',
+            '[class*="checkout"]'
+          ];
+          
+          for (const selector of checkoutSelectors) {
+            const hasButton = await executeScript(ws, `
+              return document.querySelector('${selector}') !== null;
+            `);
+            
+            if (hasButton) {
+              console.log('[BOOKING] Clicking checkout button:', selector);
+              await executeScript(ws, `
+                const btn = document.querySelector('${selector}');
+                if (btn) btn.click();
+              `);
+              await new Promise(r => setTimeout(r, 2000));
+              break;
+            }
+          }
+          
+          // Step 5: Check for booking confirmation
+          console.log('[BOOKING] Checking for confirmation...');
+          const confirmationCheck = await executeScript(ws, `
+            const confirmationTerms = ['confirmed', 'success', 'booked', 'registered', 'complete'];
+            const pageText = document.body.innerText.toLowerCase();
+            const hasConfirmation = confirmationTerms.some(term => pageText.includes(term));
+            
+            return {
+              hasConfirmation,
+              currentUrl: window.location.href,
+              pageTitle: document.title,
+              pageText: pageText.substring(0, 500) // First 500 chars for analysis
+            };
+          `);
+          
+          // Log the booking attempt
+          await logLoginAttempt({
+            userId: request.userId,
+            providerId: request.campProviderId,
+            success: confirmationCheck.hasConfirmation,
+            attemptType: 'class_booking',
+            metadata: {
+              sessionId: request.sessionId,
+              finalUrl: confirmationCheck.currentUrl,
+              pageTitle: confirmationCheck.pageTitle
+            }
+          });
+          
+          clearTimeout(timeoutId);
+          ws.close();
+          
+          if (confirmationCheck.hasConfirmation) {
+            resolve({
+              bookingSuccess: true,
+              confirmationUrl: confirmationCheck.currentUrl,
+              message: 'Class booking completed successfully'
+            });
+          } else {
+            resolve({
+              bookingSuccess: false,
+              needs_user_action: false,
+              error: 'Could not confirm booking completion',
+              pageData: confirmationCheck
+            });
+          }
+          
+        } catch (error) {
+          clearTimeout(timeoutId);
+          ws.close();
+          reject(error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        clearTimeout(timeoutId);
+        console.error('[BOOKING] WebSocket error:', error);
+        reject(new Error('WebSocket connection failed'));
+      };
+    });
+    
+  } catch (error: any) {
+    console.error('[BOOKING] Class booking error:', error);
+    
+    // Log failed attempt
+    await logLoginAttempt({
+      userId: request.userId,
+      providerId: request.campProviderId,
+      success: false,
+      attemptType: 'class_booking',
+      metadata: { error: error.message, sessionId: request.sessionId }
+    });
+    
+    return { 
+      bookingSuccess: false, 
+      needs_user_action: false,
+      error: error.message 
+    };
+  }
+}
+
+// Helper function to execute JavaScript in browser session
+async function executeScript(ws: WebSocket, script: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const messageId = Math.random().toString(36).substring(7);
+    
+    const timeout = setTimeout(() => {
+      reject(new Error('Script execution timeout'));
+    }, 5000);
+    
+    const messageHandler = (event: MessageEvent) => {
+      try {
+        const response = JSON.parse(event.data);
+        if (response.id === messageId) {
+          clearTimeout(timeout);
+          ws.removeEventListener('message', messageHandler);
+          
+          if (response.error) {
+            reject(new Error(response.error.message));
+          } else {
+            resolve(response.result?.result?.value || response.result);
+          }
+        }
+      } catch (e) {
+        // Ignore parsing errors for other messages
+      }
+    };
+    
+    ws.addEventListener('message', messageHandler);
+    
+    const message = {
+      id: messageId,
+      method: 'Runtime.evaluate',
+      params: {
+        expression: script,
+        returnByValue: true,
+        awaitPromise: true
+      }
+    };
+    
+    ws.send(JSON.stringify(message));
+  });
 }
 
 // Create CAPTCHA/OTP event for user assistance
