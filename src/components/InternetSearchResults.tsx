@@ -42,10 +42,11 @@ interface InternetSearchResult {
 
 interface InternetSearchResultsProps {
   results: InternetSearchResult[];
+  extractedTime?: any; // Add extracted time data from search
   onSelect: (result: InternetSearchResult) => void;
 }
 
-export function InternetSearchResults({ results, onSelect }: InternetSearchResultsProps) {
+export function InternetSearchResults({ results, extractedTime, onSelect }: InternetSearchResultsProps) {
   // Track selected sessions for each result
   const [selectedSessions, setSelectedSessions] = useState<Record<string, { date?: string; time?: string }>>({});
 
@@ -120,6 +121,17 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
     
     // Get selected session details for pricing
     const selectedSessionDetails = getSelectedSessionDetails(result, index);
+    
+    // Store extracted time data in sessionStorage if available
+    if (extractedTime && result.id) {
+      const storageKey = `extracted_time_${result.id}`;
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(extractedTime));
+        console.log('Stored extracted time data for session:', result.id, extractedTime);
+      } catch (error) {
+        console.error('Error storing extracted time data:', error);
+      }
+    }
     
     onSelect({ 
       ...result, 

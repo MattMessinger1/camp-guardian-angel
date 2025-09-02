@@ -88,7 +88,9 @@ export default function ReadyToSignup() {
             },
             price_min: parseInt(signupCost) || 45,
             selected_date: selectedDate,
-            selected_time: selectedTime
+            selected_time: selectedTime,
+            // Check if extracted time data is available in sessionStorage
+            extracted_time_data: getExtractedTimeFromStorage(sessionId)
           };
           
           setSessionData(mockSessionData);
@@ -122,6 +124,18 @@ export default function ReadyToSignup() {
 
     loadSession();
   }, [sessionId, searchParams]);
+
+  // Helper function to get extracted time data from sessionStorage
+  const getExtractedTimeFromStorage = (sessionId: string) => {
+    try {
+      const key = `extracted_time_${sessionId}`;
+      const stored = sessionStorage.getItem(key);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error('Error getting extracted time from storage:', error);
+      return null;
+    }
+  };
 
   // Handle setting signup time
   const handleSetSignupTime = async () => {
@@ -330,14 +344,62 @@ export default function ReadyToSignup() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Extracted Time Display */}
-                    <ExtractedTimeDisplay 
-                      sessionId={sessionId || ''} 
-                      onTimeExtracted={(time) => {
-                        setSignupTime(time);
-                        handleSetSignupTime();
-                      }}
-                    />
+                    {/* Show extracted time data if available for internet sessions */}
+                    {sessionId?.startsWith('internet-') && sessionData?.extracted_time_data ? (
+                      <div className="max-w-md mx-auto">
+                        <div className={`p-4 rounded-lg border-2 ${
+                          sessionData.extracted_time_data.confidence > 0.8 
+                            ? 'border-green-200 bg-green-50/50' 
+                            : 'border-amber-200 bg-amber-50/50'
+                        }`}>
+                          <div className="flex items-center gap-3 mb-3">
+                            {sessionData.extracted_time_data.confidence > 0.8 ? (
+                              <>
+                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                <span className="font-semibold text-green-700">
+                                  ✅ Registration opens: {new Date(sessionData.extracted_time_data.extracted_time).toLocaleString()}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="w-5 h-5 text-amber-600" />
+                                <span className="font-semibold text-amber-700">
+                                  ⚠️ Possible opening: {new Date(sessionData.extracted_time_data.extracted_time).toLocaleString()}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          
+                          <div className="text-sm text-muted-foreground mb-3">
+                            <p>Confidence: {Math.round(sessionData.extracted_time_data.confidence * 100)}%</p>
+                            <p>Found: "{sessionData.extracted_time_data.matched_text}"</p>
+                            <p>Source: {sessionData.extracted_time_data.source_url}</p>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSignupTime(sessionData.extracted_time_data.extracted_time);
+                              handleSetSignupTime();
+                            }}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Use This Time
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Extracted Time Display for database sessions */
+                      !sessionId?.startsWith('internet-') && (
+                        <ExtractedTimeDisplay 
+                          sessionId={sessionId || ''} 
+                          onTimeExtracted={(time) => {
+                            setSignupTime(time);
+                            handleSetSignupTime();
+                          }}
+                        />
+                      )
+                    )}
 
                     {/* Manual Time Setting */}
                     <div className="max-w-md mx-auto space-y-3">

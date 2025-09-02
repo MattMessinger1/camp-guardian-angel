@@ -69,10 +69,23 @@ serve(async (req) => {
     // Parse the content into structured results
     const results = parsePerplexityContent(content, query, location);
     
-    console.log('RETURNING', results.length, 'parsed results from Perplexity');
+    // Extract URLs from Perplexity content for time detection
+    const urls = extractUrlsFromContent(content);
+    let extractedTimeData = null;
+    
+    if (urls.length > 0) {
+      console.log('Found URLs in content, attempting time extraction for:', urls[0]);
+      extractedTimeData = await extractTimeFromUrl(urls[0]);
+    }
+    
+    console.log('RETURNING', results.length, 'parsed results from Perplexity with extracted time data');
     
     return new Response(
-      JSON.stringify({ results, total: results.length }),
+      JSON.stringify({ 
+        results, 
+        total: results.length,
+        extracted_time: extractedTimeData 
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
@@ -460,6 +473,199 @@ function generateSessions(activityType) {
   
   console.log(`Generated ${sessions.length} sessions for ${activityType}`);
   return sessions;
+}
+
+// Extract URLs from Perplexity content
+function extractUrlsFromContent(content: string): string[] {
+  const urlPattern = /https?:\/\/[^\s<>"']+/gi;
+  const matches = content.match(urlPattern);
+  return matches ? matches.slice(0, 3) : []; // Return up to 3 URLs
+}
+
+// Extract time information from a URL using watch-signup-open logic
+async function extractTimeFromUrl(url: string) {
+  try {
+    console.log('Fetching page content from:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; CampRegistrationBot/1.0)',
+      },
+    });
+
+    if (!response.ok) {
+      console.log('Failed to fetch URL:', response.status);
+      return null;
+    }
+
+    const pageContent = await response.text();
+    
+    // Use the same time extraction logic as watch-signup-open
+    const timeExtraction = extractRegistrationTimes(pageContent, 'America/Chicago');
+    
+    if (timeExtraction.confidence > 0.5 && timeExtraction.extractedTime) {
+      console.log('Time extracted:', timeExtraction.matchedText, '->', timeExtraction.extractedTime.toISOString());
+      return {
+        extracted_time: timeExtraction.extractedTime.toISOString(),
+        confidence: timeExtraction.confidence,
+        matched_text: timeExtraction.matchedText,
+        pattern: timeExtraction.pattern,
+        source_url: url
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error extracting time from URL:', error);
+    return null;
+  }
+}
+
+// Extract registration times from page content (copied from watch-signup-open)
+function extractRegistrationTimes(content: string, timezone: string = 'America/Chicago') {
+  if (!content) {
+    return { extractedTime: null, confidence: 0, matchedText: '', pattern: '' };
+  }
+
+  const results: Array<{ time: Date, confidence: number, text: string, pattern: string }> = [];
+
+  // Pattern 1: "opens on [date] at [time]"
+  const opensOnAtPattern = /opens\s+on\s+([^,\s]+(?:\s+\d{1,2})?,?\s+\d{4})\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?)/gi;
+  let match;
+  while ((match = opensOnAtPattern.exec(content)) !== null) {
+    const dateStr = match[1].trim();
+    const timeStr = match[2].trim();
+    const parsedTime = parseDateTime(dateStr, timeStr, timezone);
+    if (parsedTime) {
+      results.push({
+        time: parsedTime,
+        confidence: 0.9,
+        text: match[0],
+        pattern: 'opens_on_at'
+      });
+    }
+  }
+
+  // Pattern 2: "opens at [time] [date]"
+  const opensAtPattern = /opens\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?)\s+(?:on\s+)?([^,\s]+(?:\s+\d{1,2})?,?\s+\d{4})/gi;
+  while ((match = opensAtPattern.exec(content)) !== null) {
+    const timeStr = match[1].trim();
+    const dateStr = match[2].trim();
+    const parsedTime = parseDateTime(dateStr, timeStr, timezone);
+    if (parsedTime) {
+      results.push({
+        time: parsedTime,
+        confidence: 0.9,
+        text: match[0],
+        pattern: 'opens_at'
+      });
+    }
+  }
+
+  // Pattern 3: "registration begins [date/time]"
+  const regBeginsPattern = /registration\s+begins\s+([^,\s]+(?:\s+\d{1,2})?,?\s+\d{4})(?:\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?))?/gi;
+  while ((match = regBeginsPattern.exec(content)) !== null) {
+    const dateStr = match[1].trim();
+    const timeStr = match[2] ? match[2].trim() : '9:00 AM';
+    const parsedTime = parseDateTime(dateStr, timeStr, timezone);
+    if (parsedTime) {
+      results.push({
+        time: parsedTime,
+        confidence: match[2] ? 0.85 : 0.6,
+        text: match[0],
+        pattern: 'registration_begins'
+      });
+    }
+  }
+
+  // Return the highest confidence result
+  if (results.length === 0) {
+    return { extractedTime: null, confidence: 0, matchedText: '', pattern: '' };
+  }
+
+  const bestResult = results.reduce((best, current) => 
+    current.confidence > best.confidence ? current : best
+  );
+
+  return {
+    extractedTime: bestResult.time,
+    confidence: bestResult.confidence,
+    matchedText: bestResult.text,
+    pattern: bestResult.pattern
+  };
+}
+
+// Parse date and time strings into a Date object (copied from watch-signup-open)
+function parseDateTime(dateStr: string, timeStr: string, timezone: string): Date | null {
+  try {
+    const cleanDateStr = dateStr.replace(/,/g, '').trim();
+    let parsedDate: Date | null = null;
+    
+    // Format: "March 1, 2025" or "March 1 2025"
+    const monthDayYearMatch = cleanDateStr.match(/([a-z]+)\s+(\d{1,2})\s+(\d{4})/i);
+    if (monthDayYearMatch) {
+      const monthName = monthDayYearMatch[1];
+      const day = parseInt(monthDayYearMatch[2]);
+      const year = parseInt(monthDayYearMatch[3]);
+      
+      const monthMap: { [key: string]: number } = {
+        january: 0, jan: 0, february: 1, feb: 1, march: 2, mar: 2,
+        april: 3, apr: 3, may: 4, june: 5, jun: 5, july: 6, jul: 6,
+        august: 7, aug: 7, september: 8, sep: 8, october: 9, oct: 9,
+        november: 10, nov: 10, december: 11, dec: 11
+      };
+      
+      const month = monthMap[monthName.toLowerCase()];
+      if (month !== undefined) {
+        parsedDate = new Date(year, month, day);
+      }
+    }
+    
+    // Format: "1/15/2025" or "01/15/2025"
+    const numericDateMatch = cleanDateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!parsedDate && numericDateMatch) {
+      const month = parseInt(numericDateMatch[1]) - 1; // 0-indexed
+      const day = parseInt(numericDateMatch[2]);
+      const year = parseInt(numericDateMatch[3]);
+      parsedDate = new Date(year, month, day);
+    }
+
+    if (!parsedDate) return null;
+
+    // Parse time
+    let hours = 9; // Default to 9 AM
+    let minutes = 0;
+    
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+    if (timeMatch) {
+      hours = parseInt(timeMatch[1]);
+      minutes = parseInt(timeMatch[2]);
+      const ampm = timeMatch[3]?.toLowerCase();
+      
+      if (ampm === 'pm' && hours !== 12) {
+        hours += 12;
+      } else if (ampm === 'am' && hours === 12) {
+        hours = 0;
+      }
+    }
+
+    // Combine date and time
+    const result = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate(), hours, minutes);
+    
+    // Basic validation - must be in the future and reasonable
+    const now = new Date();
+    const oneYearFromNow = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+    
+    if (result > now && result < oneYearFromNow) {
+      return result;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing date/time:', error);
+    return null;
+  }
 }
 
 function createFallbackResults(query, location = 'New York City') {

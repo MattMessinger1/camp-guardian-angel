@@ -12,17 +12,36 @@ import { InternetSearchResults } from '@/components/InternetSearchResults';
 import { ClarifyingQuestionsCard } from '@/components/camp-search/ClarifyingQuestionsCard';
 
 interface InternetSearchResult {
-  title: string;
+  id?: string;
+  name?: string;
+  title?: string;
   description: string;
-  url: string;
+  url?: string;
   provider: string;
   estimatedDates?: string;
   estimatedPrice?: string;
   estimatedAgeRange?: string;
   location?: string;
-  confidence: number;
-  canAutomate: boolean;
-  automationComplexity: 'low' | 'medium' | 'high';
+  street_address?: string;
+  signup_cost?: number;
+  total_cost?: number;
+  confidence?: number;
+  canAutomate?: boolean;
+  automationComplexity?: 'low' | 'medium' | 'high';
+  sessions?: Array<{
+    id: string;
+    date: string;
+    time: string;
+    availability: number;
+    price: number;
+  }>;
+  session_dates?: string[];
+  session_times?: string[];
+  selectedDate?: string;
+  selectedTime?: string;
+  businessName?: string;
+  signupCost?: number;
+  totalCost?: number;
 }
 
 interface SearchResponse {
@@ -35,6 +54,7 @@ interface SearchResponse {
 const FindCamps: React.FC = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [internetResults, setInternetResults] = useState<InternetSearchResult[]>([]);
+  const [internetSearchData, setInternetSearchData] = useState<any>(null); // Store full internet search response
   const [clarifyingQuestions, setClarifyingQuestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastQuery, setLastQuery] = useState('');
@@ -94,6 +114,7 @@ const FindCamps: React.FC = () => {
         });
 
         setInternetResults(response.results || []);
+        setInternetSearchData(response); // Store full response including extracted_time
         setSearchResults([]); // Clear database results when using internet search
         setClarifyingQuestions([]); // Internet search doesn't have clarifying questions
 
@@ -249,8 +270,30 @@ const FindCamps: React.FC = () => {
       return;
     }
 
-    // Start automation workflow for this internet result
-    navigate(`/signup?campUrl=${encodeURIComponent(result.url)}&campName=${encodeURIComponent(result.title)}`);
+    // Build URL parameters for ReadyToSignup page
+    const params = new URLSearchParams();
+    
+    // Use the result ID as session ID
+    const sessionId = result.id || `internet-${Date.now()}-${Math.random()}`;
+    
+    // Add all relevant parameters
+    params.append('sessionId', sessionId);
+    params.append('businessName', result.businessName || result.name || result.title || '');
+    params.append('location', result.location || '');
+    params.append('selectedDate', result.selectedDate || '2025-09-02');
+    params.append('selectedTime', result.selectedTime || 'Morning (9:00 AM)');
+    params.append('signupCost', (result.signupCost || result.signup_cost || 45).toString());
+    params.append('totalCost', (result.totalCost || result.total_cost || result.signupCost || result.signup_cost || 45).toString());
+    params.append('predictedBarriers', JSON.stringify([]));
+    params.append('credentialRequirements', JSON.stringify([]));
+    params.append('complexityScore', '0.5');
+    params.append('workflowEstimate', '10');
+    params.append('providerPlatform', result.provider || 'custom');
+    params.append('expectedInterventionPoints', JSON.stringify([]));
+    params.append('formComplexitySignals', JSON.stringify([]));
+
+    // Navigate to ReadyToSignup page
+    navigate(`/ready-to-signup/${sessionId}?${params.toString()}`);
   };
 
   // Cleanup timeout on unmount
@@ -319,6 +362,7 @@ const FindCamps: React.FC = () => {
             {useInternetSearch ? (
               <InternetSearchResults
                 results={internetResults}
+                extractedTime={internetSearchData?.extracted_time}
                 onSelect={handleInternetResultSelect}
               />
             ) : (
