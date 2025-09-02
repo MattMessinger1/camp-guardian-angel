@@ -23,6 +23,13 @@ interface PollingSchedule {
   minutesUntilTarget: number;
 }
 
+interface TimeExtractionResult {
+  extractedTime: Date | null;
+  confidence: number;
+  matchedText: string;
+  pattern: string;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -271,14 +278,24 @@ async function performPollingCheck(
     // Simple heuristics to detect if registration is open
     const registrationOpen = detectRegistrationOpen(pageContent, response);
     
-    // Log the detection attempt
+    // Extract registration times from content
+    const timeExtraction = extractRegistrationTimes(pageContent, plan.timezone || 'America/Chicago');
+    
+    // If high confidence time found, update plan and sessions
+    if (timeExtraction.confidence > 0.5 && timeExtraction.extractedTime) {
+      await updateRegistrationTimes(supabase, plan, timeExtraction);
+    }
+    
+    // Log the detection attempt with time extraction info  
     await supabase
       .from('open_detection_logs')
       .insert({
         plan_id: plan.id,
         seen_at: checkTime.toISOString(),
-        signal: registrationOpen ? 'open_detected' : 'closed_detected',
-        note: `Adaptive polling: ${schedule.pollingReason}. Status: ${response.status}`
+        signal: registrationOpen ? 'open_detected' : (timeExtraction.extractedTime ? 'time_extracted' : 'closed_detected'),
+        note: timeExtraction.extractedTime ? 
+          `Time extracted: ${timeExtraction.matchedText} -> ${timeExtraction.extractedTime.toISOString()} (confidence: ${timeExtraction.confidence})` :
+          `Adaptive polling: ${schedule.pollingReason}. Status: ${response.status}`
       });
 
     if (registrationOpen) {
