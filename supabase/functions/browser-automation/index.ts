@@ -369,29 +369,54 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
       };
     }
 
-    console.log('[LOGIN] Found credentials, attempting login...');
+    console.log('[LOGIN] Found credentials, attempting real login...');
 
-    // In a real implementation, this would use WebSocket CDP to:
-    // 1. Find login form elements
-    // 2. Fill in email and password
-    // 3. Submit the form
-    // 4. Wait for login success/failure
+    // Get session details from database to get WebSocket URL
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('browser_sessions')
+      .select('metadata')
+      .eq('session_id', request.sessionId)
+      .single();
+
+    if (sessionError || !sessionData?.metadata?.realSession?.connectUrl) {
+      throw new Error('Session not found or missing connection URL');
+    }
+
+    const connectUrl = sessionData.metadata.realSession.connectUrl;
+    console.log('[LOGIN] Got WebSocket connection URL, establishing CDP connection...');
+
+    // Navigate to login page if not already there
+    const loginPageResult = await navigateToLoginPage(connectUrl, request.providerUrl);
+    if (!loginPageResult.success) {
+      throw new Error(`Failed to navigate to login page: ${loginPageResult.error}`);
+    }
+
+    // Find and fill login form
+    const formFillResult = await fillLoginForm(connectUrl, email, password);
+    if (!formFillResult.success) {
+      throw new Error(`Failed to fill login form: ${formFillResult.error}`);
+    }
+
+    // Submit the form and wait for response
+    const submitResult = await submitLoginForm(connectUrl);
+    if (!submitResult.success) {
+      throw new Error(`Failed to submit login form: ${submitResult.error}`);
+    }
+
+    // Check post-login state
+    const postLoginResult = await checkPostLoginState(connectUrl, request);
     
-    // Simulate login attempt
-    const loginResult = {
-      success: true, // In real implementation, this would be determined by page response
-      account_found: true,
-      login_attempted: true,
-      simulated: true,
-      note: 'Login simulation for development - real implementation uses WebSocket CDP'
-    };
-
-    // Log the attempt
+    // Log the successful attempt
     await logLoginAttempt({
       userId: request.userId,
       providerUrl: request.providerUrl,
-      success: loginResult.success,
-      sessionId: request.sessionId
+      success: postLoginResult.loginSuccess,
+      error: postLoginResult.error,
+      sessionId: request.sessionId,
+      metadata: {
+        twoFactorRequired: postLoginResult.twoFactorRequired,
+        redirectUrl: postLoginResult.redirectUrl
+      }
     });
 
     // Update session with login status
@@ -399,16 +424,25 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
       .update({ 
         last_activity: new Date().toISOString(),
         metadata: {
-          ...request,
+          ...sessionData.metadata,
           login_attempted: true,
-          login_success: loginResult.success,
+          login_success: postLoginResult.loginSuccess,
+          two_factor_required: postLoginResult.twoFactorRequired,
           timestamp: new Date().toISOString()
         }
       })
       .eq('session_id', request.sessionId);
 
-    console.log('[LOGIN] Login attempt completed:', loginResult);
-    return loginResult;
+    console.log('[LOGIN] Login attempt completed:', postLoginResult);
+    return {
+      success: postLoginResult.loginSuccess,
+      account_found: true,
+      login_attempted: true,
+      two_factor_required: postLoginResult.twoFactorRequired,
+      captcha_event_id: postLoginResult.captchaEventId,
+      redirect_url: postLoginResult.redirectUrl,
+      error: postLoginResult.error
+    };
 
   } catch (error: any) {
     console.error('[LOGIN] Login error:', error);
@@ -421,6 +455,502 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
       sessionId: request.sessionId
     });
     
+    throw error;
+  }
+}
+
+// Navigate to provider's login page
+async function navigateToLoginPage(connectUrl: string, providerUrl: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('[LOGIN] Navigating to login page:', providerUrl);
+    
+    // Extract WebSocket URL from connect URL
+    const wsUrl = connectUrl.replace('https://', 'wss://');
+    
+    // Connect to browser via WebSocket CDP
+    const ws = new WebSocket(wsUrl);
+    
+    return new Promise((resolve) => {
+      let resolved = false;
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          ws.close();
+          resolve({ success: false, error: 'Navigation timeout' });
+        }
+      }, 30000);
+
+      ws.onopen = () => {
+        console.log('[LOGIN] WebSocket connected, sending navigation command...');
+        
+        // Send CDP command to navigate
+        ws.send(JSON.stringify({
+          id: 1,
+          method: 'Page.navigate',
+          params: { url: providerUrl }
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        const response = JSON.parse(event.data);
+        
+        if (response.id === 1) {
+          clearTimeout(timeout);
+          if (!resolved) {
+            resolved = true;
+            ws.close();
+            
+            if (response.error) {
+              resolve({ success: false, error: response.error.message });
+            } else {
+              console.log('[LOGIN] Successfully navigated to login page');
+              resolve({ success: true });
+            }
+          }
+        }
+      };
+
+      ws.onerror = (error) => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          console.error('[LOGIN] WebSocket error:', error);
+          resolve({ success: false, error: 'WebSocket connection failed' });
+        }
+      };
+    });
+    
+  } catch (error: any) {
+    console.error('[LOGIN] Navigation error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Fill login form with credentials
+async function fillLoginForm(connectUrl: string, email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('[LOGIN] Filling login form with credentials...');
+    
+    const wsUrl = connectUrl.replace('https://', 'wss://');
+    const ws = new WebSocket(wsUrl);
+    
+    return new Promise((resolve) => {
+      let resolved = false;
+      let commandId = 1000;
+      
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          ws.close();
+          resolve({ success: false, error: 'Form filling timeout' });
+        }
+      }, 30000);
+
+      ws.onopen = async () => {
+        console.log('[LOGIN] WebSocket connected for form filling...');
+        
+        // First, wait for page to load
+        await new Promise(r => setTimeout(r, 2000));
+        
+        // Find username field with multiple selector strategies
+        const usernameSelectors = [
+          'input[type="email"]',
+          'input[name*="user"]',
+          'input[name*="email"]',
+          'input[name="username"]',
+          'input[id*="user"]',
+          'input[id*="email"]',
+          'input[placeholder*="email"]',
+          'input[placeholder*="username"]'
+        ];
+        
+        // Try each username selector
+        for (const selector of usernameSelectors) {
+          ws.send(JSON.stringify({
+            id: commandId++,
+            method: 'Runtime.evaluate',
+            params: {
+              expression: `
+                const field = document.querySelector('${selector}');
+                if (field) {
+                  field.value = '${email}';
+                  field.dispatchEvent(new Event('input', { bubbles: true }));
+                  field.dispatchEvent(new Event('change', { bubbles: true }));
+                  'USERNAME_FILLED';
+                } else {
+                  'USERNAME_NOT_FOUND';
+                }
+              `
+            }
+          }));
+          
+          // Wait a bit between attempts
+          await new Promise(r => setTimeout(r, 500));
+        }
+        
+        // Fill password field
+        const passwordSelectors = [
+          'input[type="password"]',
+          'input[name="password"]',
+          'input[id="password"]',
+          'input[name*="pass"]'
+        ];
+        
+        for (const selector of passwordSelectors) {
+          ws.send(JSON.stringify({
+            id: commandId++,
+            method: 'Runtime.evaluate',
+            params: {
+              expression: `
+                const field = document.querySelector('${selector}');
+                if (field) {
+                  field.value = '${password}';
+                  field.dispatchEvent(new Event('input', { bubbles: true }));
+                  field.dispatchEvent(new Event('change', { bubbles: true }));
+                  'PASSWORD_FILLED';
+                } else {
+                  'PASSWORD_NOT_FOUND';
+                }
+              `
+            }
+          }));
+          
+          await new Promise(r => setTimeout(r, 500));
+        }
+        
+        // Wait a moment then resolve success
+        setTimeout(() => {
+          clearTimeout(timeout);
+          if (!resolved) {
+            resolved = true;
+            ws.close();
+            console.log('[LOGIN] Form fields filled successfully');
+            resolve({ success: true });
+          }
+        }, 2000);
+      };
+
+      ws.onerror = (error) => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          console.error('[LOGIN] WebSocket error during form fill:', error);
+          resolve({ success: false, error: 'WebSocket connection failed' });
+        }
+      };
+    });
+    
+  } catch (error: any) {
+    console.error('[LOGIN] Form filling error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Submit login form
+async function submitLoginForm(connectUrl: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('[LOGIN] Submitting login form...');
+    
+    const wsUrl = connectUrl.replace('https://', 'wss://');
+    const ws = new WebSocket(wsUrl);
+    
+    return new Promise((resolve) => {
+      let resolved = false;
+      
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          ws.close();
+          resolve({ success: false, error: 'Submit timeout' });
+        }
+      }, 30000);
+
+      ws.onopen = () => {
+        console.log('[LOGIN] WebSocket connected for form submit...');
+        
+        // Try multiple submit strategies
+        const submitStrategies = [
+          'button[type="submit"]',
+          'input[type="submit"]',
+          'button:contains("Sign In")',
+          'button:contains("Log In")',
+          'button:contains("Login")',
+          '.login-button',
+          '.signin-button',
+          '[role="button"]:contains("Sign")',
+          'form button:first-of-type'
+        ];
+        
+        // Execute submit strategies
+        ws.send(JSON.stringify({
+          id: 2000,
+          method: 'Runtime.evaluate',
+          params: {
+            expression: `
+              const strategies = ${JSON.stringify(submitStrategies)};
+              let success = false;
+              
+              for (const selector of strategies) {
+                let element;
+                if (selector.includes(':contains(')) {
+                  const text = selector.match(/:contains\\("([^"]+)"\\)/)[1];
+                  const tagName = selector.split(':')[0];
+                  element = Array.from(document.querySelectorAll(tagName))
+                    .find(el => el.textContent.toLowerCase().includes(text.toLowerCase()));
+                } else {
+                  element = document.querySelector(selector);
+                }
+                
+                if (element) {
+                  element.click();
+                  success = true;
+                  break;
+                }
+              }
+              
+              // Fallback: submit first form
+              if (!success) {
+                const form = document.querySelector('form');
+                if (form) {
+                  form.submit();
+                  success = true;
+                }
+              }
+              
+              success ? 'FORM_SUBMITTED' : 'SUBMIT_FAILED';
+            `
+          }
+        }));
+        
+        // Wait for submit to complete
+        setTimeout(() => {
+          clearTimeout(timeout);
+          if (!resolved) {
+            resolved = true;
+            ws.close();
+            console.log('[LOGIN] Form submitted successfully');
+            resolve({ success: true });
+          }
+        }, 3000);
+      };
+
+      ws.onerror = (error) => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          console.error('[LOGIN] WebSocket error during submit:', error);
+          resolve({ success: false, error: 'WebSocket connection failed' });
+        }
+      };
+    });
+    
+  } catch (error: any) {
+    console.error('[LOGIN] Submit error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Check post-login state and handle scenarios
+async function checkPostLoginState(connectUrl: string, request: BrowserSessionRequest): Promise<{
+  loginSuccess: boolean;
+  twoFactorRequired: boolean;
+  captchaEventId?: string;
+  redirectUrl?: string;
+  error?: string;
+}> {
+  try {
+    console.log('[LOGIN] Checking post-login state...');
+    
+    const wsUrl = connectUrl.replace('https://', 'wss://');
+    const ws = new WebSocket(wsUrl);
+    
+    return new Promise((resolve) => {
+      let resolved = false;
+      
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          ws.close();
+          resolve({ 
+            loginSuccess: false, 
+            twoFactorRequired: false, 
+            error: 'Post-login check timeout' 
+          });
+        }
+      }, 30000);
+
+      ws.onopen = () => {
+        console.log('[LOGIN] WebSocket connected for post-login check...');
+        
+        // Wait for page to load after submit
+        setTimeout(() => {
+          ws.send(JSON.stringify({
+            id: 3000,
+            method: 'Runtime.evaluate',
+            params: {
+              expression: `
+                const url = window.location.href;
+                const html = document.documentElement.outerHTML.toLowerCase();
+                
+                // Check for 2FA/OTP indicators
+                const twoFactorSignals = [
+                  'two-factor', 'two factor', '2fa', 'verification code', 
+                  'enter code', 'authentication code', 'verify', 'otp'
+                ];
+                const has2FA = twoFactorSignals.some(signal => html.includes(signal));
+                
+                // Check for login success indicators
+                const successSignals = [
+                  'dashboard', 'welcome', 'account', 'profile', 'logout',
+                  'home', 'main', 'portal'
+                ];
+                const urlSuccess = successSignals.some(signal => url.toLowerCase().includes(signal));
+                
+                // Check for login failure indicators
+                const failureSignals = [
+                  'invalid', 'incorrect', 'error', 'failed', 'try again',
+                  'login', 'signin', 'sign in'
+                ];
+                const hasError = failureSignals.some(signal => html.includes(signal)) && url.toLowerCase().includes('login');
+                
+                JSON.stringify({
+                  url: url,
+                  has2FA: has2FA,
+                  urlSuccess: urlSuccess,
+                  hasError: hasError,
+                  pageTitle: document.title
+                });
+              `
+            }
+          }));
+        }, 3000); // Wait 3 seconds for page to load
+      };
+
+      ws.onmessage = async (event) => {
+        const response = JSON.parse(event.data);
+        
+        if (response.id === 3000 && response.result?.result?.value) {
+          clearTimeout(timeout);
+          if (!resolved) {
+            resolved = true;
+            ws.close();
+            
+            const pageState = JSON.parse(response.result.result.value);
+            console.log('[LOGIN] Page state analysis:', pageState);
+            
+            if (pageState.has2FA) {
+              // Handle 2FA/OTP case
+              console.log('[LOGIN] 2FA/OTP detected, creating CAPTCHA event for user assistance...');
+              
+              const captchaEvent = await createCaptchaEvent(request, 'OTP_REQUIRED', {
+                url: pageState.url,
+                pageTitle: pageState.pageTitle,
+                loginStep: 'two_factor_authentication'
+              });
+              
+              resolve({
+                loginSuccess: false,
+                twoFactorRequired: true,
+                captchaEventId: captchaEvent.id,
+                redirectUrl: pageState.url
+              });
+              
+            } else if (pageState.urlSuccess && !pageState.hasError) {
+              // Successful login
+              console.log('[LOGIN] Login appears successful');
+              resolve({
+                loginSuccess: true,
+                twoFactorRequired: false,
+                redirectUrl: pageState.url
+              });
+              
+            } else if (pageState.hasError) {
+              // Login failed
+              console.log('[LOGIN] Login failed - error indicators detected');
+              resolve({
+                loginSuccess: false,
+                twoFactorRequired: false,
+                error: 'Login failed - invalid credentials or other error'
+              });
+              
+            } else {
+              // Unclear state - consider it a failure
+              console.log('[LOGIN] Unclear post-login state, considering as failure');
+              resolve({
+                loginSuccess: false,
+                twoFactorRequired: false,
+                error: 'Unable to determine login result'
+              });
+            }
+          }
+        }
+      };
+
+      ws.onerror = (error) => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          console.error('[LOGIN] WebSocket error during post-login check:', error);
+          resolve({ 
+            loginSuccess: false, 
+            twoFactorRequired: false, 
+            error: 'WebSocket connection failed' 
+          });
+        }
+      };
+    });
+    
+  } catch (error: any) {
+    console.error('[LOGIN] Post-login check error:', error);
+    return { 
+      loginSuccess: false, 
+      twoFactorRequired: false, 
+      error: error.message 
+    };
+  }
+}
+
+// Create CAPTCHA/OTP event for user assistance
+async function createCaptchaEvent(request: BrowserSessionRequest, eventType: string, context: any): Promise<any> {
+  try {
+    const captchaEvent = {
+      user_id: request.userId,
+      session_id: request.sessionId,
+      status: 'pending',
+      captcha_context: {
+        type: eventType,
+        provider_url: request.providerUrl,
+        ...context
+      },
+      detected_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes
+    };
+    
+    const { data, error } = await supabase
+      .from('captcha_events')
+      .insert(captchaEvent)
+      .select()
+      .single();
+    
+    if (error) {
+      throw error;
+    }
+    
+    console.log('[LOGIN] Created CAPTCHA event for user assistance:', data.id);
+    
+    // Send SMS notification to user
+    await supabase.functions.invoke('send-otp', {
+      body: {
+        userId: request.userId,
+        message: `Login requires verification. Please check your account and complete the ${eventType.toLowerCase().replace('_', ' ')}.`,
+        type: 'login_assistance'
+      }
+    });
+    
+    return data;
+    
+  } catch (error) {
+    console.error('[LOGIN] Failed to create CAPTCHA event:', error);
     throw error;
   }
 }
