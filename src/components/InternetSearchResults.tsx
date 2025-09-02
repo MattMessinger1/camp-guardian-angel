@@ -34,6 +34,10 @@ interface InternetSearchResult {
   session_times?: string[];
   selectedDate?: string;
   selectedTime?: string;
+  // Mapped fields for session data
+  businessName?: string;
+  signupCost?: number;
+  totalCost?: number;
 }
 
 interface InternetSearchResultsProps {
@@ -114,10 +118,18 @@ export function InternetSearchResults({ results, onSelect }: InternetSearchResul
     
     console.log('✅ Session validation passed:', { date: finalDate, time: finalTime });
     
+    // Get selected session details for pricing
+    const selectedSessionDetails = getSelectedSessionDetails(result, index);
+    
     onSelect({ 
       ...result, 
       selectedDate: finalDate, 
-      selectedTime: finalTime 
+      selectedTime: finalTime,
+      // Map search result fields to expected session data fields
+      businessName: result.name || result.title,
+      location: result.location || result.street_address,
+      signupCost: selectedSessionDetails?.price || result.signup_cost,
+      totalCost: result.total_cost || selectedSessionDetails?.price || result.signup_cost
     });
   };
 
