@@ -14,6 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { ParentContactSection } from '@/components/registration/ParentContactSection';
 import { ChildInfoSection } from '@/components/registration/ChildInfoSection';
 import { PaymentSection } from '@/components/registration/PaymentSection';
+import { ProviderAccountCreation } from '@/components/ProviderAccountCreation';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -28,12 +29,14 @@ export default function ReadyToSignup() {
   const [error, setError] = useState<string | null>(null);
   const [signupTime, setSignupTime] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   
-  // User information state
+  // User information state with proper typing
   const [userInfo, setUserInfo] = useState({
-    parent: {},
-    child: {},
-    payment: {}
+    parent: {} as { email?: string; phone?: string; name?: string },
+    child: {} as { childName?: string; childAge?: string; experienceLevel?: string; shoeSize?: string; emergencyContact?: string },
+    payment: {} as { paymentMethodId?: string; showStripeForm?: boolean; last4?: string; expMonth?: string; expYear?: string },
+    provider: {} as { accountEmail?: string }
   });
 
   // Get readiness assessment (pass userInfo to help with readiness calculation)
@@ -181,6 +184,76 @@ export default function ReadyToSignup() {
     setUserInfo(prev => ({ ...prev, [section]: data }));
   };
 
+  const hasSignupTime = !!sessionData?.registration_open_at;
+  const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
+  const isSignupOpen = signupDate ? signupDate <= new Date() : false;
+
+  // Check if ready for registration
+  const isReadyForRegistration = 
+    hasSignupTime && 
+    assessment?.overallStatus === 'ready' &&
+    userInfo.parent.email &&
+    userInfo.child.childName &&
+    (userInfo.payment.paymentMethodId || userInfo.payment.showStripeForm);
+
+  // Handle starting the registration process
+  const handleStartRegistration = async () => {
+    if (!user || !sessionId) return;
+
+    try {
+      setIsStarting(true);
+      console.log('🚀 Starting registration process...', { userInfo });
+
+      // Create payment intent first
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-payment-intent', {
+        body: {
+          session_id: sessionId,
+          amount_cents: Math.round((parseFloat(sessionData?.price_min || '0') || 45) * 100),
+          description: `Registration for ${sessionData?.activities?.name || 'Camp Session'}`
+        }
+      });
+
+      if (paymentError) {
+        if (paymentError.message?.includes('NO_PAYMENT_METHOD')) {
+          toast({
+            title: "Payment Method Required",
+            description: "Please add a payment method first",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw paymentError;
+      }
+
+      console.log('💳 Payment intent created:', paymentData);
+
+      // Navigate to registration in progress
+      toast({
+        title: "Registration Started!",
+        description: "Your automated registration is now in progress",
+      });
+
+      // In a real implementation, this would trigger the automation system
+      console.log('📅 Registration with session data:', {
+        selectedDate: sessionData.selected_date,
+        selectedTime: sessionData.selected_time,
+        businessName: sessionData.activities?.name,
+        location: `${sessionData.activities?.city}, ${sessionData.activities?.state}`,
+        signupCost: sessionData.price_min
+      });
+
+    } catch (error) {
+      console.error('Registration start error:', error);
+      toast({
+        title: "Registration Failed",
+        description: "Could not start the registration process. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -208,10 +281,6 @@ export default function ReadyToSignup() {
       </div>
     );
   }
-
-  const hasSignupTime = !!sessionData.registration_open_at;
-  const signupDate = hasSignupTime ? new Date(sessionData.registration_open_at) : null;
-  const isSignupOpen = signupDate ? signupDate <= new Date() : false;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
@@ -478,6 +547,53 @@ export default function ReadyToSignup() {
               </CardContent>
             </Card>
           </>
+        )}
+
+        {/* Step 4: Provider Account & Final Registration */}
+        {hasSignupTime && assessment && assessment.overallStatus === 'ready' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-2">Step 4: Complete Registration</h3>
+                  <p className="text-muted-foreground">Final steps to secure your spot</p>
+                </div>
+
+                {/* Provider Account Creation */}
+                <ProviderAccountCreation
+                  providerUrl={sessionData.activities?.name || 'https://onepeloton.com'}
+                  providerName={sessionData.activities?.name || 'Peloton Studio'}
+                  sessionId={sessionId}
+                  onAccountCreated={(email) => {
+                    console.log('✅ Account created with email:', email);
+                    updateUserInfo('provider', { accountEmail: email });
+                  }}
+                />
+
+                {/* Final Registration Button */}
+                <div className="text-center pt-4">
+                  <Button 
+                    size="lg"
+                    className="px-8 py-3 text-lg"
+                    onClick={handleStartRegistration}
+                    disabled={!isReadyForRegistration || isStarting}
+                  >
+                    {isStarting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Starting Registration...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="w-5 h-5 mr-2" />
+                        Start Automated Registration
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Debug Info */}

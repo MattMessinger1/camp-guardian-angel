@@ -109,19 +109,20 @@ export function ChildInfoSection({ sessionData, data, onChange }: ChildInfoSecti
         </div>
       )}
 
-      {/* Medical/Safety Info */}
+      {/* Emergency Contact - PHI Compliant */}
       <div className="space-y-2">
-        <Label htmlFor="medicalInfo">
-          Medical Information or Allergies
+        <Label htmlFor="emergencyContact">
+          Emergency Contact Name & Phone
         </Label>
         <Input
-          id="medicalInfo"
-          value={data.medicalInfo || ''}
-          onChange={(e) => updateField('medicalInfo', e.target.value)}
-          placeholder="Any allergies, medications, or conditions we should know about (optional)"
+          id="emergencyContact"
+          value={data.emergencyContact || ''}
+          onChange={(e) => updateField('emergencyContact', e.target.value)}
+          placeholder="Contact name and phone number for camp emergencies"
         />
         <p className="text-xs text-muted-foreground">
-          Only include information relevant to camp activities and safety
+          // Engineering Guardrails: docs/ENGINEERING_GUARDRAILS.md
+          // PHI Avoidance: This field excludes medical information to maintain compliance
         </p>
       </div>
     </div>
