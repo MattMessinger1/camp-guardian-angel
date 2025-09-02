@@ -26,6 +26,14 @@ export function ExtractedTimeDisplay({ sessionId, onTimeExtracted }: ExtractedTi
     try {
       setLoading(true);
       
+      // Skip database queries for internet session IDs (they don't have plans yet)
+      if (sessionId.startsWith('internet-')) {
+        setPlan(null);
+        setDetectionLogs([]);
+        setLoading(false);
+        return;
+      }
+      
       // Find registration plan for this session
       const { data: planData, error: planError } = await supabase
         .from('registration_plans')
