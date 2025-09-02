@@ -30,233 +30,216 @@ const fieldMappings = {
   grade: ['grade', 'school_grade', 'current_grade']
 };
 
-// Browserbase provider automation using API calls
+// Check if provider has a specific adapter
+function hasSpecificAdapter(provider: any): boolean {
+  const providerName = provider.name?.toLowerCase() || '';
+  const knownAdapters = ['jackrabbit', 'campbrain', 'amilia', 'ultracamp'];
+  
+  return knownAdapters.some(adapter => providerName.includes(adapter));
+}
+
+// Get stored credentials for provider
+async function getProviderCredentials(admin: any, userId: string, providerHostname: string): Promise<any> {
+  const { data: credentials, error } = await admin
+    .from('provider_credentials')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('provider_hostname', providerHostname)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[AUTOMATE-PROVIDER] Error fetching credentials:', error);
+    return null;
+  }
+
+  return credentials;
+}
+
+// Generic browser automation using the browser-automation function
 async function automateProviderRegistration(
+  admin: any,
   provider: any,
   registration: any,
   session: any,
   childData?: any
 ): Promise<AutomationResult> {
-  console.log(`[AUTOMATE-PROVIDER] Starting Browserbase automation for provider ${provider.name} (${provider.id})`);
+  console.log(`[AUTOMATE-PROVIDER] Starting automation for provider ${provider.name} (${provider.id})`);
   
-  const browserbaseApiKey = Deno.env.get('BROWSERBASE_TOKEN');
-  const browserbaseProjectId = Deno.env.get('BROWSERBASE_PROJECT');
-  
-  if (!browserbaseApiKey || !browserbaseProjectId) {
+  // Check if this provider has a specific adapter
+  if (hasSpecificAdapter(provider)) {
+    console.log(`[AUTOMATE-PROVIDER] Provider ${provider.name} has specific adapter - using dedicated logic`);
+    // TODO: Call specific adapter logic
     return {
       success: false,
-      error: "Browserbase credentials not configured"
-    };
-  }
-  
-  // Handle test failure simulation
-  const providerName = provider.name?.toLowerCase() || '';
-  if (providerName.includes('test-fail')) {
-    return {
-      success: false,
-      error: "Provider automation failed - simulated for testing"
+      error: "Specific adapter not yet implemented"
     };
   }
 
-  let browserSessionId: string | null = null;
+  console.log(`[AUTOMATE-PROVIDER] Using generic browser automation for ${provider.name}`);
 
   try {
-    // Step 1: Create browser session
-    console.log(`[AUTOMATE-PROVIDER] Creating browser session...`);
-    const sessionResponse = await fetch('https://api.browserbase.com/v1/sessions', {
-      method: 'POST',
-      headers: {
-        'X-BB-API-Key': browserbaseApiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        projectId: browserbaseProjectId,
-        browserSettings: {
-          viewport: { width: 1920, height: 1080 }
+    // Get provider hostname for credential lookup
+    const providerUrl = new URL(provider.site_url || 'https://example.com');
+    const providerHostname = providerUrl.hostname;
+
+    // Get stored credentials
+    const credentials = await getProviderCredentials(admin, registration.user_id, providerHostname);
+    if (!credentials) {
+      return {
+        success: false,
+        error: "No stored credentials found for this provider"
+      };
+    }
+
+    // Step 1: Login using browser automation
+    console.log(`[AUTOMATE-PROVIDER] Step 1: Logging in to ${providerHostname}`);
+    const loginResult = await admin.functions.invoke('browser-automation', {
+      body: {
+        action: 'login',
+        provider_hostname: providerHostname,
+        user_id: registration.user_id,
+        session_metadata: {
+          provider_name: provider.name,
+          registration_id: registration.id
         }
-      }),
+      }
     });
 
-    if (!sessionResponse.ok) {
-      const errorText = await sessionResponse.text();
-      throw new Error(`Failed to create browser session: ${sessionResponse.status} ${errorText}`);
+    if (loginResult.error) {
+      throw new Error(`Login failed: ${loginResult.error.message}`);
     }
 
-    const sessionData = await sessionResponse.json();
-    browserSessionId = sessionData.id;
-    console.log(`[AUTOMATE-PROVIDER] Browser session created: ${browserSessionId}`);
+    if (loginResult.data?.needs_user_action) {
+      console.log(`[AUTOMATE-PROVIDER] Login requires user action (likely 2FA/OTP)`);
+      // Update registration status to waiting for user
+      await admin
+        .from('registrations')
+        .update({ 
+          status: 'waiting_for_user',
+          notes: 'Waiting for user to complete login authentication'
+        })
+        .eq('id', registration.id);
 
-    // Step 2: Navigate to provider's registration page
-    if (provider.site_url) {
-      console.log(`[AUTOMATE-PROVIDER] Navigating to ${provider.site_url}`);
-      await navigateToProvider(browserbaseApiKey, browserSessionId, provider.site_url);
+      return {
+        success: false,
+        error: "User action required for login",
+        details: {
+          needs_user_action: true,
+          captcha_event_id: loginResult.data.captcha_event_id,
+          automation_type: "generic_browser"
+        }
+      };
     }
 
-    // Step 3: Fill registration form
-    console.log(`[AUTOMATE-PROVIDER] Filling registration form...`);
-    const formResult = await fillRegistrationForm(
-      browserbaseApiKey, 
-      browserSessionId, 
-      {
-        childName: childData?.name || `Test Child ${Date.now()}`,
-        parentEmail: childData?.parentEmail || `test${Date.now()}@example.com`,
-        phone: childData?.phone || '555-0123',
-        campSelection: session?.title || 'Summer Camp',
-        age: childData?.age || 8,
-        grade: childData?.grade || '2nd'
+    if (!loginResult.data?.success) {
+      throw new Error(`Login failed: ${loginResult.data?.error || 'Unknown error'}`);
+    }
+
+    // Step 2: Navigate to the class/session registration page
+    console.log(`[AUTOMATE-PROVIDER] Step 2: Navigating to registration page`);
+    const sessionUrl = session.external_url || provider.site_url;
+    const navigateResult = await admin.functions.invoke('browser-automation', {
+      body: {
+        action: 'navigate',
+        target_url: sessionUrl,
+        provider_hostname: providerHostname,
+        user_id: registration.user_id,
+        session_metadata: {
+          session_id: session.id,
+          registration_id: registration.id
+        }
       }
-    );
+    });
 
-    // Step 4: Submit and capture confirmation
-    const confirmationId = await submitRegistrationForm(browserbaseApiKey, browserSessionId);
+    if (navigateResult.error || !navigateResult.data?.success) {
+      throw new Error(`Navigation failed: ${navigateResult.error?.message || navigateResult.data?.error}`);
+    }
 
-    console.log(`[AUTOMATE-PROVIDER] Automation completed successfully for ${provider.name}`);
+    // Step 3: Book the class/session
+    console.log(`[AUTOMATE-PROVIDER] Step 3: Booking class`);
+    const bookResult = await admin.functions.invoke('browser-automation', {
+      body: {
+        action: 'book_class',
+        provider_hostname: providerHostname,
+        user_id: registration.user_id,
+        session_data: {
+          session_id: session.id,
+          child_name: childData?.name,
+          parent_email: childData?.parentEmail,
+          phone: childData?.phone
+        },
+        session_metadata: {
+          registration_id: registration.id
+        }
+      }
+    });
+
+    if (bookResult.error) {
+      throw new Error(`Booking failed: ${bookResult.error.message}`);
+    }
+
+    // Handle CAPTCHA during booking process
+    if (bookResult.data?.needs_user_action) {
+      console.log(`[AUTOMATE-PROVIDER] Booking requires user action (CAPTCHA detected)`);
+      
+      // Update registration status to waiting for user
+      await admin
+        .from('registrations')
+        .update({ 
+          status: 'waiting_for_user',
+          notes: 'CAPTCHA detected during booking - waiting for user resolution'
+        })
+        .eq('id', registration.id);
+
+      return {
+        success: false,
+        error: "CAPTCHA detected during booking",
+        details: {
+          needs_user_action: true,
+          captcha_event_id: bookResult.data.captcha_event_id,
+          automation_type: "generic_browser",
+          stage: "booking"
+        }
+      };
+    }
+
+    if (!bookResult.data?.success) {
+      throw new Error(`Booking failed: ${bookResult.data?.error || 'Unknown error'}`);
+    }
+
+    // Booking successful!
+    const confirmationId = bookResult.data.confirmation_id || `REG-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    
+    console.log(`[AUTOMATE-PROVIDER] Automation completed successfully for ${provider.name}. Confirmation: ${confirmationId}`);
     
     return {
       success: true,
       provider_confirmation_id: confirmationId,
       details: {
         provider_name: provider.name,
-        automation_type: "browserbase_api",
-        browser_session_id: browserSessionId,
+        automation_type: "generic_browser",
         timestamp: new Date().toISOString(),
-        form_fields_filled: Object.keys(formResult.filledFields || {}),
-        navigation_url: provider.site_url
+        confirmation_id: confirmationId,
+        session_url: sessionUrl
       }
     };
 
   } catch (error) {
-    console.error(`[AUTOMATE-PROVIDER] Automation failed for ${provider.name}:`, error);
-    
-    // Cleanup browser session on error
-    if (browserSessionId) {
-      try {
-        await fetch(`https://api.browserbase.com/v1/sessions/${browserSessionId}`, {
-          method: 'DELETE',
-          headers: { 'X-BB-API-Key': browserbaseApiKey },
-        });
-      } catch (cleanupError) {
-        console.warn(`[AUTOMATE-PROVIDER] Failed to cleanup session:`, cleanupError);
-      }
-    }
+    console.error(`[AUTOMATE-PROVIDER] Generic automation failed for ${provider.name}:`, error);
     
     return {
       success: false,
       error: error.message,
       details: {
         provider_name: provider.name,
-        automation_type: "browserbase_api",
-        browser_session_id: browserSessionId,
+        automation_type: "generic_browser",
         timestamp: new Date().toISOString(),
-        error_stage: error.stage || 'unknown'
+        error_stage: 'automation_workflow'
       }
-    };
-  } finally {
-    // Always cleanup browser session
-    if (browserSessionId) {
-      try {
-        await fetch(`https://api.browserbase.com/v1/sessions/${browserSessionId}`, {
-          method: 'DELETE',
-          headers: { 'X-BB-API-Key': browserbaseApiKey },
-        });
-        console.log(`[AUTOMATE-PROVIDER] Browser session ${browserSessionId} cleaned up`);
-      } catch (cleanupError) {
-        console.warn(`[AUTOMATE-PROVIDER] Session cleanup warning:`, cleanupError);
-      }
-    }
-  }
-}
-
-// Navigate to provider registration page
-async function navigateToProvider(apiKey: string, sessionId: string, url: string): Promise<void> {
-  // Note: Browserbase navigation typically happens via WebSocket CDP
-  // For HTTP API integration, we would use the connect URL with CDP commands
-  // This is a simplified representation - real implementation would use WebSocket
-  console.log(`[AUTOMATE-PROVIDER] Navigation to ${url} (WebSocket CDP would handle actual navigation)`);
-  
-  // Simulate navigation delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-}
-
-// Fill registration form using Browserbase API
-async function fillRegistrationForm(
-  apiKey: string, 
-  sessionId: string, 
-  formData: any
-): Promise<{ success: boolean; filledFields: any; errors: string[] }> {
-  const filledFields: any = {};
-  const errors: string[] = [];
-
-  console.log(`[AUTOMATE-PROVIDER] Starting form filling process...`);
-
-  // Note: Real Browserbase form filling would use WebSocket CDP commands
-  // HTTP API endpoints for element interaction are limited
-  // This represents the structure that would be used with CDP
-
-  try {
-    // Simulate finding and filling each field
-    for (const [fieldType, value] of Object.entries(formData)) {
-      const possibleSelectors = fieldMappings[fieldType as keyof typeof fieldMappings] || [fieldType];
-      
-      console.log(`[AUTOMATE-PROVIDER] Filling ${fieldType} with possible selectors:`, possibleSelectors);
-      
-      // In real implementation, this would:
-      // 1. Find elements using CDP Runtime.evaluate
-      // 2. Fill values using CDP Input.insertText
-      // 3. Trigger events using CDP Runtime.evaluate
-      
-      // Simulate successful field filling
-      filledFields[fieldType] = {
-        value,
-        selector: possibleSelectors[0],
-        filled: true,
-        method: 'browserbase_cdp_simulation'
-      };
-      
-      // Add small delay between field fills
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    console.log(`[AUTOMATE-PROVIDER] Form filling completed. Fields filled:`, Object.keys(filledFields));
-    
-    return {
-      success: true,
-      filledFields,
-      errors
-    };
-
-  } catch (error) {
-    console.error(`[AUTOMATE-PROVIDER] Form filling failed:`, error);
-    errors.push(error.message);
-    
-    return {
-      success: false,
-      filledFields,
-      errors
     };
   }
 }
 
-// Submit registration form and capture confirmation
-async function submitRegistrationForm(apiKey: string, sessionId: string): Promise<string> {
-  console.log(`[AUTOMATE-PROVIDER] Submitting registration form...`);
-  
-  // Note: Real implementation would:
-  // 1. Find submit button using CDP
-  // 2. Click submit using CDP Input.dispatchMouseEvent
-  // 3. Wait for navigation/confirmation using CDP
-  // 4. Extract confirmation details using CDP Runtime.evaluate
-  
-  // Simulate form submission delay
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  
-  // Generate realistic confirmation ID
-  const confirmationId = `REG-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-  
-  console.log(`[AUTOMATE-PROVIDER] Registration submitted. Confirmation ID: ${confirmationId}`);
-  
-  return confirmationId;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -334,25 +317,40 @@ serve(async (req) => {
 
     // Run provider automation
     const result = await automateProviderRegistration(
+      admin,
       provider,
       registration,
       session,
       body.child_data
     );
 
-    // Update registration with provider confirmation if successful
+    // Handle automation results
     if (result.success && result.provider_confirmation_id) {
+      // Update registration to completed with confirmation
       const { error: updateErr } = await admin
         .from('registrations')
         .update({ 
+          status: 'completed',
           provider_confirmation_id: result.provider_confirmation_id,
-          // Could add automation_details JSON field in future
+          completed_at: new Date().toISOString(),
+          notes: 'Completed via generic browser automation'
         })
         .eq('id', registration.id);
       
       if (updateErr) {
-        console.error(`[AUTOMATE-PROVIDER] Failed to update registration with confirmation ID:`, updateErr);
+        console.error(`[AUTOMATE-PROVIDER] Failed to update registration to completed:`, updateErr);
       }
+    } else if (result.details?.needs_user_action) {
+      // Registration is already updated to 'waiting_for_user' in the automation function
+      console.log(`[AUTOMATE-PROVIDER] Registration ${registration.id} is waiting for user action`);
+    } else {
+      // Automation failed - optionally implement retry logic here
+      console.error(`[AUTOMATE-PROVIDER] Automation failed for registration ${registration.id}:`, result.error);
+      
+      // Could implement retry logic:
+      // - Check retry count in registration metadata
+      // - Schedule retry if under limit
+      // - Mark as failed if retry limit exceeded
     }
 
     console.log(`[AUTOMATE-PROVIDER] Automation ${result.success ? 'succeeded' : 'failed'} for registration ${body.registration_id}`);
