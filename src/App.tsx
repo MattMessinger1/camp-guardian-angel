@@ -15,6 +15,7 @@ import Settings from "./pages/Settings";
 import BillingSetupSuccess from "./pages/BillingSetupSuccess";
 import BillingSetupCancelled from "./pages/BillingSetupCancelled";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import ReadyToSignup from "./pages/ReadyToSignup";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -107,8 +108,12 @@ export default function App() {
                   <Settings />
                 </ProtectedRoute>
               } />
-              <Route path="/sessions/:sessionId/signup-submitted" element={<SignupSubmitted />} />
-              <Route path="/account-history" element={<AccountHistory />} />
+               <Route path="/sessions/:sessionId/signup-submitted" element={<SignupSubmitted />} />
+               <Route path="/account-history" element={<AccountHistory />} />
+               
+               {/* Readiness Routes - Always Available */}
+               <Route path="/ready-to-signup/:sessionId" element={<ReadyToSignup />} />
+               <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
               
               {/* Payment Routes - Always Available */}
               <Route path="/billing/success" element={<BillingSetupSuccess />} />
@@ -196,8 +201,7 @@ export default function App() {
                   <Route path="/readiness" element={<DevPages.Readiness />} />
                   <Route path="/test-debug" element={<DevPages.TestDebug />} />
                   <Route path="/working-test" element={<DevPages.WorkingTest />} />
-                  <Route path="/ready-to-signup" element={<DevPages.ReadyToSignup />} />
-                  <Route path="/sessions/:sessionId/ready-to-signup" element={<DevPages.ReadyToSignup />} />
+                   <Route path="/ready-to-signup" element={<DevPages.ReadyToSignup />} />
                   <Route path="/pending-signups" element={<DevPages.PendingSignups />} />
                   <Route path="/approve" element={<DevPages.ApprovePage />} />
                   <Route path="/operations" element={<DevPages.Operations />} />
