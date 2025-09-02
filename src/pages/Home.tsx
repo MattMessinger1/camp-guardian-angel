@@ -209,39 +209,27 @@ const HomePage = () => {
 
     console.log('📅 Registration with session data:', sessionData);
     
-    // Check if this is an internet result
-    if (result.id?.startsWith('internet-') || result.id?.startsWith('perplexity-')) {
-      // Navigate to enhanced signup page with complete session data AND intelligence data
-      const searchParams = new URLSearchParams({
-        sessionId: result.id || 'internet-unknown',
-        businessName: sessionData.businessName || '',
-        location: sessionData.location || '',
-        selectedDate: sessionData.selectedDate || '',
-        selectedTime: sessionData.selectedTime || '',
-        signupCost: sessionData.signupCost?.toString() || '',
-        totalCost: sessionData.totalCost?.toString() || '',
-        // Add barrier intelligence data to prevent crashes
-        predictedBarriers: JSON.stringify(result.predicted_barriers || []),
-        credentialRequirements: JSON.stringify(result.credential_requirements || []),
-        complexityScore: result.complexity_score?.toString() || '0.5',
-        workflowEstimate: result.workflow_estimate?.toString() || '10',
-        providerPlatform: result.provider_platform || 'custom',
-        expectedInterventionPoints: JSON.stringify(result.expected_intervention_points || []),
-        formComplexitySignals: JSON.stringify(result.form_complexity_signals || [])
-      });
-      navigate(`/enhanced-signup?${searchParams.toString()}`);
-    } else {
-      // Regular database result - navigate to signup page with session data
-      const searchParams = new URLSearchParams({
-        sessionId: result.id || result.session_id || 'unknown',
-        selectedDate: sessionData.selectedDate || '',
-        selectedTime: sessionData.selectedTime || '',
-        businessName: sessionData.businessName || '',
-        signupCost: sessionData.signupCost?.toString() || '',
-        totalCost: sessionData.totalCost?.toString() || ''
-      });
-      navigate(`/signup?${searchParams.toString()}`);
-    }
+    // Navigate to readiness flow first for all results - this ensures proper workflow
+    const searchParams = new URLSearchParams({
+      sessionId: result.id || result.session_id || 'unknown',
+      businessName: sessionData.businessName || '',
+      location: sessionData.location || '',
+      selectedDate: sessionData.selectedDate || '',
+      selectedTime: sessionData.selectedTime || '',
+      signupCost: sessionData.signupCost?.toString() || '',
+      totalCost: sessionData.totalCost?.toString() || '',
+      // Store intelligence data for enhanced workflow after readiness
+      predictedBarriers: JSON.stringify(result.predicted_barriers || []),
+      credentialRequirements: JSON.stringify(result.credential_requirements || []),
+      complexityScore: result.complexity_score?.toString() || '0.5',
+      workflowEstimate: result.workflow_estimate?.toString() || '10',
+      providerPlatform: result.provider_platform || 'custom',
+      expectedInterventionPoints: JSON.stringify(result.expected_intervention_points || []),
+      formComplexitySignals: JSON.stringify(result.form_complexity_signals || [])
+    });
+    
+    // Always go through readiness flow first - proper workflow
+    navigate(`/ready-to-signup/${result.id || result.session_id || 'unknown'}?${searchParams.toString()}`)
   };
 
   useEffect(() => {

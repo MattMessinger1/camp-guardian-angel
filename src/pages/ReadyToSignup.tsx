@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,12 +7,17 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { getTestScenario } from '@/lib/test-scenarios';
 import { TestCampSwitcher } from '@/components/TestCampSwitcher';
-import { AlertCircle, Clock, CheckCircle } from 'lucide-react';
+import { AlertCircle, Clock, CheckCircle, ArrowRight, User, CreditCard, FileText } from 'lucide-react';
+import { useSimpleReadiness } from '@/hooks/useSimpleReadiness';
+import { useAuth } from '@/contexts/AuthContext';
+import { Progress } from '@/components/ui/progress';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const sessionId = params.id || params.sessionId;
 
   const [sessionData, setSessionData] = useState<any>(null);
@@ -20,6 +25,9 @@ export default function ReadyToSignup() {
   const [error, setError] = useState<string | null>(null);
   const [signupTime, setSignupTime] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Get readiness assessment
+  const { assessment, isLoading: assessmentLoading } = useSimpleReadiness(sessionData);
 
   // Load session data
   useEffect(() => {
@@ -209,22 +217,142 @@ export default function ReadyToSignup() {
           </CardContent>
         </Card>
 
-        {/* Readiness Summary */}
-        {hasSignupTime && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center space-y-4">
-                <h3 className="text-lg font-semibold">Registration Readiness</h3>
-                <div className="flex items-center justify-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span className="text-green-600 font-medium">Ready to Sign Up!</span>
+        {/* Readiness Assessment */}
+        {hasSignupTime && assessment && !assessmentLoading && (
+          <>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2">Registration Readiness</h3>
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-primary">{assessment.readinessScore}%</span>
+                      </div>
+                    </div>
+                    <Progress value={assessment.readinessScore} className="max-w-xs mx-auto mb-4" />
+                    <div className="flex items-center justify-center gap-2">
+                      {assessment.overallStatus === 'ready' ? (
+                        <>
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                          <span className="text-green-600 font-medium">Ready to Sign Up!</span>
+                        </>
+                      ) : assessment.overallStatus === 'needs_preparation' ? (
+                        <>
+                          <Clock className="w-5 h-5 text-yellow-500" />
+                          <span className="text-yellow-600 font-medium">Almost Ready</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-5 h-5 text-red-500" />
+                          <span className="text-red-600 font-medium">Setup Required</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Readiness Checklist */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-center">Setup Checklist</h4>
+                    {assessment.checklist.map((item, index) => (
+                      <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                        <div className="flex-shrink-0 mt-0.5">
+                          {item.status === 'complete' ? (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          ) : item.status === 'needs_attention' ? (
+                            <AlertCircle className="w-4 h-4 text-yellow-500" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{item.item}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              item.priority === 'high' ? 'bg-red-100 text-red-700' :
+                              item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>
+                              {item.priority}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Recommendations */}
+                  {assessment.recommendations.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-center">Recommendations</h4>
+                      {assessment.recommendations.map((rec, index) => (
+                        <div key={index} className={`p-3 rounded-lg border ${
+                          rec.type === 'action' ? 'border-blue-200 bg-blue-50' :
+                          rec.type === 'warning' ? 'border-yellow-200 bg-yellow-50' :
+                          'border-gray-200 bg-gray-50'
+                        }`}>
+                          <div className="flex items-start gap-2">
+                            <div className="font-medium text-sm">{rec.title}</div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              rec.timeframe === 'immediate' ? 'bg-red-100 text-red-700' :
+                              rec.timeframe === 'before_signup' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>
+                              {rec.timeframe}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{rec.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Action Button */}
+                  <div className="text-center pt-4">
+                    {assessment.signupReadiness.canSignupNow ? (
+                      <Button 
+                        onClick={() => {
+                          // Navigate to enhanced signup with all the stored parameters
+                          const enhancedParams = new URLSearchParams({
+                            sessionId: sessionId || '',
+                            businessName: searchParams.get('businessName') || '',
+                            location: searchParams.get('location') || '',
+                            selectedDate: searchParams.get('selectedDate') || '',
+                            selectedTime: searchParams.get('selectedTime') || '',
+                            signupCost: searchParams.get('signupCost') || '',
+                            totalCost: searchParams.get('totalCost') || '',
+                            predictedBarriers: searchParams.get('predictedBarriers') || '[]',
+                            credentialRequirements: searchParams.get('credentialRequirements') || '[]',
+                            complexityScore: searchParams.get('complexityScore') || '0.5',
+                            workflowEstimate: searchParams.get('workflowEstimate') || '10',
+                            providerPlatform: searchParams.get('providerPlatform') || 'custom',
+                            expectedInterventionPoints: searchParams.get('expectedInterventionPoints') || '[]',
+                            formComplexitySignals: searchParams.get('formComplexitySignals') || '[]'
+                          });
+                          navigate(`/enhanced-signup?${enhancedParams.toString()}`);
+                        }}
+                        size="lg" 
+                        className="w-full max-w-sm"
+                      >
+                        Proceed to Enhanced Signup
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Complete the items above to enable signup automation
+                        </p>
+                        <Button variant="outline" size="lg" className="w-full max-w-sm">
+                          Complete Setup Requirements
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  All requirements met. You can proceed with registration.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </>
         )}
 
         {/* Debug Info */}
