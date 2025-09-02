@@ -58,7 +58,7 @@ export default function PaymentSuccess() {
       if (!user) return; // must be authenticated for setup session
       try {
         setOpening(true);
-        const { data, error } = await supabase.functions.invoke("create-setup-session", { body: {} });
+        const { data, error } = await supabase.functions.invoke("create-payment-setup", { body: {} });
         setOpening(false);
         if (error) return;
         if (data?.url) {
@@ -75,7 +75,7 @@ export default function PaymentSuccess() {
     if (!user) return;
     try {
       setOpening(true);
-      const { data, error } = await supabase.functions.invoke("create-setup-session", { body: {} });
+      const { data, error } = await supabase.functions.invoke("create-payment-setup", { body: {} });
       setOpening(false);
       if (error) return;
       if (data?.url) {
