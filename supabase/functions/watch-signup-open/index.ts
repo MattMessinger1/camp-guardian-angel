@@ -491,3 +491,237 @@ async function createImmediateRegistrations(supabase: any, plan: RegistrationPla
       });
   }
 }
+
+// Extract registration times from page content
+function extractRegistrationTimes(content: string, timezone: string = 'America/Chicago'): TimeExtractionResult {
+  if (!content) {
+    return { extractedTime: null, confidence: 0, matchedText: '', pattern: '' };
+  }
+
+  const lowerContent = content.toLowerCase();
+  const results: Array<{ time: Date, confidence: number, text: string, pattern: string }> = [];
+
+  // Pattern 1: "opens on [date] at [time]"
+  const opensOnAtPattern = /opens\s+on\s+([^,\s]+(?:\s+\d{1,2})?,?\s+\d{4})\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?)/gi;
+  let match;
+  while ((match = opensOnAtPattern.exec(content)) !== null) {
+    const dateStr = match[1].trim();
+    const timeStr = match[2].trim();
+    const parsedTime = parseDateTime(dateStr, timeStr, timezone);
+    if (parsedTime) {
+      results.push({
+        time: parsedTime,
+        confidence: 0.9,
+        text: match[0],
+        pattern: 'opens_on_at'
+      });
+    }
+  }
+
+  // Pattern 2: "opens at [time] [date]"
+  const opensAtPattern = /opens\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?)\s+(?:on\s+)?([^,\s]+(?:\s+\d{1,2})?,?\s+\d{4})/gi;
+  while ((match = opensAtPattern.exec(content)) !== null) {
+    const timeStr = match[1].trim();
+    const dateStr = match[2].trim();
+    const parsedTime = parseDateTime(dateStr, timeStr, timezone);
+    if (parsedTime) {
+      results.push({
+        time: parsedTime,
+        confidence: 0.9,
+        text: match[0],
+        pattern: 'opens_at'
+      });
+    }
+  }
+
+  // Pattern 3: "registration begins [date/time]"
+  const regBeginsPattern = /registration\s+begins\s+([^,\s]+(?:\s+\d{1,2})?,?\s+\d{4})(?:\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?))?/gi;
+  while ((match = regBeginsPattern.exec(content)) !== null) {
+    const dateStr = match[1].trim();
+    const timeStr = match[2] ? match[2].trim() : '9:00 AM';
+    const parsedTime = parseDateTime(dateStr, timeStr, timezone);
+    if (parsedTime) {
+      results.push({
+        time: parsedTime,
+        confidence: match[2] ? 0.85 : 0.6, // Higher confidence if time included
+        text: match[0],
+        pattern: 'registration_begins'
+      });
+    }
+  }
+
+  // Pattern 4: "available starting [date/time]"
+  const availableStartingPattern = /available\s+starting\s+([^,\s]+(?:\s+\d{1,2})?,?\s+\d{4})(?:\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?))?/gi;
+  while ((match = availableStartingPattern.exec(content)) !== null) {
+    const dateStr = match[1].trim();
+    const timeStr = match[2] ? match[2].trim() : '9:00 AM';
+    const parsedTime = parseDateTime(dateStr, timeStr, timezone);
+    if (parsedTime) {
+      results.push({
+        time: parsedTime,
+        confidence: match[2] ? 0.8 : 0.55,
+        text: match[0],
+        pattern: 'available_starting'
+      });
+    }
+  }
+
+  // Pattern 5: "registration starts [date/time]"
+  const regStartsPattern = /registration\s+starts\s+([^,\s]+(?:\s+\d{1,2})?,?\s+\d{4})(?:\s+at\s+(\d{1,2}:\d{2}\s*(?:am|pm)?))?/gi;
+  while ((match = regStartsPattern.exec(content)) !== null) {
+    const dateStr = match[1].trim();
+    const timeStr = match[2] ? match[2].trim() : '9:00 AM';
+    const parsedTime = parseDateTime(dateStr, timeStr, timezone);
+    if (parsedTime) {
+      results.push({
+        time: parsedTime,
+        confidence: match[2] ? 0.85 : 0.6,
+        text: match[0],
+        pattern: 'registration_starts'
+      });
+    }
+  }
+
+  // Return the highest confidence result
+  if (results.length === 0) {
+    return { extractedTime: null, confidence: 0, matchedText: '', pattern: '' };
+  }
+
+  const bestResult = results.reduce((best, current) => 
+    current.confidence > best.confidence ? current : best
+  );
+
+  return {
+    extractedTime: bestResult.time,
+    confidence: bestResult.confidence,
+    matchedText: bestResult.text,
+    pattern: bestResult.pattern
+  };
+}
+
+// Parse date and time strings into a Date object
+function parseDateTime(dateStr: string, timeStr: string, timezone: string): Date | null {
+  try {
+    // Clean up the date string
+    const cleanDateStr = dateStr.replace(/,/g, '').trim();
+    
+    // Try to parse common date formats
+    let parsedDate: Date | null = null;
+    
+    // Format: "March 1, 2025" or "March 1 2025"
+    const monthDayYearMatch = cleanDateStr.match(/([a-z]+)\s+(\d{1,2})\s+(\d{4})/i);
+    if (monthDayYearMatch) {
+      const monthName = monthDayYearMatch[1];
+      const day = parseInt(monthDayYearMatch[2]);
+      const year = parseInt(monthDayYearMatch[3]);
+      
+      const monthMap: { [key: string]: number } = {
+        january: 0, jan: 0, february: 1, feb: 1, march: 2, mar: 2,
+        april: 3, apr: 3, may: 4, june: 5, jun: 5, july: 6, jul: 6,
+        august: 7, aug: 7, september: 8, sep: 8, october: 9, oct: 9,
+        november: 10, nov: 10, december: 11, dec: 11
+      };
+      
+      const month = monthMap[monthName.toLowerCase()];
+      if (month !== undefined) {
+        parsedDate = new Date(year, month, day);
+      }
+    }
+    
+    // Format: "1/15/2025" or "01/15/2025"
+    const numericDateMatch = cleanDateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!parsedDate && numericDateMatch) {
+      const month = parseInt(numericDateMatch[1]) - 1; // 0-indexed
+      const day = parseInt(numericDateMatch[2]);
+      const year = parseInt(numericDateMatch[3]);
+      parsedDate = new Date(year, month, day);
+    }
+
+    if (!parsedDate) return null;
+
+    // Parse time
+    let hours = 9; // Default to 9 AM
+    let minutes = 0;
+    
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+    if (timeMatch) {
+      hours = parseInt(timeMatch[1]);
+      minutes = parseInt(timeMatch[2]);
+      const ampm = timeMatch[3]?.toLowerCase();
+      
+      if (ampm === 'pm' && hours !== 12) {
+        hours += 12;
+      } else if (ampm === 'am' && hours === 12) {
+        hours = 0;
+      }
+    }
+
+    // Combine date and time
+    const result = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate(), hours, minutes);
+    
+    // Basic validation - must be in the future and reasonable
+    const now = new Date();
+    const oneYearFromNow = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+    
+    if (result > now && result < oneYearFromNow) {
+      return result;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing date/time:', error);
+    return null;
+  }
+}
+
+// Update registration times in database
+async function updateRegistrationTimes(
+  supabase: any,
+  plan: RegistrationPlan,
+  timeExtraction: TimeExtractionResult
+): Promise<void> {
+  if (!timeExtraction.extractedTime) return;
+
+  try {
+    const isoTime = timeExtraction.extractedTime.toISOString();
+    
+    // Update the plan's manual_open_at
+    const { error: planError } = await supabase
+      .from('registration_plans')
+      .update({ manual_open_at: isoTime })
+      .eq('id', plan.id);
+
+    if (planError) {
+      console.error('Error updating plan open time:', planError);
+    } else {
+      console.log(`[WATCH-SIGNUP-OPEN] Updated plan ${plan.id} manual_open_at to ${isoTime}`);
+    }
+
+    // Get sessions for this plan and update their registration_open_at
+    const { data: childMappings } = await supabase
+      .from('plan_children_map')
+      .select('session_ids')
+      .eq('plan_id', plan.id);
+
+    if (childMappings && childMappings.length > 0) {
+      const allSessionIds = childMappings.flatMap((mapping: any) => mapping.session_ids);
+      const uniqueSessionIds = [...new Set(allSessionIds)];
+
+      if (uniqueSessionIds.length > 0) {
+        const { error: sessionError } = await supabase
+          .from('sessions')
+          .update({ registration_open_at: isoTime })
+          .in('id', uniqueSessionIds);
+
+        if (sessionError) {
+          console.error('Error updating session open times:', sessionError);
+        } else {
+          console.log(`[WATCH-SIGNUP-OPEN] Updated ${uniqueSessionIds.length} sessions with registration_open_at: ${isoTime}`);
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error('Error updating registration times:', error);
+  }
+}
