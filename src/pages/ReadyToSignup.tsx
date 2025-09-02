@@ -15,6 +15,7 @@ import { ParentContactSection } from '@/components/registration/ParentContactSec
 import { ChildInfoSection } from '@/components/registration/ChildInfoSection';
 import { PaymentSection } from '@/components/registration/PaymentSection';
 import { ProviderAccountCreation } from '@/components/ProviderAccountCreation';
+import { ExtractedTimeDisplay } from '@/components/ExtractedTimeDisplay';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -311,40 +312,58 @@ export default function ReadyToSignup() {
         {/* Step-by-Step Preparation */}
         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Step 1: Set Registration Time</h3>
-                <p className="text-muted-foreground">When does registration open for this session?</p>
-              </div>
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-2">Step 1: Set Registration Time</h3>
+                  <p className="text-muted-foreground">When does registration open for this session?</p>
+                </div>
 
-              {hasSignupTime ? (
-                <div className="text-center space-y-2">
-                  <div className="flex items-center justify-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                    <span className="text-lg font-semibold text-green-600">TIME SET</span>
+                {hasSignupTime ? (
+                  <div className="text-center space-y-2">
+                    <div className="flex items-center justify-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <span className="text-lg font-semibold text-green-600">TIME SET</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Registration opens: {signupDate?.toLocaleString()}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Registration opens: {signupDate?.toLocaleString()}
-                  </p>
-                </div>
-              ) : (
-                <div className="max-w-md mx-auto space-y-3">
-                  <Input
-                    type="datetime-local"
-                    value={signupTime}
-                    onChange={(e) => setSignupTime(e.target.value)}
-                    min={new Date().toISOString().slice(0, 16)}
-                  />
-                  <Button 
-                    onClick={handleSetSignupTime}
-                    disabled={!signupTime || isUpdating}
-                    className="w-full"
-                  >
-                    {isUpdating ? 'Setting...' : 'Set Registration Time'}
-                  </Button>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Extracted Time Display */}
+                    <ExtractedTimeDisplay 
+                      sessionId={sessionId || ''} 
+                      onTimeExtracted={(time) => {
+                        setSignupTime(time);
+                        handleSetSignupTime();
+                      }}
+                    />
+
+                    {/* Manual Time Setting */}
+                    <div className="max-w-md mx-auto space-y-3">
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Not detecting the right time? Set it manually
+                        </p>
+                      </div>
+                      <Input
+                        type="datetime-local"
+                        value={signupTime}
+                        onChange={(e) => setSignupTime(e.target.value)}
+                        min={new Date().toISOString().slice(0, 16)}
+                      />
+                      <Button 
+                        onClick={handleSetSignupTime}
+                        disabled={!signupTime || isUpdating}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        {isUpdating ? 'Setting...' : 'Set Registration Time Manually'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
           </CardContent>
         </Card>
 
