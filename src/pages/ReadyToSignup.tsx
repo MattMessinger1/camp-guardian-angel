@@ -221,11 +221,14 @@ export default function ReadyToSignup() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <h1 className="text-2xl font-bold">Ready to Sign Up</h1>
+              <h1 className="text-2xl font-bold">Signup Preparation</h1>
               <div className="space-y-2">
                 <h2 className="text-xl">{sessionData.activities?.name || 'Unknown Activity'}</h2>
                 <p className="text-muted-foreground">
                   {sessionData.activities?.city}, {sessionData.activities?.state}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Complete the steps below to get ready for registration
                 </p>
               </div>
             </div>
@@ -235,17 +238,18 @@ export default function ReadyToSignup() {
         {/* Test Scenario Switcher */}
         <TestCampSwitcher className="mb-6" />
 
-        {/* Signup Time Status */}
+
+        {/* Step-by-Step Preparation */}
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-2">
-                <Clock className="w-5 h-5 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">SIGNUP TIME</span>
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-2">Step 1: Set Registration Time</h3>
+                <p className="text-muted-foreground">When does registration open for this session?</p>
               </div>
-              
+
               {hasSignupTime ? (
-                <div className="space-y-2">
+                <div className="text-center space-y-2">
                   <div className="flex items-center justify-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-500" />
                     <span className="text-lg font-semibold text-green-600">TIME SET</span>
@@ -253,49 +257,36 @@ export default function ReadyToSignup() {
                   <p className="text-sm text-muted-foreground">
                     Registration opens: {signupDate?.toLocaleString()}
                   </p>
-                  {isSignupOpen && (
-                    <p className="text-sm font-medium text-green-600">Registration is open now!</p>
-                  )}
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-yellow-500" />
-                    <span className="text-lg font-semibold text-yellow-600">TIME NOT SET</span>
-                  </div>
-                  
-                  <div className="max-w-md mx-auto space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Set Registration Time</label>
-                      <Input
-                        type="datetime-local"
-                        value={signupTime}
-                        onChange={(e) => setSignupTime(e.target.value)}
-                        min={new Date().toISOString().slice(0, 16)}
-                      />
-                    </div>
-                    <Button 
-                      onClick={handleSetSignupTime}
-                      disabled={!signupTime || isUpdating}
-                      className="w-full"
-                    >
-                      {isUpdating ? 'Setting...' : 'Set Registration Time'}
-                    </Button>
-                  </div>
+                <div className="max-w-md mx-auto space-y-3">
+                  <Input
+                    type="datetime-local"
+                    value={signupTime}
+                    onChange={(e) => setSignupTime(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                  />
+                  <Button 
+                    onClick={handleSetSignupTime}
+                    disabled={!signupTime || isUpdating}
+                    className="w-full"
+                  >
+                    {isUpdating ? 'Setting...' : 'Set Registration Time'}
+                  </Button>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* User Information Collection */}
+        {/* Information Collection - Only show after time is set */}
         {hasSignupTime && (
           <>
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-6">
                   <div className="text-center">
-                    <h3 className="text-lg font-semibold mb-2">Complete Your Information</h3>
+                    <h3 className="text-lg font-semibold mb-2">Step 2: Complete Your Information</h3>
                     <p className="text-muted-foreground">Provide the required details for registration</p>
                   </div>
 
@@ -349,14 +340,14 @@ export default function ReadyToSignup() {
           </>
         )}
 
-        {/* Readiness Assessment */}
+        {/* Readiness Assessment - Step 3 */}
         {hasSignupTime && assessment && !assessmentLoading && (
           <>
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-6">
                   <div className="text-center">
-                    <h3 className="text-lg font-semibold mb-2">Registration Readiness</h3>
+                    <h3 className="text-lg font-semibold mb-2">Step 3: Registration Readiness</h3>
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                         <span className="text-2xl font-bold text-primary">{assessment.readinessScore}%</span>
