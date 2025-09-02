@@ -50,7 +50,36 @@ export default function ReadyToSignup() {
           return;
         }
 
-        // Load from database
+        // Handle internet-generated session IDs
+        if (sessionId.startsWith('internet-')) {
+          console.log('🔍 Using internet session ID, creating mock data');
+          // Create session data from URL parameters
+          const businessName = searchParams.get('businessName') || 'Peloton Studio';
+          const location = searchParams.get('location') || 'NYC';
+          const signupCost = searchParams.get('signupCost') || '45';
+          const selectedDate = searchParams.get('selectedDate') || '2025-09-03';
+          const selectedTime = searchParams.get('selectedTime') || 'Evening (7:00 PM)';
+          
+          const mockSessionData = {
+            id: sessionId,
+            registration_open_at: null, // Will need to be set by user
+            platform: 'peloton',
+            activities: {
+              name: businessName,
+              city: location.split(',')[0] || location,
+              state: location.split(',')[1]?.trim() || 'NY'
+            },
+            price_min: parseInt(signupCost) || 45,
+            selected_date: selectedDate,
+            selected_time: selectedTime
+          };
+          
+          setSessionData(mockSessionData);
+          setLoading(false);
+          return;
+        }
+
+        // Load from database for real UUIDs
         const { data, error: dbError } = await supabase
           .from('sessions')
           .select('*, activities (name, city, state)')
@@ -58,6 +87,12 @@ export default function ReadyToSignup() {
           .maybeSingle();
 
         if (dbError) throw dbError;
+        
+        if (!data) {
+          setError('Session not found in database');
+          setLoading(false);
+          return;
+        }
         
         setSessionData(data);
         setLoading(false);
@@ -69,7 +104,7 @@ export default function ReadyToSignup() {
     }
 
     loadSession();
-  }, [sessionId]);
+  }, [sessionId, searchParams]);
 
   // Handle setting signup time
   const handleSetSignupTime = async () => {
@@ -79,6 +114,24 @@ export default function ReadyToSignup() {
       setIsUpdating(true);
       console.log('🔍 Setting signup time:', signupTime);
       
+      // For internet session IDs, just update local state
+      if (sessionId.startsWith('internet-')) {
+        // Update local state
+        setSessionData(prev => ({
+          ...prev,
+          registration_open_at: signupTime
+        }));
+        
+        toast({
+          title: "Signup time set!",
+          description: `Registration opens at ${new Date(signupTime).toLocaleString()}`,
+        });
+        
+        console.log('🔍 Successfully set signup time for internet session');
+        return;
+      }
+      
+      // For real database sessions, update the database
       const { error } = await supabase
         .from('sessions')
         .update({ registration_open_at: signupTime })
@@ -97,7 +150,7 @@ export default function ReadyToSignup() {
         description: `Registration opens at ${new Date(signupTime).toLocaleString()}`,
       });
       
-      console.log('🔍 Successfully updated signup time');
+      console.log('🔍 Successfully updated signup time in database');
     } catch (error) {
       console.error('🔍 Error setting signup time:', error);
       toast({
