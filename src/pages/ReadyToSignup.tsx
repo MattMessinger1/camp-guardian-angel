@@ -48,6 +48,19 @@ export default function ReadyToSignup() {
   const [providerStats, setProviderStats] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
+  
+  // Resy-specific state
+  const [resyCredentials, setResyCredentials] = useState({ email: '', password: '' });
+  const [resyLoginSuccess, setResyLoginSuccess] = useState(false);
+  const [isTestingLogin, setIsTestingLogin] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState({
+    date: '',
+    partySize: '2',
+    time1: '',
+    time2: '',
+    time3: ''
+  });
+  const [bookingOpensAt, setBookingOpensAt] = useState<Date | null>(null);
 
   // Auto-analyze for plans without registration time
   useEffect(() => {
@@ -58,7 +71,22 @@ export default function ReadyToSignup() {
     
     console.log('🔍 Smart analysis starting for:', provider, url);
     
-    // Step 1: Check if it's a known provider - show verification step
+    // Step 1: Check if it's Resy/Carbone - use specific setup flow
+    if (provider === 'resy' || url.includes('resy.com')) {
+      console.log('🥂 Resy/Carbone detected - showing Resy setup');
+      
+      setAnalysis({
+        provider: 'resy',
+        loginRequired: true,
+        confidence: 0.95,
+        knownProvider: true
+      });
+      
+      setStage('resy_setup');
+      return;
+    }
+    
+    // Step 2: Check other known providers - show verification step
     if (['peloton', 'soulcycle', 'barrys', 'equinox', 'corepower', 'orangetheory'].includes(provider)) {
       console.log('✅ Known provider detected:', provider, '- showing verification');
       
@@ -380,6 +408,97 @@ export default function ReadyToSignup() {
     }
   };
 
+  // Test Resy login function
+  const testResyLogin = async () => {
+    setIsTestingLogin(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('browser-automation', {
+        body: {
+          action: 'test_resy_login',
+          credentials: resyCredentials
+        }
+      });
+      
+      if (data?.success) {
+        setResyLoginSuccess(true);
+        toast({
+          title: "Success!",
+          description: "✅ Resy login works! Payment method found.",
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: "Check your credentials and try again",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Test login error:', error);
+      toast({
+        title: "Login failed",
+        description: "Could not test login - try again",
+        variant: "destructive"
+      });
+    }
+    
+    setIsTestingLogin(false);
+  };
+
+  // Arm Resy booking function
+  const armResyBooking = async () => {
+    if (!user || !bookingOpensAt) return;
+    
+    try {
+      // Save credentials (will be encrypted by edge function)
+      await supabase.from('provider_credentials').upsert({
+        user_id: user.id,
+        provider_domain: 'resy.com',
+        username: resyCredentials.email,
+        password_encrypted: resyCredentials.password
+      });
+      
+      // Create booking plan
+      const { data: plan } = await supabase.from('registration_plans').insert({
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        provider_url: 'https://resy.com/cities/ny/carbone',
+        provider_name: 'carbone_resy',
+        manual_open_at: bookingOpensAt.toISOString(),
+        booking_details: {
+          restaurant: 'Carbone',
+          date: bookingDetails.date,
+          partySize: bookingDetails.partySize,
+          preferredTimes: [bookingDetails.time1, bookingDetails.time2, bookingDetails.time3]
+        },
+        status: 'armed'
+      }).select().single();
+      
+      // Schedule the execution
+      await supabase.functions.invoke('arm-signup', {
+        body: {
+          planId: plan.id,
+          executeAt: bookingOpensAt.toISOString(),
+          prewarmAt: new Date(bookingOpensAt.getTime() - 5*60000).toISOString()
+        }
+      });
+      
+      toast({
+        title: "🎯 ARMED!",
+        description: "Will book Carbone at exactly 10:00:00 AM",
+      });
+      navigate('/pending-signups');
+      
+    } catch (error) {
+      console.error('Arm booking error:', error);
+      toast({
+        title: "Setup failed",
+        description: "Could not arm booking - please try again",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Save and activate the registration plan
   const saveAndActivate = async () => {
     if (!user || !registrationTime) {
@@ -519,6 +638,137 @@ export default function ReadyToSignup() {
         </Card>
       )}
       
+      {stage === 'resy_setup' && (
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Carbone via Resy Setup</h2>
+          
+          {/* Step 1: Resy Account */}
+          <div className="space-y-4">
+            <Alert className="bg-primary/5 border-primary/20">
+              <p className="font-medium">First: Set up your Resy account</p>
+              <ol className="text-sm mt-2 space-y-1">
+                <li>1. Create account at resy.com</li>
+                <li>2. Add and save a payment method</li>
+                <li>3. Verify it shows "Payment saved ✓"</li>
+              </ol>
+            </Alert>
+            
+            <div className="space-y-2">
+              <Input
+                type="email"
+                placeholder="Resy email"
+                value={resyCredentials.email}
+                onChange={(e) => setResyCredentials({...resyCredentials, email: e.target.value})}
+              />
+              <Input
+                type="password"
+                placeholder="Resy password"
+                value={resyCredentials.password}
+                onChange={(e) => setResyCredentials({...resyCredentials, password: e.target.value})}
+              />
+            </div>
+            
+            <Button
+              onClick={testResyLogin}
+              disabled={!resyCredentials.email || !resyCredentials.password || isTestingLogin}
+              className="w-full"
+            >
+              {isTestingLogin ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Testing Login...
+                </>
+              ) : (
+                'Test Resy Login'
+              )}
+            </Button>
+          </div>
+          
+          {/* Step 2: Booking Details */}
+          {resyLoginSuccess && (
+            <div className="space-y-4 mt-6 pt-6 border-t">
+              <h3 className="font-medium">Carbone Booking Details</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium block mb-1">Date (30+ days out)</label>
+                  <Input
+                    type="date"
+                    value={bookingDetails.date}
+                    min={new Date(Date.now() + 31*24*60*60*1000).toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      setBookingDetails({...bookingDetails, date: e.target.value});
+                      // Calculate when booking opens (30 days before at 10 AM)
+                      const opensAt = new Date(e.target.value);
+                      opensAt.setDate(opensAt.getDate() - 30);
+                      opensAt.setHours(10, 0, 0, 0);
+                      setBookingOpensAt(opensAt);
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium block mb-1">Party Size</label>
+                  <select 
+                    className="w-full p-2 border border-input rounded-md bg-background"
+                    value={bookingDetails.partySize}
+                    onChange={(e) => setBookingDetails({...bookingDetails, partySize: e.target.value})}
+                  >
+                    <option value="2">2 guests</option>
+                    <option value="4">4 guests</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium block mb-2">Preferred Times (will try all)</label>
+                <div className="space-y-2">
+                  <Input 
+                    placeholder="7:30 PM" 
+                    value={bookingDetails.time1} 
+                    onChange={(e) => setBookingDetails({...bookingDetails, time1: e.target.value})} 
+                  />
+                  <Input 
+                    placeholder="8:00 PM" 
+                    value={bookingDetails.time2}
+                    onChange={(e) => setBookingDetails({...bookingDetails, time2: e.target.value})} 
+                  />
+                  <Input 
+                    placeholder="9:00 PM" 
+                    value={bookingDetails.time3}
+                    onChange={(e) => setBookingDetails({...bookingDetails, time3: e.target.value})} 
+                  />
+                </div>
+              </div>
+              
+              {bookingOpensAt && (
+                <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                  <p className="font-medium">📅 Booking opens:</p>
+                  <p>{bookingOpensAt.toLocaleString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    timeZoneName: 'short'
+                  })}</p>
+                </Alert>
+              )}
+            </div>
+          )}
+          
+          {/* Step 3: Arm Automation */}
+          {resyLoginSuccess && bookingOpensAt && (
+            <Button
+              onClick={armResyBooking}
+              className="w-full mt-6 bg-foreground hover:bg-foreground/90 text-background"
+            >
+              🎯 ARM AUTO-BOOKING for {bookingOpensAt.toLocaleDateString()}
+            </Button>
+          )}
+        </Card>
+      )}
+
       {stage === 'verify_pattern' && (
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">
