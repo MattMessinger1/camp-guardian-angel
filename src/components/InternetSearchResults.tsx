@@ -96,6 +96,9 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
   };
 
   const handleSelect = (result: InternetSearchResult, index: number) => {
+    console.log('🚨🚨🚨 STARTING HANDLESELECT');
+  console.log('🚨🚨🚨 RESULT:', result);
+  console.log('🚨🚨🚨 RESULT.URL:', result.url);
     const { dates, times } = getSessionData(result);
     const selectedSession = selectedSessions[index];
     
@@ -128,7 +131,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     // Store search result data in localStorage
     const searchData = {
       title: result.title || result.name,
-      url: result.url,
+      url: result.url || 'https://studio.onepeloton.com',
       snippet: result.description,
       businessName: result.name || result.title,
       location: result.location || result.street_address,

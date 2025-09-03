@@ -223,7 +223,9 @@ const HomePage = () => {
       credentialRequirements: JSON.stringify(result.credential_requirements || []),
       complexityScore: result.complexity_score?.toString() || '0.5',
       workflowEstimate: result.workflow_estimate?.toString() || '10',
+      
       providerPlatform: result.provider_platform || 'custom',
+      url: result.url || 'https://studio.onepeloton.com',
       expectedInterventionPoints: JSON.stringify(result.expected_intervention_points || []),
       formComplexitySignals: JSON.stringify(result.form_complexity_signals || [])
     });
