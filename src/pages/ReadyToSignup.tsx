@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import ProviderInfo from '@/components/ProviderInfo';
 import { detectProvider } from '@/utils/providerDetection';
+import { useQuery } from '@tanstack/react-query';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -23,6 +24,27 @@ export default function ReadyToSignup() {
   // Check if this is an internet session
   const isInternetSession = sessionId?.startsWith('internet-');
 
+  // Skip database query for internet sessions
+  const skipPlanQuery = isInternetSession;
+
+  const { data: planData } = useQuery({
+    queryKey: ['registration-plan', sessionId],
+    queryFn: async () => {
+      if (skipPlanQuery) return null;
+      
+      // Load from database for real UUIDs
+      const { data, error: dbError } = await supabase
+        .from('sessions')
+        .select('*, activities (name, city, state)')
+        .eq('id', sessionId)
+        .maybeSingle();
+
+      if (dbError) throw dbError;
+      return data;
+    },
+    enabled: !skipPlanQuery && !!sessionId
+  });
+
   // Progressive flow stages
   const [stage, setStage] = useState('loading');
   const [analysis, setAnalysis] = useState<any>(null);
@@ -31,6 +53,13 @@ export default function ReadyToSignup() {
   const [browserSessionId, setBrowserSessionId] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
   const [providerStats, setProviderStats] = useState<any>(null);
+
+  // Auto-analyze for internet sessions
+  useEffect(() => {
+    if (isInternetSession && sessionData?.url) {
+      analyzeInitial(sessionData);
+    }
+  }, [isInternetSession, sessionData]);
 
   // Load session data and start analysis
   useEffect(() => {
@@ -103,29 +132,20 @@ export default function ReadyToSignup() {
           return;
         }
 
-        // Load from database for real UUIDs
-        const { data, error: dbError } = await supabase
-          .from('sessions')
-          .select('*, activities (name, city, state)')
-          .eq('id', sessionId)
-          .maybeSingle();
-
-        if (dbError) throw dbError;
-        
-        if (!data) {
+        // Handle real UUIDs from database
+        if (planData) {
+          setSessionData(planData);
+          
+          // Start analysis if URL available
+          if ((planData as any).signup_url || (planData as any).url) {
+            // Add url to data for analysis
+            const dataWithUrl = { ...planData, url: (planData as any).signup_url || (planData as any).url };
+            analyzeInitial(dataWithUrl);
+          } else {
+            setStage('manual_time');
+          }
+        } else if (!isInternetSession) {
           setStage('error');
-          return;
-        }
-        
-        setSessionData(data);
-        
-        // Start analysis if URL available
-        if ((data as any).signup_url || (data as any).url) {
-          // Add url to data for analysis
-          const dataWithUrl = { ...data, url: (data as any).signup_url || (data as any).url };
-          analyzeInitial(dataWithUrl);
-        } else {
-          setStage('manual_time');
         }
         
       } catch (err) {
@@ -135,7 +155,7 @@ export default function ReadyToSignup() {
     }
 
     loadSessionAndAnalyze();
-  }, [sessionId, searchParams]);
+  }, [sessionId, searchParams, planData]);
 
   // Main analysis function
   const analyzeInitial = async (sessionDataToAnalyze: any) => {
