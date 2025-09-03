@@ -240,6 +240,65 @@ async function automateProviderRegistration(
   }
 }
 
+// Helper function to track automation results
+async function trackAutomationResult(supabase: any, resultData: {
+  provider: string;
+  provider_id?: string;
+  registration_id?: string;
+  success: boolean;
+  login_required?: boolean;
+  captcha_encountered?: boolean;
+  time_to_complete?: number;
+  error_message?: string;
+  automation_type?: string;
+}) {
+  try {
+    await supabase.from('automation_results').insert({
+      provider: resultData.provider,
+      provider_id: resultData.provider_id,
+      registration_id: resultData.registration_id,
+      success: resultData.success,
+      login_required: resultData.login_required || false,
+      captcha_encountered: resultData.captcha_encountered || false,
+      time_to_complete: resultData.time_to_complete,
+      error_message: resultData.error_message,
+      automation_type: resultData.automation_type || 'generic_browser'
+    });
+    console.log(`[AUTOMATE-PROVIDER] Tracked automation result for ${resultData.provider}`);
+  } catch (error) {
+    console.error(`[AUTOMATE-PROVIDER] Failed to track automation result:`, error);
+    // Don't throw - tracking failure shouldn't break automation
+  }
+}
+
+// Helper function to get provider statistics
+export async function getProviderStats(supabase: any, provider: string) {
+  try {
+    const { data, error } = await supabase
+      .from('automation_results')
+      .select('success, captcha_encountered')
+      .eq('provider', provider)
+      .limit(10)
+      .order('created_at', { ascending: false });
+    
+    if (error || !data || data.length === 0) {
+      return { successRate: 0, captchaRate: 0, totalAttempts: 0 };
+    }
+    
+    const successRate = data.filter(d => d.success).length / data.length;
+    const captchaRate = data.filter(d => d.captcha_encountered).length / data.length;
+    
+    return { 
+      successRate: Math.round(successRate * 100), 
+      captchaRate: Math.round(captchaRate * 100),
+      totalAttempts: data.length 
+    };
+  } catch (error) {
+    console.error(`[AUTOMATE-PROVIDER] Failed to get provider stats:`, error);
+    return { successRate: 0, captchaRate: 0, totalAttempts: 0 };
+  }
+}
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -268,6 +327,9 @@ serve(async (req) => {
     }
 
     console.log(`[AUTOMATE-PROVIDER] Processing automation request for registration ${body.registration_id}`);
+    
+    // Track automation start time
+    const automationStartTime = Date.now();
 
     // Fetch registration details
     const { data: registration, error: regErr } = await admin
@@ -352,6 +414,20 @@ serve(async (req) => {
       // - Schedule retry if under limit
       // - Mark as failed if retry limit exceeded
     }
+
+    // Track automation results for learning
+    const completionTime = Date.now() - automationStartTime;
+    await trackAutomationResult(admin, {
+      provider: provider.name,
+      provider_id: provider.id,
+      registration_id: registration.id,
+      success: result.success,
+      login_required: result.details?.provider_name ? true : false, // Assume login was attempted if we got provider details
+      captcha_encountered: result.details?.needs_user_action || false,
+      time_to_complete: completionTime,
+      error_message: result.error,
+      automation_type: 'generic_browser'
+    });
 
     console.log(`[AUTOMATE-PROVIDER] Automation ${result.success ? 'succeeded' : 'failed'} for registration ${body.registration_id}`);
 

@@ -568,6 +568,48 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_results: {
+        Row: {
+          automation_type: string | null
+          captcha_encountered: boolean | null
+          created_at: string
+          error_message: string | null
+          id: string
+          login_required: boolean | null
+          provider: string
+          provider_id: string | null
+          registration_id: string | null
+          success: boolean
+          time_to_complete: number | null
+        }
+        Insert: {
+          automation_type?: string | null
+          captcha_encountered?: boolean | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          login_required?: boolean | null
+          provider: string
+          provider_id?: string | null
+          registration_id?: string | null
+          success: boolean
+          time_to_complete?: number | null
+        }
+        Update: {
+          automation_type?: string | null
+          captcha_encountered?: boolean | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          login_required?: boolean | null
+          provider?: string
+          provider_id?: string | null
+          registration_id?: string | null
+          success?: boolean
+          time_to_complete?: number | null
+        }
+        Relationships: []
+      }
       automation_rules: {
         Row: {
           action: string
