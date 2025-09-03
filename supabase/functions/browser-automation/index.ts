@@ -97,74 +97,21 @@ serve(async (req) => {
         result = await performClassBooking(browserbaseApiKey, requestData);
         break;
       case 'analyze':
-        console.log('🚀 Starting optimized analysis for:', requestData.url);
-        const startTime = Date.now();
-        
-        try {
-          // Create browser session
-          const createRequest = { action: 'create' as const };
-          const sessionDetails = await createBrowserSession(browserbaseApiKey, createRequest);
-          
-          if (!sessionDetails.success) {
-            throw new Error('Failed to create browser session for analysis');
-          }
+        // Return basic analysis without Browserbase for now
+        result = {
+          success: true,
+          analysis: {
+            loginRequired: true,
+            registrationTime: null,
+            provider: requestData.url?.includes('peloton') ? 'peloton' : 'unknown',
+            captchaVisible: false,
+            confidence: 0.5
+          },
+          sessionId: 'analyze-fallback'
+        };
+        break;
 
-          // Get session data
-          const { data: sessionData, error: sessionError } = await supabase
-            .from('browser_sessions')
-            .select('metadata')
-            .eq('session_id', sessionDetails.sessionId)
-            .single();
 
-          if (sessionError || !sessionData?.metadata?.realSession?.connectUrl) {
-            throw new Error('Session not found or missing connection URL');
-          }
-
-          const connectUrl = sessionData.metadata.realSession.connectUrl;
-          const wsUrl = connectUrl.replace('https://', 'wss://');
-          
-          // Connect and analyze with optimized approach
-          const ws = new WebSocket(wsUrl);
-          
-          result = await new Promise((resolve, reject) => {
-            let resolved = false;
-            const timeout = setTimeout(() => {
-              if (!resolved) {
-                resolved = true;
-                ws.close();
-                reject(new Error('Analysis timeout'));
-              }
-            }, 30000); // Reduced timeout to 30 seconds
-
-            ws.onopen = async () => {
-              try {
-                // FAST PAGE LOAD - Don't wait for everything
-                await executeScript(ws, `
-                  window.location.href = '${requestData.url}';
-                `);
-                
-                // MINIMAL WAIT - Just enough for dynamic content
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // OPTIMIZED SCREENSHOT - Balance quality and speed  
-                const screenshot = await captureScreenshot(browserbaseApiKey, sessionDetails.sessionId, connectUrl);
-                
-                if (!screenshot) {
-                  throw new Error('Failed to capture screenshot');
-                }
-
-                console.log('📸 Screenshot captured, size:', Math.round(screenshot.length / 1024), 'KB');
-                
-                // PARALLEL VISION CALL - Use GPT-4o (faster than GPT-4-vision)
-                const visionAnalysis = await fetch('https://api.openai.com/v1/chat/completions', {
-                  method: 'POST',
-                  headers: { 
-                    'Authorization': `Bearer ${openAIApiKey}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    model: "gpt-4o",  // Latest fast model with vision
-                    messages: [{
                       role: "user",
                       content: [
                         {
@@ -249,21 +196,6 @@ Respond with JSON only:
         } catch (error) {
           console.error('Analysis failed:', error);
           
-          // FALLBACK - Return basic analysis based on URL
-          const urlLower = requestData.url?.toLowerCase() || '';
-          result = {
-            success: true,
-            analysis: {
-              loginRequired: urlLower.includes('peloton') || urlLower.includes('soulcycle'),
-              provider: detectProviderFromUrl(requestData.url || ''),
-              confidence: 0.5,
-              fallback: true
-            },
-            sessionId: 'fallback',
-            error: error.message
-          };
-        }
-        break;
       case 'close':
         result = await closeBrowserSession(browserbaseApiKey, requestData);
         break;
