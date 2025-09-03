@@ -40,8 +40,72 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check if this is a direct URL analysis request (from internet search)
+    let requestBody: { plan_id?: string; url?: string } = {};
+    
+    try {
+      requestBody = await req.json();
+    } catch (error) {
+      // If no body provided, continue with default monitoring behavior
+      console.log('[WATCH-SIGNUP-OPEN] No request body, using default monitoring behavior');
+    }
+
+    const { plan_id, url } = requestBody;
+
+    // If URL provided directly (from internet search analysis)
+    if (url && !plan_id) {
+      console.log(`[WATCH-SIGNUP-OPEN] Analyzing URL directly: ${url}`);
+      
+      try {
+        // Fetch the registration page
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; CampRegistrationBot/1.0)',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const html = await response.text();
+        
+        // Use existing time extraction logic
+        const timeExtraction = extractRegistrationTimes(html, 'America/Chicago');
+        
+        // Return the extracted time directly
+        return new Response(
+          JSON.stringify({
+            registrationOpensAt: timeExtraction.extractedTime,
+            confidence: timeExtraction.confidence,
+            matchedText: timeExtraction.matchedText,
+            pattern: timeExtraction.pattern,
+            status: 'analyzed',
+            url: url
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+        
+      } catch (error) {
+        console.error(`[WATCH-SIGNUP-OPEN] Error analyzing URL ${url}:`, error);
+        return new Response(
+          JSON.stringify({ 
+            error: `Failed to analyze URL: ${error.message}`,
+            status: 'error',
+            url: url
+          }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
     console.log('[WATCH-SIGNUP-OPEN] Starting adaptive polling check');
 
+    // Otherwise, continue with existing plan-based logic
     // Get all active registration plans that need monitoring
     const { data: plans, error: plansError } = await supabase
       .from('registration_plans')
