@@ -16,9 +16,11 @@ import { useQuery } from '@tanstack/react-query';
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
   const planId = params.id || params.sessionId;
+  const isInternetSession = planId?.startsWith('internet-');
 
   const { data: planData } = useQuery({
     queryKey: ['registration-plan', planId],
@@ -32,7 +34,7 @@ export default function ReadyToSignup() {
       if (error) throw error;
       return data;
     },
-    enabled: !!planId
+    enabled: !!planId && !isInternetSession
   });
 
   // Progressive flow stages
@@ -115,6 +117,32 @@ export default function ReadyToSignup() {
       return;
     }
 
+    // Handle internet sessions from URL parameters
+    if (isInternetSession) {
+      console.log('🌐 Handling internet session with URL parameters');
+      const businessName = searchParams.get('businessName') || 'Demo Business';
+      const location = searchParams.get('location') || 'Demo Location';
+      const selectedDate = searchParams.get('selectedDate') || new Date().toISOString().split('T')[0];
+      const selectedTime = searchParams.get('selectedTime') || 'Morning (9:00 AM)';
+      
+      setSessionData({
+        id: planId,
+        title: businessName || 'Demo Registration',
+        url: 'https://example.com', // Demo URL for internet sessions
+        price_min: 0,
+        activities: {
+          name: businessName || 'Demo Activity',
+          city: location.split(',')[0] || 'Demo City',
+          state: location.split(',')[1]?.trim() || 'Demo State'
+        },
+        selectedDate,
+        selectedTime,
+        isInternetSession: true
+      });
+      setStage('manual_time');
+      return;
+    }
+
     // Check for test scenario first
     const testScenario = getTestScenario(planId);
     if (testScenario) {
@@ -149,10 +177,10 @@ export default function ReadyToSignup() {
       } else {
         setStage('manual_time');
       }
-    } else if (planId && !planData) {
+    } else if (planId && !planData && !isInternetSession) {
       setStage('error');
     }
-  }, [planId, planData]);
+  }, [planId, planData, isInternetSession, searchParams]);
 
   // Main analysis function
   const analyzeInitial = async (sessionDataToAnalyze: any) => {
@@ -296,7 +324,7 @@ export default function ReadyToSignup() {
 
   // Save and activate the registration plan
   const saveAndActivate = async () => {
-    if (!user || !registrationTime || !planData) {
+    if (!user || !registrationTime) {
       toast({
         title: "Missing information",
         description: "Please set a registration time first",
@@ -306,28 +334,56 @@ export default function ReadyToSignup() {
     }
 
     try {
-      console.log('💾 Updating registration plan...');
-      
-      // Update existing plan with registration time and automation rules
-      const { error: planError } = await supabase
-        .from('registration_plans')
-        .update({
-          manual_open_at: registrationTime,
-          automation_rules: {
-            loginRequired: analysis?.loginRequired,
-            captchaDetected: analysis?.captchaVisible,
-            credentials_saved: credentials.email ? true : false
-          },
-          status: 'active'
-        })
-        .eq('id', planData.id);
+      if (isInternetSession) {
+        console.log('💾 Creating new registration plan for internet session...');
         
-      if (planError) {
-        console.error('Error updating registration plan:', planError);
-        throw planError;
+        // Create new registration plan for internet session
+        const { data: newPlan, error: planError } = await supabase
+          .from('registration_plans')
+          .insert({
+            user_id: user.id,
+            detect_url: sessionData?.url || 'https://example.com',
+            manual_open_at: registrationTime,
+            automation_rules: {
+              loginRequired: analysis?.loginRequired,
+              captchaDetected: analysis?.captchaVisible,
+              credentials_saved: credentials.email ? true : false
+            },
+            status: 'active'
+          })
+          .select()
+          .single();
+          
+        if (planError) {
+          console.error('Error creating registration plan:', planError);
+          throw planError;
+        }
+        
+        console.log('✅ Created new registration plan:', newPlan.id);
+      } else {
+        console.log('💾 Updating existing registration plan...');
+        
+        // Update existing plan with registration time and automation rules
+        const { error: planError } = await supabase
+          .from('registration_plans')
+          .update({
+            manual_open_at: registrationTime,
+            automation_rules: {
+              loginRequired: analysis?.loginRequired,
+              captchaDetected: analysis?.captchaVisible,
+              credentials_saved: credentials.email ? true : false
+            },
+            status: 'active'
+          })
+          .eq('id', planData!.id);
+          
+        if (planError) {
+          console.error('Error updating registration plan:', planError);
+          throw planError;
+        }
+        
+        console.log('✅ Updated registration plan:', planData!.id);
       }
-      
-      console.log('✅ Updated registration plan:', planData.id);
       
       toast({
         title: 'Registration automation activated!',
