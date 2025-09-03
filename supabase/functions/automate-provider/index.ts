@@ -7,8 +7,10 @@ const corsHeaders = {
 };
 
 interface AutomateRequest {
-  registration_id: string;
-  provider_id: string;
+  registration_id?: string;
+  provider_id?: string;
+  action?: string;
+  provider?: string;
   child_data?: any; // VGS tokenized child data
   session_data?: any; // Session details
 }
@@ -319,6 +321,16 @@ serve(async (req) => {
 
   try {
     const body = await req.json() as AutomateRequest;
+    
+    // Handle get_stats action
+    if (body.action === 'get_stats' && body.provider) {
+      const stats = await getProviderStats(admin, body.provider);
+      return new Response(JSON.stringify(stats), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
     if (!body.registration_id || !body.provider_id) {
       return new Response(JSON.stringify({ error: "registration_id and provider_id are required" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

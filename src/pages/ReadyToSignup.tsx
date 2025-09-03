@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getTestScenario } from '@/lib/test-scenarios';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import ProviderInfo from '@/components/ProviderInfo';
+import { detectProvider } from '@/utils/providerDetection';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -28,6 +30,7 @@ export default function ReadyToSignup() {
   const [registrationTime, setRegistrationTime] = useState('');
   const [browserSessionId, setBrowserSessionId] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
+  const [providerStats, setProviderStats] = useState<any>(null);
 
   // Load session data and start analysis
   useEffect(() => {
@@ -168,6 +171,10 @@ export default function ReadyToSignup() {
         
         console.log('📊 Analysis result:', data.analysis);
         
+        // Load provider stats if we detected a provider
+        const detectedProvider = data.analysis.provider || detectProvider(sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url);
+        await loadProviderStats(detectedProvider);
+        
         // Determine next stage based on analysis
         if (data.analysis.registrationTime && data.analysis.confidence > 0.7) {
           setRegistrationTime(data.analysis.registrationTime);
@@ -183,6 +190,31 @@ export default function ReadyToSignup() {
     } catch (error) {
       console.error('Analysis failed:', error);
       setStage('manual_time');
+    }
+  };
+
+  // Load provider statistics
+  const loadProviderStats = async (provider: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('automation_results')
+        .select('success, captcha_encountered')
+        .eq('provider', provider)
+        .limit(10)
+        .order('created_at', { ascending: false });
+      
+      if (!error && data && data.length > 0) {
+        const successRate = Math.round((data.filter(d => d.success).length / data.length) * 100);
+        const captchaRate = Math.round((data.filter(d => d.captcha_encountered).length / data.length) * 100);
+        
+        setProviderStats({
+          successRate,
+          captchaRate,
+          totalAttempts: data.length
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load provider stats:', error);
     }
   };
 
@@ -329,6 +361,14 @@ export default function ReadyToSignup() {
         <div className="font-medium">{sessionData?.title || sessionData?.activities?.name || 'Registration'}</div>
         <div className="text-sm text-muted-foreground">{sessionData?.url || sessionData?.signup_url}</div>
       </Card>
+      
+      {/* Provider information and tips */}
+      {(analysis?.provider || (sessionData?.url && detectProvider(sessionData.url))) && (
+        <ProviderInfo 
+          provider={analysis?.provider || detectProvider(sessionData?.url || sessionData?.signup_url)} 
+          stats={providerStats}
+        />
+      )}
       
       {/* Progressive stages */}
       {stage === 'loading' && (
