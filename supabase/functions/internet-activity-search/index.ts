@@ -69,14 +69,8 @@ serve(async (req) => {
     // Parse the content into structured results
     const results = parsePerplexityContent(content, query, location);
     
-    // Extract URLs from Perplexity content for time detection
-    const urls = extractUrlsFromContent(content);
-    let extractedTimeData = null;
-    
-    if (urls.length > 0) {
-      console.log('Found URLs in content, attempting time extraction for:', urls[0]);
-      extractedTimeData = await extractTimeFromUrl(urls[0]);
-    }
+    // Extract registration time directly from Perplexity text content (much faster!)
+    const extractedTimeData = extractTimeFromResults(content, query);
     
     console.log('RETURNING', results.length, 'parsed results from Perplexity with extracted time data');
     
@@ -473,6 +467,100 @@ function generateSessions(activityType) {
   
   console.log(`Generated ${sessions.length} sessions for ${activityType}`);
   return sessions;
+}
+
+// Extract registration time directly from search results text (much faster than visiting pages)
+function extractTimeFromResults(resultText: string, query: string) {
+  console.log('Extracting time from Perplexity results text...');
+  
+  // Common patterns for registration times in search results
+  const patterns = [
+    /classes open (\d+) days? in advance/i,
+    /registration opens at (\d{1,2}:\d{2}\s*[AP]M)/i,
+    /available (\d{1,2}:\d{2}\s*[AP]M\s*[A-Z]{2,3})/i,
+    /booking opens (\w+ \d{1,2})/i,
+    /opens (\d{1,2}:\d{2}\s*[AP]M)/i,
+    /booking available at (\d{1,2}:\d{2})/i,
+    /reservations open (\d+ days? before)/i,
+    /sign[- ]?ups? start (\d{1,2}:\d{2})/i
+  ];
+  
+  // For Peloton specifically - known registration pattern
+  if (resultText.toLowerCase().includes('peloton')) {
+    console.log('Detected Peloton - using known registration pattern');
+    return {
+      registrationTime: null, // Will be calculated by frontend
+      pattern: "7 days in advance at 6:00 AM ET", 
+      confidence: 0.9,
+      provider: 'peloton',
+      source: 'known_pattern',
+      displayTime: 'Classes open 7 days in advance at 6:00 AM ET'
+    };
+  }
+  
+  // For SoulCycle - known pattern
+  if (resultText.toLowerCase().includes('soulcycle')) {
+    console.log('Detected SoulCycle - using known registration pattern');
+    return {
+      registrationTime: null,
+      pattern: "7 days in advance at 12:00 PM",
+      confidence: 0.9, 
+      provider: 'soulcycle',
+      source: 'known_pattern',
+      displayTime: 'Classes open 7 days in advance at 12:00 PM'
+    };
+  }
+  
+  // For Barry's Bootcamp - known pattern
+  if (resultText.toLowerCase().includes("barry") || resultText.toLowerCase().includes("bootcamp")) {
+    console.log("Detected Barry's Bootcamp - using known registration pattern");
+    return {
+      registrationTime: null,
+      pattern: "3 days in advance at 6:00 AM",
+      confidence: 0.8,
+      provider: 'barrys',
+      source: 'known_pattern', 
+      displayTime: "Classes open 3 days in advance at 6:00 AM"
+    };
+  }
+  
+  // Try to extract from text using patterns
+  for (const pattern of patterns) {
+    const match = resultText.match(pattern);
+    if (match) {
+      console.log('Found time pattern:', match[0]);
+      return {
+        registrationTime: null, // Parse based on match
+        pattern: match[0],
+        confidence: 0.7,
+        source: 'extracted_text',
+        displayTime: match[0]
+      };
+    }
+  }
+  
+  // Look for general time mentions
+  const timePatterns = [
+    /(\d{1,2}:\d{2}\s*[AP]M)/gi,
+    /(\d{1,2}\s*[AP]M)/gi
+  ];
+  
+  for (const pattern of timePatterns) {
+    const matches = resultText.match(pattern);
+    if (matches && matches.length > 0) {
+      console.log('Found time mention:', matches[0]);
+      return {
+        registrationTime: null,
+        pattern: `Registration typically opens at ${matches[0]}`,
+        confidence: 0.5,
+        source: 'time_mention',
+        displayTime: `Registration typically opens at ${matches[0]}`
+      };
+    }
+  }
+  
+  console.log('No specific time patterns found in results');
+  return null;
 }
 
 // Extract URLs from Perplexity content
