@@ -53,13 +53,70 @@ export default function ReadyToSignup() {
   const [browserSessionId, setBrowserSessionId] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
   const [providerStats, setProviderStats] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showLoginForm, setShowLoginForm] = useState(false);
 
   // Auto-analyze for internet sessions
   useEffect(() => {
-    if (isInternetSession && sessionData?.url) {
-      analyzeInitial(sessionData);
+    const analyzeRegistration = async () => {
+      if (!sessionData?.url) return;
+      
+      console.log('🔍 Analyzing registration page:', sessionData.url);
+      setIsAnalyzing(true);
+      setStage('analyzing');
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('browser-automation', {
+          body: {
+            action: 'analyze',
+            url: sessionData.url,
+            enableVision: true
+          }
+        });
+        
+        if (error) {
+          console.error('Analysis error:', error);
+          setStage('manual_time');
+          return;
+        }
+        
+        console.log('📊 Analysis result:', data);
+        
+        if (data?.analysis) {
+          setAnalysis(data.analysis);
+          setBrowserSessionId(data.sessionId);
+          
+          // Load provider stats if we detected a provider
+          const detectedProvider = data.analysis.provider || detectProvider(sessionData.url);
+          await loadProviderStats(detectedProvider);
+          
+          if (data.analysis.loginRequired) {
+            console.log('🔐 Login required for this provider');
+            setShowLoginForm(true);
+            setStage('need_login');
+          } else if (data.analysis.registrationTime) {
+            console.log('✅ Registration time found:', data.analysis.registrationTime);
+            setRegistrationTime(data.analysis.registrationTime);
+            setStage('confirm_time');
+          } else {
+            setStage('manual_time');
+          }
+        } else {
+          setStage('manual_time');
+        }
+      } catch (error) {
+        console.error('Analysis failed:', error);
+        setStage('manual_time');
+      } finally {
+        setIsAnalyzing(false);
+      }
+    };
+    
+    // Run analysis for internet sessions
+    if (sessionId?.startsWith('internet-') && sessionData?.url) {
+      analyzeRegistration();
     }
-  }, [isInternetSession, sessionData]);
+  }, [sessionData, sessionId]);
 
   // Load session data and start analysis
   useEffect(() => {
@@ -121,15 +178,11 @@ export default function ReadyToSignup() {
             }
           };
           
-          setSessionData(mockSessionData);
-          
-          // Start analysis if URL available
-          if (url) {
-            analyzeInitial(mockSessionData);
-          } else {
-            setStage('manual_time');
-          }
-          return;
+           setSessionData(mockSessionData);
+           
+           // Analysis will be handled by the analyzeRegistration useEffect
+           setStage('manual_time');
+           return;
         }
 
         // Handle real UUIDs from database
