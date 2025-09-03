@@ -11,10 +11,12 @@ import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { PaymentMethodBanner } from '@/components/PaymentMethodBanner'
+import { useToast } from "@/hooks/use-toast";
 
 const HomePage = () => {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
+  const { toast } = useToast()
   const { elementRef: heroRef, isIntersecting } = useIntersectionObserver({
     threshold: 0.3,
     freezeOnceVisible: true
@@ -181,7 +183,13 @@ const HomePage = () => {
     }
   }, []);
 
-  const handleRegister = (sessionIdOrResult: string | any, selectedSession?: {date?: string, time?: string}, searchResult?: any) => {
+  const handleRegister = async (sessionIdOrResult: string | any, selectedSession?: {date?: string, time?: string}, searchResult?: any) => {
+    if (!user?.id) {
+      toast({ title: "Authentication required", description: "Please log in to register for activities.", variant: "destructive" });
+      navigate('/login');
+      return;
+    }
+
     // Handle both old and new signatures
     let result: any;
     
@@ -197,7 +205,7 @@ const HomePage = () => {
       result = sessionIdOrResult;
     }
 
-    // Extract session selection data from multiple sources
+    // Extract session data
     const sessionData = {
       selectedDate: selectedSession?.date || result.selectedDate,
       selectedTime: selectedSession?.time || result.selectedTime,
@@ -207,31 +215,39 @@ const HomePage = () => {
       totalCost: result.totalCost || result.total_cost
     };
 
-    console.log('📅 Registration with session data:', sessionData);
-    
-    // Navigate to readiness flow first for all results - this ensures proper workflow
-    const searchParams = new URLSearchParams({
-      sessionId: result.id || result.session_id || 'unknown',
-      businessName: sessionData.businessName || '',
-      location: sessionData.location || '',
-      selectedDate: sessionData.selectedDate || '',
-      selectedTime: sessionData.selectedTime || '',
-      signupCost: sessionData.signupCost?.toString() || '',
-      totalCost: sessionData.totalCost?.toString() || '',
-      // Store intelligence data for enhanced workflow after readiness
-      predictedBarriers: JSON.stringify(result.predicted_barriers || []),
-      credentialRequirements: JSON.stringify(result.credential_requirements || []),
-      complexityScore: result.complexity_score?.toString() || '0.5',
-      workflowEstimate: result.workflow_estimate?.toString() || '10',
-      
-      providerPlatform: result.provider_platform || 'custom',
-      url: result.url || 'https://studio.onepeloton.com',
-      expectedInterventionPoints: JSON.stringify(result.expected_intervention_points || []),
-      formComplexitySignals: JSON.stringify(result.form_complexity_signals || [])
-    });
-    
-    // Always go through readiness flow first - proper workflow
-    navigate(`/ready-to-signup/${result.id || result.session_id || 'unknown'}?${searchParams.toString()}`)
+    // Create a real registration plan in the database
+    const { data: plan, error } = await supabase
+      .from('registration_plans')
+      .insert({
+        user_id: user.id,
+        name: sessionData.businessName || 'Activity Registration',
+        url: result.url || 'https://studio.onepeloton.com',
+        provider: result.provider || 'unknown',
+        created_from: 'home_search',
+        rules: {
+          predicted_barriers: result.predicted_barriers || [],
+          credential_requirements: result.credential_requirements || [],
+          complexity_score: result.complexity_score || 0.5,
+          workflow_estimate: result.workflow_estimate || 10,
+          provider_platform: result.provider_platform || 'custom',
+          expected_intervention_points: result.expected_intervention_points || [],
+          form_complexity_signals: result.form_complexity_signals || [],
+          session_data: sessionData
+        }
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating plan:', error);
+      toast({ title: "Error", description: "Failed to create registration plan", variant: "destructive" });
+      return;
+    }
+
+    if (plan) {
+      console.log('Created plan with ID:', plan.id);
+      navigate(`/ready-to-signup/${plan.id}`);
+    }
   };
 
   useEffect(() => {

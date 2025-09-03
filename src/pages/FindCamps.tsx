@@ -212,7 +212,7 @@ const FindCamps: React.FC = () => {
     setSearchParams(prev => ({ ...prev, ...additionalParams }));
   };
 
-  const handleRegister = (sessionId: string, selectedSession?: {date?: string, time?: string}, searchResult?: any) => {
+  const handleRegister = async (sessionId: string, selectedSession?: {date?: string, time?: string}, searchResult?: any) => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -223,43 +223,51 @@ const FindCamps: React.FC = () => {
       return;
     }
 
-    // Build URL parameters including session selection data and barrier intelligence
-    const params = new URLSearchParams({ sessionId });
-    
-    if (selectedSession?.date) {
-      params.append('selectedDate', selectedSession.date);
-    }
-    
-    if (selectedSession?.time) {
-      params.append('selectedTime', selectedSession.time);
+    // Create a real registration plan in the database
+    const { data: plan, error } = await supabase
+      .from('registration_plans')
+      .insert({
+        user_id: user.id,
+        name: searchResult?.businessName || searchResult?.name || searchResult?.campName || 'Activity Registration',
+        url: searchResult?.url || 'https://studio.onepeloton.com',
+        provider: searchResult?.provider || 'unknown',
+        created_from: 'camp_search',
+        rules: {
+          predicted_barriers: searchResult?.predicted_barriers || [],
+          credential_requirements: searchResult?.credential_requirements || [],
+          complexity_score: searchResult?.complexity_score || 0.5,
+          workflow_estimate: searchResult?.workflow_estimate || 10,
+          provider_platform: searchResult?.provider_platform || 'custom',
+          expected_intervention_points: searchResult?.expected_intervention_points || [],
+          form_complexity_signals: searchResult?.form_complexity_signals || [],
+          session_data: {
+            selectedDate: selectedSession?.date,
+            selectedTime: selectedSession?.time,
+            signupCost: searchResult?.signupCost || searchResult?.signup_cost,
+            totalCost: searchResult?.totalCost || searchResult?.total_cost
+          }
+        }
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create registration plan",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Pass barrier intelligence for workflow pre-population
-    if (searchResult?.predicted_barriers) {
-      params.append('predictedBarriers', JSON.stringify(searchResult.predicted_barriers));
+    if (plan) {
+      console.log('Created plan with ID:', plan.id);
+      navigate(`/ready-to-signup/${plan.id}`);
     }
-    
-    if (searchResult?.credential_requirements) {
-      params.append('credentialRequirements', JSON.stringify(searchResult.credential_requirements));
-    }
-    
-    if (searchResult?.complexity_score) {
-      params.append('complexityScore', searchResult.complexity_score.toString());
-    }
-    
-    if (searchResult?.workflow_estimate) {
-      params.append('workflowEstimate', searchResult.workflow_estimate.toString());
-    }
-    
-    if (searchResult?.provider_platform) {
-      params.append('providerPlatform', searchResult.provider_platform);
-    }
-
-    // Navigate to enhanced signup page with barrier intelligence
-    navigate(`/enhanced-signup?${params.toString()}`);
   };
 
-  const handleInternetResultSelect = (result: InternetSearchResult) => {
+  const handleInternetResultSelect = async (result: InternetSearchResult) => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -270,30 +278,50 @@ const FindCamps: React.FC = () => {
       return;
     }
 
-    // Build URL parameters for ReadyToSignup page
-    const params = new URLSearchParams();
-    
-    // Use the result ID as session ID
-    const sessionId = result.id || `internet-${Date.now()}-${Math.random()}`;
-    
-    // Add all relevant parameters
-    params.append('sessionId', sessionId);
-    params.append('businessName', result.businessName || result.name || result.title || '');
-    params.append('location', result.location || '');
-    params.append('selectedDate', result.selectedDate || '2025-09-02');
-    params.append('selectedTime', result.selectedTime || 'Morning (9:00 AM)');
-    params.append('signupCost', (result.signupCost || result.signup_cost || 45).toString());
-    params.append('totalCost', (result.totalCost || result.total_cost || result.signupCost || result.signup_cost || 45).toString());
-    params.append('predictedBarriers', JSON.stringify([]));
-    params.append('credentialRequirements', JSON.stringify([]));
-    params.append('complexityScore', '0.5');
-    params.append('workflowEstimate', '10');
-    params.append('providerPlatform', result.provider || 'custom');
-    params.append('expectedInterventionPoints', JSON.stringify([]));
-    params.append('formComplexitySignals', JSON.stringify([]));
+    // Create a real registration plan in the database instead of using fake session IDs
+    const { data: plan, error } = await supabase
+      .from('registration_plans')
+      .insert({
+        user_id: user.id,
+        name: result.businessName || result.name || result.title || 'Internet Search Result',
+        url: result.url || 'https://studio.onepeloton.com',
+        provider: result.provider || 'unknown',
+        created_from: 'internet_search',
+        rules: {
+          session_data: {
+            selectedDate: result.selectedDate || '2025-09-02',
+            selectedTime: result.selectedTime || 'Morning (9:00 AM)',
+            signupCost: result.signupCost || result.signup_cost || 45,
+            totalCost: result.totalCost || result.total_cost || result.signupCost || result.signup_cost || 45,
+            businessName: result.businessName || result.name || result.title,
+            location: result.location
+          },
+          predicted_barriers: [],
+          credential_requirements: [],
+          complexity_score: 0.5,
+          workflow_estimate: 10,
+          provider_platform: result.provider || 'custom',
+          expected_intervention_points: [],
+          form_complexity_signals: []
+        }
+      })
+      .select()
+      .single();
 
-    // Navigate to ReadyToSignup page
-    navigate(`/ready-to-signup/${sessionId}?${params.toString()}`);
+    if (error) {
+      console.error('Error creating plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create registration plan",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (plan) {
+      console.log('Created plan with ID:', plan.id);
+      navigate(`/ready-to-signup/${plan.id}`);
+    }
   };
 
   // Cleanup timeout on unmount

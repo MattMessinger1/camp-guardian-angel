@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CampSearchBox, SearchResults } from '@/components/camp-search/CampSearchComponents';
 import { logger } from "@/lib/log";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { CheckCircle2, Shield, Zap, CalendarClock } from "lucide-react";
 import { SessionCard } from "@/components/ui/session-card";
@@ -16,6 +17,7 @@ import { SessionCard } from "@/components/ui/session-card";
 const Index = () => {
   const [pointer, setPointer] = useState({ x: 50, y: 50 });
   const { toast } = useToast();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [isSending, setIsSending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -191,14 +193,35 @@ const Index = () => {
     }
   }, []);
 
-  const handleRegister = (sessionId: string) => {
-    // Check if this is an internet result (starts with 'internet-')
-    if (sessionId.startsWith('internet-')) {
-      // Navigate to enhanced signup page with session ID
-      navigate(`/enhanced-signup?sessionId=${sessionId}`);
-    } else {
-      // Regular database result - navigate to signup page with sessionId for requirements completion
-      navigate(`/signup?sessionId=${sessionId}`);
+  const handleRegister = async (sessionId: string) => {
+    if (!user?.id) {
+      toast({ title: "Authentication required", description: "Please log in to register for camps.", variant: "destructive" });
+      navigate('/login');
+      return;
+    }
+
+    // Create a real registration plan in the database
+    const { data: plan, error } = await supabase
+      .from('registration_plans')
+      .insert({
+        user_id: user.id,
+        name: 'Peloton', // Default name
+        url: 'https://studio.onepeloton.com', // Default URL
+        provider: 'peloton',
+        created_from: 'search_result'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating plan:', error);
+      toast({ title: "Error", description: "Failed to create registration plan", variant: "destructive" });
+      return;
+    }
+
+    if (plan) {
+      console.log('Created plan with ID:', plan.id);
+      navigate(`/ready-to-signup/${plan.id}`);
     }
   };
 
