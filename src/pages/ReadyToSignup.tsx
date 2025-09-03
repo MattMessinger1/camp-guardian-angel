@@ -164,12 +164,12 @@ export default function ReadyToSignup() {
           const businessName = searchData?.title || searchParams.get('businessName') || 'Class Registration';
           const location = searchData?.location || searchParams.get('location') || 'NYC';
           const signupCost = searchData?.signupCost || searchParams.get('signupCost') || '45';
-          const url = searchData?.url || searchParams.get('url');
+          const url = searchData?.url || searchParams.get('url'); // PRIORITIZE stored URL over params
           
           const mockSessionData = {
             id: sessionId,
             title: businessName,
-            url: url,
+            url: url, // This now includes the stored URL
             price_min: parseInt(signupCost) || 45,
             activities: {
               name: businessName,
@@ -180,6 +180,8 @@ export default function ReadyToSignup() {
           
           console.log('📍 DEBUG: Session data loaded:', mockSessionData);
           console.log('📍 DEBUG: URL found:', mockSessionData?.url);
+          console.log('📍 DEBUG: Search data URL:', searchData?.url);
+          console.log('📍 DEBUG: Params URL:', searchParams.get('url'));
           console.log('📍 DEBUG: About to set session data');
           
            setSessionData(mockSessionData);
