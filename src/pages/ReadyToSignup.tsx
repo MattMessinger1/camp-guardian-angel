@@ -178,6 +178,10 @@ export default function ReadyToSignup() {
             }
           };
           
+          console.log('📍 DEBUG: Session data loaded:', mockSessionData);
+          console.log('📍 DEBUG: URL found:', mockSessionData?.url);
+          console.log('📍 DEBUG: About to set session data');
+          
            setSessionData(mockSessionData);
            
            // Analysis will be handled by the analyzeRegistration useEffect
@@ -212,6 +216,9 @@ export default function ReadyToSignup() {
 
   // Main analysis function
   const analyzeInitial = async (sessionDataToAnalyze: any) => {
+    console.log('🎯 analyzeInitial called with:', sessionDataToAnalyze);
+    console.log('🎯 URL to analyze:', sessionDataToAnalyze?.url || sessionDataToAnalyze?.signup_url);
+    
     setStage('analyzing');
     
     try {
@@ -224,6 +231,12 @@ export default function ReadyToSignup() {
         return;
       }
       
+      console.log('🚀 Calling browser-automation with:', {
+        action: 'analyze',
+        url: urlToAnalyze,
+        enableVision: true
+      });
+      
       const { data, error } = await supabase.functions.invoke('browser-automation', {
         body: {
           action: 'analyze',
@@ -231,6 +244,8 @@ export default function ReadyToSignup() {
           enableVision: true
         }
       });
+
+      console.log('📦 Browser-automation response:', { data, error });
 
       if (error) {
         console.error('Analysis error:', error);
