@@ -16,6 +16,7 @@ import { ChildInfoSection } from '@/components/registration/ChildInfoSection';
 import { PaymentSection } from '@/components/registration/PaymentSection';
 import { ProviderAccountCreation } from '@/components/ProviderAccountCreation';
 import { ExtractedTimeDisplay } from '@/components/ExtractedTimeDisplay';
+import { useQuery } from '@tanstack/react-query';
 
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
@@ -24,6 +25,9 @@ export default function ReadyToSignup() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const sessionId = params.id || params.sessionId;
+  
+  // Check if this is an internet session
+  const isInternetSession = sessionId?.startsWith('internet-');
 
   const [sessionData, setSessionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -40,10 +44,35 @@ export default function ReadyToSignup() {
     provider: {} as { accountEmail?: string }
   });
 
+  // Skip registration_plans query for internet sessions to prevent UUID errors
+  const { data: planData } = useQuery({
+    queryKey: ['registration-plan', sessionId],
+    queryFn: async () => {
+      if (isInternetSession) return null; // Skip query for internet sessions
+      
+      if (!sessionId) return null;
+      
+      const { data, error } = await supabase
+        .from('registration_plans')
+        .select('*')
+        .eq('session_id', sessionId)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Error loading registration plan:', error);
+        return null;
+      }
+      
+      return data;
+    },
+    enabled: !isInternetSession && !!sessionId // Disable for internet sessions
+  });
+
   // Get readiness assessment (pass userInfo to help with readiness calculation)
   const { assessment, isLoading: assessmentLoading } = useSimpleReadiness({
     ...sessionData,
-    userInfo
+    userInfo,
+    isInternetSession
   });
 
   // Load session data
@@ -124,6 +153,49 @@ export default function ReadyToSignup() {
 
     loadSession();
   }, [sessionId, searchParams]);
+
+  // Auto-analyze registration time for internet sessions
+  useEffect(() => {
+    if (isInternetSession && sessionData?.url && !sessionData?.extracted_time_data) {
+      console.log('🔍 Auto-analyzing registration time for internet session');
+      analyzeRegistrationTime(sessionData.url);
+    }
+  }, [isInternetSession, sessionData]);
+
+  // Function to analyze registration time
+  const analyzeRegistrationTime = async (url: string) => {
+    try {
+      console.log('🔍 Analyzing registration time for URL:', url);
+      
+      const { data, error } = await supabase.functions.invoke('watch-signup-open', {
+        body: { url }
+      });
+
+      if (error) {
+        console.error('Error analyzing registration time:', error);
+        return;
+      }
+
+      if (data?.extracted_time) {
+        // Store in sessionStorage for persistence
+        const key = `extracted_time_${sessionId}`;
+        sessionStorage.setItem(key, JSON.stringify(data));
+        
+        // Update session data
+        setSessionData(prev => ({
+          ...prev,
+          extracted_time_data: data
+        }));
+        
+        toast({
+          title: "Registration time detected!",
+          description: `Found opening time: ${new Date(data.extracted_time).toLocaleString()}`,
+        });
+      }
+    } catch (error) {
+      console.error('Error in auto-analysis:', error);
+    }
+  };
 
   // Helper function to get extracted time data from sessionStorage
   const getExtractedTimeFromStorage = (sessionId: string) => {
@@ -217,12 +289,39 @@ export default function ReadyToSignup() {
 
     try {
       setIsStarting(true);
-      console.log('🚀 Starting registration process...', { userInfo });
+      console.log('🚀 Starting registration process...', { userInfo, isInternetSession });
 
-      // Create payment intent first
+      // For internet sessions, create a new registration plan with proper UUID
+      if (isInternetSession) {
+        // Generate new UUID for the registration plan
+        const newPlanId = crypto.randomUUID();
+        
+        const { error: planError } = await supabase
+          .from('registration_plans')
+          .insert({
+            id: newPlanId,
+            user_id: user.id,
+            session_id: null, // Don't link to fake internet session ID
+            target_time: sessionData?.registration_open_at || new Date().toISOString(),
+            user_info: userInfo,
+            activity_name: sessionData?.activities?.name,
+            location: `${sessionData?.activities?.city}, ${sessionData?.activities?.state}`,
+            price: sessionData?.price_min,
+            status: 'active'
+          });
+          
+        if (planError) {
+          console.error('Error creating registration plan:', planError);
+          throw planError;
+        }
+        
+        console.log('✅ Created new registration plan for internet session:', newPlanId);
+      }
+
+      // Create payment intent
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-payment-intent', {
         body: {
-          session_id: sessionId,
+          session_id: isInternetSession ? null : sessionId, // Use null for internet sessions
           amount_cents: Math.round((parseFloat(sessionData?.price_min || '0') || 45) * 100),
           description: `Registration for ${sessionData?.activities?.name || 'Camp Session'}`
         }
@@ -248,13 +347,14 @@ export default function ReadyToSignup() {
         description: "Your automated registration is now in progress",
       });
 
-      // In a real implementation, this would trigger the automation system
+      // Log registration details
       console.log('📅 Registration with session data:', {
         selectedDate: sessionData.selected_date,
         selectedTime: sessionData.selected_time,
         businessName: sessionData.activities?.name,
         location: `${sessionData.activities?.city}, ${sessionData.activities?.state}`,
-        signupCost: sessionData.price_min
+        signupCost: sessionData.price_min,
+        isInternetSession
       });
 
     } catch (error) {
