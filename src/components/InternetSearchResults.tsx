@@ -155,6 +155,8 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     }
   };
 
+  console.log('InternetSearchResults is rendering!');
+  
   if (results.length === 0) {
     return (
       <Card className="text-center p-8">
@@ -334,7 +336,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
                 disabled={result.canAutomate === false}
               >
-                Get ready for signup
+                TEST BUTTON - Get ready for signup
               </Button>
               
               {result.url && (
