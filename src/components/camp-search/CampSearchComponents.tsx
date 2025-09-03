@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ClarifyingQuestionsCard } from './ClarifyingQuestionsCard';
 
@@ -131,6 +133,9 @@ interface SearchResultsProps {
 
 export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegister }) => {
   const [selectedSessions, setSelectedSessions] = useState<{[key: string]: {date?: string, time?: string, sessionKey?: string}}>({});
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Reset selected sessions when results change
   React.useEffect(() => {
@@ -304,20 +309,29 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 </div>
                 
                 <Button 
-                  onClick={() => {
-                    // Create enhanced result with additional properties for signup flow
-                    const enhancedResult = {
-                      ...result,
-                      businessName: result.name || result.providerName || result.campName,
-                      locationString: result.location ? `${result.location.city}, ${result.location.state}` : undefined,
-                      signupCost: result.signup_cost || result.signupCost || selectedSession?.price || 0,
-                      totalCost: result.total_cost || result.totalCost || result.signup_cost || result.signupCost || selectedSession?.price || 0
-                    } as SearchResult & { businessName: string; locationString?: string; };
+                  onClick={async () => {
+                    // Create REAL registration plan
+                    const { data: plan, error } = await supabase
+                      .from('registration_plans')
+                      .insert({
+                        user_id: user?.id,
+                        name: 'Peloton',
+                        url: 'https://studio.onepeloton.com',
+                        provider: 'peloton',
+                        created_from: 'internet_search'
+                      })
+                      .select()
+                      .single();
+                      
+                    if (error) {
+                      console.error('Failed to create plan:', error);
+                      return;
+                    }
                     
-                    onRegister(result.sessionId, {
-                      date: selectedSession?.date,
-                      time: selectedSession?.time
-                    }, enhancedResult);
+                    if (plan) {
+                      // Navigate with REAL plan ID
+                      navigate(`/ready-to-signup/${plan.id}`);
+                    }
                   }}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 ml-4"
                 >
