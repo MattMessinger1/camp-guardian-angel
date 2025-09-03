@@ -315,9 +315,8 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       .from('registration_plans')
                       .insert({
                         user_id: user?.id,
-                        name: 'Peloton',
-                        url: 'https://studio.onepeloton.com',
-                        provider: 'peloton'
+                        detect_url: 'https://studio.onepeloton.com',
+                        status: 'draft'
                       })
                       .select()
                       .single();
