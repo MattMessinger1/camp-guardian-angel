@@ -26,49 +26,10 @@ export default function ReadyToSignup() {
   const { user } = useAuth();
   const sessionId = params.id || params.sessionId;
   
-  // Prevent UUID errors for internet sessions
-  if (sessionId?.startsWith('internet-')) {
-    // For internet sessions, show simplified UI without database queries
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center space-y-4">
-                <h1 className="text-2xl font-bold">Signup Preparation</h1>
-                <h2 className="text-xl">Peloton Studio</h2>
-                <p className="text-muted-foreground">Setting up registration for internet search result...</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="mb-4">Configure your signup time and preferences below:</p>
-                <div className="space-y-4">
-                  <Input
-                    type="datetime-local"
-                    placeholder="When does registration open?"
-                    className="max-w-md mx-auto"
-                  />
-                  <Button 
-                    onClick={() => navigate('/pending-signups')}
-                    className="w-full max-w-md"
-                  >
-                    Save & Continue
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-  
   // Check if this is an internet session
   const isInternetSession = sessionId?.startsWith('internet-');
+
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const [sessionData, setSessionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -139,13 +100,29 @@ export default function ReadyToSignup() {
 
         // Handle internet-generated session IDs
         if (sessionId.startsWith('internet-')) {
-          console.log('🔍 Using internet session ID, creating mock data');
-          // Create session data from URL parameters
-          const businessName = searchParams.get('businessName') || 'Peloton Studio';
-          const location = searchParams.get('location') || 'NYC';
-          const signupCost = searchParams.get('signupCost') || '45';
-          const selectedDate = searchParams.get('selectedDate') || '2025-09-03';
-          const selectedTime = searchParams.get('selectedTime') || 'Evening (7:00 PM)';
+          console.log('🔍 Using internet session ID, loading from localStorage');
+          
+          // Try to get search data from localStorage
+          const searchKey = `search-${sessionId}`;
+          const storedSearchData = localStorage.getItem(searchKey);
+          let searchData = null;
+          
+          if (storedSearchData) {
+            try {
+              searchData = JSON.parse(storedSearchData);
+              console.log('📁 Found stored search data:', searchData);
+            } catch (e) {
+              console.error('Failed to parse stored search data:', e);
+            }
+          }
+
+          // Fallback to URL parameters if no localStorage data
+          const businessName = searchData?.businessName || searchParams.get('businessName') || 'Peloton Studio';
+          const location = searchData?.location || searchParams.get('location') || 'NYC';
+          const signupCost = searchData?.signupCost || searchParams.get('signupCost') || '45';
+          const selectedDate = searchData?.selectedDate || searchParams.get('selectedDate') || '2025-09-03';
+          const selectedTime = searchData?.selectedTime || searchParams.get('selectedTime') || 'Evening (7:00 PM)';
+          const url = searchData?.url || searchParams.get('url');
           
           const mockSessionData = {
             id: sessionId,
@@ -159,6 +136,7 @@ export default function ReadyToSignup() {
             price_min: parseInt(signupCost) || 45,
             selected_date: selectedDate,
             selected_time: selectedTime,
+            url: url, // Include URL for analysis
             // Check if extracted time data is available in sessionStorage
             extracted_time_data: getExtractedTimeFromStorage(sessionId)
           };
@@ -197,7 +175,7 @@ export default function ReadyToSignup() {
 
   // Auto-analyze registration time for internet sessions
   useEffect(() => {
-    if (isInternetSession && sessionData?.url && !sessionData?.extracted_time_data) {
+    if (isInternetSession && sessionData?.url && !sessionData?.extracted_time_data && !isAnalyzing) {
       console.log('🔍 Auto-analyzing registration time for internet session');
       analyzeRegistrationTime(sessionData.url);
     }
@@ -205,8 +183,17 @@ export default function ReadyToSignup() {
 
   // Function to analyze registration time
   const analyzeRegistrationTime = async (url: string) => {
+    if (isAnalyzing) return; // Prevent multiple simultaneous analyses
+    
+    setIsAnalyzing(true);
+    
     try {
       console.log('🔍 Analyzing registration time for URL:', url);
+      
+      toast({
+        title: "Analyzing registration time...",
+        description: "Checking webpage for signup information",
+      });
       
       const { data, error } = await supabase.functions.invoke('watch-signup-open', {
         body: { url }
@@ -214,6 +201,11 @@ export default function ReadyToSignup() {
 
       if (error) {
         console.error('Error analyzing registration time:', error);
+        toast({
+          title: "Analysis failed",
+          description: "Could not analyze the webpage. You can set the time manually.",
+          variant: "destructive"
+        });
         return;
       }
 
@@ -232,9 +224,22 @@ export default function ReadyToSignup() {
           title: "Registration time detected!",
           description: `Found opening time: ${new Date(data.extracted_time).toLocaleString()}`,
         });
+      } else {
+        toast({
+          title: "No time found",
+          description: "Could not detect registration time automatically. Please set manually.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Error in auto-analysis:', error);
+      toast({
+        title: "Analysis error",
+        description: "Failed to analyze registration time. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -324,23 +329,24 @@ export default function ReadyToSignup() {
     userInfo.child.childName &&
     (userInfo.payment.paymentMethodId || userInfo.payment.showStripeForm);
 
-  // Handle starting the registration process
-  const handleStartRegistration = async () => {
-    if (!user || !sessionId) return;
+  // Handle saving registration plan and navigating
+  const handleSaveAndContinue = async () => {
+    if (!user) return;
 
     try {
       setIsStarting(true);
-      console.log('🚀 Starting registration process...', { userInfo, isInternetSession });
+      console.log('💾 Saving registration plan...', { userInfo, isInternetSession });
 
-      // For internet sessions, create a new registration plan with proper UUID
+      let planId: string;
+
       if (isInternetSession) {
-        // Generate new UUID for the registration plan
-        const newPlanId = crypto.randomUUID();
+        // For internet sessions, create a new registration plan with proper UUID
+        planId = crypto.randomUUID();
         
         const { error: planError } = await supabase
           .from('registration_plans')
           .insert({
-            id: newPlanId,
+            id: planId,
             user_id: user.id,
             session_id: null, // Don't link to fake internet session ID
             target_time: sessionData?.registration_open_at || new Date().toISOString(),
@@ -356,8 +362,77 @@ export default function ReadyToSignup() {
           throw planError;
         }
         
-        console.log('✅ Created new registration plan for internet session:', newPlanId);
+        console.log('✅ Created new registration plan for internet session:', planId);
+        
+        // Clean up localStorage
+        const searchKey = `search-${sessionId}`;
+        const extractedTimeKey = `extracted_time_${sessionId}`;
+        localStorage.removeItem(searchKey);
+        sessionStorage.removeItem(extractedTimeKey);
+        
+      } else {
+        // For regular sessions, update existing plan or create new one
+        planId = planData?.id || crypto.randomUUID();
+        
+        if (planData) {
+          // Update existing plan
+          const { error: updateError } = await supabase
+            .from('registration_plans')
+            .update({
+              target_time: sessionData?.registration_open_at || new Date().toISOString(),
+              user_info: userInfo,
+              status: 'active'
+            })
+            .eq('id', planId);
+            
+          if (updateError) throw updateError;
+        } else {
+          // Create new plan
+          const { error: insertError } = await supabase
+            .from('registration_plans')
+            .insert({
+              id: planId,
+              user_id: user.id,
+              session_id: sessionId,
+              target_time: sessionData?.registration_open_at || new Date().toISOString(),
+              user_info: userInfo,
+              activity_name: sessionData?.activities?.name,
+              location: `${sessionData?.activities?.city}, ${sessionData?.activities?.state}`,
+              price: sessionData?.price_min,
+              status: 'active'
+            });
+            
+          if (insertError) throw insertError;
+        }
       }
+
+      toast({
+        title: "Registration Plan Saved!",
+        description: "Your registration preferences have been saved successfully",
+      });
+
+      // Navigate to the plan with proper UUID
+      navigate(`/ready-to-signup/${planId}`);
+
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: "Save Failed",
+        description: "Could not save your registration plan. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  // Handle starting the registration process
+  const handleStartRegistration = async () => {
+    if (!user || !sessionId) return;
+
+    try {
+      setIsStarting(true);
+      console.log('🚀 Starting registration process...', { userInfo, isInternetSession });
 
       // Create payment intent
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-payment-intent', {
@@ -388,15 +463,7 @@ export default function ReadyToSignup() {
         description: "Your automated registration is now in progress",
       });
 
-      // Log registration details
-      console.log('📅 Registration with session data:', {
-        selectedDate: sessionData.selected_date,
-        selectedTime: sessionData.selected_time,
-        businessName: sessionData.activities?.name,
-        location: `${sessionData.activities?.city}, ${sessionData.activities?.state}`,
-        signupCost: sessionData.price_min,
-        isInternetSession
-      });
+      navigate('/pending-signups');
 
     } catch (error) {
       console.error('Registration start error:', error);
