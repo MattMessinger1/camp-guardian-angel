@@ -317,8 +317,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                         user_id: user?.id,
                         name: 'Peloton',
                         url: 'https://studio.onepeloton.com',
-                        provider: 'peloton',
-                        created_from: 'internet_search'
+                        provider: 'peloton'
                       })
                       .select()
                       .single();
