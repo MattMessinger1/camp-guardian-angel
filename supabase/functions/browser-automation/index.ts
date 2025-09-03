@@ -1900,7 +1900,39 @@ async function analyzeWebPage(apiKey: string, request: BrowserSessionRequest): P
             
             const loginResult = await performAccountLoginDirect(ws, request.credentials);
             if (loginResult.success) {
-              console.log('✅ [AnalyzeWebPage] Login successful, re-analyzing page...');
+              console.log('✅ [AnalyzeWebPage] Login successful, storing credentials...');
+              
+              // Check if VGS is configured for safe credential storage
+              const vgsConfigured = Deno.env.get('VGS_VAULT_ID') && 
+                                    Deno.env.get('VGS_VAULT_ID') !== 'test_vault_id';
+              
+              if (vgsConfigured && request.userId) {
+                try {
+                  // Import encryption function
+                  const { encrypt } = await import('../_shared/crypto.ts');
+                  
+                  // Store encrypted credentials
+                  await supabase.from('provider_credentials').upsert({
+                    user_id: request.userId,
+                    provider_url: new URL(request.url).hostname,
+                    email: request.credentials.email,
+                    password_encrypted: await encrypt(request.credentials.password),
+                    last_verified_at: new Date().toISOString(),
+                    works: true,
+                    updated_at: new Date().toISOString()
+                  }, {
+                    onConflict: 'user_id,provider_url'
+                  });
+                  
+                  console.log('✅ [AnalyzeWebPage] Credentials safely stored');
+                } catch (credError) {
+                  console.error('⚠️ [AnalyzeWebPage] Failed to store credentials:', credError);
+                  // Continue with analysis even if credential storage fails
+                }
+              } else {
+                console.warn('⚠️ [AnalyzeWebPage] VGS not configured - credentials not stored');
+                // Still continue with analysis, just don't store
+              }
               
               // Wait for page to update after login
               await new Promise(resolve => setTimeout(resolve, 3000));
