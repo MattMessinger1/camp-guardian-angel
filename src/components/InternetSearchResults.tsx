@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExternalLink, Search, Zap, Calendar, Clock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 function generateDefaultUrl(providerName: string): string {
   const name = providerName?.toLowerCase() || '';
@@ -56,6 +58,7 @@ interface InternetSearchResultsProps {
 }
 
 export function InternetSearchResults({ results, extractedTime, onSelect }: InternetSearchResultsProps) {
+  const { user } = useAuth();
   // Track selected sessions for each result
   const [selectedSessions, setSelectedSessions] = useState<Record<string, { date?: string; time?: string }>>({});
 
@@ -104,10 +107,11 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     }));
   };
 
-  const handleSelect = (result: InternetSearchResult, index: number) => {
+  const handleSelect = async (result: InternetSearchResult, index: number) => {
     console.log('🚨🚨🚨 STARTING HANDLESELECT');
-  console.log('🚨🚨🚨 RESULT:', result);
-  console.log('🚨🚨🚨 RESULT.URL:', result.url);
+    console.log('🚨🚨🚨 RESULT:', result);
+    console.log('🚨🚨🚨 RESULT.URL:', result.url);
+    
     const { dates, times } = getSessionData(result);
     const selectedSession = selectedSessions[index];
     
@@ -117,12 +121,12 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     
     if (needsDateSelection && !selectedSession?.date) {
       toast.error("Please select a date before proceeding with signup");
-      return; // Prevent signup from proceeding
+      return;
     }
     
     if (needsTimeSelection && !selectedSession?.time) {
       toast.error("Please select a time before proceeding with signup");
-      return; // Prevent signup from proceeding
+      return;
     }
     
     // Use first available options as defaults if not multi-option
@@ -134,57 +138,64 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     // Get selected session details for pricing
     const selectedSessionDetails = getSelectedSessionDetails(result, index);
     
-    // Generate fake session ID for internet results
-    const fakeSessionId = `internet-${Date.now()}-${Math.random()}`;
-    
-    // Store search result data in localStorage
-    const searchData = {
-      title: result.title || result.name,
-      url: result.url || generateDefaultUrl(result.provider || result.name || ''),
-      snippet: result.description,
-      businessName: result.name || result.title,
-      location: result.location || result.street_address,
-      signupCost: selectedSessionDetails?.price || result.signup_cost,
-      totalCost: result.total_cost || selectedSessionDetails?.price || result.signup_cost,
-      selectedDate: finalDate,
-      selectedTime: finalTime,
-      provider: result.provider,
-      estimatedDates: result.estimatedDates,
-      estimatedPrice: result.estimatedPrice,
-      estimatedAgeRange: result.estimatedAgeRange
-    };
-    
+    // Create a real registration plan immediately
     try {
-      localStorage.setItem(`search-${fakeSessionId}`, JSON.stringify(searchData));
-      console.log('📁 Stored search data in localStorage:', fakeSessionId, searchData);
-    } catch (error) {
-      console.error('❌ Failed to store search data:', error);
-      toast.error("Failed to store search data. Please try again.");
-      return;
-    }
-    
-    // Store extracted time data in sessionStorage if available
-    if (extractedTime) {
-      const storageKey = `extracted_time_${fakeSessionId}`;
-      try {
-        sessionStorage.setItem(storageKey, JSON.stringify(extractedTime));
-        console.log('Stored extracted time data for session:', fakeSessionId, extractedTime);
-      } catch (error) {
-        console.error('Error storing extracted time data:', error);
+      if (!user?.id) {
+        toast.error("Please log in to continue");
+        return;
       }
+
+      const { data: plan, error } = await supabase
+        .from('registration_plans')
+        .insert({
+          user_id: user.id,
+          camp_id: null, // Not linked to a specific camp yet
+          child_id: null, // Will be set later when user selects child
+          detect_url: result.url || generateDefaultUrl(result.provider || result.name || ''),
+          open_strategy: 'internet_search',
+          account_mode: 'guest', // Default account mode
+          preflight_status: 'pending',
+          rules: {
+            provider: result.provider || 'unknown',
+            selectedDate: finalDate,
+            selectedTime: finalTime,
+            estimatedDates: result.estimatedDates,
+            estimatedPrice: result.estimatedPrice,
+            estimatedAgeRange: result.estimatedAgeRange,
+            totalCost: result.total_cost || selectedSessionDetails?.price || result.signup_cost,
+            name: result.title || result.name || 'Class Registration',
+            price: selectedSessionDetails?.price || result.signup_cost,
+            location: result.location || result.street_address
+          }
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Failed to create registration plan:', error);
+        toast.error("Failed to create registration plan. Please try again.");
+        return;
+      }
+
+      if (plan) {
+        console.log('✅ Created registration plan:', plan.id);
+        
+        // Navigate with real plan ID
+        onSelect({ 
+          ...result, 
+          id: plan.id, // Use the real plan ID
+          selectedDate: finalDate, 
+          selectedTime: finalTime,
+          businessName: result.name || result.title,
+          location: result.location || result.street_address,
+          signupCost: selectedSessionDetails?.price || result.signup_cost,
+          totalCost: result.total_cost || selectedSessionDetails?.price || result.signup_cost
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to create registration plan:', error);
+      toast.error("Failed to create registration plan. Please try again.");
     }
-    
-    onSelect({ 
-      ...result, 
-      id: fakeSessionId, // Use the generated fake session ID
-      selectedDate: finalDate, 
-      selectedTime: finalTime,
-      // Map search result fields to expected session data fields
-      businessName: result.name || result.title,
-      location: result.location || result.street_address,
-      signupCost: selectedSessionDetails?.price || result.signup_cost,
-      totalCost: result.total_cost || selectedSessionDetails?.price || result.signup_cost
-    });
   };
 
   if (results.length === 0) {

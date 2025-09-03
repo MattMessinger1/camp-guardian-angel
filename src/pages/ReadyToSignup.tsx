@@ -17,32 +17,22 @@ export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const sessionId = params.id || params.sessionId;
-  
-  // Check if this is an internet session
-  const isInternetSession = sessionId?.startsWith('internet-');
-
-  // Skip database query for internet sessions
-  const skipPlanQuery = isInternetSession;
+  const planId = params.id || params.sessionId;
 
   const { data: planData } = useQuery({
-    queryKey: ['registration-plan', sessionId],
+    queryKey: ['registration-plan', planId],
     queryFn: async () => {
-      if (skipPlanQuery) return null;
-      
-      // Load from database for real UUIDs
-      const { data, error: dbError } = await supabase
-        .from('sessions')
-        .select('*, activities (name, city, state)')
-        .eq('id', sessionId)
-        .maybeSingle();
+      const { data, error } = await supabase
+        .from('registration_plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
 
-      if (dbError) throw dbError;
+      if (error) throw error;
       return data;
     },
-    enabled: !skipPlanQuery && !!sessionId
+    enabled: !!planId
   });
 
   // Progressive flow stages
@@ -56,12 +46,12 @@ export default function ReadyToSignup() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
 
-  // Auto-analyze for internet sessions
+  // Auto-analyze for plans without registration time
   useEffect(() => {
     const analyzeRegistration = async () => {
-      if (!sessionData?.url) return;
+      if (!planData?.detect_url || planData.manual_open_at) return;
       
-      console.log('🔍 Analyzing registration page:', sessionData.url);
+      console.log('🔍 Analyzing registration page:', planData.detect_url);
       setIsAnalyzing(true);
       setStage('analyzing');
       
@@ -69,7 +59,7 @@ export default function ReadyToSignup() {
         const { data, error } = await supabase.functions.invoke('browser-automation', {
           body: {
             action: 'analyze',
-            url: sessionData.url,
+            url: planData.detect_url,
             enableVision: true
           }
         });
@@ -87,7 +77,7 @@ export default function ReadyToSignup() {
           setBrowserSessionId(data.sessionId);
           
           // Load provider stats if we detected a provider
-          const detectedProvider = data.analysis.provider || detectProvider(sessionData.url);
+          const detectedProvider = data.analysis.provider || detectProvider(planData.detect_url);
           await loadProviderStats(detectedProvider);
           
           if (data.analysis.loginRequired) {
@@ -112,109 +102,57 @@ export default function ReadyToSignup() {
       }
     };
     
-    // Run analysis for internet sessions
-    if (sessionId?.startsWith('internet-') && sessionData?.url) {
+    // Run analysis for plans that need it
+    if (planData && !planData.manual_open_at) {
       analyzeRegistration();
     }
-  }, [sessionData, sessionId]);
+  }, [planData]);
 
-  // Load session data and start analysis
+  // Load plan data and set session
   useEffect(() => {
-    async function loadSessionAndAnalyze() {
-      if (!sessionId) {
-        setStage('error');
-        return;
-      }
-
-      try {
-        console.log('🔍 Loading session:', sessionId);
-        
-        // Check for test scenario first
-        const testScenario = getTestScenario(sessionId);
-        if (testScenario) {
-          console.log('🔍 Using test scenario:', testScenario.name);
-          setSessionData(testScenario.sessionData);
-          if ((testScenario.sessionData as any).signup_url || (testScenario.sessionData as any).url) {
-            analyzeInitial(testScenario.sessionData);
-          } else {
-            setStage('manual_time');
-          }
-          return;
-        }
-
-        // Handle internet-generated session IDs
-        if (sessionId.startsWith('internet-')) {
-          console.log('🔍 Using internet session ID, loading from localStorage');
-          
-          // Try to get search data from localStorage
-          const searchKey = `search-${sessionId}`;
-          const storedSearchData = localStorage.getItem(searchKey);
-          let searchData = null;
-          
-          if (storedSearchData) {
-            try {
-              searchData = JSON.parse(storedSearchData);
-              console.log('📁 Found stored search data:', searchData);
-            } catch (e) {
-              console.error('Failed to parse stored search data:', e);
-            }
-          }
-
-          // Fallback to URL parameters if no localStorage data
-          const businessName = searchData?.title || searchParams.get('businessName') || 'Class Registration';
-          const location = searchData?.location || searchParams.get('location') || 'NYC';
-          const signupCost = searchData?.signupCost || searchParams.get('signupCost') || '45';
-          const url = searchData?.url || searchParams.get('url'); // PRIORITIZE stored URL over params
-          
-          const mockSessionData = {
-            id: sessionId,
-            title: businessName,
-            url: url, // This now includes the stored URL
-            price_min: parseInt(signupCost) || 45,
-            activities: {
-              name: businessName,
-              city: location.split(',')[0] || location,
-              state: location.split(',')[1]?.trim() || 'NY'
-            }
-          };
-          
-          console.log('📍 DEBUG: Session data loaded:', mockSessionData);
-          console.log('📍 DEBUG: URL found:', mockSessionData?.url);
-          console.log('📍 DEBUG: Search data URL:', searchData?.url);
-          console.log('📍 DEBUG: Params URL:', searchParams.get('url'));
-          console.log('📍 DEBUG: About to set session data');
-          
-           setSessionData(mockSessionData);
-           
-           // Analysis will be handled by the analyzeRegistration useEffect
-           setStage('manual_time');
-           return;
-        }
-
-        // Handle real UUIDs from database
-        if (planData) {
-          setSessionData(planData);
-          
-          // Start analysis if URL available
-          if ((planData as any).signup_url || (planData as any).url) {
-            // Add url to data for analysis
-            const dataWithUrl = { ...planData, url: (planData as any).signup_url || (planData as any).url };
-            analyzeInitial(dataWithUrl);
-          } else {
-            setStage('manual_time');
-          }
-        } else if (!isInternetSession) {
-          setStage('error');
-        }
-        
-      } catch (err) {
-        console.error('🔍 Error loading session:', err);
-        setStage('error');
-      }
+    if (!planId) {
+      setStage('error');
+      return;
     }
 
-    loadSessionAndAnalyze();
-  }, [sessionId, searchParams, planData]);
+    // Check for test scenario first
+    const testScenario = getTestScenario(planId);
+    if (testScenario) {
+      console.log('🔍 Using test scenario:', testScenario.name);
+      setSessionData(testScenario.sessionData);
+      if ((testScenario.sessionData as any).signup_url || (testScenario.sessionData as any).url) {
+        analyzeInitial(testScenario.sessionData);
+      } else {
+        setStage('manual_time');
+      }
+      return;
+    }
+
+    // Handle real registration plan from database
+    if (planData) {
+      setSessionData({
+        id: planData.id,
+        title: 'Class Registration', // Use default since we don't have name in current schema
+        url: planData.detect_url,
+        price_min: 0, // Default since we don't have price in current schema
+        activities: {
+          name: 'Class Registration',
+          city: '',
+          state: ''
+        }
+      });
+      
+      // If plan already has registration time, show confirm stage
+      if (planData.manual_open_at) {
+        setRegistrationTime(planData.manual_open_at);
+        setStage('confirm_time');
+      } else {
+        setStage('manual_time');
+      }
+    } else if (planId && !planData) {
+      setStage('error');
+    }
+  }, [planId, planData]);
 
   // Main analysis function
   const analyzeInitial = async (sessionDataToAnalyze: any) => {
@@ -310,7 +248,7 @@ export default function ReadyToSignup() {
 
   // Handle login with credentials
   const handleLogin = async () => {
-    if (!credentials.email || !credentials.password || !browserSessionId) {
+    if (!credentials.email || !credentials.password || !browserSessionId || !planData) {
       toast({
         title: "Missing information",
         description: "Please provide both email and password",
@@ -325,7 +263,7 @@ export default function ReadyToSignup() {
       const { data, error } = await supabase.functions.invoke('browser-automation', {
         body: {
           action: 'analyze',
-          url: sessionData.url || sessionData.signup_url,
+          url: planData.detect_url,
           credentials,
           sessionId: browserSessionId, // Reuse session
           enableVision: true
@@ -358,7 +296,7 @@ export default function ReadyToSignup() {
 
   // Save and activate the registration plan
   const saveAndActivate = async () => {
-    if (!user || !registrationTime) {
+    if (!user || !registrationTime || !planData) {
       toast({
         title: "Missing information",
         description: "Please set a registration time first",
@@ -368,43 +306,28 @@ export default function ReadyToSignup() {
     }
 
     try {
-      console.log('💾 Creating registration plan...');
+      console.log('💾 Updating registration plan...');
       
-      // Create plan with all collected data
-      const planId = crypto.randomUUID();
+      // Update existing plan with registration time and automation rules
       const { error: planError } = await supabase
         .from('registration_plans')
-        .insert({
-          id: planId,
-          user_id: user.id,
-          session_id: isInternetSession ? null : sessionId,
-          target_time: registrationTime,
-          activity_name: sessionData?.title || sessionData?.activities?.name,
-          location: sessionData?.location || `${sessionData?.activities?.city}, ${sessionData?.activities?.state}`,
-          price: sessionData?.price_min,
-          url: sessionData?.url || sessionData?.signup_url,
-          provider: analysis?.provider || 'unknown',
-          browser_session_id: browserSessionId,
+        .update({
+          manual_open_at: registrationTime,
           automation_rules: {
             loginRequired: analysis?.loginRequired,
             captchaDetected: analysis?.captchaVisible,
             credentials_saved: credentials.email ? true : false
           },
           status: 'active'
-        });
+        })
+        .eq('id', planData.id);
         
       if (planError) {
-        console.error('Error creating registration plan:', planError);
+        console.error('Error updating registration plan:', planError);
         throw planError;
       }
       
-      console.log('✅ Created registration plan:', planId);
-      
-      // Clean up localStorage for internet sessions
-      if (isInternetSession) {
-        const searchKey = `search-${sessionId}`;
-        localStorage.removeItem(searchKey);
-      }
+      console.log('✅ Updated registration plan:', planData.id);
       
       toast({
         title: 'Registration automation activated!',
