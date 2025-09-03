@@ -42,6 +42,7 @@ export default function ReadyToSignup() {
   const [analysis, setAnalysis] = useState<any>(null);
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [registrationTime, setRegistrationTime] = useState('');
+  const [manualRegistrationTime, setManualRegistrationTime] = useState('');
   const [browserSessionId, setBrowserSessionId] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
   const [providerStats, setProviderStats] = useState<any>(null);
@@ -57,66 +58,19 @@ export default function ReadyToSignup() {
     
     console.log('🔍 Smart analysis starting for:', provider, url);
     
-    // Step 1: Check if it's a known provider - skip all analysis!
+    // Step 1: Check if it's a known provider - show verification step
     if (['peloton', 'soulcycle', 'barrys', 'equinox', 'corepower', 'orangetheory'].includes(provider)) {
-      console.log('✅ Known provider detected:', provider, '- skipping analysis');
+      console.log('✅ Known provider detected:', provider, '- showing verification');
       
-      const KNOWN_PATTERNS = {
-        peloton: {
-          name: 'Peloton',
-          pattern: "7 days in advance at 6:00 AM ET",
-          loginRequired: true,
-          registrationAdvance: 7,
-          openTime: "06:00"
-        },
-        soulcycle: {
-          name: 'SoulCycle', 
-          pattern: "7 days in advance at 12:00 PM",
-          loginRequired: true,
-          registrationAdvance: 7,
-          openTime: "12:00"
-        },
-        barrys: {
-          name: "Barry's Bootcamp",
-          pattern: "3 days in advance at 6:00 AM",
-          loginRequired: true,
-          registrationAdvance: 3,
-          openTime: "06:00"
-        },
-        equinox: {
-          name: 'Equinox',
-          pattern: "2 days in advance at 8:00 AM",
-          loginRequired: true,
-          registrationAdvance: 2,
-          openTime: "08:00"
-        },
-        corepower: {
-          name: 'CorePower Yoga',
-          pattern: "7 days in advance at 12:00 PM",
-          loginRequired: true,
-          registrationAdvance: 7,
-          openTime: "12:00"
-        },
-        orangetheory: {
-          name: 'Orange Theory',
-          pattern: "1 day in advance at 12:00 AM",
-          loginRequired: true,
-          registrationAdvance: 1,
-          openTime: "00:00"
-        }
-      };
-      
-      // Skip all analysis - we KNOW these need login
-      setStage('need_login');
       setAnalysis({
         provider,
         loginRequired: true,
-        pattern: KNOWN_PATTERNS[provider].pattern,
         confidence: 0.95,
         knownProvider: true
       });
       
-      // Load provider stats
+      // Go to verification stage instead of assuming pattern
+      setStage('verify_pattern');
       loadProviderStats(provider);
       return;
     }
@@ -565,6 +519,92 @@ export default function ReadyToSignup() {
         </Card>
       )}
       
+      {stage === 'verify_pattern' && (
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">
+            {analysis?.provider === 'peloton' ? 'Peloton' : analysis?.provider || 'Provider'} Registration Timing
+          </h2>
+          
+          <Alert className="mb-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+            <p className="font-medium">⚠️ Please verify your studio's booking pattern</p>
+            <p className="text-sm mt-2">
+              Different {analysis?.provider === 'peloton' ? 'Peloton' : 'fitness'} studios may have different booking windows.
+              Check your studio's website to confirm when classes open for booking.
+            </p>
+          </Alert>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Common patterns (select if applicable):
+              </label>
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + 7);
+                    date.setHours(6, 0, 0, 0);
+                    setManualRegistrationTime(date.toISOString().slice(0, 16));
+                  }}
+                  className="w-full text-left p-2 border rounded hover:bg-gray-50 transition-colors"
+                >
+                  📅 7 days in advance at 6:00 AM
+                </button>
+                <button
+                  onClick={() => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + 7);
+                    date.setHours(12, 0, 0, 0);
+                    setManualRegistrationTime(date.toISOString().slice(0, 16));
+                  }}
+                  className="w-full text-left p-2 border rounded hover:bg-gray-50 transition-colors"
+                >
+                  📅 7 days in advance at 12:00 PM (noon)
+                </button>
+                <button
+                  onClick={() => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + 14);
+                    date.setHours(6, 0, 0, 0);
+                    setManualRegistrationTime(date.toISOString().slice(0, 16));
+                  }}
+                  className="w-full text-left p-2 border rounded hover:bg-gray-50 transition-colors"
+                >
+                  📅 14 days in advance at 6:00 AM
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Or enter the exact time classes open:
+              </label>
+              <Input
+                type="datetime-local"
+                value={manualRegistrationTime}
+                onChange={(e) => setManualRegistrationTime(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="text-sm text-muted-foreground">
+              <p>💡 Tip: Check your {analysis?.provider === 'peloton' ? 'Peloton' : 'fitness'} app or website to see when the furthest bookable class becomes available.</p>
+            </div>
+          </div>
+          
+          <Button 
+            onClick={() => {
+              setRegistrationTime(manualRegistrationTime);
+              setStage('need_login');
+            }}
+            disabled={!manualRegistrationTime}
+            className="w-full mt-4"
+          >
+            Save & Continue to Login
+          </Button>
+        </Card>
+      )}
+
       {stage === 'need_login' && (
         <Card className="p-6">
           <h2 className="font-semibold mb-4">
@@ -574,7 +614,7 @@ export default function ReadyToSignup() {
           {analysis?.knownProvider && (
             <Alert className="mb-4">
               <div className="text-sm">
-                <strong>{analysis.pattern}</strong>
+                You've verified the registration timing for this provider.
                 <br />
                 We know {analysis.provider === 'peloton' ? 'Peloton' : analysis.provider} requires an account to see class schedules.
               </div>
