@@ -310,24 +310,34 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 
                 <Button 
                   onClick={async () => {
-                    // Create REAL registration plan
+                    // Get user if exists, but don't require it
+                    const { data: { user } } = await supabase.auth.getUser();
+                    
                     const { data: plan, error } = await supabase
                       .from('registration_plans')
                       .insert({
-                        user_id: user?.id,
+                        user_id: user?.id || null,  // Allow null for anonymous
                         detect_url: 'https://studio.onepeloton.com',
-                        status: 'draft'
+                        status: 'pending'
                       })
                       .select()
                       .single();
                       
                     if (error) {
                       console.error('Failed to create plan:', error);
+                      toast({
+                        title: "Error",
+                        description: "Something went wrong. Please try again.",
+                        variant: "destructive"
+                      });
                       return;
                     }
                     
                     if (plan) {
-                      // Navigate with REAL plan ID
+                      // Store plan ID for anonymous users to claim later
+                      if (!user) {
+                        localStorage.setItem('pending_plan_id', plan.id);
+                      }
                       navigate(`/ready-to-signup/${plan.id}`);
                     }
                   }}
