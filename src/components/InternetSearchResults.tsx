@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 function generateDefaultUrl(providerName: string): string {
   const name = providerName?.toLowerCase() || '';
@@ -59,6 +60,7 @@ interface InternetSearchResultsProps {
 
 export function InternetSearchResults({ results, extractedTime, onSelect }: InternetSearchResultsProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   // Track selected sessions for each result
   const [selectedSessions, setSelectedSessions] = useState<Record<string, { date?: string; time?: string }>>({});
 
@@ -107,94 +109,38 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     }));
   };
 
-  const handleSelect = async (result: InternetSearchResult, index: number) => {
-    console.log('🚨🚨🚨 STARTING HANDLESELECT');
-    console.log('🚨🚨🚨 RESULT:', result);
-    console.log('🚨🚨🚨 RESULT.URL:', result.url);
+  const handleSessionSelect = async (result: any, sessionDetails?: any) => {
+    console.log('Creating real registration plan for:', result);
     
-    const { dates, times } = getSessionData(result);
-    const selectedSession = selectedSessions[index];
-    
-    // Validation: Check if session selection is required and missing
-    const needsDateSelection = dates.length > 1;
-    const needsTimeSelection = times.length > 1;
-    
-    if (needsDateSelection && !selectedSession?.date) {
-      toast.error("Please select a date before proceeding with signup");
+    // Get the URL properly
+    const url = result.url || 
+      (result.provider?.toLowerCase().includes('peloton') ? 'https://studio.onepeloton.com' : null) ||
+      (result.name?.toLowerCase().includes('peloton') ? 'https://studio.onepeloton.com' : null) ||
+      'https://google.com';
+      
+    // Create a REAL registration plan in the database
+    const { data: plan, error } = await supabase
+      .from('registration_plans')
+      .insert({
+        user_id: user?.id,
+        name: result.title || result.name || 'Activity Registration',
+        url: url,
+        provider: result.provider || 'unknown',
+        created_from: 'internet_search'
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error creating plan:', error);
+      toast.error('Failed to create registration plan');
       return;
     }
     
-    if (needsTimeSelection && !selectedSession?.time) {
-      toast.error("Please select a time before proceeding with signup");
-      return;
-    }
-    
-    // Use first available options as defaults if not multi-option
-    const finalDate = selectedSession?.date || dates[0];
-    const finalTime = selectedSession?.time || times[0];
-    
-    console.log('✅ Session validation passed:', { date: finalDate, time: finalTime });
-    
-    // Get selected session details for pricing
-    const selectedSessionDetails = getSelectedSessionDetails(result, index);
-    
-    // Create a real registration plan immediately
-    try {
-      if (!user?.id) {
-        toast.error("Please log in to continue");
-        return;
-      }
-
-      const { data: plan, error } = await supabase
-        .from('registration_plans')
-        .insert({
-          user_id: user.id,
-          camp_id: null, // Not linked to a specific camp yet
-          child_id: null, // Will be set later when user selects child
-          detect_url: result.url || generateDefaultUrl(result.provider || result.name || ''),
-          open_strategy: 'internet_search',
-          account_mode: 'guest', // Default account mode
-          preflight_status: 'pending',
-          rules: {
-            provider: result.provider || 'unknown',
-            selectedDate: finalDate,
-            selectedTime: finalTime,
-            estimatedDates: result.estimatedDates,
-            estimatedPrice: result.estimatedPrice,
-            estimatedAgeRange: result.estimatedAgeRange,
-            totalCost: result.total_cost || selectedSessionDetails?.price || result.signup_cost,
-            name: result.title || result.name || 'Class Registration',
-            price: selectedSessionDetails?.price || result.signup_cost,
-            location: result.location || result.street_address
-          }
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Failed to create registration plan:', error);
-        toast.error("Failed to create registration plan. Please try again.");
-        return;
-      }
-
-      if (plan) {
-        console.log('✅ Created registration plan:', plan.id);
-        
-        // Navigate with real plan ID
-        onSelect({ 
-          ...result, 
-          id: plan.id, // Use the real plan ID
-          selectedDate: finalDate, 
-          selectedTime: finalTime,
-          businessName: result.name || result.title,
-          location: result.location || result.street_address,
-          signupCost: selectedSessionDetails?.price || result.signup_cost,
-          totalCost: result.total_cost || selectedSessionDetails?.price || result.signup_cost
-        });
-      }
-    } catch (error) {
-      console.error('❌ Failed to create registration plan:', error);
-      toast.error("Failed to create registration plan. Please try again.");
+    if (plan) {
+      console.log('Created plan with ID:', plan.id);
+      // Navigate with the REAL plan ID (a proper UUID)
+      navigate(`/ready-to-signup/${plan.id}`);
     }
   };
 
@@ -373,7 +319,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
             
             <div className="ml-6 flex flex-col items-start gap-2">
               <Button 
-                onClick={() => handleSelect(result, index)}
+                onClick={() => handleSessionSelect(result)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
                 disabled={result.canAutomate === false}
               >
