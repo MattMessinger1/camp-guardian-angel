@@ -26,6 +26,47 @@ export default function ReadyToSignup() {
   const { user } = useAuth();
   const sessionId = params.id || params.sessionId;
   
+  // Prevent UUID errors for internet sessions
+  if (sessionId?.startsWith('internet-')) {
+    // For internet sessions, show simplified UI without database queries
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center space-y-4">
+                <h1 className="text-2xl font-bold">Signup Preparation</h1>
+                <h2 className="text-xl">Peloton Studio</h2>
+                <p className="text-muted-foreground">Setting up registration for internet search result...</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="mb-4">Configure your signup time and preferences below:</p>
+                <div className="space-y-4">
+                  <Input
+                    type="datetime-local"
+                    placeholder="When does registration open?"
+                    className="max-w-md mx-auto"
+                  />
+                  <Button 
+                    onClick={() => navigate('/pending-signups')}
+                    className="w-full max-w-md"
+                  >
+                    Save & Continue
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+  
   // Check if this is an internet session
   const isInternetSession = sessionId?.startsWith('internet-');
 
