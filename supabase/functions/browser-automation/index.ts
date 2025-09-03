@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
+import OpenAI from "https://esm.sh/openai@4.24.0";
 import { getDecryptedCredentials, logLoginAttempt } from '../_shared/account-credentials.ts';
 
 const corsHeaders = {
@@ -97,18 +98,7 @@ serve(async (req) => {
         result = await performClassBooking(browserbaseApiKey, requestData);
         break;
       case 'analyze':
-        // Return basic analysis without Browserbase for now
-        result = {
-          success: true,
-          analysis: {
-            loginRequired: true,
-            registrationTime: null,
-            provider: requestData.url?.includes('peloton') ? 'peloton' : 'unknown',
-            captchaVisible: false,
-            confidence: 0.5
-          },
-          sessionId: 'analyze-fallback'
-        };
+        result = await analyzePageWithBrowser(browserbaseApiKey, requestData);
         break;
           
       case 'close':
@@ -1962,6 +1952,121 @@ async function analyzePageWithVision(screenshot: string, sessionId: string): Pro
     });
     
     return null;
+  }
+}
+
+async function analyzePageWithBrowser(apiKey: string, request: BrowserSessionRequest): Promise<any> {
+  if (!request.url) {
+    throw new Error('URL required for page analysis');
+  }
+
+  console.log('Starting page analysis for:', request.url);
+
+  try {
+    // Create a session for analysis
+    const sessionDetails = await createBrowserSession(apiKey, {
+      ...request,
+      action: 'create'
+    });
+
+    // Get session details from database to get WebSocket URL
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('browser_sessions')
+      .select('metadata')
+      .eq('session_id', sessionDetails.id)
+      .single();
+
+    if (sessionError || !sessionData?.metadata?.realSession?.connectUrl) {
+      throw new Error('Session not found or missing connection URL');
+    }
+
+    const connectUrl = sessionData.metadata.realSession.connectUrl;
+    
+    // Navigate to the URL using CDP
+    const ws = new WebSocket(connectUrl);
+    await new Promise((resolve, reject) => {
+      ws.onopen = resolve;
+      ws.onerror = reject;
+      setTimeout(() => reject(new Error('WebSocket connection timeout')), 10000);
+    });
+
+    // Navigate to URL
+    await executeScript(ws, `window.location.href = "${request.url}"`);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Take screenshot
+    const screenshot = await captureScreenshot(apiKey, sessionDetails.id, connectUrl);
+    console.log('Screenshot captured, analyzing with GPT-4 Vision...');
+
+    if (!screenshot) {
+      throw new Error('Failed to capture screenshot');
+    }
+
+    // Use GPT-4 Vision to analyze
+    const openai = new OpenAI({ apiKey: openAIApiKey });
+
+    const visionResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Analyze this registration/booking page and extract:
+                   1. Is login required? (look for sign-in buttons, "members only")
+                   2. When does registration/booking open? (dates, times, "opens at", "available from")
+                   3. What provider is this? (Peloton, Ticketmaster, etc)
+                   4. Are there CAPTCHAs visible?
+                   
+                   Return JSON:
+                   {
+                     "loginRequired": boolean,
+                     "registrationTime": "ISO date or null",
+                     "displayTime": "human readable or null",
+                     "confidence": 0.0-1.0,
+                     "source": "exact text from page or null",
+                     "provider": "provider name",
+                     "captchaVisible": boolean
+                   }`
+          },
+          {
+            type: "image_url",
+            image_url: { url: `data:image/png;base64,${screenshot}` }
+          }
+        ]
+      }],
+      max_completion_tokens: 500,
+      response_format: { type: "json_object" }
+    });
+
+    const analysis = JSON.parse(visionResponse.choices[0].message.content);
+    console.log('Vision analysis complete:', analysis);
+
+    // Clean up the session
+    ws.close();
+    await closeBrowserSession(apiKey, { sessionId: sessionDetails.id, action: 'close' });
+
+    // Return the analysis with the session ID
+    return {
+      success: true,
+      analysis,
+      sessionId: sessionDetails.id || 'analyze-' + Date.now(),
+      screenshot: screenshot.substring(0, 100) + '...' // Include partial screenshot for debugging
+    };
+
+  } catch (error: any) {
+    console.error('❌ Page analysis failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      analysis: {
+        loginRequired: false,
+        registrationTime: null,
+        provider: 'unknown',
+        captchaVisible: false,
+        confidence: 0.0
+      }
+    };
   }
 }
 
