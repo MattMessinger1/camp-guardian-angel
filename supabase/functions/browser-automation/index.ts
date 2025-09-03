@@ -350,8 +350,8 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
     throw new Error('Session ID and credentials required for login');
   }
 
-  console.log('Starting Peloton login with simplified approach...');
-
+  console.log('Starting Peloton login with direct CDP commands...');
+  
   try {
     // Get session details from database to get WebSocket connection
     const { data: sessionData, error: sessionError } = await supabase
@@ -366,122 +366,268 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
 
     const connectUrl = sessionData.metadata.realSession.connectUrl;
     const sessionDetails = sessionData.metadata.realSession;
-    console.log('[LOGIN] Using WebSocket connection for session:', sessionDetails.id);
+    
+    // Create WebSocket connection for CDP commands
+    const ws = new WebSocket(connectUrl);
+    let messageId = 1;
+    
+    const sendCDPCommand = (method: string, params: any = {}) => {
+      return new Promise((resolve, reject) => {
+        const id = messageId++;
+        const message = { id, method, params };
+        
+        const responseHandler = (event: MessageEvent) => {
+          const response = JSON.parse(event.data);
+          if (response.id === id) {
+            ws.removeEventListener('message', responseHandler);
+            if (response.error) {
+              reject(new Error(response.error.message));
+            } else {
+              resolve(response.result);
+            }
+          }
+        };
+        
+        ws.addEventListener('message', responseHandler);
+        ws.send(JSON.stringify(message));
+        
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          ws.removeEventListener('message', responseHandler);
+          reject(new Error(`CDP command timeout: ${method}`));
+        }, 10000);
+      });
+    };
 
-    // Simplified Peloton login with shorter timeouts
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(connectUrl);
-
       const cleanup = () => {
         try {
           ws.close();
         } catch (e) {
-          console.warn('[LOGIN] WebSocket cleanup warning:', e);
+          console.warn('WebSocket cleanup warning:', e);
         }
       };
 
-      // Shorter overall timeout (30 seconds)
+      // Overall timeout (60 seconds)
       setTimeout(() => {
         cleanup();
-        reject(new Error('Login timeout after 30 seconds'));
-      }, 30000);
+        reject(new Error('Login timeout after 60 seconds'));
+      }, 60000);
 
       ws.onopen = async () => {
         try {
-          console.log('[LOGIN] WebSocket connected, starting simplified login...');
+          console.log('WebSocket connected, starting CDP login...');
           
-          // Navigate to login page with shorter timeout
+          // Navigate to login page
           const loginUrl = 'https://studio.onepeloton.com/login';
           console.log('Navigating to:', loginUrl);
           
-          await executeScript(ws, `window.location.href = "${loginUrl}"`);
+          await sendCDPCommand('Page.navigate', { url: loginUrl });
           
-          // Wait for page to load (3 seconds should be enough)
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          console.log('Page loaded, attempting to fill credentials...');
+          // Wait for page to fully load
+          console.log('Waiting for page load...');
+          await new Promise(resolve => setTimeout(resolve, 7000)); // Longer wait for React
           
-          // Try multiple selector strategies with individual commands
-          const fillCommands = [
-            // Fill email - try multiple selectors
-            `document.querySelector('input[type="email"]')?.value = '${request.credentials.email}'`,
-            `document.querySelector('input[name="username"]')?.value = '${request.credentials.email}'`,
-            `document.querySelector('input[placeholder*="Email"]')?.value = '${request.credentials.email}'`,
-            
-            // Fill password
-            `document.querySelector('input[type="password"]')?.value = '${request.credentials.password}'`,
-            
-            // Try to click login button
-            `document.querySelector('button[type="submit"]')?.click()`,
-            `document.querySelector('button')?.click()`
+          // Enable DOM and Runtime
+          await sendCDPCommand('DOM.enable');
+          await sendCDPCommand('Runtime.enable');
+          
+          // Get the document
+          const { root } = await sendCDPCommand('DOM.getDocument') as any;
+          
+          // Find email input
+          console.log('Finding email input...');
+          const emailSelectors = [
+            'input[type="email"]',
+            'input[name="username"]',
+            'input[placeholder*="Email"]',
+            'input[id*="email"]'
           ];
           
-          // Execute each command with individual try-catch
-          for (const command of fillCommands) {
+          for (const selector of emailSelectors) {
             try {
-              await executeScript(ws, command);
-              console.log('Executed:', command.substring(0, 50) + '...');
-              // Small delay between commands
-              await new Promise(resolve => setTimeout(resolve, 500));
+              const { nodeId } = await sendCDPCommand('DOM.querySelector', {
+                nodeId: root.nodeId,
+                selector: selector
+              }) as any;
+              
+              if (nodeId && nodeId > 0) {
+                console.log('Found email input with selector:', selector);
+                
+                // Focus and type email
+                await sendCDPCommand('DOM.focus', { nodeId: nodeId });
+                
+                // Type email character by character
+                for (const char of request.credentials.email) {
+                  await sendCDPCommand('Input.dispatchKeyEvent', {
+                    type: 'char',
+                    text: char
+                  });
+                }
+                
+                console.log('Email entered');
+                break;
+              }
             } catch (e) {
-              console.log('Command failed (continuing):', command.substring(0, 30));
+              console.log('Selector failed:', selector);
             }
           }
           
-          // Wait for login to complete
+          // Small delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Find password input
+          console.log('Finding password input...');
+          const { nodeId: passwordNodeId } = await sendCDPCommand('DOM.querySelector', {
+            nodeId: root.nodeId,
+            selector: 'input[type="password"]'
+          }) as any;
+          
+          if (passwordNodeId && passwordNodeId > 0) {
+            console.log('Found password input');
+            
+            // Focus and type password
+            await sendCDPCommand('DOM.focus', { nodeId: passwordNodeId });
+            
+            // Type password character by character
+            for (const char of request.credentials.password) {
+              await sendCDPCommand('Input.dispatchKeyEvent', {
+                type: 'char',
+                text: char
+              });
+            }
+            
+            console.log('Password entered');
+          }
+          
+          // Small delay before clicking
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Find and click submit button
+          console.log('Finding submit button...');
+          const buttonSelectors = [
+            'button[type="submit"]',
+            'button:contains("Log In")',
+            'button:contains("Sign In")',
+            'button.login-button'
+          ];
+          
+          for (const selector of buttonSelectors) {
+            try {
+              const { nodeId } = await sendCDPCommand('DOM.querySelector', {
+                nodeId: root.nodeId,
+                selector: selector
+              }) as any;
+              
+              if (nodeId && nodeId > 0) {
+                console.log('Found submit button, clicking...');
+                
+                // Get button coordinates
+                const { model } = await sendCDPCommand('DOM.getBoxModel', {
+                  nodeId: nodeId
+                }) as any;
+                
+                const x = (model.content[0] + model.content[2]) / 2;
+                const y = (model.content[1] + model.content[5]) / 2;
+                
+                // Click the button
+                await sendCDPCommand('Input.dispatchMouseEvent', {
+                  type: 'mousePressed',
+                  x: x,
+                  y: y,
+                  button: 'left',
+                  clickCount: 1
+                });
+                
+                await sendCDPCommand('Input.dispatchMouseEvent', {
+                  type: 'mouseReleased',
+                  x: x,
+                  y: y,
+                  button: 'left',
+                  clickCount: 1
+                });
+                
+                console.log('Submit button clicked');
+                break;
+              }
+            } catch (e) {
+              console.log('Button selector failed:', selector);
+            }
+          }
+          
+          // Wait for navigation
           console.log('Waiting for login to complete...');
           await new Promise(resolve => setTimeout(resolve, 5000));
           
-          // Take screenshot to see result
-          const screenshot = await captureScreenshot(apiKey, sessionDetails.id, connectUrl);
-          console.log('Screenshot captured after login attempt');
+          // Check if login worked
+          const urlCheck = await sendCDPCommand('Runtime.evaluate', {
+            expression: 'window.location.href',
+            returnByValue: true
+          }) as any;
           
-          // Check if we're still on login page (login failed) or moved on (success)
-          let currentUrl = '';
-          try {
-            currentUrl = await executeScript(ws, 'return window.location.href');
-          } catch (e) {
-            console.warn('Could not get current URL:', e);
-          }
-          
+          const currentUrl = urlCheck?.value || '';
           const loginSuccess = !currentUrl.includes('/login');
           
-          console.log('Current URL after login:', currentUrl);
-          console.log('Login success:', loginSuccess);
+          // Take screenshot
+          const screenshot = await captureScreenshot(ws, sessionDetails.id);
           
-          cleanup();
-          resolve({
-            success: loginSuccess,
-            currentUrl,
-            screenshot: screenshot ? `data:image/png;base64,${screenshot}` : null,
-            message: loginSuccess ? 'Login appears successful' : 'Still on login page - check screenshot',
-            sessionId: request.sessionId
-          });
+          console.log('Login complete. Success:', loginSuccess, 'URL:', currentUrl);
+          
+          if (loginSuccess) {
+            // Navigate to classes page
+            await sendCDPCommand('Page.navigate', { 
+              url: 'https://studio.onepeloton.com/classes'
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Take screenshot of classes
+            const classesScreenshot = await captureScreenshot(ws, sessionDetails.id);
+            
+            cleanup();
+            resolve({
+              success: true,
+              loggedIn: true,
+              currentUrl,
+              message: 'Login successful!',
+              classesScreenshot: classesScreenshot ? `data:image/png;base64,${classesScreenshot}` : null,
+              sessionId: sessionDetails.sessionId
+            });
+          } else {
+            cleanup();
+            resolve({
+              success: false,
+              currentUrl,
+              screenshot: screenshot ? `data:image/png;base64,${screenshot}` : null,
+              message: 'Login failed - check credentials',
+              sessionId: sessionDetails.sessionId
+            });
+          }
           
         } catch (error) {
+          console.error('Login error:', error);
           cleanup();
-          reject(new Error(`Login failed: ${error.message}`));
+          reject(error);
         }
       };
 
       ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
         cleanup();
-        console.error('[LOGIN] WebSocket error:', error);
         reject(new Error('WebSocket connection failed'));
       };
 
       ws.onclose = () => {
-        console.log('[LOGIN] WebSocket connection closed');
+        console.log('WebSocket connection closed');
       };
     });
-
-  } catch (error: any) {
-    console.error('Login error:', error);
     
-    // Still return what we can
+  } catch (error) {
+    console.error('Login error:', error);
     return {
       success: false,
       error: error.message,
-      sessionId: request.sessionId
+      sessionId: sessionDetails.sessionId
     };
   }
 }
