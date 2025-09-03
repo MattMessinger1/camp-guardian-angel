@@ -110,6 +110,17 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
   };
 
   const handleSessionSelect = async (result: any, sessionDetails?: any) => {
+    console.log('=== FUNCTION CALLED ===');
+    console.log('Result:', result);
+    console.log('User:', user);
+    console.log('Supabase:', supabase);
+    
+    if (!user?.id) {
+      console.error('No user ID!');
+      toast.error('Please sign in first');
+      return;
+    }
+    
     console.log('Creating real registration plan for:', result);
     
     // Get the URL properly
