@@ -346,41 +346,14 @@ function getSimulatedFormFields(url: string): any[] {
 }
 
 async function performAccountLogin(apiKey: string, request: BrowserSessionRequest): Promise<any> {
-  if (!request.sessionId || !request.userId || !request.providerUrl) {
-    throw new Error('Session ID, User ID, and Provider URL required for login');
+  if (!request.sessionId || !request.credentials) {
+    throw new Error('Session ID and credentials required for login');
   }
 
-  console.log(`🔐 Account Login: Attempting login for session ${request.sessionId}`);
+  console.log('Starting Peloton login...');
 
   try {
-    // Get stored credentials for this user and provider
-    const { email, password, error } = await getDecryptedCredentials({
-      userId: request.userId,
-      providerUrl: request.providerUrl
-    });
-
-    if (error || !email || !password) {
-      console.log('[LOGIN] No valid credentials found:', error);
-      
-      await logLoginAttempt({
-        userId: request.userId,
-        providerUrl: request.providerUrl,
-        success: false,
-        error: error || 'No credentials found',
-        sessionId: request.sessionId
-      });
-
-      return {
-        success: false,
-        account_found: false,
-        login_attempted: false,
-        error: error || 'No stored credentials found for this provider'
-      };
-    }
-
-    console.log('[LOGIN] Found credentials, attempting real login...');
-
-    // Get session details from database to get WebSocket URL
+    // Get session details from database to get WebSocket connection
     const { data: sessionData, error: sessionError } = await supabase
       .from('browser_sessions')
       .select('metadata')
@@ -392,78 +365,184 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
     }
 
     const connectUrl = sessionData.metadata.realSession.connectUrl;
-    console.log('[LOGIN] Got WebSocket connection URL, establishing CDP connection...');
+    const sessionDetails = sessionData.metadata.realSession;
+    console.log('[LOGIN] Using WebSocket connection for session:', sessionDetails.id);
 
-    // Navigate to login page if not already there
-    const loginPageResult = await navigateToLoginPage(connectUrl, request.providerUrl);
-    if (!loginPageResult.success) {
-      throw new Error(`Failed to navigate to login page: ${loginPageResult.error}`);
-    }
+    // Perform Peloton login via WebSocket CDP
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(connectUrl);
+      let loginStep = 'connecting';
 
-    // Find and fill login form
-    const formFillResult = await fillLoginForm(connectUrl, email, password);
-    if (!formFillResult.success) {
-      throw new Error(`Failed to fill login form: ${formFillResult.error}`);
-    }
-
-    // Submit the form and wait for response
-    const submitResult = await submitLoginForm(connectUrl);
-    if (!submitResult.success) {
-      throw new Error(`Failed to submit login form: ${submitResult.error}`);
-    }
-
-    // Check post-login state
-    const postLoginResult = await checkPostLoginState(connectUrl, request);
-    
-    // Log the successful attempt
-    await logLoginAttempt({
-      userId: request.userId,
-      providerUrl: request.providerUrl,
-      success: postLoginResult.loginSuccess,
-      error: postLoginResult.error,
-      sessionId: request.sessionId,
-      metadata: {
-        twoFactorRequired: postLoginResult.twoFactorRequired,
-        redirectUrl: postLoginResult.redirectUrl
-      }
-    });
-
-    // Update session with login status
-    await supabase.from('browser_sessions')
-      .update({ 
-        last_activity: new Date().toISOString(),
-        metadata: {
-          ...sessionData.metadata,
-          login_attempted: true,
-          login_success: postLoginResult.loginSuccess,
-          two_factor_required: postLoginResult.twoFactorRequired,
-          timestamp: new Date().toISOString()
+      const cleanup = () => {
+        try {
+          ws.close();
+        } catch (e) {
+          console.warn('[LOGIN] WebSocket cleanup warning:', e);
         }
-      })
-      .eq('session_id', request.sessionId);
+      };
 
-    console.log('[LOGIN] Login attempt completed:', postLoginResult);
-    return {
-      success: postLoginResult.loginSuccess,
-      account_found: true,
-      login_attempted: true,
-      two_factor_required: postLoginResult.twoFactorRequired,
-      captcha_event_id: postLoginResult.captchaEventId,
-      redirect_url: postLoginResult.redirectUrl,
-      error: postLoginResult.error
-    };
+      setTimeout(() => {
+        cleanup();
+        reject(new Error(`Login timeout at step: ${loginStep}`));
+      }, 45000);
+
+      ws.onopen = async () => {
+        try {
+          console.log('[LOGIN] WebSocket connected, starting Peloton login flow...');
+          
+          // Step 1: Navigate to Peloton login page
+          loginStep = 'navigate';
+          const loginUrl = 'https://studio.onepeloton.com/login';
+          await executeScript(ws, `window.location.href = "${loginUrl}"`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Step 2: Wait for and fill login form
+          loginStep = 'fill_form';
+          console.log('[LOGIN] Filling login credentials...');
+
+          // Find email field and fill it
+          await executeScript(ws, `
+            const emailField = document.querySelector('input[type="email"], input[name="username"], input[name="email"]');
+            if (emailField) {
+              emailField.value = '${request.credentials.email}';
+              emailField.dispatchEvent(new Event('input', { bubbles: true }));
+              emailField.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          `);
+
+          // Find password field and fill it
+          await executeScript(ws, `
+            const passwordField = document.querySelector('input[type="password"]');
+            if (passwordField) {
+              passwordField.value = '${request.credentials.password}';
+              passwordField.dispatchEvent(new Event('input', { bubbles: true }));
+              passwordField.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          `);
+
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Step 3: Submit the login form
+          loginStep = 'submit';
+          console.log('[LOGIN] Submitting login form...');
+          await executeScript(ws, `
+            const loginButton = document.querySelector('button[type="submit"], button:contains("Log In"), button:contains("Sign In")');
+            if (loginButton) {
+              loginButton.click();
+            } else {
+              // Try form submission
+              const form = document.querySelector('form');
+              if (form) form.submit();
+            }
+          `);
+
+          // Step 4: Wait for login response
+          loginStep = 'verify_login';
+          await new Promise(resolve => setTimeout(resolve, 5000));
+
+          // Check if login was successful
+          const currentUrl = await executeScript(ws, `return window.location.href;`);
+          const loginSuccess = !currentUrl.includes('/login') && currentUrl.includes('onepeloton');
+
+          if (loginSuccess) {
+            console.log('[LOGIN] Login successful! Extracting class schedule...');
+            
+            // Step 5: Navigate to classes page
+            loginStep = 'navigate_classes';
+            await executeScript(ws, `window.location.href = "https://studio.onepeloton.com/reserve/index.cfm"`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+            // Step 6: Take screenshot of classes page
+            loginStep = 'screenshot';
+            const screenshot = await captureScreenshot(apiKey, sessionDetails.id, connectUrl);
+            
+            if (screenshot) {
+              // Step 7: Extract class times with GPT-4 Vision
+              loginStep = 'analyze_schedule';
+              const openai = new OpenAI({ apiKey: openAIApiKey });
+              
+              const visionResponse = await openai.chat.completions.create({
+                model: "gpt-4-vision-preview",
+                messages: [{
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: `Extract all class dates and times from this Peloton schedule.
+                             Focus on when each class becomes available for booking.
+                             Return JSON:
+                             {
+                               "classes": [
+                                 {
+                                   "className": "name",
+                                   "dateTime": "ISO format",
+                                   "bookingOpens": "ISO format or pattern like '7 days before'"
+                                 }
+                               ],
+                               "generalPattern": "e.g., Classes open 7 days in advance at 6 AM ET"
+                             }`
+                    },
+                    {
+                      type: "image_url",
+                      image_url: { url: `data:image/png;base64,${screenshot}` }
+                    }
+                  ]
+                }],
+                response_format: { type: "json_object" }
+              });
+
+              const scheduleData = JSON.parse(visionResponse.choices[0].message.content);
+              
+              cleanup();
+              resolve({
+                success: true,
+                loggedIn: true,
+                scheduleData,
+                sessionId: request.sessionId,
+                message: 'Successfully logged in and extracted schedule'
+              });
+            } else {
+              cleanup();
+              resolve({
+                success: true,
+                loggedIn: true,
+                sessionId: request.sessionId,
+                message: 'Login successful but screenshot failed',
+                scheduleData: { 
+                  generalPattern: 'Classes typically open 7 days in advance at 6 AM ET',
+                  classes: []
+                }
+              });
+            }
+          } else {
+            cleanup();
+            resolve({
+              success: false,
+              loggedIn: false,
+              error: 'Login failed - check credentials',
+              sessionId: request.sessionId
+            });
+          }
+
+        } catch (error) {
+          cleanup();
+          reject(new Error(`Login step '${loginStep}' failed: ${error.message}`));
+        }
+      };
+
+      ws.onerror = (error) => {
+        cleanup();
+        console.error('[LOGIN] WebSocket error:', error);
+        reject(new Error(`WebSocket connection failed at step: ${loginStep}`));
+      };
+
+      ws.onclose = () => {
+        console.log('[LOGIN] WebSocket connection closed');
+      };
+    });
 
   } catch (error: any) {
-    console.error('[LOGIN] Login error:', error);
-    
-    await logLoginAttempt({
-      userId: request.userId,
-      providerUrl: request.providerUrl!,
-      success: false,
-      error: error.message,
-      sessionId: request.sessionId
-    });
-    
+    console.error('[LOGIN] Peloton login error:', error);
     throw error;
   }
 }
