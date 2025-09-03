@@ -50,65 +50,154 @@ export default function ReadyToSignup() {
 
   // Auto-analyze for plans without registration time
   useEffect(() => {
-    const analyzeRegistration = async () => {
-      if (!planData?.detect_url || planData.manual_open_at) return;
-      
-      console.log('🔍 Analyzing registration page:', planData.detect_url);
-      setIsAnalyzing(true);
-      setStage('analyzing');
-      
-      try {
-        const { data, error } = await supabase.functions.invoke('browser-automation', {
-          body: {
-            action: 'analyze',
-            url: planData.detect_url,
-            enableVision: true
-          }
-        });
-        
-        if (error) {
-          console.error('Analysis error:', error);
-          setStage('manual_time');
-          return;
-        }
-        
-        console.log('📊 Analysis result:', data);
-        
-        if (data?.analysis) {
-          setAnalysis(data.analysis);
-          setBrowserSessionId(data.sessionId);
-          
-          // Load provider stats if we detected a provider
-          const detectedProvider = data.analysis.provider || detectProvider(planData.detect_url);
-          await loadProviderStats(detectedProvider);
-          
-          if (data.analysis.loginRequired) {
-            console.log('🔐 Login required for this provider');
-            setShowLoginForm(true);
-            setStage('need_login');
-          } else if (data.analysis.registrationTime) {
-            console.log('✅ Registration time found:', data.analysis.registrationTime);
-            setRegistrationTime(data.analysis.registrationTime);
-            setStage('confirm_time');
-          } else {
-            setStage('manual_time');
-          }
-        } else {
-          setStage('manual_time');
-        }
-      } catch (error) {
-        console.error('Analysis failed:', error);
-        setStage('manual_time');
-      } finally {
-        setIsAnalyzing(false);
-      }
-    };
+    if (!sessionData?.url) return;
     
-    // Run analysis for plans that need it
-    if (planData && !planData.manual_open_at) {
-      analyzeRegistration();
+    const url = sessionData.url;
+    const provider = detectProvider(url);
+    
+    console.log('🔍 Smart analysis starting for:', provider, url);
+    
+    // Step 1: Check if it's a known provider - skip all analysis!
+    if (['peloton', 'soulcycle', 'barrys', 'equinox', 'corepower', 'orangetheory'].includes(provider)) {
+      console.log('✅ Known provider detected:', provider, '- skipping analysis');
+      
+      const KNOWN_PATTERNS = {
+        peloton: {
+          name: 'Peloton',
+          pattern: "7 days in advance at 6:00 AM ET",
+          loginRequired: true,
+          registrationAdvance: 7,
+          openTime: "06:00"
+        },
+        soulcycle: {
+          name: 'SoulCycle', 
+          pattern: "7 days in advance at 12:00 PM",
+          loginRequired: true,
+          registrationAdvance: 7,
+          openTime: "12:00"
+        },
+        barrys: {
+          name: "Barry's Bootcamp",
+          pattern: "3 days in advance at 6:00 AM",
+          loginRequired: true,
+          registrationAdvance: 3,
+          openTime: "06:00"
+        },
+        equinox: {
+          name: 'Equinox',
+          pattern: "2 days in advance at 8:00 AM",
+          loginRequired: true,
+          registrationAdvance: 2,
+          openTime: "08:00"
+        },
+        corepower: {
+          name: 'CorePower Yoga',
+          pattern: "7 days in advance at 12:00 PM",
+          loginRequired: true,
+          registrationAdvance: 7,
+          openTime: "12:00"
+        },
+        orangetheory: {
+          name: 'Orange Theory',
+          pattern: "1 day in advance at 12:00 AM",
+          loginRequired: true,
+          registrationAdvance: 1,
+          openTime: "00:00"
+        }
+      };
+      
+      // Skip all analysis - we KNOW these need login
+      setStage('need_login');
+      setAnalysis({
+        provider,
+        loginRequired: true,
+        pattern: KNOWN_PATTERNS[provider].pattern,
+        confidence: 0.95,
+        knownProvider: true
+      });
+      
+      // Load provider stats
+      loadProviderStats(provider);
+      return;
     }
-  }, [planData]);
+    
+    // Step 2: For unknown providers, do a 3-second quick check
+    console.log('🔍 Unknown provider, doing quick time check...');
+    setStage('analyzing');
+    setIsAnalyzing(true);
+    
+    quickCheckForTimes(url).then(result => {
+      setIsAnalyzing(false);
+      
+      if (result?.foundTime) {
+        console.log('⚡ Quick check found time:', result.time);
+        setStage('confirm_time');
+        setRegistrationTime(result.time);
+        setAnalysis({
+          provider: 'unknown',
+          registrationTime: result.time,
+          confidence: 0.6,
+          quickCheck: true
+        });
+      } else {
+        console.log('❓ No times visible, assume login required');
+        // Assume login required if we can't see times
+        setStage('need_login');
+        setAnalysis({
+          provider: 'unknown',
+          loginRequired: true,
+          confidence: 0.5,
+          assumedLogin: true
+        });
+      }
+    }).catch(error => {
+      console.error('Quick check failed:', error);
+      setIsAnalyzing(false);
+      setStage('manual_time');
+    });
+  }, [sessionData]);
+
+  // Quick check for registration times (3 second timeout)
+  const quickCheckForTimes = async (url: string): Promise<{ foundTime: boolean; time?: string }> => {
+    try {
+      console.log('⚡ Starting 3-second quick check for:', url);
+      
+      // Use a Promise.race with 3 second timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Quick check timeout')), 3000)
+      );
+      
+      const checkPromise = fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; QuickTimeChecker/1.0)'
+        }
+      }).then(response => response.text()).then(html => {
+        // Look for common time patterns in the HTML
+        const timePatterns = [
+          /(\d{1,2}:\d{2}\s*[AP]M)/i,
+          /registration opens at (\d{1,2}:\d{2})/i,
+          /booking available at (\d{1,2}:\d{2})/i,
+          /classes open at (\d{1,2}:\d{2})/i
+        ];
+        
+        for (const pattern of timePatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            return { foundTime: true, time: match[1] || match[0] };
+          }
+        }
+        
+        return { foundTime: false };
+      });
+      
+      return await Promise.race([checkPromise, timeoutPromise]) as { foundTime: boolean; time?: string };
+      
+    } catch (error) {
+      console.log('⚡ Quick check failed:', error.message);
+      return { foundTime: false };
+    }
+  };
 
   // Load plan data and set session
   useEffect(() => {
@@ -274,9 +363,9 @@ export default function ReadyToSignup() {
     }
   };
 
-  // Handle login with credentials
-  const handleLogin = async () => {
-    if (!credentials.email || !credentials.password || !browserSessionId || !planData) {
+  // Handle login with credentials - NOW we can use browser automation with their credentials
+  const handleLoginSubmit = async () => {
+    if (!credentials.email || !credentials.password) {
       toast({
         title: "Missing information",
         description: "Please provide both email and password",
@@ -285,15 +374,17 @@ export default function ReadyToSignup() {
       return;
     }
 
+    console.log('🔐 Starting browser automation with user credentials...');
     setStage('analyzing');
+    setIsAnalyzing(true);
     
     try {
+      // NOW we can use browser automation with their credentials to get the actual class times after logging in
       const { data, error } = await supabase.functions.invoke('browser-automation', {
         body: {
           action: 'analyze',
-          url: planData.detect_url,
+          url: sessionData?.url || planData?.detect_url,
           credentials,
-          sessionId: browserSessionId, // Reuse session
           enableVision: true
         }
       });
@@ -301,13 +392,24 @@ export default function ReadyToSignup() {
       if (error) {
         console.error('Login analysis error:', error);
         setStage('manual_time');
+        setIsAnalyzing(false);
         return;
       }
       
-      if (data?.analysis?.loggedInData?.registrationTime) {
-        setRegistrationTime(data.analysis.loggedInData.registrationTime);
-        setAnalysis({ ...analysis, ...data.analysis });
-        setStage('confirm_time');
+      console.log('📊 Analysis with login result:', data);
+      
+      if (data?.analysis) {
+        setAnalysis(prev => ({ ...prev, ...data.analysis }));
+        setBrowserSessionId(data.sessionId);
+        
+        if (data.analysis.registrationTime) {
+          console.log('✅ Registration time found after login:', data.analysis.registrationTime);
+          setRegistrationTime(data.analysis.registrationTime);
+          setStage('confirm_time');
+        } else {
+          console.log('❓ No registration time found, going to manual');
+          setStage('manual_time');
+        }
       } else {
         setStage('manual_time');
       }
@@ -319,6 +421,8 @@ export default function ReadyToSignup() {
         variant: "destructive"
       });
       setStage('manual_time');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -463,10 +567,27 @@ export default function ReadyToSignup() {
       
       {stage === 'need_login' && (
         <Card className="p-6">
-          <h2 className="font-semibold mb-4">Login Required</h2>
+          <h2 className="font-semibold mb-4">
+            {analysis?.knownProvider ? 'Account Required' : 'Login Required'}
+          </h2>
+          
+          {analysis?.knownProvider && (
+            <Alert className="mb-4">
+              <div className="text-sm">
+                <strong>{analysis.pattern}</strong>
+                <br />
+                We know {analysis.provider === 'peloton' ? 'Peloton' : analysis.provider} requires an account to see class schedules.
+              </div>
+            </Alert>
+          )}
+          
           <p className="text-sm text-muted-foreground mb-4">
-            This site requires login to see registration details. Please provide your account credentials.
+            {analysis?.knownProvider 
+              ? 'Please provide your account credentials to set up automated registration.'
+              : 'This site requires login to see registration details. Please provide your account credentials.'
+            }
           </p>
+          
           <div className="space-y-4">
             <Input
               type="email"
@@ -482,11 +603,18 @@ export default function ReadyToSignup() {
             />
             <div className="flex gap-3">
               <Button 
-                onClick={handleLogin} 
+                onClick={handleLoginSubmit} 
                 className="flex-1"
-                disabled={!credentials.email || !credentials.password}
+                disabled={!credentials.email || !credentials.password || isAnalyzing}
               >
-                Connect Account
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Analyzing...
+                  </>
+                ) : (
+                  'Connect Account'
+                )}
               </Button>
               <Button variant="ghost" onClick={() => setStage('manual_time')} className="flex-1">
                 Skip - Set time manually
