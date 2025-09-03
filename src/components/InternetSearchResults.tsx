@@ -6,6 +6,15 @@ import { ExternalLink, Search, Zap, Calendar, Clock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+function generateDefaultUrl(providerName: string): string {
+  const name = providerName?.toLowerCase() || '';
+  if (name.includes('peloton')) return 'https://studio.onepeloton.com';
+  if (name.includes('soulcycle')) return 'https://www.soul-cycle.com';
+  if (name.includes('barry')) return 'https://www.barrysbootcamp.com';
+  if (name.includes('equinox')) return 'https://www.equinox.com';
+  return `https://www.google.com/search?q=${encodeURIComponent(providerName || 'fitness class')}`;
+}
+
 interface InternetSearchResult {
   id?: string;
   name?: string;
@@ -131,7 +140,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     // Store search result data in localStorage
     const searchData = {
       title: result.title || result.name,
-      url: result.url || 'https://studio.onepeloton.com',
+      url: result.url || generateDefaultUrl(result.provider || result.name || ''),
       snippet: result.description,
       businessName: result.name || result.title,
       location: result.location || result.street_address,
