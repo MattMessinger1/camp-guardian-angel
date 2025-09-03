@@ -122,12 +122,41 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     // Get selected session details for pricing
     const selectedSessionDetails = getSelectedSessionDetails(result, index);
     
+    // Generate fake session ID for internet results
+    const fakeSessionId = `internet-${Date.now()}-${Math.random()}`;
+    
+    // Store search result data in localStorage
+    const searchData = {
+      title: result.title || result.name,
+      url: result.url,
+      snippet: result.description,
+      businessName: result.name || result.title,
+      location: result.location || result.street_address,
+      signupCost: selectedSessionDetails?.price || result.signup_cost,
+      totalCost: result.total_cost || selectedSessionDetails?.price || result.signup_cost,
+      selectedDate: finalDate,
+      selectedTime: finalTime,
+      provider: result.provider,
+      estimatedDates: result.estimatedDates,
+      estimatedPrice: result.estimatedPrice,
+      estimatedAgeRange: result.estimatedAgeRange
+    };
+    
+    try {
+      localStorage.setItem(`search-${fakeSessionId}`, JSON.stringify(searchData));
+      console.log('📁 Stored search data in localStorage:', fakeSessionId, searchData);
+    } catch (error) {
+      console.error('❌ Failed to store search data:', error);
+      toast.error("Failed to store search data. Please try again.");
+      return;
+    }
+    
     // Store extracted time data in sessionStorage if available
-    if (extractedTime && result.id) {
-      const storageKey = `extracted_time_${result.id}`;
+    if (extractedTime) {
+      const storageKey = `extracted_time_${fakeSessionId}`;
       try {
         sessionStorage.setItem(storageKey, JSON.stringify(extractedTime));
-        console.log('Stored extracted time data for session:', result.id, extractedTime);
+        console.log('Stored extracted time data for session:', fakeSessionId, extractedTime);
       } catch (error) {
         console.error('Error storing extracted time data:', error);
       }
@@ -135,6 +164,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     
     onSelect({ 
       ...result, 
+      id: fakeSessionId, // Use the generated fake session ID
       selectedDate: finalDate, 
       selectedTime: finalTime,
       // Map search result fields to expected session data fields
