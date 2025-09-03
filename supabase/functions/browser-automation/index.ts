@@ -350,7 +350,7 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
     throw new Error('Session ID and credentials required for login');
   }
 
-  console.log('Starting Peloton login...');
+  console.log('Starting Peloton login with simplified approach...');
 
   try {
     // Get session details from database to get WebSocket connection
@@ -368,10 +368,9 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
     const sessionDetails = sessionData.metadata.realSession;
     console.log('[LOGIN] Using WebSocket connection for session:', sessionDetails.id);
 
-    // Perform Peloton login via WebSocket CDP
+    // Simplified Peloton login with shorter timeouts
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(connectUrl);
-      let loginStep = 'connecting';
 
       const cleanup = () => {
         try {
@@ -381,159 +380,93 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
         }
       };
 
+      // Shorter overall timeout (30 seconds)
       setTimeout(() => {
         cleanup();
-        reject(new Error(`Login timeout at step: ${loginStep}`));
-      }, 45000);
+        reject(new Error('Login timeout after 30 seconds'));
+      }, 30000);
 
       ws.onopen = async () => {
         try {
-          console.log('[LOGIN] WebSocket connected, starting Peloton login flow...');
+          console.log('[LOGIN] WebSocket connected, starting simplified login...');
           
-          // Step 1: Navigate to Peloton login page
-          loginStep = 'navigate';
+          // Navigate to login page with shorter timeout
           const loginUrl = 'https://studio.onepeloton.com/login';
+          console.log('Navigating to:', loginUrl);
+          
           await executeScript(ws, `window.location.href = "${loginUrl}"`);
+          
+          // Wait for page to load (3 seconds should be enough)
           await new Promise(resolve => setTimeout(resolve, 3000));
-
-          // Step 2: Wait for and fill login form
-          loginStep = 'fill_form';
-          console.log('[LOGIN] Filling login credentials...');
-
-          // Find email field and fill it
-          await executeScript(ws, `
-            const emailField = document.querySelector('input[type="email"], input[name="username"], input[name="email"]');
-            if (emailField) {
-              emailField.value = '${request.credentials.email}';
-              emailField.dispatchEvent(new Event('input', { bubbles: true }));
-              emailField.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-          `);
-
-          // Find password field and fill it
-          await executeScript(ws, `
-            const passwordField = document.querySelector('input[type="password"]');
-            if (passwordField) {
-              passwordField.value = '${request.credentials.password}';
-              passwordField.dispatchEvent(new Event('input', { bubbles: true }));
-              passwordField.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-          `);
-
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // Step 3: Submit the login form
-          loginStep = 'submit';
-          console.log('[LOGIN] Submitting login form...');
-          await executeScript(ws, `
-            const loginButton = document.querySelector('button[type="submit"], button:contains("Log In"), button:contains("Sign In")');
-            if (loginButton) {
-              loginButton.click();
-            } else {
-              // Try form submission
-              const form = document.querySelector('form');
-              if (form) form.submit();
-            }
-          `);
-
-          // Step 4: Wait for login response
-          loginStep = 'verify_login';
-          await new Promise(resolve => setTimeout(resolve, 5000));
-
-          // Check if login was successful
-          const currentUrl = await executeScript(ws, `return window.location.href;`);
-          const loginSuccess = !currentUrl.includes('/login') && currentUrl.includes('onepeloton');
-
-          if (loginSuccess) {
-            console.log('[LOGIN] Login successful! Extracting class schedule...');
+          console.log('Page loaded, attempting to fill credentials...');
+          
+          // Try multiple selector strategies with individual commands
+          const fillCommands = [
+            // Fill email - try multiple selectors
+            `document.querySelector('input[type="email"]')?.value = '${request.credentials.email}'`,
+            `document.querySelector('input[name="username"]')?.value = '${request.credentials.email}'`,
+            `document.querySelector('input[placeholder*="Email"]')?.value = '${request.credentials.email}'`,
             
-            // Step 5: Navigate to classes page
-            loginStep = 'navigate_classes';
-            await executeScript(ws, `window.location.href = "https://studio.onepeloton.com/reserve/index.cfm"`);
-            await new Promise(resolve => setTimeout(resolve, 5000));
-
-            // Step 6: Take screenshot of classes page
-            loginStep = 'screenshot';
-            const screenshot = await captureScreenshot(apiKey, sessionDetails.id, connectUrl);
+            // Fill password
+            `document.querySelector('input[type="password"]')?.value = '${request.credentials.password}'`,
             
-            if (screenshot) {
-              // Step 7: Extract class times with GPT-4 Vision
-              loginStep = 'analyze_schedule';
-              const openai = new OpenAI({ apiKey: openAIApiKey });
-              
-              const visionResponse = await openai.chat.completions.create({
-                model: "gpt-4-vision-preview",
-                messages: [{
-                  role: "user",
-                  content: [
-                    {
-                      type: "text",
-                      text: `Extract all class dates and times from this Peloton schedule.
-                             Focus on when each class becomes available for booking.
-                             Return JSON:
-                             {
-                               "classes": [
-                                 {
-                                   "className": "name",
-                                   "dateTime": "ISO format",
-                                   "bookingOpens": "ISO format or pattern like '7 days before'"
-                                 }
-                               ],
-                               "generalPattern": "e.g., Classes open 7 days in advance at 6 AM ET"
-                             }`
-                    },
-                    {
-                      type: "image_url",
-                      image_url: { url: `data:image/png;base64,${screenshot}` }
-                    }
-                  ]
-                }],
-                response_format: { type: "json_object" }
-              });
-
-              const scheduleData = JSON.parse(visionResponse.choices[0].message.content);
-              
-              cleanup();
-              resolve({
-                success: true,
-                loggedIn: true,
-                scheduleData,
-                sessionId: request.sessionId,
-                message: 'Successfully logged in and extracted schedule'
-              });
-            } else {
-              cleanup();
-              resolve({
-                success: true,
-                loggedIn: true,
-                sessionId: request.sessionId,
-                message: 'Login successful but screenshot failed',
-                scheduleData: { 
-                  generalPattern: 'Classes typically open 7 days in advance at 6 AM ET',
-                  classes: []
-                }
-              });
+            // Try to click login button
+            `document.querySelector('button[type="submit"]')?.click()`,
+            `document.querySelector('button')?.click()`
+          ];
+          
+          // Execute each command with individual try-catch
+          for (const command of fillCommands) {
+            try {
+              await executeScript(ws, command);
+              console.log('Executed:', command.substring(0, 50) + '...');
+              // Small delay between commands
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (e) {
+              console.log('Command failed (continuing):', command.substring(0, 30));
             }
-          } else {
-            cleanup();
-            resolve({
-              success: false,
-              loggedIn: false,
-              error: 'Login failed - check credentials',
-              sessionId: request.sessionId
-            });
           }
-
+          
+          // Wait for login to complete
+          console.log('Waiting for login to complete...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Take screenshot to see result
+          const screenshot = await captureScreenshot(apiKey, sessionDetails.id, connectUrl);
+          console.log('Screenshot captured after login attempt');
+          
+          // Check if we're still on login page (login failed) or moved on (success)
+          let currentUrl = '';
+          try {
+            currentUrl = await executeScript(ws, 'return window.location.href');
+          } catch (e) {
+            console.warn('Could not get current URL:', e);
+          }
+          
+          const loginSuccess = !currentUrl.includes('/login');
+          
+          console.log('Current URL after login:', currentUrl);
+          console.log('Login success:', loginSuccess);
+          
+          cleanup();
+          resolve({
+            success: loginSuccess,
+            currentUrl,
+            screenshot: screenshot ? `data:image/png;base64,${screenshot}` : null,
+            message: loginSuccess ? 'Login appears successful' : 'Still on login page - check screenshot',
+            sessionId: request.sessionId
+          });
+          
         } catch (error) {
           cleanup();
-          reject(new Error(`Login step '${loginStep}' failed: ${error.message}`));
+          reject(new Error(`Login failed: ${error.message}`));
         }
       };
 
       ws.onerror = (error) => {
         cleanup();
         console.error('[LOGIN] WebSocket error:', error);
-        reject(new Error(`WebSocket connection failed at step: ${loginStep}`));
+        reject(new Error('WebSocket connection failed'));
       };
 
       ws.onclose = () => {
@@ -542,8 +475,14 @@ async function performAccountLogin(apiKey: string, request: BrowserSessionReques
     });
 
   } catch (error: any) {
-    console.error('[LOGIN] Peloton login error:', error);
-    throw error;
+    console.error('Login error:', error);
+    
+    // Still return what we can
+    return {
+      success: false,
+      error: error.message,
+      sessionId: request.sessionId
+    };
   }
 }
 
