@@ -15,7 +15,7 @@ const supabase = createClient(
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 interface BrowserSessionRequest {
-  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register' | 'book_class';
+  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register' | 'book_class' | 'analyze';
   sessionId?: string;
   url?: string;
   campProviderId?: string;
@@ -26,6 +26,7 @@ interface BrowserSessionRequest {
   userId?: string;
   providerUrl?: string;
   steps?: string[];
+  credentials?: { email: string; password: string };
 }
 
 interface BrowserSession {
@@ -94,6 +95,9 @@ serve(async (req) => {
         break;
       case 'book_class':
         result = await performClassBooking(browserbaseApiKey, requestData);
+        break;
+      case 'analyze':
+        result = await analyzeWebPage(browserbaseApiKey, requestData);
         break;
       case 'close':
         result = await closeBrowserSession(browserbaseApiKey, requestData);
@@ -1774,6 +1778,274 @@ async function closeBrowserSession(apiKey: string, request: BrowserSessionReques
       .eq('session_id', request.sessionId);
     
     throw error;
+  }
+}
+
+// Analyze web page using browser automation and vision analysis
+async function analyzeWebPage(apiKey: string, request: BrowserSessionRequest): Promise<any> {
+  if (!request.url) {
+    throw new Error('URL required for page analysis');
+  }
+
+  console.log(`🔍 [AnalyzeWebPage] Starting analysis for URL: ${request.url}`);
+
+  try {
+    // Create a temporary browser session for analysis
+    const createRequest = { action: 'create' as const };
+    const sessionDetails = await createBrowserSession(apiKey, createRequest);
+    
+    if (!sessionDetails.success) {
+      throw new Error('Failed to create browser session for analysis');
+    }
+
+    const sessionId = sessionDetails.sessionId;
+    console.log(`📱 [AnalyzeWebPage] Created session: ${sessionId}`);
+
+    // Get the WebSocket connection URL
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('browser_sessions')
+      .select('metadata')
+      .eq('session_id', sessionId)
+      .single();
+
+    if (sessionError || !sessionData?.metadata?.realSession?.connectUrl) {
+      throw new Error('Session not found or missing connection URL');
+    }
+
+    const connectUrl = sessionData.metadata.realSession.connectUrl;
+    const wsUrl = connectUrl.replace('https://', 'wss://');
+    
+    // Connect to browser and navigate to page
+    const ws = new WebSocket(wsUrl);
+    
+    const analysisResult = await new Promise((resolve, reject) => {
+      let resolved = false;
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          ws.close();
+          reject(new Error('Analysis timeout'));
+        }
+      }, 60000);
+
+      ws.onopen = async () => {
+        try {
+          // Navigate to URL
+          console.log(`🧭 [AnalyzeWebPage] Navigating to: ${request.url}`);
+          await executeScript(ws, `window.location.href = '${request.url}';`);
+          
+          // Wait for page to load
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Take initial screenshot
+          console.log('📸 [AnalyzeWebPage] Capturing initial screenshot...');
+          const screenshot = await captureScreenshot(apiKey, sessionId, connectUrl);
+          
+          if (!screenshot) {
+            throw new Error('Failed to capture screenshot');
+          }
+
+          // Use GPT-4 Vision to analyze the page
+          console.log('🔍 [AnalyzeWebPage] Running GPT-4 Vision analysis...');
+          const visionAnalysis = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [{
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: `Analyze this page and determine:
+                      1. Is login required to see class/event details? (look for sign-in buttons, locked content)
+                      2. Can you see specific dates/times when registration opens?
+                      3. What provider is this? (Peloton, Ticketmaster, etc)
+                      4. Are there CAPTCHAs visible?
+                      
+                      Return JSON:
+                      {
+                        "loginRequired": boolean,
+                        "registrationTime": "ISO date or null",
+                        "registrationTimeText": "exact text from page or null",
+                        "provider": "detected provider name",
+                        "captchaVisible": boolean,
+                        "confidence": 0.0-1.0
+                      }`
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: { url: `data:image/png;base64,${screenshot}` }
+                  }
+                ]
+              }],
+              max_completion_tokens: 500,
+              response_format: { type: "json_object" }
+            })
+          });
+
+          if (!visionAnalysis.ok) {
+            throw new Error(`OpenAI API error: ${visionAnalysis.status}`);
+          }
+
+          const visionResult = await visionAnalysis.json();
+          const analysis = JSON.parse(visionResult.choices[0].message.content);
+
+          // If login required and credentials provided, try logging in
+          if (analysis.loginRequired && request.credentials) {
+            console.log('🔐 [AnalyzeWebPage] Login required, attempting to log in...');
+            
+            const loginResult = await performAccountLoginDirect(ws, request.credentials);
+            if (loginResult.success) {
+              console.log('✅ [AnalyzeWebPage] Login successful, re-analyzing page...');
+              
+              // Wait for page to update after login
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              const loggedInScreenshot = await captureScreenshot(apiKey, sessionId, connectUrl);
+              
+              if (loggedInScreenshot) {
+                // Re-analyze logged-in page
+                const loggedInVision = await fetch('https://api.openai.com/v1/chat/completions', {
+                  method: 'POST',
+                  headers: { 
+                    'Authorization': `Bearer ${openAIApiKey}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: 'gpt-4o',
+                    messages: [{
+                      role: 'user',
+                      content: [
+                        {
+                          type: 'text',
+                          text: "Now analyze the logged-in page. Extract class times, registration dates, and booking patterns. Return same JSON format."
+                        },
+                        {
+                          type: 'image_url',
+                          image_url: { url: `data:image/png;base64,${loggedInScreenshot}` }
+                        }
+                      ]
+                    }],
+                    response_format: { type: "json_object" }
+                  })
+                });
+
+                if (loggedInVision.ok) {
+                  const loggedInResult = await loggedInVision.json();
+                  analysis.loggedInData = JSON.parse(loggedInResult.choices[0].message.content);
+                }
+              }
+            } else {
+              analysis.loginAttempted = true;
+              analysis.loginError = loginResult.error;
+            }
+          }
+
+          clearTimeout(timeout);
+          if (!resolved) {
+            resolved = true;
+            ws.close();
+            resolve({
+              success: true,
+              analysis,
+              sessionId: sessionDetails.sessionId // Keep warm if needed
+            });
+          }
+
+        } catch (error) {
+          clearTimeout(timeout);
+          if (!resolved) {
+            resolved = true;
+            ws.close();
+            reject(error);
+          }
+        }
+      };
+
+      ws.onerror = (error) => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          reject(new Error('WebSocket connection failed'));
+        }
+      };
+    });
+
+    console.log('✅ [AnalyzeWebPage] Analysis completed successfully');
+    return analysisResult;
+
+  } catch (error) {
+    console.error('❌ [AnalyzeWebPage] Analysis failed:', error);
+    throw error;
+  }
+}
+
+// Helper function for direct login via WebSocket
+async function performAccountLoginDirect(ws: WebSocket, credentials: { email: string; password: string }): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Look for common login form patterns
+    const hasLoginForm = await executeScript(ws, `
+      const emailField = document.querySelector('input[type="email"], input[name*="email"], input[name*="username"], input[id*="email"], input[id*="username"]');
+      const passwordField = document.querySelector('input[type="password"], input[name*="password"], input[id*="password"]');
+      return emailField && passwordField;
+    `);
+
+    if (!hasLoginForm) {
+      // Try to find and click login button first
+      await executeScript(ws, `
+        const loginBtn = document.querySelector('a[href*="login"], button[class*="login"], a[class*="sign-in"], button[class*="sign-in"]');
+        if (loginBtn) loginBtn.click();
+      `);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    // Fill in credentials
+    await executeScript(ws, `
+      const emailField = document.querySelector('input[type="email"], input[name*="email"], input[name*="username"], input[id*="email"], input[id*="username"]');
+      const passwordField = document.querySelector('input[type="password"], input[name*="password"], input[id*="password"]');
+      
+      if (emailField) {
+        emailField.value = '${credentials.email}';
+        emailField.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      
+      if (passwordField) {
+        passwordField.value = '${credentials.password}';
+        passwordField.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      
+      return emailField && passwordField;
+    `);
+
+    // Submit the form
+    await executeScript(ws, `
+      const submitBtn = document.querySelector('button[type="submit"], input[type="submit"], button[class*="submit"], button[class*="login"]');
+      if (submitBtn) {
+        submitBtn.click();
+      } else {
+        const form = document.querySelector('form');
+        if (form) form.submit();
+      }
+    `);
+
+    // Wait for login to process
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Check if login was successful by looking for logout elements or profile elements
+    const loginSuccess = await executeScript(ws, `
+      const logoutBtn = document.querySelector('a[href*="logout"], button[class*="logout"], a[class*="sign-out"]');
+      const profileBtn = document.querySelector('[class*="profile"], [class*="account"], [class*="user"]');
+      return !!(logoutBtn || profileBtn);
+    `);
+
+    return { success: loginSuccess };
+
+  } catch (error) {
+    console.error('[LOGIN] Direct login error:', error);
+    return { success: false, error: error.message };
   }
 }
 
