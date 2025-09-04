@@ -225,6 +225,32 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
         Found {results.length} {results.length === 1 ? 'match' : 'matches'} from across the internet
       </div>
       
+      {/* Special Carbone Detection */}
+      {results.some(r => 
+        r.businessName?.toLowerCase().includes('carbone') || 
+        r.name?.toLowerCase().includes('carbone')
+      ) && (
+        <Card className="p-4 mb-4 border-2 border-red-500 bg-red-50/50">
+          <div className="flex items-center gap-3 mb-3">
+            <h3 className="font-bold text-lg text-red-900">🍝 Carbone NYC Found!</h3>
+            <Badge variant="destructive" className="text-xs">HIGH DEMAND</Badge>
+          </div>
+          <p className="text-sm text-red-700 mb-3">
+            High-demand Italian restaurant • Books in 30 seconds • 30 days in advance at 10 AM ET
+          </p>
+          <Button 
+            onClick={() => {
+              console.log('🍝 Direct Carbone navigation - bypassing complex routing');
+              // Direct navigation - no session IDs, no complex routing
+              window.location.href = '/carbone-setup';
+            }}
+            className="w-full bg-red-600 hover:bg-red-700 text-white"
+          >
+            🎯 Set Up Carbone Auto-Booking
+          </Button>
+        </Card>
+      )}
+      
       {results.map((result, index) => {
         const { dates, times } = getSessionData(result);
         const selectedSessionDetails = getSelectedSessionDetails(result, index);

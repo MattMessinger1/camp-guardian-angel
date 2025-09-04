@@ -112,10 +112,11 @@ export default function App() {
                <Route path="/sessions/:sessionId/signup-submitted" element={<SignupSubmitted />} />
                <Route path="/account-history" element={<AccountHistory />} />
                
-               {/* Readiness Routes - Always Available */}
-               <Route path="/ready-to-signup/:sessionId" element={<ReadyToSignup />} />
-               <Route path="/ready-to-signup/carbone-resy" element={<DevPages.CarboneSetup />} />
-               <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
+                {/* Readiness Routes - Always Available */}
+                <Route path="/ready-to-signup/:sessionId" element={<ReadyToSignup />} />
+                <Route path="/ready-to-signup/carbone-resy" element={<DevPages.CarboneSetup />} />
+                <Route path="/carbone-setup" element={<DevPages.CarboneSetup />} />
+                <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
               
               {/* Payment Routes - Always Available */}
               <Route path="/billing/success" element={<BillingSetupSuccess />} />
