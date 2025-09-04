@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { getTestScenario } from '@/lib/test-scenarios';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,7 @@ import ProviderInfo from '@/components/ProviderInfo';
 import { detectProvider, detectPlatform } from '@/utils/providerDetection';
 import { useQuery } from '@tanstack/react-query';
 import { CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { format } from 'date-fns';
 
 // Helper function to determine provider type based on detected provider
 const getProviderType = (provider: string): string => {
@@ -134,6 +135,11 @@ export default function ReadyToSignup() {
   const [restaurantCredentials, setRestaurantCredentials] = useState({ email: '', password: '' });
   const [isCredentialsSaving, setIsCredentialsSaving] = useState(false);
   const [credentialsSaved, setCredentialsSaved] = useState(false);
+  
+  // Pattern discovery state
+  const [isDiscoveringPattern, setIsDiscoveringPattern] = useState(false);
+  const [discoveredPattern, setDiscoveredPattern] = useState<any>(null);
+  const [userConfirmedTime, setUserConfirmedTime] = useState<string>('');
   
   const [discovering, setDiscovering] = useState(false);
   const [bookingDetails, setBookingDetails] = useState({
@@ -1156,6 +1162,118 @@ export default function ReadyToSignup() {
                   ) : (
                     'Save & Verify Credentials'
                   )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Pattern Discovery - Add after credentials saved */}
+          {credentialsSaved && !discoveredPattern && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Discover Booking Window</CardTitle>
+                <CardDescription>
+                  Let us find when reservations open for {businessName}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={async () => {
+                    setIsDiscoveringPattern(true);
+                    try {
+                      const { data } = await supabase.functions.invoke('discover-booking-pattern', {
+                        body: { 
+                          venueName: businessName, 
+                          platform: detectedPlatform.platform, 
+                          credentials: restaurantCredentials 
+                        }
+                      });
+                      
+                      if (data?.success && data?.pattern) {
+                        setDiscoveredPattern(data.pattern);
+                        
+                        // Calculate booking time
+                        if (bookingDetails.date) {
+                          const targetDate = new Date(bookingDetails.date);
+                          const bookingDate = new Date(targetDate);
+                          bookingDate.setDate(bookingDate.getDate() - (data.pattern.daysInAdvance || 30));
+                          setUserConfirmedTime(bookingDate.toISOString().slice(0, 16));
+                        }
+                      } else {
+                        toast({
+                          title: "Discovery failed",
+                          description: "Could not automatically find booking pattern",
+                          variant: "destructive"
+                        });
+                      }
+                    } catch (error) {
+                      console.error('Pattern discovery error:', error);
+                      toast({
+                        title: "Discovery failed", 
+                        description: "Could not automatically find booking pattern",
+                        variant: "destructive"
+                      });
+                    } finally {
+                      setIsDiscoveringPattern(false);
+                    }
+                  }} 
+                  disabled={isDiscoveringPattern}
+                  className="w-full"
+                >
+                  {isDiscoveringPattern ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Discovering...
+                    </>
+                  ) : (
+                    'Find When Bookings Open'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Show pattern for confirmation */}
+          {discoveredPattern && (
+            <Card className="mb-6 border-orange-500">
+              <CardHeader>
+                <CardTitle>Confirm Booking Time</CardTitle>
+                <CardDescription>
+                  Please verify the discovered booking pattern
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <AlertDescription>
+                    Found: "{discoveredPattern.pattern}"
+                    <br/>
+                    {userConfirmedTime && (
+                      <>Booking opens: {format(new Date(userConfirmedTime), 'MMM d @ h:mm a')}</>
+                    )}
+                  </AlertDescription>
+                </Alert>
+                <div>
+                  <label className="text-sm font-medium block mb-2">
+                    Adjust booking time if needed:
+                  </label>
+                  <Input 
+                    type="datetime-local" 
+                    value={userConfirmedTime} 
+                    onChange={(e) => setUserConfirmedTime(e.target.value)} 
+                  />
+                </div>
+                <Button 
+                  onClick={() => {
+                    setRegistrationTime(userConfirmedTime);
+                    toast({
+                      title: "Booking time confirmed",
+                      description: `Set for ${format(new Date(userConfirmedTime), 'MMM d @ h:mm a')}`,
+                    });
+                  }}
+                  disabled={!userConfirmedTime}
+                  className="w-full"
+                >
+                  Confirm Time
                 </Button>
               </CardContent>
             </Card>
