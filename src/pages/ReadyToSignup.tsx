@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { getTestScenario } from '@/lib/test-scenarios';
 import { useAuth } from '@/contexts/AuthContext';
@@ -804,28 +805,36 @@ export default function ReadyToSignup() {
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       {/* Hero section with venue */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="text-3xl font-bold mb-4">
           {detectedPlatform?.type === 'restaurant' ? 
-            `Book ${businessName || 'Restaurant'}` : 
-            'Setup Registration'
-          }
+            `Book ${businessName || 'Restaurant'} Reservation` : 
+            detectedPlatform?.type === 'fitness' ?
+            `Book ${businessName || 'Class'}` :
+            'Setup Registration'}
         </h1>
+        
+        {/* Update the subtitle to show the venue name clearly */}
+        <h2 className="text-xl text-center mb-2">
+          {businessName}
+        </h2>
+
+        {/* Show platform badge */}
+        {detectedPlatform?.platform !== 'unknown' && (
+          <div className="text-center mb-6">
+            <Badge className={
+              detectedPlatform.platform === 'resy' ? 'bg-red-500 hover:bg-red-600' : 
+              detectedPlatform.platform === 'opentable' ? 'bg-red-600 hover:bg-red-700' :
+              'bg-blue-500 hover:bg-blue-600'
+            }>
+              {detectedPlatform.platform.toUpperCase()}
+            </Badge>
+          </div>
+        )}
+
         {detectedPlatform?.platform === 'resy' && (
           <p className="text-muted-foreground mb-4">
             We'll automatically book your table when reservations open
           </p>
-        )}
-        {businessName && (
-          <div className="mb-4">
-            <h2 className="text-2xl font-semibold">{businessName}</h2>
-            {detectedPlatform?.platform && (
-              <div className="mt-2">
-                <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                  {detectedPlatform.platform.toUpperCase()}
-                </span>
-              </div>
-            )}
-          </div>
         )}
       </div>
 
