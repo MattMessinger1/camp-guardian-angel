@@ -138,14 +138,20 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     }));
   };
 
-  const handleSessionSelect = async (result: any, sessionDetails?: any) => {
-    console.log('🎯 NAVIGATION DEBUG - Click detected on:', {
-      resultName: result.businessName || result.name,
-      resultUrl: result.url,
-      sessionId: result.session_id || result.id,
-      provider: result.provider,
-      fullResult: result
-    });
+  const handleSearchResultClick = (result: any) => {
+    // Clear any cached session data first
+    localStorage.removeItem('currentSession');
+    sessionStorage.clear();
+    
+    // Create fresh session data
+    const freshData = {
+      id: `${result.businessName || result.name}-${Date.now()}`,
+      businessName: result.businessName || result.name,
+      url: result.url || '',
+      provider: result.businessName?.includes('Carbone') ? 'resy' : detectProvider(result)
+    };
+    
+    console.log('🎯 NAVIGATION DEBUG - Click detected with fresh data:', freshData);
     
     if (!user?.id) {
       console.error('No user ID!');
@@ -159,18 +165,22 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
         result.url?.includes('carbone')) {
       console.log('🍝 Carbone detected - navigating to Carbone setup with clean state');
       navigate('/ready-to-signup/carbone-resy', {
-        state: {
-          businessName: 'Carbone',
-          url: 'https://resy.com/cities/ny/carbone',
-          provider: 'resy',
-          sessionData: {
-            businessName: 'Carbone',
-            url: 'https://resy.com/cities/ny/carbone'
-          }
-        }
+        state: freshData,
+        replace: true // Replace history to avoid back button issues
       });
-      return; // Stop here, don't continue to default navigation
+      return;
     }
+    
+    // Navigate with fresh data
+    navigate(`/ready-to-signup/${freshData.id}`, {
+      state: freshData,
+      replace: true // Replace history to avoid back button issues
+    });
+  };
+
+  const handleSessionSelect = async (result: any, sessionDetails?: any) => {
+    // Use the new handleSearchResultClick for consistency
+    handleSearchResultClick(result);
     
     try {
       console.log('🔧 Creating clean registration plan using database function');
@@ -271,17 +281,10 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
             <p className="text-sm text-red-700 mb-3">
               High-demand Italian restaurant • Books in 30 seconds • 30 days in advance at 10 AM ET
             </p>
-            <Button 
-              onClick={() => {
-                console.log('🍝 Direct Carbone navigation - completely bypassing complex routing');
-                // Clear any stale session data
-                localStorage.removeItem('currentSession');
-                sessionStorage.clear();
-                // Direct navigation to dedicated route - NO state passing
-                window.location.href = '/setup/carbone';
-              }}
-              className="w-full bg-red-600 hover:bg-red-700 text-white"
-            >
+              <Button 
+                onClick={() => handleSearchResultClick({ businessName: 'Carbone', url: 'https://resy.com/cities/ny/carbone' })}
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+              >
               🎯 Set Up Carbone Auto-Booking
             </Button>
           </Card>
@@ -315,7 +318,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
               </div>
               
               <Button 
-                onClick={() => navigate(`/ready-to-signup/carbone-resy`)}
+                onClick={() => handleSearchResultClick({ businessName: 'Carbone', url: 'https://resy.com/cities/ny/carbone' })}
                 className="w-full bg-black hover:bg-gray-800 text-white"
               >
                 Set Up Carbone Auto-Booking →

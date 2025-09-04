@@ -83,6 +83,13 @@ export default function ReadyToSignup() {
       return;
     }
     
+    // Don't cache problematic data for temporary sessions
+    if (planId?.includes('internet-') || planId?.includes('carbone-')) {
+      console.log('Temporary session detected - not caching data');
+      // Use state data only, don't persist
+      return;
+    }
+    
     if (!sessionData?.url && !planData?.detect_url) return;
     
     const url = sessionData?.url || planData?.detect_url;
