@@ -58,11 +58,40 @@ interface InternetSearchResultsProps {
   onSelect: (result: InternetSearchResult) => void;
 }
 
+const processSearchResults = (results: InternetSearchResult[]) => {
+  return results.map((result, index) => {
+    // Create truly unique IDs for each result
+    const uniqueId = `${result.businessName?.toLowerCase().replace(/\s+/g, '-') || 'activity'}-${Date.now()}-${index}`;
+    
+    return {
+      ...result,
+      id: uniqueId,
+      session_id: uniqueId,
+      // Ensure correct data associations
+      businessName: result.businessName || result.name,
+      url: result.url || '',
+      provider: detectProvider(result)
+    };
+  });
+};
+
+const detectProvider = (result: InternetSearchResult) => {
+  const name = (result.businessName || '').toLowerCase();
+  const url = (result.url || '').toLowerCase();
+  
+  if (name.includes('carbone') || url.includes('carbone')) return 'resy';
+  if (name.includes('peloton') || url.includes('peloton')) return 'peloton';
+  return 'unknown';
+};
+
 export function InternetSearchResults({ results, extractedTime, onSelect }: InternetSearchResultsProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   // Track selected sessions for each result
   const [selectedSessions, setSelectedSessions] = useState<Record<string, { date?: string; time?: string }>>({});
+  
+  // Process results to ensure unique IDs
+  const processedResults = processSearchResults(results);
 
   // Get unique dates and times from sessions array
   const getSessionData = (result: InternetSearchResult) => {
@@ -226,11 +255,11 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
   return (
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground">
-        Found {results.length} {results.length === 1 ? 'match' : 'matches'} from across the internet
+        Found {processedResults.length} {processedResults.length === 1 ? 'match' : 'matches'} from across the internet
       </div>
       
         {/* Special Carbone Detection - Use direct URL navigation */}
-        {results.some(r => 
+        {processedResults.some(r => 
           r.businessName?.toLowerCase().includes('carbone') || 
           r.name?.toLowerCase().includes('carbone')
         ) && (
@@ -258,7 +287,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
           </Card>
         )}
       
-      {results.map((result, index) => {
+      {processedResults.map((result, index) => {
         const { dates, times } = getSessionData(result);
         const selectedSessionDetails = getSelectedSessionDetails(result, index);
         
@@ -447,28 +476,27 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
             <div className="ml-6 flex flex-col items-start gap-2">
               <Button 
                 onClick={() => {
-                  // Clear any session contamination before navigation
-                  localStorage.removeItem('currentSession');
-                  sessionStorage.clear();
+                  const data = {
+                    id: result.id,
+                    businessName: result.businessName || result.name || result.title,
+                    url: result.url,
+                    provider: detectProvider(result),
+                    selectedDate: selectedSessions[index]?.date,
+                    selectedTime: selectedSessions[index]?.time,
+                    signupCost: selectedSessionDetails?.price || result.signup_cost,
+                    totalCost: selectedSessionDetails?.price || result.total_cost
+                  };
                   
-                  // For Carbone, use direct URL navigation - NO state passing
-                  if (result.businessName?.toLowerCase().includes('carbone') || 
-                      result.name?.toLowerCase().includes('carbone')) {
-                    console.log('🍝 Carbone detected - using direct URL navigation');
-                    window.location.href = '/setup/carbone';
-                    return;
-                  }
+                  console.log('Navigating with:', data);
                   
-                  // For other providers, use normal navigation
-                  handleSessionSelect(result);
+                  navigate(`/ready-to-signup/${result.id}`, {
+                    state: data
+                  });
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
                 disabled={result.canAutomate === false}
               >
-                {result.businessName?.toLowerCase().includes('carbone') || 
-                 result.name?.toLowerCase().includes('carbone') ? 
-                 'Set up Carbone booking' : 
-                 'Get ready for signup'}
+                Get ready for signup
               </Button>
               
               {result.url && (

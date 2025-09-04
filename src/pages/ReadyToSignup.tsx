@@ -69,8 +69,19 @@ export default function ReadyToSignup() {
       sessionId: planId,
       sessionData,
       pathname: location.pathname,
-      planData
+      planData,
+      locationState: location.state
     });
+    
+    // Use location.state directly for internet results, don't query database
+    const stateData = location.state;
+    
+    if (stateData) {
+      console.log('Using state data:', stateData);
+      setSessionData(stateData);
+      setStage('manual_time');
+      return;
+    }
     
     if (!sessionData?.url && !planData?.detect_url) return;
     
