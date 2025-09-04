@@ -192,6 +192,15 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
       // Combine all sessions from all results for this business
       const allSessions: Array<{date: string, time: string, availability?: number, price?: number}> = [];
       
+      // LOG: Track URL during consolidation for Carbone
+      if (displayName.toLowerCase().includes('carbone')) {
+        console.log('📦 Consolidated Carbone data:', {
+          businessName: displayName, 
+          url: primaryResult.url || primaryResult.signup_url || primaryResult.providerUrl, 
+          provider: primaryResult.provider_platform || 'unknown'
+        });
+      }
+      
       businessResults.forEach(result => {
         if (result.sessions?.length) {
           allSessions.push(...result.sessions);
@@ -338,8 +347,28 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     // Use actual URL from the search result - prioritize provided URLs
                     const actualUrl = result.url || result.signup_url || result.providerUrl;
                     
+                    // LOG: Check URL before navigation for Carbone
+                    if ((result.name || result.providerName || result.campName)?.toLowerCase().includes('carbone')) {
+                      console.log('🚀 Navigation state being passed for Carbone:', {
+                        businessName: result.name || result.providerName || result.campName, 
+                        url: actualUrl, 
+                        provider: result.provider_platform || 'unknown'
+                      });
+                      console.log('🔍 Carbone URL check - actualUrl:', actualUrl);
+                      console.log('🔍 Carbone URL components - url:', result.url, 'signup_url:', result.signup_url, 'providerUrl:', result.providerUrl);
+                    }
+                    
                     if (!actualUrl) {
                       console.error('No URL provided for result:', result.name || result.providerName || result.campName);
+                      // LOG: Check if this condition is preventing URL for Carbone
+                      if ((result.name || result.providerName || result.campName)?.toLowerCase().includes('carbone')) {
+                        console.log('❌ CARBONE URL MISSING - This condition is preventing Carbone URL from being set:', {
+                          result: result,
+                          url: result.url,
+                          signup_url: result.signup_url,
+                          providerUrl: result.providerUrl
+                        });
+                      }
                       toast({
                         title: "Error",
                         description: "No booking URL available for this provider.",

@@ -121,6 +121,15 @@ const FindCamps: React.FC = () => {
           throw new Error(response.error || 'Internet search failed');
         }
 
+        // LOG: Raw search results from Perplexity
+        console.log('🔍 Raw search result from Perplexity - ALL RESULTS:', response.results);
+        response.results?.forEach((result: any, index: number) => {
+          if (result.businessName?.toLowerCase().includes('carbone') || 
+              result.name?.toLowerCase().includes('carbone')) {
+            console.log('🔍 Raw search result for Carbone:', result);
+          }
+        });
+
         logger.info('Internet search response received', {
           success: !!response.success,
           resultCount: response.results?.length || 0,
@@ -135,7 +144,7 @@ const FindCamps: React.FC = () => {
           if (result.businessName?.toLowerCase().includes('carbone') || 
               result.name?.toLowerCase().includes('carbone')) {
             console.log('🍝 Creating clean Carbone result');
-            return {
+            const carboneResult = {
               id: `carbone-${Date.now()}-${index}`,
               businessName: 'Carbone',
               name: 'Carbone',
@@ -145,6 +154,13 @@ const FindCamps: React.FC = () => {
               location: 'Greenwich Village, NYC',
               // NO session_id, NO peloton data, NO inheritance
             };
+            // LOG: Consolidated Carbone data during processing
+            console.log('📦 Consolidated Carbone data:', {
+              businessName: carboneResult.businessName, 
+              url: carboneResult.url, 
+              provider: carboneResult.provider
+            });
+            return carboneResult;
           }
           
           // For other results, ensure unique IDs
@@ -331,16 +347,19 @@ const FindCamps: React.FC = () => {
         result.name?.toLowerCase().includes('carbone') ||
         result.url?.includes('carbone')) {
       console.log('🍝 Carbone detected in FindCamps - navigating to Carbone setup with clean state');
-      navigate('/ready-to-signup/carbone-resy', {
-        state: {
+      // LOG: Navigation state being passed for Carbone
+      const navigationState = {
+        businessName: 'Carbone',
+        url: 'https://resy.com/cities/ny/carbone',
+        provider: 'resy',
+        sessionData: {
           businessName: 'Carbone',
-          url: 'https://resy.com/cities/ny/carbone',
-          provider: 'resy',
-          sessionData: {
-            businessName: 'Carbone',
-            url: 'https://resy.com/cities/ny/carbone'
-          }
+          url: 'https://resy.com/cities/ny/carbone'
         }
+      };
+      console.log('🚀 Navigation state being passed:', {businessName: navigationState.businessName, url: navigationState.url, provider: navigationState.provider});
+      navigate('/ready-to-signup/carbone-resy', {
+        state: navigationState
       });
       return; // Stop here, don't create a plan
     }
