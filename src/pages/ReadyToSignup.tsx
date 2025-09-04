@@ -91,11 +91,27 @@ export default function ReadyToSignup() {
   const [bookingDetails, setBookingDetails] = useState({
     date: '',
     partySize: '2',
-    time1: '',
-    time2: '',
-    time3: ''
+    time1: '7:30 PM',
+    time2: '8:00 PM',
+    time3: '9:00 PM'
   });
   const [bookingOpensAt, setBookingOpensAt] = useState<Date | null>(null);
+
+  // Calculate booking open time for Resy (30 days prior at 10 AM ET)
+  const calculateBookingOpenTime = (targetDate: string) => {
+    if (!targetDate) return null;
+    
+    const targetDateObj = new Date(targetDate);
+    const openDate = new Date(targetDateObj);
+    openDate.setDate(openDate.getDate() - 30);
+    openDate.setHours(10, 0, 0, 0); // 10:00 AM ET
+    
+    return openDate;
+  };
+
+  // Detect provider from current session
+  const currentProvider = analysis?.provider || detectProvider(sessionData?.url || planData?.detect_url || '');
+  const isResyProvider = currentProvider === 'resy' || (sessionData?.url || planData?.detect_url || '').includes('resy.com');
 
   // Initialize plan creation for location.state data - ALWAYS create real plans
   useEffect(() => {
@@ -230,13 +246,16 @@ export default function ReadyToSignup() {
 
     // Handle real registration plan from database
     if (planData) {
+      const detectedProvider = detectProvider(planData.detect_url || '');
+      const isResyUrl = planData.detect_url?.includes('resy.com') || detectedProvider === 'resy';
+      
       setSessionData({
         id: planData.id,
-        title: 'Class Registration', // Use default since we don't have name in current schema
+        title: isResyUrl ? 'Restaurant Reservation' : 'Class Registration',
         url: planData.detect_url,
         price_min: 0, // Default since we don't have price in current schema
         activities: {
-          name: 'Class Registration',
+          name: isResyUrl ? 'Restaurant Reservation' : 'Class Registration',
           city: '',
           state: ''
         }
@@ -953,7 +972,7 @@ export default function ReadyToSignup() {
         </Card>
       )}
       
-      {stage === 'manual_time' && (
+      {stage === 'manual_time' && !isResyProvider && (
         <Card className="p-6">
           <h2 className="font-semibold mb-4">Set Registration Time</h2>
           <p className="text-sm text-muted-foreground mb-4">
@@ -980,6 +999,132 @@ export default function ReadyToSignup() {
             className="w-full"
           >
             Save & Activate
+          </Button>
+        </Card>
+      )}
+
+      {/* Resy-specific manual time setup */}
+      {stage === 'manual_time' && isResyProvider && (
+        <Card className="p-6">
+          <h2 className="font-semibold mb-4">Restaurant Reservation Setup</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Reservations at Carbone open exactly 30 days in advance at 10:00 AM ET
+          </p>
+
+          {/* Resy Account Credentials */}
+          <div className="space-y-4 mb-6">
+            <h3 className="font-medium">Resy Account Credentials</h3>
+            <div className="space-y-2">
+              <Input
+                type="email"
+                placeholder="Resy Account Email"
+                value={resyCredentials.email}
+                onChange={(e) => setResyCredentials({...resyCredentials, email: e.target.value})}
+              />
+              <Input
+                type="password"
+                placeholder="Resy Account Password"
+                value={resyCredentials.password}
+                onChange={(e) => setResyCredentials({...resyCredentials, password: e.target.value})}
+              />
+              <Button
+                onClick={testResyLogin}
+                disabled={!resyCredentials.email || !resyCredentials.password || isTestingLogin}
+                variant="outline"
+                className="w-full"
+              >
+                {isTestingLogin ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Testing Connection...
+                  </>
+                ) : (
+                  'Test Connection'
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Booking Details */}
+          <div className="space-y-4 mb-6 p-4 bg-muted/30 rounded-lg">
+            <h3 className="font-medium">Reservation Details</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium block mb-1">Preferred Date</label>
+                <Input
+                  type="date"
+                  value={bookingDetails.date}
+                  min={new Date(Date.now() + 31*24*60*60*1000).toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    setBookingDetails({...bookingDetails, date: e.target.value});
+                    const calculatedOpenTime = calculateBookingOpenTime(e.target.value);
+                    setBookingOpensAt(calculatedOpenTime);
+                    if (calculatedOpenTime) {
+                      setRegistrationTime(calculatedOpenTime.toISOString().slice(0, 16));
+                    }
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium block mb-1">Party Size</label>
+                <select 
+                  className="w-full p-2 border border-input rounded-md bg-background"
+                  value={bookingDetails.partySize}
+                  onChange={(e) => setBookingDetails({...bookingDetails, partySize: e.target.value})}
+                >
+                  <option value="2">2 guests</option>
+                  <option value="4">4 guests</option>
+                  <option value="6">6 guests</option>
+                  <option value="8">8 guests</option>
+                </select>
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium block mb-2">Backup Times (in order of preference)</label>
+              <div className="space-y-2">
+                <Input 
+                  placeholder="Primary time (e.g., 7:30 PM)" 
+                  value={bookingDetails.time1} 
+                  onChange={(e) => setBookingDetails({...bookingDetails, time1: e.target.value})} 
+                />
+                <Input 
+                  placeholder="Backup time 1 (e.g., 8:00 PM)" 
+                  value={bookingDetails.time2}
+                  onChange={(e) => setBookingDetails({...bookingDetails, time2: e.target.value})} 
+                />
+                <Input 
+                  placeholder="Backup time 2 (e.g., 9:00 PM)" 
+                  value={bookingDetails.time3}
+                  onChange={(e) => setBookingDetails({...bookingDetails, time3: e.target.value})} 
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Auto-calculated booking time display */}
+          {bookingOpensAt && (
+            <Alert className="mb-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+              <p className="font-medium">📅 We'll attempt to book at 10:00 AM ET on:</p>
+              <p className="text-lg font-semibold">
+                {bookingOpensAt.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </Alert>
+          )}
+
+          <Button 
+            onClick={saveAndActivate} 
+            disabled={!registrationTime || !resyCredentials.email || !resyCredentials.password || !bookingDetails.date} 
+            className="w-full"
+          >
+            Save & Activate Restaurant Reservation
           </Button>
         </Card>
       )}
