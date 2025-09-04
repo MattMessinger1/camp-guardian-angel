@@ -5,9 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface BrowserbaseSession {
-  id: string;
-  status: string;
+interface BrowserAutomationResult {
+  success: boolean;
+  sessionId?: string;
+  screenshot?: string;
+  result?: string;
+  error?: string;
 }
 
 interface VisionAnalysis {
@@ -18,69 +21,33 @@ interface VisionAnalysis {
   reasoning: string;
 }
 
-async function createBrowserbaseSession(): Promise<string> {
-  const token = Deno.env.get('BROWSERBASE_TOKEN');
-  const projectId = Deno.env.get('BROWSERBASE_PROJECT');
+async function callBrowserAutomation(action: string, sessionId: string, additionalData: any = {}): Promise<any> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
   
-  if (!token || !projectId) {
-    throw new Error('Missing Browserbase credentials');
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase credentials');
   }
-
-  const response = await fetch('https://api.browserbase.com/v1/sessions', {
+  
+  const response = await fetch(`${supabaseUrl}/functions/v1/browser-automation-simple`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-BB-API-Key': token,
+      'Authorization': `Bearer ${supabaseKey}`,
     },
-    body: JSON.stringify({ projectId }),
+    body: JSON.stringify({
+      action,
+      sessionId,
+      ...additionalData
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create session: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`Browser automation failed: ${response.status} - ${errorText}`);
   }
 
-  const session = await response.json() as BrowserbaseSession;
-  return session.id;
-}
-
-async function navigateAndWait(sessionId: string, url: string): Promise<void> {
-  const token = Deno.env.get('BROWSERBASE_TOKEN');
-  
-  const response = await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-BB-API-Key': token!,
-    },
-    body: JSON.stringify({ url }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Navigation failed: ${response.status}`);
-  }
-
-  // Wait for page to load
-  await new Promise(resolve => setTimeout(resolve, 3000));
-}
-
-async function takeScreenshot(sessionId: string): Promise<string> {
-  const token = Deno.env.get('BROWSERBASE_TOKEN');
-  
-  const response = await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}/screenshot`, {
-    method: 'GET',
-    headers: {
-      'X-BB-API-Key': token!,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Screenshot failed: ${response.status}`);
-  }
-
-  const blob = await response.blob();
-  const arrayBuffer = await blob.arrayBuffer();
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-  return `data:image/png;base64,${base64}`;
+  return await response.json();
 }
 
 async function analyzeWithVision(screenshot: string, prompt: string): Promise<VisionAnalysis> {
@@ -139,20 +106,25 @@ async function analyzeWithVision(screenshot: string, prompt: string): Promise<Vi
 async function discoverResyUrl(venueName: string): Promise<string> {
   console.log(`🔍 Starting URL discovery for: ${venueName}`);
   
-  // 1. Create Browserbase session
-  const sessionId = await createBrowserbaseSession();
-  console.log(`📱 Created session: ${sessionId}`);
-  
   try {
+    // 1. Create session and navigate to Resy
+    const createResult = await callBrowserAutomation('create', '', {});
+    const sessionId = createResult.sessionId;
+    console.log(`📱 Created session: ${sessionId}`);
+    
     // 2. Navigate to Resy
-    await navigateAndWait(sessionId, 'https://resy.com');
+    await callBrowserAutomation('navigate', sessionId, { url: 'https://resy.com' });
     console.log('🌐 Navigated to Resy');
     
-    // 3. Take screenshot of search page
-    const searchScreenshot = await takeScreenshot(sessionId);
+    // 3. Wait for page to load
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // 4. Take screenshot of search page
+    const screenshotResult = await callBrowserAutomation('screenshot', sessionId, {});
+    const searchScreenshot = screenshotResult.screenshot;
     console.log('📸 Took search page screenshot');
     
-    // 4. Use Vision to find and interact with search
+    // 5. Use Vision to find search input
     const searchAnalysis = await analyzeWithVision(
       searchScreenshot,
       `Find the search input field on this Resy page where I can search for "${venueName}". Look for search boxes, input fields, or search buttons.`
@@ -160,30 +132,76 @@ async function discoverResyUrl(venueName: string): Promise<string> {
     
     console.log('🔍 Search analysis:', searchAnalysis);
     
-    if (!searchAnalysis.found) {
-      throw new Error('Could not find search functionality on Resy');
-    }
-    
-    // For now, return a constructed URL based on venue name
-    // This is a simplified version until we can implement browser interactions
-    const normalizedName = venueName.toLowerCase().replace(/\s+/g, '-');
-    const constructedUrl = `https://resy.com/cities/ny/${normalizedName}`;
-    
-    console.log(`✅ Constructed URL: ${constructedUrl}`);
-    return constructedUrl;
-    
-  } finally {
-    // Clean up session
-    try {
-      const token = Deno.env.get('BROWSERBASE_TOKEN');
-      await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: { 'X-BB-API-Key': token! },
+    if (!searchAnalysis.found || !searchAnalysis.selector) {
+      console.log('⚠️ Could not find search field, trying common selectors');
+      // Fallback to common search selectors
+      try {
+        await callBrowserAutomation('type', sessionId, {
+          selector: 'input[type="search"], input[placeholder*="Search"], #search-query',
+          text: venueName
+        });
+      } catch (error) {
+        console.log('❌ Could not type in search field, constructing URL');
+        const normalizedName = venueName.toLowerCase().replace(/\s+/g, '-');
+        return `https://resy.com/cities/ny/${normalizedName}`;
+      }
+    } else {
+      // 6. Type venue name in search
+      await callBrowserAutomation('type', sessionId, {
+        selector: searchAnalysis.selector,
+        text: venueName
       });
-      console.log('🧹 Cleaned up session');
-    } catch (error) {
-      console.error('Failed to cleanup session:', error);
     }
+    
+    // 7. Press Enter to search
+    await callBrowserAutomation('press', sessionId, { key: 'Enter' });
+    console.log('🔍 Performed search');
+    
+    // 8. Wait for results
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // 9. Take screenshot of results
+    const resultsScreenshot = await callBrowserAutomation('screenshot', sessionId, {});
+    
+    // 10. Use Vision to find the right restaurant result
+    const resultsAnalysis = await analyzeWithVision(
+      resultsScreenshot.screenshot,
+      `Find the restaurant link for "${venueName}" in the search results. Look for clickable links or cards that match this restaurant name.`
+    );
+    
+    console.log('🎯 Results analysis:', resultsAnalysis);
+    
+    if (resultsAnalysis.found && resultsAnalysis.selector) {
+      // 11. Click on the restaurant result
+      await callBrowserAutomation('click', sessionId, {
+        selector: resultsAnalysis.selector
+      });
+      
+      // 12. Wait for page to load
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 13. Get the final URL
+      const urlResult = await callBrowserAutomation('evaluate', sessionId, {
+        script: 'window.location.href'
+      });
+      
+      console.log(`✅ Discovered URL: ${urlResult.result}`);
+      return urlResult.result;
+    } else {
+      // Fallback: construct URL based on venue name
+      const normalizedName = venueName.toLowerCase().replace(/\s+/g, '-');
+      const constructedUrl = `https://resy.com/cities/ny/${normalizedName}`;
+      console.log(`⚠️ Could not find specific result, constructed URL: ${constructedUrl}`);
+      return constructedUrl;
+    }
+    
+  } catch (error) {
+    console.error('❌ URL discovery failed:', error);
+    // Final fallback
+    const normalizedName = venueName.toLowerCase().replace(/\s+/g, '-');
+    const fallbackUrl = `https://resy.com/cities/ny/${normalizedName}`;
+    console.log(`🆘 Using fallback URL: ${fallbackUrl}`);
+    return fallbackUrl;
   }
 }
 
