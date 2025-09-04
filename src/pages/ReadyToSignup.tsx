@@ -759,22 +759,34 @@ export default function ReadyToSignup() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Setup Registration Automation</h1>
-      
-      
-      {/* Temporary debug section */}
-      <Card className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-        <div className="text-xs font-mono space-y-1">
-          <div><strong>Debug Info:</strong></div>
-          <div><strong>Session ID:</strong> {planId}</div>
-          <div><strong>Business Name:</strong> {sessionData?.title}</div>
-          <div><strong>URL:</strong> {sessionData?.url || planData?.detect_url}</div>
-          <div><strong>Provider:</strong> {analysis?.provider || 'Not detected yet'}</div>
-          <div><strong>Current Stage:</strong> {stage}</div>
-        </div>
-      </Card>
-      
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
+      {/* Hero section with venue */}
+      <div className="text-center">
+        <h1 className="text-3xl font-bold mb-2">
+          {detectedPlatform?.type === 'restaurant' ? 
+            `Book ${businessName || 'Restaurant'}` : 
+            'Setup Registration'
+          }
+        </h1>
+        {detectedPlatform?.platform === 'resy' && (
+          <p className="text-muted-foreground mb-4">
+            We'll automatically book your table when reservations open
+          </p>
+        )}
+        {businessName && (
+          <div className="mb-4">
+            <h2 className="text-2xl font-semibold">{businessName}</h2>
+            {detectedPlatform?.platform && (
+              <div className="mt-2">
+                <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                  {detectedPlatform.platform.toUpperCase()}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Show what we're setting up */}
       <Card className="mb-6 p-4 bg-gray-50 dark:bg-gray-900">
         <div className="font-medium">{sessionData?.businessName || sessionData?.title || sessionData?.activities?.name || 'Registration'}</div>
