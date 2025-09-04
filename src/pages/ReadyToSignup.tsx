@@ -95,6 +95,12 @@ export default function ReadyToSignup() {
     queryFn: async () => {
       const queryId = realPlanId || planId;
       
+      // Handle test mode - if the ID starts with "test-", return null since it's not in the database
+      if (queryId?.startsWith('test-')) {
+        console.log('Test mode detected, skipping database query for:', queryId);
+        return null;
+      }
+      
       // Query the database for all plan IDs
       
       const { data, error } = await supabase
