@@ -128,6 +128,7 @@ export default function ReadyToSignup() {
   const [resyCredentials, setResyCredentials] = useState({ email: '', password: '' });
   const [resyLoginSuccess, setResyLoginSuccess] = useState(false);
   const [isTestingLogin, setIsTestingLogin] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
   const [bookingDetails, setBookingDetails] = useState({
     date: '',
     partySize: '2',
@@ -326,7 +327,33 @@ export default function ReadyToSignup() {
     try {
       console.log('🔍 Starting initial analysis for URL:', sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url);
       
-      const urlToAnalyze = sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url;
+      let urlToAnalyze = sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url || planData?.detect_url;
+      
+      // If no URL is available and this is a Resy provider, try to discover it
+      if (!urlToAnalyze && currentProvider === 'resy') {
+        setDiscovering(true);
+        try {
+          const { data } = await supabase.functions.invoke('discover-booking-url', {
+            body: { venueName: sessionDataToAnalyze.businessName || sessionDataToAnalyze.title, provider: 'resy' }
+          });
+          
+          if (data?.discoveredUrl) {
+            urlToAnalyze = data.discoveredUrl;
+            
+            // Update plan with discovered URL
+            if (planData?.id) {
+              await supabase.from('registration_plans')
+                .update({ detect_url: data.discoveredUrl })
+                .eq('id', planData.id);
+            }
+          }
+        } catch (error) {
+          console.error('URL discovery failed:', error);
+        } finally {
+          setDiscovering(false);
+        }
+      }
+      
       if (!urlToAnalyze) {
         console.log('❌ No URL found for analysis - sessionData:', sessionDataToAnalyze);
         setStage('manual_time');
