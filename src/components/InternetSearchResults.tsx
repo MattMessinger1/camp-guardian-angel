@@ -181,6 +181,39 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
         const { dates, times } = getSessionData(result);
         const selectedSessionDetails = getSelectedSessionDetails(result, index);
         
+        // Special Carbone UI
+        if (result.businessName === 'Carbone' || result.name === 'Carbone') {
+          return (
+            <Card key={index} className="p-6 w-full hover:shadow-md transition-shadow border-red-200 bg-red-50/50">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-2xl font-bold text-foreground">Carbone</h2>
+                <Badge variant="destructive" className="text-xs">HIGH DEMAND</Badge>
+              </div>
+              
+              <div className="text-sm text-muted-foreground mb-4">
+                📍 181 Thompson St, Greenwich Village<br />
+                🍝 Italian-American by Major Food Group
+              </div>
+              
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="font-medium text-amber-900 mb-2">Booking Requirements:</p>
+                <ul className="text-sm text-amber-800 space-y-1">
+                  <li>• Opens 30 days ahead at 10 AM ET</li>
+                  <li>• Deposit: $50/person (dinner)</li>
+                  <li>• Books in under 30 seconds</li>
+                </ul>
+              </div>
+              
+              <Button 
+                onClick={() => navigate(`/ready-to-signup/carbone-resy`)}
+                className="w-full bg-black hover:bg-gray-800 text-white"
+              >
+                Set Up Carbone Auto-Booking →
+              </Button>
+            </Card>
+          );
+        }
+        
         return (
         <Card key={index} className="p-6 w-full hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start">

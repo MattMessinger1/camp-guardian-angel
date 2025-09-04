@@ -74,6 +74,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
     TestSignupPage: lazy(() => import('./pages/TestSignupPage')),
     E2ETestsPage: lazy(() => import('./pages/E2ETestsPage')),
     RealCampTests: lazy(() => import('./components/RealCampTests')),
+    CarboneSetup: lazy(() => import('./pages/CarboneSetup')),
   };
 
 export default function App() {
@@ -113,6 +114,7 @@ export default function App() {
                
                {/* Readiness Routes - Always Available */}
                <Route path="/ready-to-signup/:sessionId" element={<ReadyToSignup />} />
+               <Route path="/ready-to-signup/carbone-resy" element={<DevPages.CarboneSetup />} />
                <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
               
               {/* Payment Routes - Always Available */}
