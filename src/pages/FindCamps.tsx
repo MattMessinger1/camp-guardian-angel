@@ -10,6 +10,7 @@ import type { SearchResult } from '@/components/camp-search/CampSearchComponents
 import { InternetSearchToggle } from '@/components/InternetSearchToggle';
 import { InternetSearchResults } from '@/components/InternetSearchResults';
 import { ClarifyingQuestionsCard } from '@/components/camp-search/ClarifyingQuestionsCard';
+import { cleanupInvalidRegistrationPlans } from '@/utils/cleanupDatabase';
 
 interface InternetSearchResult {
   id?: string;
@@ -344,51 +345,100 @@ const FindCamps: React.FC = () => {
       return; // Stop here, don't create a plan
     }
 
-    // Create a real registration plan in the database instead of using fake session IDs
-    const { data: plan, error } = await supabase
-      .from('registration_plans')
-      .insert({
-        user_id: user.id,
-        name: result.businessName || result.name || result.title || 'Internet Search Result',
-        url: result.url || 'https://studio.onepeloton.com',
-        provider: result.provider || 'unknown',
-        created_from: 'internet_search',
-        rules: {
-          session_data: {
-            selectedDate: result.selectedDate || '2025-09-02',
-            selectedTime: result.selectedTime || 'Morning (9:00 AM)',
-            signupCost: result.signupCost || result.signup_cost || 45,
-            totalCost: result.totalCost || result.total_cost || result.signupCost || result.signup_cost || 45,
-            businessName: result.businessName || result.name || result.title,
-            location: result.location
-          },
-          predicted_barriers: [],
-          credential_requirements: [],
-          complexity_score: 0.5,
-          workflow_estimate: 10,
-          provider_platform: result.provider || 'custom',
-          expected_intervention_points: [],
-          form_complexity_signals: []
-        }
-      })
-      .select()
-      .single();
+    try {
+      console.log('🔧 Creating clean registration plan using database function');
+      
+      // Use the database function to generate clean plan data
+      const { data: planData, error: planError } = await supabase
+        .rpc('generate_clean_registration_plan', {
+          p_user_id: user.id,
+          p_business_name: result.businessName || result.name || result.title || 'Activity Registration',
+          p_url: result.url || 'https://google.com',
+          p_provider: result.provider || 'unknown'
+        });
 
-    if (error) {
-      console.error('Error creating plan:', error);
+      if (planError) {
+        console.error('Error generating clean plan data:', planError);
+        throw planError;
+      }
+
+      if (!planData || planData.length === 0) {
+        throw new Error('No plan data generated');
+      }
+
+      const cleanPlan = planData[0];
+      console.log('✅ Generated clean plan data:', cleanPlan);
+
+      // Create the registration plan with clean data
+      const { data: plan, error } = await supabase
+        .from('registration_plans')
+        .insert({
+          id: cleanPlan.plan_id,
+          user_id: user.id,
+          name: cleanPlan.plan_name,
+          url: cleanPlan.plan_url,
+          provider: cleanPlan.plan_provider,
+          created_from: 'internet_search_v2', // Mark as new version
+          rules: {
+            session_data: {
+              selectedDate: result.selectedDate || new Date().toISOString().split('T')[0],
+              selectedTime: result.selectedTime || 'Morning (9:00 AM)',
+              signupCost: result.signupCost || result.signup_cost || 45,
+              totalCost: result.totalCost || result.total_cost || result.signupCost || result.signup_cost || 45,
+              businessName: cleanPlan.plan_name,
+              location: result.location,
+              source: 'internet_search_v2'
+            },
+            predicted_barriers: [],
+            credential_requirements: [],
+            complexity_score: 0.5,
+            workflow_estimate: 10,
+            provider_platform: cleanPlan.plan_provider,
+            expected_intervention_points: [],
+            form_complexity_signals: []
+          }
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating registration plan:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create registration plan",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('✅ Created clean registration plan with ID:', plan.id);
+      navigate(`/ready-to-signup/${plan.id}`);
+      
+    } catch (error) {
+      console.error('Error in handleInternetResultSelect:', error);
       toast({
         title: "Error",
-        description: "Failed to create registration plan",
+        description: "Failed to process selection. Please try again.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (plan) {
-      console.log('✅ Created plan with ID:', plan.id);
-      navigate(`/ready-to-signup/${plan.id}`);
     }
   };
+
+  // Cleanup on component mount
+  useEffect(() => {
+    const performCleanup = async () => {
+      try {
+        const result = await cleanupInvalidRegistrationPlans();
+        if (result.success && result.cleanupCount > 0) {
+          console.log(`🧹 Cleaned up ${result.cleanupCount} invalid registration plans`);
+        }
+      } catch (error) {
+        console.error('Failed to cleanup invalid plans:', error);
+      }
+    };
+    
+    performCleanup();
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {

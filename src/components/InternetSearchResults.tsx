@@ -143,63 +143,67 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
       return; // Stop here, don't continue to default navigation
     }
     
-    // Check if this is Peloton - route correctly
-    if (result.provider?.toLowerCase().includes('peloton') || 
-        result.name?.toLowerCase().includes('peloton') ||
-        result.url?.includes('peloton')) {
-      console.log('🚴 Peloton detected - navigating to Peloton setup');
-      const url = result.url || 'https://studio.onepeloton.com';
+    try {
+      console.log('🔧 Creating clean registration plan using database function');
       
+      // Use database function to generate clean plan data
+      const { data: planData, error: planError } = await supabase
+        .rpc('generate_clean_registration_plan', {
+          p_user_id: user.id,
+          p_business_name: result.businessName || result.name || result.title || 'Activity Registration',
+          p_url: result.url || 'https://google.com',
+          p_provider: result.provider || 'unknown'
+        });
+
+      if (planError) {
+        console.error('Error generating clean plan data:', planError);
+        throw planError;
+      }
+
+      if (!planData || planData.length === 0) {
+        throw new Error('No plan data generated');
+      }
+
+      const cleanPlan = planData[0];
+      console.log('✅ Generated clean plan data:', cleanPlan);
+
+      // Create the registration plan with clean data
       const { data: plan, error } = await supabase
         .from('registration_plans')
         .insert({
-          user_id: user?.id,
-          name: 'Peloton Studio Registration',
-          url: url,
-          provider: 'peloton',
-          created_from: 'internet_search'
+          id: cleanPlan.plan_id,
+          user_id: user.id,
+          name: cleanPlan.plan_name,
+          url: cleanPlan.plan_url,
+          provider: cleanPlan.plan_provider,
+          created_from: 'internet_search_v2',
+          rules: {
+            session_data: {
+              selectedDate: result.selectedDate,
+              selectedTime: result.selectedTime,
+              signupCost: result.signupCost || result.signup_cost,
+              totalCost: result.totalCost || result.total_cost,
+              businessName: cleanPlan.plan_name,
+              location: result.location,
+              source: 'internet_search_v2'
+            }
+          }
         })
         .select()
         .single();
         
       if (error) {
-        console.error('Error creating Peloton plan:', error);
+        console.error('Error creating plan:', error);
         toast.error('Failed to create registration plan');
         return;
       }
       
+      console.log('✅ Created clean plan with ID:', plan.id);
       navigate(`/ready-to-signup/${plan.id}`);
-      return;
-    }
-    
-    console.log('🔧 Creating real registration plan for other provider:', result);
-    
-    // Get the URL properly for other providers
-    const url = result.url || 'https://google.com';
       
-    // Create a REAL registration plan in the database
-    const { data: plan, error } = await supabase
-      .from('registration_plans')
-      .insert({
-        user_id: user?.id,
-        name: result.title || result.name || 'Activity Registration',
-        url: url,
-        provider: result.provider || 'unknown',
-        created_from: 'internet_search'
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error creating plan:', error);
-      toast.error('Failed to create registration plan');
-      return;
-    }
-    
-    if (plan) {
-      console.log('Created plan with ID:', plan.id);
-      // Navigate with the REAL plan ID (a proper UUID)
-      navigate(`/ready-to-signup/${plan.id}`);
+    } catch (error) {
+      console.error('Error in handleSessionSelect:', error);
+      toast.error('Failed to process selection. Please try again.');
     }
   };
 

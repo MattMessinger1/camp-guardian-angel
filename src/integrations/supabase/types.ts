@@ -4696,6 +4696,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_invalid_registration_plans: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          cleaned_count: number
+        }[]
+      }
       cleanup_search_cache: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -4718,6 +4724,20 @@ export type Database = {
           duplicate_id: string
           reason: string
           similarity: number
+        }[]
+      }
+      generate_clean_registration_plan: {
+        Args: {
+          p_business_name: string
+          p_provider?: string
+          p_url: string
+          p_user_id: string
+        }
+        Returns: {
+          plan_id: string
+          plan_name: string
+          plan_provider: string
+          plan_url: string
         }[]
       }
       get_attempts_count_week: {
