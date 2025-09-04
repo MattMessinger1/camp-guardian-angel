@@ -661,6 +661,26 @@ export default function ReadyToSignup() {
   const testResyLogin = async () => {
     setIsTestingLogin(true);
     
+    // First test system credentials
+    console.log('🧪 Testing system credentials...');
+    try {
+      const credTest = await supabase.functions.invoke('test-credentials', {});
+      console.log('Credential test results:', credTest);
+      
+      if (credTest.data?.overall) {
+        console.log('✅ All system credentials working');
+      } else {
+        console.log('⚠️ Some system credentials missing:', credTest.data);
+        toast({
+          title: "System Setup Issue",
+          description: "Missing API credentials. Check console for details.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.log('❌ Credential test failed:', error);
+    }
+    
     try {
       const { data, error } = await supabase.functions.invoke('browser-automation', {
         body: {
