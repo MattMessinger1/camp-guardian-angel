@@ -1,14 +1,16 @@
 /**
- * Advanced State Management Hook
+ * Advanced State Management Hook - Enhanced for Step 3
  * 
  * React hook that provides comprehensive session state management
- * with provider intelligence, recovery capabilities, and persistence.
+ * with enhanced partnership awareness, cross-browser sync, and advanced recovery.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SessionStateManager, SessionState, StateCheckpoint } from '../lib/state/SessionStateManager';
 import { StateRecovery, RecoveryResult } from '../lib/state/StateRecovery';
 import { ProviderIntelligence } from '../lib/providers/ProviderIntelligence';
+import { PartnershipStateManager, EnhancedSessionState } from '../lib/state/PartnershipStateManager';
+import { EnhancedStateRecovery, EnhancedRecoveryResult } from '../lib/state/EnhancedStateRecovery';
 
 interface UseAdvancedStateManagementOptions {
   sessionId: string;
@@ -18,6 +20,8 @@ interface UseAdvancedStateManagementOptions {
   autoSave?: boolean;
   autoSaveInterval?: number; // ms
   enableRecovery?: boolean;
+  enableCrossBrowserSync?: boolean;
+  enablePartnershipFeatures?: boolean;
 }
 
 interface StateManagementActions {
@@ -30,9 +34,13 @@ interface StateManagementActions {
   createCheckpoint: (stepName: string) => Promise<StateCheckpoint>;
   recoverFromCheckpoint: (checkpointId?: string) => Promise<boolean>;
   
-  // Recovery operations
+  // Enhanced recovery operations  
   detectAndRecover: (failureContext: any) => Promise<RecoveryResult>;
+  detectAndRecoverEnhanced: (failureContext: any) => Promise<EnhancedRecoveryResult>;
   createEmergencyBackup: (reason: string) => Promise<string>;
+  
+  // Partnership operations
+  recoverWithPartnershipEscalation: (failureContext: any) => Promise<{ success: boolean; escalated: boolean; contactInfo?: any }>;
   
   // Serialization
   exportState: () => Promise<string>;
@@ -55,16 +63,22 @@ interface StateManagementStatus {
   providerCompliance: 'green' | 'yellow' | 'red';
   queuePosition?: number;
   formProgress: number; // percentage
+  // Enhanced status fields
+  partnershipStatus: 'active' | 'pending' | 'none' | 'restricted';
+  automationLevel: 'full' | 'limited' | 'manual' | 'blocked';
+  crossBrowserSyncEnabled: boolean;
+  lastSyncAt?: string;
+  escalationLevel: number;
 }
 
 export function useAdvancedStateManagement(
   options: UseAdvancedStateManagementOptions
 ): {
-  state: SessionState | null;
+  state: EnhancedSessionState | null;
   status: StateManagementStatus;
   actions: StateManagementActions;
 } {
-  const [state, setState] = useState<SessionState | null>(null);
+  const [state, setState] = useState<EnhancedSessionState | null>(null);
   const [status, setStatus] = useState<StateManagementStatus>({
     loading: true,
     error: null,
@@ -72,15 +86,21 @@ export function useAdvancedStateManagement(
     lastSaved: null,
     canRecover: false,
     providerCompliance: 'yellow',
-    formProgress: 0
+    formProgress: 0,
+    partnershipStatus: 'none',
+    automationLevel: 'manual',
+    crossBrowserSyncEnabled: false,
+    escalationLevel: 0
   });
 
   const stateManagerRef = useRef(new SessionStateManager());
+  const partnershipManagerRef = useRef(new PartnershipStateManager());
   const recoveryRef = useRef(new StateRecovery());
+  const enhancedRecoveryRef = useRef(new EnhancedStateRecovery());
   const providerIntelRef = useRef(new ProviderIntelligence());
   
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastStateRef = useRef<SessionState | null>(null);
+  const lastStateRef = useRef<EnhancedSessionState | null>(null);
 
   // Initialize state management
   useEffect(() => {
@@ -88,15 +108,23 @@ export function useAdvancedStateManagement(
       setStatus(prev => ({ ...prev, loading: true, error: null }));
 
       try {
-        console.log('Initializing advanced state management');
+        console.log('Initializing enhanced state management with partnership features');
 
-        // Initialize session state
-        const initialState = await stateManagerRef.current.initializeState({
-          sessionId: options.sessionId,
-          providerUrl: options.providerUrl,
-          userId: options.userId,
-          providerId: options.providerId
-        });
+        // Initialize enhanced session state if partnership features are enabled
+        const initialState = options.enablePartnershipFeatures 
+          ? await partnershipManagerRef.current.initializeEnhancedState({
+              sessionId: options.sessionId,
+              providerUrl: options.providerUrl,
+              userId: options.userId,
+              providerId: options.providerId,
+              enableCrossBrowserSync: options.enableCrossBrowserSync
+            })
+          : await stateManagerRef.current.initializeState({
+              sessionId: options.sessionId,
+              providerUrl: options.providerUrl,
+              userId: options.userId,
+              providerId: options.providerId
+            }) as EnhancedSessionState;
 
         setState(initialState);
         lastStateRef.current = initialState;
@@ -107,7 +135,12 @@ export function useAdvancedStateManagement(
           initialized: true,
           canRecover: initialState.recovery.canRecover,
           providerCompliance: initialState.providerIntel.complianceStatus,
-          formProgress: initialState.formProgress.progressPercentage
+          formProgress: initialState.formProgress.progressPercentage,
+          partnershipStatus: initialState.partnership?.partnershipStatus || 'none',
+          automationLevel: initialState.partnership?.automationLevel || 'manual',
+          crossBrowserSyncEnabled: initialState.crossBrowserSync?.enabled || false,
+          lastSyncAt: initialState.crossBrowserSync?.lastSyncAt,
+          escalationLevel: initialState.enhancedRecovery?.escalationLevel || 0
         }));
 
         // Start auto-save if enabled
@@ -194,9 +227,17 @@ export function useAdvancedStateManagement(
         stepInfo
       );
 
-      const updatedState = stateManagerRef.current.getState(options.sessionId);
+      const updatedState = options.enablePartnershipFeatures 
+        ? await partnershipManagerRef.current.initializeEnhancedState({
+            sessionId: options.sessionId,
+            providerUrl: options.providerUrl,
+            userId: options.userId,
+            providerId: options.providerId
+          }) as EnhancedSessionState
+        : stateManagerRef.current.getState(options.sessionId);
+        
       if (updatedState) {
-        setState(updatedState);
+        setState(updatedState as EnhancedSessionState);
         setStatus(prev => ({
           ...prev,
           formProgress: updatedState.formProgress.progressPercentage
@@ -219,7 +260,7 @@ export function useAdvancedStateManagement(
       
       const updatedState = stateManagerRef.current.getState(options.sessionId);
       if (updatedState) {
-        setState(updatedState);
+        setState(updatedState as EnhancedSessionState);
       }
     } catch (error) {
       console.error('Failed to update browser context:', error);
@@ -235,7 +276,7 @@ export function useAdvancedStateManagement(
       
       const updatedState = stateManagerRef.current.getState(options.sessionId);
       if (updatedState) {
-        setState(updatedState);
+        setState(updatedState as EnhancedSessionState);
         setStatus(prev => ({
           ...prev,
           queuePosition: updatedState.queueState.position
@@ -258,7 +299,7 @@ export function useAdvancedStateManagement(
 
       const updatedState = stateManagerRef.current.getState(options.sessionId);
       if (updatedState) {
-        setState(updatedState);
+        setState(updatedState as EnhancedSessionState);
       }
 
       return checkpoint;
@@ -280,7 +321,7 @@ export function useAdvancedStateManagement(
       if (success) {
         const recoveredState = stateManagerRef.current.getState(options.sessionId);
         if (recoveredState) {
-          setState(recoveredState);
+          setState(recoveredState as EnhancedSessionState);
           setStatus(prev => ({
             ...prev,
             error: null,
@@ -312,7 +353,7 @@ export function useAdvancedStateManagement(
       );
 
       if (result.success && result.recoveredState) {
-        setState(result.recoveredState);
+        setState(result.recoveredState as EnhancedSessionState);
         setStatus(prev => ({
           ...prev,
           error: null,
@@ -361,7 +402,7 @@ export function useAdvancedStateManagement(
         serializedData
       );
 
-      setState(restoredState);
+      setState(restoredState as EnhancedSessionState);
       setStatus(prev => ({
         ...prev,
         error: null,
@@ -403,6 +444,33 @@ export function useAdvancedStateManagement(
     }
   }, []);
 
+  const detectAndRecoverEnhanced = useCallback(async (failureContext: any): Promise<EnhancedRecoveryResult> => {
+    try {
+      return await enhancedRecoveryRef.current.detectAndRecoverEnhanced(
+        options.sessionId,
+        failureContext,
+        state || undefined
+      );
+    } catch (error) {
+      console.error('Enhanced recovery failed:', error);
+      throw error;
+    }
+  }, [options.sessionId, state]);
+
+  const recoverWithPartnershipEscalation = useCallback(async (failureContext: any) => {
+    if (!state) throw new Error('State not initialized');
+
+    try {
+      return await partnershipManagerRef.current.recoverWithPartnershipEscalation(
+        options.sessionId,
+        failureContext
+      );
+    } catch (error) {
+      console.error('Partnership recovery failed:', error);
+      return { success: false, escalated: false };
+    }
+  }, [state, options.sessionId]);
+
   const actions: StateManagementActions = {
     updateFormProgress,
     updateBrowserContext,
@@ -410,7 +478,9 @@ export function useAdvancedStateManagement(
     createCheckpoint,
     recoverFromCheckpoint,
     detectAndRecover,
+    detectAndRecoverEnhanced,
     createEmergencyBackup,
+    recoverWithPartnershipEscalation,
     exportState,
     importState,
     checkAutomationAllowed,
