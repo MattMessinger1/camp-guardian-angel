@@ -358,24 +358,6 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       console.log('🔍 Carbone URL components - url:', result.url, 'signup_url:', result.signup_url, 'providerUrl:', result.providerUrl);
                     }
                     
-                    if (!actualUrl) {
-                      console.error('No URL provided for result:', result.name || result.providerName || result.campName);
-                      // LOG: Check if this condition is preventing URL for Carbone
-                      if ((result.name || result.providerName || result.campName)?.toLowerCase().includes('carbone')) {
-                        console.log('❌ CARBONE URL MISSING - This condition is preventing Carbone URL from being set:', {
-                          result: result,
-                          url: result.url,
-                          signup_url: result.signup_url,
-                          providerUrl: result.providerUrl
-                        });
-                      }
-                      toast({
-                        title: "Error",
-                        description: "No booking URL available for this provider.",
-                        variant: "destructive"
-                      });
-                      return;
-                    }
                     
                     console.log('📊 Creating registration plan with URL:', {
                       resultName: result.name || result.providerName || result.campName,
