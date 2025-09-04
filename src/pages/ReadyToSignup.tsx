@@ -331,14 +331,17 @@ export default function ReadyToSignup() {
       
       const urlToAnalyze = sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url;
       if (!urlToAnalyze) {
-        console.log('No URL found for analysis');
+        console.log('❌ No URL found for analysis - sessionData:', sessionDataToAnalyze);
         setStage('manual_time');
         return;
       }
       
-      console.log('🚀 Calling browser-automation with:', {
+      console.log('🚀 Calling browser-automation with dynamic URL:', {
         action: 'analyze',
         url: urlToAnalyze,
+        urlSource: sessionDataToAnalyze.url ? 'sessionData.url' : 'sessionData.signup_url',
+        businessName: sessionDataToAnalyze.businessName,
+        provider: sessionDataToAnalyze.provider,
         enableVision: true
       });
       
@@ -428,10 +431,20 @@ export default function ReadyToSignup() {
     
     try {
       // NOW we can use browser automation with their credentials to get the actual class times after logging in
+      const urlForLogin = sessionData?.url || planData?.detect_url;
+      
+      console.log('🔐 Starting browser automation with credentials for URL:', {
+        url: urlForLogin,
+        urlSource: sessionData?.url ? 'sessionData.url' : 'planData.detect_url',
+        businessName: sessionData?.businessName,
+        provider: sessionData?.provider,
+        hasCredentials: !!(credentials.email && credentials.password)
+      });
+      
       const { data, error } = await supabase.functions.invoke('browser-automation', {
         body: {
           action: 'analyze',
-          url: sessionData?.url || planData?.detect_url,
+          url: urlForLogin,
           credentials,
           enableVision: true
         }

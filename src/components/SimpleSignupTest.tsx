@@ -63,12 +63,12 @@ export default function SimpleSignupTest() {
 
   const navigateToRegistration = async (url: string) => {
     setCurrentStep('Navigating to registration flow...');
-    console.log('🧭 [SimpleSignupTest] Starting navigation to registration:', url);
+    console.log('🧭 [SimpleSignupTest] Starting navigation to registration URL:', url);
     
     const { data, error } = await supabase.functions.invoke('browser-automation-simple', {
       body: { 
         action: 'navigate_and_register',
-        url,
+        url: url, // Use the actual URL parameter, not hardcoded
         sessionId: `test-${Date.now()}`,
         steps: [
           'navigate_to_url',
@@ -280,13 +280,13 @@ Focus on detecting authentication walls vs direct registration access.`
         password: 'TestPass123!'
       };
 
-      console.log('🚀 [SimpleSignupTest] Testing form fill and submit for:', campSite.name);
+      console.log('🚀 [SimpleSignupTest] Testing form fill and submit for:', campSite.name, 'at URL:', campSite.url);
 
       const { data, error: functionError } = await supabase.functions.invoke('browser-automation-simple', {
         body: {
           action: 'fill_and_submit',
           sessionId: `test-${Date.now()}`,
-          url: campSite.url,
+          url: campSite.url, // Use dynamic URL from camp site, not hardcoded
           formData: testFormData,
           steps: [
             'navigate_to_form',

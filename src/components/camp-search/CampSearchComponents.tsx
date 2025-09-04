@@ -17,6 +17,9 @@ export interface SearchResult {
   campName: string;
   providerName?: string;
   name?: string; // For internet search results
+  url?: string; // Registration/signup URL
+  signup_url?: string; // Alternative naming for signup URL
+  providerUrl?: string; // Alternative naming for provider URL
   location?: {
     city: string;
     state: string;
@@ -357,11 +360,21 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     // Get user if exists, but don't require it
                     const { data: { user } } = await supabase.auth.getUser();
                     
+                    // Use actual URL from the search result, not hardcoded
+                    const actualUrl = result.url || result.signup_url || result.providerUrl || 
+                      `https://www.google.com/search?q=${encodeURIComponent((result.name || result.providerName || result.campName) + ' registration')}`;
+                    
+                    console.log('📊 Creating registration plan with URL:', {
+                      resultName: result.name || result.providerName || result.campName,
+                      actualUrl,
+                      hasProvidedUrl: !!(result.url || result.signup_url || result.providerUrl)
+                    });
+                    
                     const { data: plan, error } = await supabase
                       .from('registration_plans')
                       .insert({
                         user_id: user?.id || null,  // Allow null for anonymous
-                        detect_url: 'https://studio.onepeloton.com',
+                        detect_url: actualUrl,
                         status: 'pending'
                       })
                       .select()
