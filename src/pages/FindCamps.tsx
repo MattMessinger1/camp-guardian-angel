@@ -71,9 +71,14 @@ const FindCamps: React.FC = () => {
   const performSearch = useCallback(async (query: string, additionalParams: any = {}) => {
     if (!query.trim()) return;
     
-    console.log('🔍 NEW SEARCH STARTED for:', query);
+    console.log('🔍 NEW SEARCH STARTED - CLEARING ALL STATE:', query);
     
-    // Clear any stale session data when starting new search
+    // CLEAR EVERYTHING - localStorage, sessionStorage, component state
+    localStorage.removeItem('currentSession');
+    localStorage.removeItem('lastSearchResults'); 
+    sessionStorage.clear();
+    
+    // Force clear any cached session data
     setSearchResults([]);
     setInternetResults([]);
     setClarifyingQuestions([]);
@@ -121,27 +126,36 @@ const FindCamps: React.FC = () => {
           component: 'FindCamps'
         });
 
-        // Clean results to ensure Carbone doesn't get contaminated with other IDs
-        const cleanResults = (response.results || []).map((result: any, index: number) => {
+        // Process results - create completely new objects to prevent contamination
+        const processedResults = (response.results || []).map((result: any, index: number) => {
+          console.log('🔄 Processing result:', result.businessName || result.name);
+          
+          // For Carbone, create a completely new object with NO peloton contamination
           if (result.businessName?.toLowerCase().includes('carbone') || 
               result.name?.toLowerCase().includes('carbone')) {
-            console.log('🍝 Cleaning Carbone result to prevent ID contamination');
+            console.log('🍝 Creating clean Carbone result');
             return {
-              ...result,
-              id: `carbone-${Date.now()}-${index}`, // Unique ID for Carbone
+              id: `carbone-${Date.now()}-${index}`,
+              businessName: 'Carbone',
+              name: 'Carbone',
               url: 'https://resy.com/cities/ny/carbone',
               provider: 'resy',
-              businessName: 'Carbone'
+              description: 'Italian restaurant in NYC requiring Resy booking',
+              location: 'Greenwich Village, NYC',
+              // NO session_id, NO peloton data, NO inheritance
             };
           }
+          
+          // For other results, ensure unique IDs
           return {
             ...result,
-            id: `result-${Date.now()}-${index}` // Ensure unique IDs
+            id: result.id || `result-${Date.now()}-${index}` // Ensure unique IDs
           };
         });
 
-        setInternetResults(cleanResults);
-        setInternetSearchData(response); // Store full response including extracted_time
+        console.log('✅ Processed results:', processedResults.length);
+        setInternetResults(processedResults);
+        setInternetSearchData(response);
 
         if (response.results?.length === 0) {
           toast({

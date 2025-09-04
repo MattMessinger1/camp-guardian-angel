@@ -116,6 +116,7 @@ export default function App() {
                 <Route path="/ready-to-signup/:sessionId" element={<ReadyToSignup />} />
                 <Route path="/ready-to-signup/carbone-resy" element={<DevPages.CarboneSetup />} />
                 <Route path="/carbone-setup" element={<DevPages.CarboneSetup />} />
+                <Route path="/setup/carbone" element={<DevPages.CarboneSetup />} />
                 <Route path="/sessions/:sessionId/ready-to-signup" element={<ReadyToSignup />} />
               
               {/* Payment Routes - Always Available */}
