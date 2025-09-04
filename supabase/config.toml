@@ -171,3 +171,15 @@ verify_jwt = false
 [functions.internet-activity-search]
 verify_jwt = false
 
+[functions.browser-automation-simple]
+verify_jwt = false
+
+[functions.create-reservation-hold]
+verify_jwt = false
+
+[functions.discover-booking-pattern]
+verify_jwt = false
+
+[functions.discover-booking-url]
+verify_jwt = false
+

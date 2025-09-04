@@ -321,7 +321,7 @@ export default function ReadyToSignup() {
             .from('reservation_holds')
             .insert({
               session_id: session.id,
-              user_id: user?.id || 'temp-user-id',
+              user_id: user?.id || null,
               status: 'active',
               parent_email: user?.email || 'temp@example.com',
               parent_phone_e164: '+15550000000',
