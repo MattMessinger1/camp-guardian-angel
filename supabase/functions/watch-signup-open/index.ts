@@ -28,6 +28,7 @@ interface TimeExtractionResult {
   confidence: number;
   matchedText: string;
   pattern: string;
+  metadata?: { daysInAdvance?: number; defaultTime?: string };
 }
 
 serve(async (req) => {
@@ -396,6 +397,14 @@ function detectRegistrationOpen(content: string, response: Response): boolean {
 
   const lowerContent = content.toLowerCase();
   
+  // Check if this is a Resy URL - use restaurant-specific detection
+  const isResyUrl = lowerContent.includes('resy.com') || lowerContent.includes('resy');
+  
+  if (isResyUrl) {
+    return detectResyReservationOpen(content, lowerContent);
+  }
+  
+  // Continue with existing camp/fitness registration detection for non-Resy sites
   // Positive signals for registration being open
   const openSignals = [
     'register now',
@@ -453,6 +462,55 @@ function detectRegistrationOpen(content: string, response: Response): boolean {
 
   // If we have positive signals (text or forms/buttons) and no strong negative signals, consider it open
   return (hasOpenSignal || hasRegistrationForm || hasRegistrationButton) && !hasClosedSignal;
+}
+
+// Detect if Resy reservations are open based on restaurant-specific signals
+function detectResyReservationOpen(content: string, lowerContent: string): boolean {
+  // Positive signals for restaurant reservations being available
+  const resyOpenSignals = [
+    'book now',
+    'reserve now',
+    'make reservation',
+    'reserve a table',
+    'book a table',
+    'available times',
+    'select time',
+    'reserve table',
+    'make a reservation'
+  ];
+
+  // Negative signals for restaurant reservations being unavailable
+  const resyClosedSignals = [
+    'fully booked',
+    'no availability',
+    'waitlist only',
+    'not taking reservations',
+    'reservations closed',
+    'no tables available',
+    'sold out',
+    'booking not open',
+    'reservations open',  // This suggests they're not open yet
+    'coming soon'
+  ];
+
+  // Check for positive signals
+  const hasOpenSignal = resyOpenSignals.some(signal => lowerContent.includes(signal));
+  
+  // Check for negative signals  
+  const hasClosedSignal = resyClosedSignals.some(signal => lowerContent.includes(signal));
+
+  // Look for Resy-specific reservation interface elements
+  const hasReservationInterface = lowerContent.includes('resy-button') ||
+    lowerContent.includes('book-now') ||
+    lowerContent.includes('reservation-widget') ||
+    (lowerContent.includes('time') && lowerContent.includes('party'));
+
+  // Look for time selection elements that indicate booking is open
+  const hasTimeSelection = lowerContent.includes('select') && 
+    (lowerContent.includes('time') || lowerContent.includes(':00') || lowerContent.includes('pm') || lowerContent.includes('am'));
+
+  // For restaurants, availability of time slots is a strong positive signal
+  return (hasOpenSignal || hasReservationInterface || hasTimeSelection) && !hasClosedSignal;
 }
 
 // Create immediate registrations when opening is detected
@@ -563,6 +621,15 @@ function extractRegistrationTimes(content: string, timezone: string = 'America/C
   }
 
   const lowerContent = content.toLowerCase();
+  
+  // Check if this is a Resy URL - add Resy-specific pattern detection
+  const isResyUrl = lowerContent.includes('resy.com') || lowerContent.includes('resy');
+  
+  if (isResyUrl) {
+    return extractResyReservationTimes(content, lowerContent, timezone);
+  }
+
+  // Continue with existing camp/fitness registration patterns for non-Resy sites
   const results: Array<{ time: Date, confidence: number, text: string, pattern: string }> = [];
 
   // Pattern 1: "opens on [date] at [time]"
@@ -660,6 +727,69 @@ function extractRegistrationTimes(content: string, timezone: string = 'America/C
     confidence: bestResult.confidence,
     matchedText: bestResult.text,
     pattern: bestResult.pattern
+  };
+}
+
+// Extract Resy-specific reservation booking times
+function extractResyReservationTimes(content: string, lowerContent: string, timezone: string): TimeExtractionResult {
+  // Check if this is Carbone - hardcode the pattern
+  if (lowerContent.includes('carbone')) {
+    return {
+      extractedTime: null, // Will be calculated based on target date
+      confidence: 0.95,
+      matchedText: 'Carbone reservations open 30 days in advance at 10:00 AM ET',
+      pattern: 'resy_carbone_hardcoded'
+    };
+  }
+  
+  // Look for Resy-specific patterns
+  const resyPatterns = [
+    {
+      regex: /reservations?\s+(?:are\s+)?released\s+(\d+)\s+days?\s+in\s+advance/gi,
+      confidence: 0.9,
+      pattern: 'resy_released_advance'
+    },
+    {
+      regex: /books?\s+(\d+)\s+days?\s+out/gi,
+      confidence: 0.85,
+      pattern: 'resy_books_out'
+    },
+    {
+      regex: /available\s+(\d+)\s+days?\s+in\s+advance/gi,
+      confidence: 0.85,
+      pattern: 'resy_available_advance'
+    },
+    {
+      regex: /reservations?\s+open\s+(\d+)\s+days?\s+before/gi,
+      confidence: 0.8,
+      pattern: 'resy_open_before'
+    }
+  ];
+
+  for (const patternInfo of resyPatterns) {
+    let match;
+    while ((match = patternInfo.regex.exec(content)) !== null) {
+      const daysInAdvance = parseInt(match[1]);
+      
+      if (daysInAdvance > 0 && daysInAdvance <= 90) { // Reasonable range
+        return {
+          extractedTime: null, // Will be calculated based on target date
+          confidence: patternInfo.confidence,
+          matchedText: match[0],
+          pattern: patternInfo.pattern,
+          metadata: { daysInAdvance, defaultTime: '10:00 AM ET' } // Store for calculation
+        };
+      }
+    }
+  }
+
+  // Default Resy pattern if no specific pattern found
+  return {
+    extractedTime: null,
+    confidence: 0.7,
+    matchedText: 'Resy restaurant - typically 30 days in advance',
+    pattern: 'resy_default_30_days',
+    metadata: { daysInAdvance: 30, defaultTime: '10:00 AM ET' }
   };
 }
 
