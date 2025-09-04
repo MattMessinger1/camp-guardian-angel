@@ -52,11 +52,7 @@ export default function ReadyToSignup() {
     queryFn: async () => {
       const queryId = realPlanId || planId;
       
-      // Don't query database for temporary IDs that will cause 400 errors
-      if (queryId?.includes('internet-') || queryId?.includes('carbone-') || queryId?.includes('temp-')) {
-        console.log('Skipping database query for temporary ID:', queryId);
-        return null;
-      }
+      // Query the database for all plan IDs
       
       const { data, error } = await supabase
         .from('registration_plans')
@@ -101,7 +97,7 @@ export default function ReadyToSignup() {
   });
   const [bookingOpensAt, setBookingOpensAt] = useState<Date | null>(null);
 
-  // Initialize plan creation for location.state data
+  // Initialize plan creation for location.state data - ALWAYS create real plans
   useEffect(() => {
     const stateData = location.state;
     
@@ -113,74 +109,60 @@ export default function ReadyToSignup() {
       pathname: location.pathname
     });
     
-    // If we have location.state data but no real plan ID yet, create the plan first
-    if (stateData && !realPlanId && !isPlanCreating && user) {
-      console.log('🚀 Creating plan from location.state data:', stateData);
+    // If we have location.state data, always create a proper plan in the database
+    if (stateData && !realPlanId && !isPlanCreating) {
+      console.log('🚀 Creating proper plan from location.state data:', stateData);
       setIsPlanCreating(true);
       
-      // Create the plan via reserve-init first
+      // Create the plan via reserve-init - this creates a real database entry
       supabase.functions.invoke('reserve-init', {
         body: {
+          session_id: stateData.id || 'unknown',
+          parent: {
+            email: user?.email || 'temp@example.com',
+            first_name: 'Parent',
+            last_name: 'User',
+            phone: '555-0000'
+          },
+          child: {
+            name: 'Child',
+            dob: '2010-01-01'
+          },
           url: stateData.url,
-          businessName: stateData.businessName || stateData.title,
-          provider: stateData.provider,
-          userId: user.id,
-          metadata: {
-            source: 'readyToSignup',
-            originalSessionId: stateData.id,
-            ...stateData
-          }
+          business_name: stateData.businessName || stateData.title || 'Activity',
+          provider: stateData.provider || 'unknown'
         }
       }).then(({ data, error }) => {
         setIsPlanCreating(false);
         
         if (error) {
           console.error('❌ Failed to create plan via reserve-init:', error);
-          // Fallback: use location.state data directly
-          setSessionData(stateData);
-          setStage('manual_time');
+          setStage('error');
           return;
         }
         
-        if (data?.planId) {
-          console.log('✅ Plan created via reserve-init:', data.planId);
-          setRealPlanId(data.planId);
-          setSessionData(stateData);
-          setStage('manual_time');
+        if (data?.reservation_id) {
+          console.log('✅ Plan created via reserve-init:', data.reservation_id);
+          setRealPlanId(data.reservation_id);
+          // Navigate to the proper URL with the real plan ID
+          navigate(`/ready-to-signup/${data.reservation_id}`, { 
+            replace: true,
+            state: stateData 
+          });
         } else {
-          console.log('⚠️ No planId returned, using fallback');
-          setSessionData(stateData);
-          setStage('manual_time');
+          console.error('⚠️ No reservation_id returned from reserve-init');
+          setStage('error');
         }
       }).catch(error => {
         console.error('❌ Reserve-init failed:', error);
         setIsPlanCreating(false);
-        // Fallback: use location.state data directly  
-        setSessionData(stateData);
-        setStage('manual_time');
+        setStage('error');
       });
       
       return;
     }
     
-    // If we have state data and already processed it, just set it
-    if (stateData && !sessionData) {
-      console.log('📋 Using existing state data:', stateData);
-      setSessionData(stateData);
-      setStage('manual_time');
-      return;
-    }
-    
-    // If no location state and this is a temporary session, show error
-    if (planId?.includes('internet-') || planId?.includes('carbone-')) {
-      if (!stateData) {
-        console.log('🚨 Temporary session without required state data');
-        setStage('error');
-        return;
-      }
-    }
-    
-  }, [location.state, realPlanId, isPlanCreating, user, sessionData, planId]);
+  }, [location.state, realPlanId, isPlanCreating, user, planId, navigate]);
 
   // Quick check for registration times (3 second timeout)
   const quickCheckForTimes = async (url: string): Promise<{ foundTime: boolean; time?: string }> => {
@@ -231,19 +213,7 @@ export default function ReadyToSignup() {
       return;
     }
 
-    // Handle internet sessions - but require location.state
-    if (isInternetSession) {
-      if (!location.state) {
-        console.log('🚨 Internet session without required state data');
-        setStage('error');
-        return;
-      }
-      
-      console.log('🌐 Handling internet session with state data');
-      setSessionData(location.state);
-      setStage('manual_time');
-      return;
-    }
+    // All sessions should now be proper database entries - no special handling
 
     // Check for test scenario first
     const testScenario = getTestScenario(planId);
