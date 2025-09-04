@@ -33,6 +33,46 @@ const getProviderType = (provider: string): string => {
   return providerTypeMap[provider?.toLowerCase()] || 'general';
 };
 
+// Provider-specific configuration
+const getProviderConfig = (provider: string, targetDate?: string) => {
+  const calculateResyOpenTime = (targetDateStr: string) => {
+    if (!targetDateStr) return '';
+    const targetDateObj = new Date(targetDateStr);
+    const openDate = new Date(targetDateObj);
+    openDate.setDate(openDate.getDate() - 30);
+    openDate.setHours(10, 0, 0, 0); // 10:00 AM ET
+    return openDate.toISOString();
+  };
+
+  switch(provider?.toLowerCase()) {
+    case 'resy':
+      return {
+        title: 'Restaurant Reservation Setup',
+        timeLabel: 'When do reservations open?',
+        timeHint: 'Carbone opens 30 days in advance at 10:00 AM ET',
+        defaultTime: targetDate ? calculateResyOpenTime(targetDate) : '',
+        fields: ['party_size', 'preferred_date', 'backup_times'],
+        credentialLabel: 'Resy Account'
+      };
+    case 'peloton':
+      return {
+        title: 'Class Registration Setup',
+        timeLabel: 'When does class registration open?',
+        timeHint: 'Usually 7 days in advance at noon',
+        fields: ['class_type', 'instructor_preference'],
+        credentialLabel: 'Peloton Account'
+      };
+    default:
+      return {
+        title: 'Registration Setup',
+        timeLabel: 'When does registration open?',
+        timeHint: 'Enter the date and time registration becomes available',
+        fields: [],
+        credentialLabel: 'Account'
+      };
+  }
+};
+
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const navigate = useNavigate();
@@ -112,6 +152,9 @@ export default function ReadyToSignup() {
   // Detect provider from current session
   const currentProvider = analysis?.provider || detectProvider(sessionData?.url || planData?.detect_url || '');
   const isResyProvider = currentProvider === 'resy' || (sessionData?.url || planData?.detect_url || '').includes('resy.com');
+  
+  // Get provider-specific configuration
+  const providerConfig = getProviderConfig(currentProvider, bookingDetails.date);
 
   // Initialize plan creation for location.state data - ALWAYS create real plans
   useEffect(() => {
@@ -974,9 +1017,9 @@ export default function ReadyToSignup() {
       
       {stage === 'manual_time' && !isResyProvider && (
         <Card className="p-6">
-          <h2 className="font-semibold mb-4">Set Registration Time</h2>
+          <h2 className="font-semibold mb-4">{providerConfig.title}</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            When does registration open for this activity?
+            {providerConfig.timeLabel} {providerConfig.timeHint && `(${providerConfig.timeHint})`}
           </p>
           {analysis && (
             <div className="mb-4 p-3 bg-muted rounded-lg">
@@ -1013,17 +1056,17 @@ export default function ReadyToSignup() {
 
           {/* Resy Account Credentials */}
           <div className="space-y-4 mb-6">
-            <h3 className="font-medium">Resy Account Credentials</h3>
+            <h3 className="font-medium">{providerConfig.credentialLabel} Credentials</h3>
             <div className="space-y-2">
               <Input
                 type="email"
-                placeholder="Resy Account Email"
+                placeholder={`${providerConfig.credentialLabel} Email`}
                 value={resyCredentials.email}
                 onChange={(e) => setResyCredentials({...resyCredentials, email: e.target.value})}
               />
               <Input
                 type="password"
-                placeholder="Resy Account Password"
+                placeholder={`${providerConfig.credentialLabel} Password`}
                 value={resyCredentials.password}
                 onChange={(e) => setResyCredentials({...resyCredentials, password: e.target.value})}
               />
