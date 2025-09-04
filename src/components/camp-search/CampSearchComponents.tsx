@@ -238,6 +238,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
       return {
         ...primaryResult,
         name: displayName, // Use normalized display name
+        providerName: primaryResult.providerName || primaryResult.provider_platform,
         sessions: uniqueSessions,
         sessionDates: uniqueSessions.map(s => s.date),
         sessionTimes: uniqueSessions.map(s => s.time)
