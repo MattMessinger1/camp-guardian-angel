@@ -24,6 +24,13 @@ interface InternetSearchResult {
   title?: string;
   description: string;
   url?: string;
+  // Additional URL fields that might come from Perplexity API
+  signup_url?: string;
+  link?: string;
+  reference_url?: string;
+  source_url?: string;
+  website?: string;
+  providerUrl?: string;
   provider: string;
   estimatedDates?: string;
   estimatedPrice?: string;
@@ -63,13 +70,29 @@ const processSearchResults = (results: InternetSearchResult[]) => {
     // Create truly unique IDs for each result
     const uniqueId = `${result.businessName?.toLowerCase().replace(/\s+/g, '-') || 'activity'}-${Date.now()}-${index}`;
     
+    // Extract URL from multiple possible fields (same logic as FindCamps.tsx)
+    const extractedUrl = result.url || result.signup_url || result.link || 
+                        result.reference_url || result.source_url || 
+                        result.website || result.providerUrl;
+    
+    console.log('🔗 InternetSearchResults URL processing:', {
+      name: result.businessName || result.name,
+      extractedUrl,
+      originalUrl: result.url,
+      signup_url: result.signup_url,
+      providerUrl: result.providerUrl
+    });
+    
     return {
       ...result,
       id: uniqueId,
       session_id: uniqueId,
       // Ensure correct data associations
       businessName: result.businessName || result.name,
-      url: result.url || '',
+      // Preserve URLs properly - don't convert to empty string
+      url: extractedUrl || undefined,
+      signup_url: extractedUrl || undefined, 
+      providerUrl: extractedUrl || undefined,
       provider: detectProvider(result)
     };
   });
@@ -143,11 +166,26 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     localStorage.removeItem('currentSession');
     sessionStorage.clear();
     
+    // Extract URL from multiple possible fields
+    const extractedUrl = result.url || result.signup_url || result.link || 
+                        result.reference_url || result.source_url || 
+                        result.website || result.providerUrl;
+    
+    console.log('🔗 handleSearchResultClick URL extraction:', {
+      name: result.businessName || result.name,
+      extractedUrl,
+      availableFields: {
+        url: result.url,
+        signup_url: result.signup_url,
+        providerUrl: result.providerUrl
+      }
+    });
+    
     // Create fresh session data
     const freshData = {
       id: `${result.businessName || result.name}-${Date.now()}`,
       businessName: result.businessName || result.name,
-      url: result.url || '',
+      url: extractedUrl || (result.businessName?.includes('Carbone') ? 'https://resy.com/cities/ny/carbone' : 'https://google.com'),
       provider: result.businessName?.includes('Carbone') ? 'resy' : detectProvider(result)
     };
     
