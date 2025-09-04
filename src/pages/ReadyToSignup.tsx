@@ -220,78 +220,47 @@ export default function ReadyToSignup() {
       console.log('🚀 Creating proper plan from location.state data:', stateData);
       setIsPlanCreating(true);
       
-      // Create the plan via reserve-init - this creates a real database entry
-      // For anonymous users, use test mode
-      const invokeOptions = user ? 
-        // Authenticated user - use normal auth
-        {
-          body: {
-            session_id: stateData.id || 'unknown',
-            parent: {
-              email: user.email || 'temp@example.com',
-              first_name: 'Parent',
-              last_name: 'User',
-              phone: '555-0000'
-            },
-            child: {
-              name: 'Child',
-              dob: '2010-01-01'
-            },
-            url: stateData.url,
-            business_name: stateData.businessName || stateData.title || 'Activity',
-            provider: stateData.provider || 'unknown'
+      // Create a proper registration plan directly in database
+      const createPlan = async () => {
+        try {
+          console.log('🚀 Creating registration plan directly in database');
+          
+          const newPlanId = crypto.randomUUID();
+          const { data: plan, error: planError } = await supabase.from('registration_plans').insert({
+            id: newPlanId,
+            name: stateData.businessName || stateData.title || 'Activity',
+            url: stateData.url || 'https://example.com',
+            provider: stateData.provider || 'unknown',
+            user_id: user?.id || null,
+            created_from: 'ready_to_signup'
+          }).select().single();
+
+          if (planError) {
+            console.error('❌ Failed to create plan:', planError);
+            setIsPlanCreating(false);
+            setStage('error');
+            return;
           }
-        } : 
-        // Anonymous user - use test mode
-        {
-          body: {
-            session_id: stateData.id || 'unknown',
-            parent: {
-              email: 'temp@example.com',
-              first_name: 'Parent',
-              last_name: 'User',
-              phone: '555-0000'
-            },
-            child: {
-              name: 'Child',
-              dob: '2010-01-01'
-            },
-            url: stateData.url,
-            business_name: stateData.businessName || stateData.title || 'Activity',
-            provider: stateData.provider || 'unknown'
-          },
-          headers: {
-            'x-test-mode': 'true'
-          }
-        };
-      
-      supabase.functions.invoke('reserve-init', invokeOptions).then(({ data, error }) => {
-        setIsPlanCreating(false);
-        
-        if (error) {
-          console.error('❌ Failed to create plan via reserve-init:', error);
-          setStage('error');
-          return;
-        }
-        
-        if (data?.reservation_id) {
-          console.log('✅ Plan created via reserve-init:', data.reservation_id);
-          setRealPlanId(data.reservation_id);
-          // Navigate to the proper URL with the real plan ID
-          navigate(`/ready-to-signup/${data.reservation_id}`, { 
+
+          console.log('✅ Plan created successfully:', plan.id);
+          setRealPlanId(plan.id);
+          
+          // Navigate to the new plan URL with the real plan data
+          navigate(`/ready-to-signup/${plan.id}`, { 
             replace: true,
-            state: stateData 
+            state: stateData  // Preserve the original state
           });
-        } else {
-          console.error('⚠️ No reservation_id returned from reserve-init');
+          
+          setIsPlanCreating(false);
+          
+        } catch (error) {
+          console.error('❌ Failed to create plan:', error);
+          setIsPlanCreating(false);
           setStage('error');
         }
-      }).catch(error => {
-        console.error('❌ Reserve-init failed:', error);
-        setIsPlanCreating(false);
-        setStage('error');
-      });
+      };
       
+      createPlan();
       return;
     }
     
