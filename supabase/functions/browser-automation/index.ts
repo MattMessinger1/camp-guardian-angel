@@ -16,7 +16,7 @@ const supabase = createClient(
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 interface BrowserSessionRequest {
-  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register' | 'book_class' | 'analyze';
+  action: 'create' | 'navigate' | 'interact' | 'extract' | 'close' | 'cleanup' | 'login' | 'navigate_and_register' | 'book_class' | 'analyze' | 'test_resy_login';
   sessionId?: string;
   url?: string;
   campProviderId?: string;
@@ -99,6 +99,9 @@ serve(async (req) => {
         break;
       case 'analyze':
         result = await analyzePageWithBrowser(browserbaseApiKey, requestData);
+        break;
+      case 'test_resy_login':
+        result = await testResyLogin(browserbaseApiKey, requestData);
         break;
           
       case 'close':
@@ -2398,6 +2401,141 @@ async function cleanupOldSessions(apiKey: string): Promise<void> {
     }
   } catch (error) {
     console.log('⚠️ Cleanup failed:', error.message);
+  }
+}
+
+/**
+ * Test Resy login functionality
+ */
+async function testResyLogin(apiKey: string, params: BrowserSessionRequest): Promise<any> {
+  console.log('Testing Resy login...');
+  
+  if (!params.credentials) {
+    throw new Error('Credentials required for Resy login test');
+  }
+  
+  try {
+    // Create a temporary session for testing
+    const sessionResult = await createBrowserSession(apiKey, { action: 'create' });
+    const sessionDetails = sessionResult.sessionData;
+    
+    // Create WebSocket connection for CDP commands
+    const ws = new WebSocket(sessionDetails.connectUrl);
+    let messageId = 1;
+    
+    const wsClient = {
+      send: (method: string, params: any = {}) => {
+        return new Promise((resolve, reject) => {
+          const id = messageId++;
+          const message = { id, method, params };
+          
+          const responseHandler = (event: MessageEvent) => {
+            const response = JSON.parse(event.data);
+            if (response.id === id) {
+              ws.removeEventListener('message', responseHandler);
+              if (response.error) {
+                reject(new Error(response.error.message));
+              } else {
+                resolve(response.result);
+              }
+            }
+          };
+          
+          ws.addEventListener('message', responseHandler);
+          ws.send(JSON.stringify(message));
+          
+          // Timeout after 10 seconds
+          setTimeout(() => {
+            ws.removeEventListener('message', responseHandler);
+            reject(new Error(`CDP command timeout: ${method}`));
+          }, 10000);
+        });
+      }
+    };
+
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        try {
+          ws.close();
+          // Close the temporary session
+          fetch(`https://api.browserbase.com/v1/sessions/${sessionDetails.sessionId}`, {
+            method: 'DELETE',
+            headers: { 'X-BB-API-Key': apiKey },
+          });
+        } catch (e) {
+          console.warn('Cleanup warning:', e);
+        }
+      };
+
+      // Overall timeout (30 seconds)
+      setTimeout(() => {
+        cleanup();
+        reject(new Error('Resy login test timeout'));
+      }, 30000);
+
+      ws.onopen = async () => {
+        try {
+          // Navigate to Resy login
+          await wsClient.send('Page.navigate', { 
+            url: 'https://resy.com/login'
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Try to login
+          const loginScript = `
+            document.querySelector('input[type="email"]').value = '${params.credentials.email}';
+            document.querySelector('input[type="password"]').value = '${params.credentials.password}';
+            document.querySelector('button[type="submit"]').click();
+          `;
+          
+          await wsClient.send('Runtime.evaluate', {
+            expression: loginScript
+          });
+          
+          // Wait for login
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Check if logged in and has payment
+          const checkScript = `
+            const loggedIn = !window.location.href.includes('/login');
+            const profileLink = !!document.querySelector('a[href*="profile"]');
+            JSON.stringify({ loggedIn, profileLink });
+          `;
+          
+          const result = await wsClient.send('Runtime.evaluate', {
+            expression: checkScript,
+            returnByValue: true
+          }) as any;
+          
+          const status = JSON.parse(result.value);
+          
+          cleanup();
+          
+          resolve({
+            success: status.loggedIn,
+            message: status.loggedIn ? 'Login successful' : 'Login failed',
+            hasProfile: status.profileLink,
+            sessionId: sessionDetails.sessionId
+          });
+          
+        } catch (error) {
+          console.error('Resy login test error:', error);
+          cleanup();
+          reject(error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error during Resy login test:', error);
+        cleanup();
+        reject(new Error('WebSocket connection failed'));
+      };
+    });
+
+  } catch (error) {
+    console.error('Failed to test Resy login:', error);
+    throw error;
   }
 }
 
