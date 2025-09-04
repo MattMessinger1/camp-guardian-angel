@@ -43,31 +43,37 @@ export default function ReadyToSignup() {
   const planId = params.id || params.sessionId;
   const isInternetSession = planId?.startsWith('internet-');
 
+  // State for plan creation flow
+  const [realPlanId, setRealPlanId] = useState<string | null>(null);
+  const [isPlanCreating, setIsPlanCreating] = useState(false);
+
   const { data: planData } = useQuery({
-    queryKey: ['registration-plan', planId],
+    queryKey: ['registration-plan', realPlanId || planId],
     queryFn: async () => {
+      const queryId = realPlanId || planId;
+      
       // Don't query database for temporary IDs that will cause 400 errors
-      if (planId?.includes('internet-') || planId?.includes('carbone-') || planId?.includes('temp-')) {
-        console.log('Skipping database query for temporary ID:', planId);
+      if (queryId?.includes('internet-') || queryId?.includes('carbone-') || queryId?.includes('temp-')) {
+        console.log('Skipping database query for temporary ID:', queryId);
         return null;
       }
       
       const { data, error } = await supabase
         .from('registration_plans')
         .select('*')
-        .eq('id', planId)
+        .eq('id', queryId)
         .single();
 
       if (error && error.code === 'PGRST116') {
         // Plan not found - this is ok for temporary sessions
-        console.log('Plan not found in database (expected for temporary sessions):', planId);
+        console.log('Plan not found in database (expected for temporary sessions):', queryId);
         return null;
       }
       
       if (error) throw error;
       return data;
     },
-    enabled: !!planId && !isInternetSession
+    enabled: !!(realPlanId || (planId && !isInternetSession)) && !isPlanCreating
   });
 
   // Progressive flow stages
@@ -95,126 +101,86 @@ export default function ReadyToSignup() {
   });
   const [bookingOpensAt, setBookingOpensAt] = useState<Date | null>(null);
 
-  // Auto-analyze for plans without registration time
+  // Initialize plan creation for location.state data
   useEffect(() => {
-    console.log('📍 ReadyToSignup received:', {
-      sessionId: planId,
-      sessionData,
-      pathname: location.pathname,
-      planData,
-      locationState: location.state
-    });
-    
-    // Use location.state directly for all internet results - this is required data
     const stateData = location.state;
     
-    if (stateData) {
-      console.log('Using state data:', stateData);
+    console.log('📍 ReadyToSignup initialization:', {
+      sessionId: planId,
+      hasLocationState: !!stateData,
+      hasRealPlanId: !!realPlanId,
+      isPlanCreating,
+      pathname: location.pathname
+    });
+    
+    // If we have location.state data but no real plan ID yet, create the plan first
+    if (stateData && !realPlanId && !isPlanCreating && user) {
+      console.log('🚀 Creating plan from location.state data:', stateData);
+      setIsPlanCreating(true);
+      
+      // Create the plan via reserve-init first
+      supabase.functions.invoke('reserve-init', {
+        body: {
+          url: stateData.url,
+          businessName: stateData.businessName || stateData.title,
+          provider: stateData.provider,
+          userId: user.id,
+          metadata: {
+            source: 'readyToSignup',
+            originalSessionId: stateData.id,
+            ...stateData
+          }
+        }
+      }).then(({ data, error }) => {
+        setIsPlanCreating(false);
+        
+        if (error) {
+          console.error('❌ Failed to create plan via reserve-init:', error);
+          // Fallback: use location.state data directly
+          setSessionData(stateData);
+          setStage('manual_time');
+          return;
+        }
+        
+        if (data?.planId) {
+          console.log('✅ Plan created via reserve-init:', data.planId);
+          setRealPlanId(data.planId);
+          setSessionData(stateData);
+          setStage('manual_time');
+        } else {
+          console.log('⚠️ No planId returned, using fallback');
+          setSessionData(stateData);
+          setStage('manual_time');
+        }
+      }).catch(error => {
+        console.error('❌ Reserve-init failed:', error);
+        setIsPlanCreating(false);
+        // Fallback: use location.state data directly  
+        setSessionData(stateData);
+        setStage('manual_time');
+      });
+      
+      return;
+    }
+    
+    // If we have state data and already processed it, just set it
+    if (stateData && !sessionData) {
+      console.log('📋 Using existing state data:', stateData);
       setSessionData(stateData);
       setStage('manual_time');
       return;
     }
     
-    // If no location state and this is an internet/temporary session, show error
+    // If no location state and this is a temporary session, show error
     if (planId?.includes('internet-') || planId?.includes('carbone-')) {
-      console.log('Temporary session without state data - showing error');
-      setStage('error');
-      return;
-    }
-    
-    if (!sessionData?.url && !planData?.detect_url) return;
-    
-    const url = sessionData?.url || planData?.detect_url;
-    const provider = detectProvider(url);
-    const name = sessionData?.title || '';
-    
-    console.log('🔍 Smart analysis starting for:', { provider, url, name });
-    
-    // Add debug section temporarily
-    console.log('🐛 Debug Info:', {
-      sessionId: planId,
-      businessName: sessionData?.title,
-      planDataName: 'N/A - field not in schema',
-      url: url,
-      provider: provider,
-      pathname: location.pathname
-    });
-    
-    // Debug what was actually selected
-    if (name.toLowerCase().includes('carbone') || url.includes('carbone')) {
-      console.log('🍝 Detected Carbone restaurant - should not be here!');
-      // This should have gone to CarboneSetup component
-      navigate('/ready-to-signup/carbone-resy');
-      return;
-    }
-    
-    // Step 1: Check if it's Resy/Carbone - use specific setup flow
-    if (provider === 'resy' || url.includes('resy.com')) {
-      console.log('🥂 Resy/Carbone detected - showing Resy setup');
-      
-      setAnalysis({
-        provider: 'resy',
-        loginRequired: true,
-        confidence: 0.95,
-        knownProvider: true
-      });
-      
-      setStage('resy_setup');
-      return;
-    }
-    
-    // Step 2: Check other known providers - show verification step
-    if (['soulcycle', 'barrys', 'equinox', 'corepower', 'orangetheory'].includes(provider)) {
-      console.log('✅ Known provider detected:', provider, '- showing verification');
-      
-      setAnalysis({
-        provider,
-        loginRequired: true,
-        confidence: 0.95,
-        knownProvider: true
-      });
-      
-      // Go to verification stage instead of assuming pattern
-      setStage('verify_pattern');
-      loadProviderStats(provider);
-      return;
-    }
-    
-    // Step 2: For unknown providers, do a 3-second quick check
-    console.log('🔍 Unknown provider, doing quick time check...');
-    setStage('analyzing');
-    setIsAnalyzing(true);
-    
-    quickCheckForTimes(url).then(result => {
-      setIsAnalyzing(false);
-      
-      if (result?.foundTime) {
-        console.log('⚡ Quick check found time:', result.time);
-        setStage('confirm_time');
-        setRegistrationTime(result.time);
-        setAnalysis({
-          provider: 'unknown',
-          registrationTime: result.time,
-          confidence: 0.6,
-          quickCheck: true
-        });
-      } else {
-        console.log('❓ No times visible, assume login required');
-        // Assume login required if we can't see times
-        setStage('need_login');
-        setAnalysis({
-          provider: 'unknown',
-          loginRequired: true,
-          confidence: 0.5,
-          assumedLogin: true
-        });
+      if (!stateData) {
+        console.log('🚨 Temporary session without required state data');
+        setStage('error');
+        return;
       }
-    }).catch(error => {
-      console.error('Quick check failed:', error);
-      setIsAnalyzing(false);
-      setStage('manual_time');
-    });
-  }, [sessionData]);
+    }
+    
+  }, [location.state, realPlanId, isPlanCreating, user, sessionData, planId]);
 
   // Quick check for registration times (3 second timeout)
   const quickCheckForTimes = async (url: string): Promise<{ foundTime: boolean; time?: string }> => {
