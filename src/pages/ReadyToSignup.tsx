@@ -13,6 +13,27 @@ import ProviderInfo from '@/components/ProviderInfo';
 import { detectProvider } from '@/utils/providerDetection';
 import { useQuery } from '@tanstack/react-query';
 
+// Helper function to determine provider type based on detected provider
+const getProviderType = (provider: string): string => {
+  const providerTypeMap: { [key: string]: string } = {
+    'resy': 'restaurant',
+    'opentable': 'restaurant',
+    'yelp': 'restaurant',
+    'peloton': 'fitness',
+    'soulcycle': 'fitness',
+    'barrys': 'fitness',
+    'equinox': 'fitness',
+    'corepower': 'fitness',
+    'orangetheory': 'fitness',
+    'classpass': 'fitness',
+    'mindbody': 'fitness',
+    'eventbrite': 'event',
+    'ticketmaster': 'event'
+  };
+  
+  return providerTypeMap[provider?.toLowerCase()] || 'general';
+};
+
 export default function ReadyToSignup() {
   const params = useParams<{ id?: string; sessionId?: string }>();
   const navigate = useNavigate();
@@ -26,12 +47,24 @@ export default function ReadyToSignup() {
   const { data: planData } = useQuery({
     queryKey: ['registration-plan', planId],
     queryFn: async () => {
+      // Don't query database for temporary IDs that will cause 400 errors
+      if (planId?.includes('internet-') || planId?.includes('carbone-') || planId?.includes('temp-')) {
+        console.log('Skipping database query for temporary ID:', planId);
+        return null;
+      }
+      
       const { data, error } = await supabase
         .from('registration_plans')
         .select('*')
         .eq('id', planId)
         .single();
 
+      if (error && error.code === 'PGRST116') {
+        // Plan not found - this is ok for temporary sessions
+        console.log('Plan not found in database (expected for temporary sessions):', planId);
+        return null;
+      }
+      
       if (error) throw error;
       return data;
     },
@@ -547,17 +580,33 @@ export default function ReadyToSignup() {
       if (isInternetSession) {
         console.log('💾 Creating new registration plan for internet session...');
         
+        // Determine provider type based on the detected provider
+        const detectedProvider = sessionData?.provider || detectProvider(sessionData?.url);
+        const providerType = getProviderType(detectedProvider);
+        
+        console.log('📊 Provider info for registration plan:', {
+          detectedProvider,
+          providerType,
+          url: sessionData?.url,
+          businessName: sessionData?.businessName
+        });
+        
         // Create new registration plan for internet session
         const { data: newPlan, error: planError } = await supabase
           .from('registration_plans')
           .insert({
             user_id: user.id,
-            detect_url: sessionData?.url || sessionData?.signup_url,
+            detect_url: sessionData?.url,
+            signup_url: sessionData?.url,
+            provider_type: providerType,
+            provider_name: detectedProvider,
+            business_name: sessionData?.businessName || sessionData?.title || 'Activity',
             manual_open_at: registrationTime,
             automation_rules: {
               loginRequired: analysis?.loginRequired,
               captchaDetected: analysis?.captchaVisible,
-              credentials_saved: credentials.email ? true : false
+              credentials_saved: credentials.email ? true : false,
+              provider: detectedProvider
             },
             status: 'active'
           })
