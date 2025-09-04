@@ -185,7 +185,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     const freshData = {
       id: `${result.businessName || result.name}-${Date.now()}`,
       businessName: result.businessName || result.name,
-      url: extractedUrl || (result.businessName?.includes('Carbone') ? 'https://resy.com/cities/ny/carbone' : 'https://google.com'),
+      url: extractedUrl || 'https://google.com',
       provider: result.businessName?.includes('Carbone') ? 'resy' : detectProvider(result)
     };
     
