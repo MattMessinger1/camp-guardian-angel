@@ -172,8 +172,31 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
     console.log('Groups created:', Object.keys(groups));
     
     // Consolidate sessions for each business
-    const consolidatedResults = Object.entries(groups).map(([normalizedName, { displayName, results: businessResults }]) => {
+    const consolidatedResults = Object.entries(groups).map(([normalizedName, { displayName, results: businessResults }], index) => {
       const primaryResult = businessResults[0];
+      const sessionId = primaryResult.sessionId;
+      
+      // LOG EXACTLY WHERE IDs COME FROM
+      console.log(`🔍 Result ${index}:`, {
+        businessName: displayName,
+        originalId: primaryResult.sessionId,
+        sessionId: sessionId,
+        normalizedName: normalizedName
+      });
+      
+      // If this is Carbone, FORCE a new ID
+      if (displayName.toLowerCase().includes('carbone')) {
+        const newId = `carbone-${Date.now()}-${index}`;
+        console.log('🍝 FORCING Carbone to new ID:', newId);
+        return {
+          ...primaryResult,
+          sessionId: newId,
+          name: displayName,
+          sessions: [],
+          sessionDates: [],
+          sessionTimes: []
+        };
+      }
       
       // Combine all sessions from all results for this business
       const allSessions: Array<{date: string, time: string, availability?: number, price?: number}> = [];
@@ -310,6 +333,27 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 
                 <Button 
                   onClick={async () => {
+                    console.log('🎯 BUTTON CLICK - Using data:', {
+                      resultId: result.sessionId,
+                      businessName: result.name || result.providerName || result.campName,
+                      originalSessionId: result.sessionId
+                    });
+                    
+                    // FORCE new ID for Carbone
+                    if ((result.name || result.providerName || result.campName || '').toLowerCase().includes('carbone')) {
+                      const carboneId = `carbone-fresh-${Date.now()}`;
+                      console.log('🍝 FORCING Carbone navigation with new ID:', carboneId);
+                      navigate(`/ready-to-signup/${carboneId}`, {
+                        state: {
+                          id: carboneId,
+                          businessName: 'Carbone',
+                          url: 'https://resy.com/cities/ny/carbone',
+                          provider: 'resy'
+                        }
+                      });
+                      return;
+                    }
+                    
                     // Get user if exists, but don't require it
                     const { data: { user } } = await supabase.auth.getUser();
                     
