@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -89,6 +89,9 @@ export default function ReadyToSignup() {
   // State for plan creation flow
   const [realPlanId, setRealPlanId] = useState<string | null>(null);
   const [isPlanCreating, setIsPlanCreating] = useState(false);
+  
+  // Ref to prevent multiple creation attempts
+  const creationStartedRef = useRef(false);
 
   const { data: planData } = useQuery({
     queryKey: ['reservation-hold-data', realPlanId || planId],
@@ -230,12 +233,14 @@ export default function ReadyToSignup() {
       hasLocationState: !!stateData,
       hasRealPlanId: !!realPlanId,
       isPlanCreating,
-      pathname: location.pathname
+      pathname: location.pathname,
+      creationStarted: creationStartedRef.current
     });
     
     // If we have location.state data, create proper activities/sessions/reservations flow
-    if (stateData && !realPlanId && !isPlanCreating) {
+    if (stateData && !realPlanId && !isPlanCreating && !creationStartedRef.current) {
       console.log('🚀 Creating activities → sessions → reservations flow from location.state:', stateData);
+      creationStartedRef.current = true;
       setIsPlanCreating(true);
       
       // Create proper activities/sessions/reservations flow
@@ -276,6 +281,7 @@ export default function ReadyToSignup() {
               
             if (activityError) {
               console.error('❌ Failed to create activity:', activityError);
+              creationStartedRef.current = false;
               setIsPlanCreating(false);
               setStage('error');
               return;
@@ -302,6 +308,7 @@ export default function ReadyToSignup() {
             
           if (sessionError) {
             console.error('❌ Failed to create session:', sessionError);
+            creationStartedRef.current = false;
             setIsPlanCreating(false);
             setStage('error');
             return;
@@ -328,6 +335,7 @@ export default function ReadyToSignup() {
             
           if (reservationError) {
             console.error('❌ Failed to create reservation:', reservationError);
+            creationStartedRef.current = false;
             setIsPlanCreating(false);
             setStage('error');
             return;
@@ -346,6 +354,7 @@ export default function ReadyToSignup() {
           
         } catch (error) {
           console.error('❌ Failed to create activities flow:', error);
+          creationStartedRef.current = false;
           setIsPlanCreating(false);
           setStage('error');
         }
