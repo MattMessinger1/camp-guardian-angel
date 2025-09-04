@@ -352,7 +352,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       console.log('🚀 Navigation state being passed for Carbone:', {
                         businessName: result.name || result.providerName || result.campName, 
                         url: actualUrl, 
-                        provider: result.provider_platform || 'unknown'
+                        provider: result.providerName || result.provider_platform || 'unknown'
                       });
                       console.log('🔍 Carbone URL check - actualUrl:', actualUrl);
                       console.log('🔍 Carbone URL components - url:', result.url, 'signup_url:', result.signup_url, 'providerUrl:', result.providerUrl);
