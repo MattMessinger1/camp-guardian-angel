@@ -176,43 +176,23 @@ export default function ReadyToSignup() {
 
   // Fix the provider detection logic at the component level
   useEffect(() => {
-    // Get the business name from location state or form data
-    const businessName = location.state?.businessName || sessionData?.businessName || sessionData?.title || '';
-    
-    if (businessName) {
-      // Hardcode known restaurants for now
-      const restaurantPlatforms = {
-        'carbone': 'resy',
-        'don angie': 'resy',
-        'rao\'s': 'resy',
-        'eleven madison park': 'opentable',
-        'gramercy tavern': 'opentable'
-      };
+    if (location.state) {
+      // The provider is ALREADY in location.state!
+      const provider = location.state.provider;  // This is 'resy'!
+      const businessName = location.state.businessName;
       
-      const nameLower = businessName.toLowerCase();
-      let detected = { platform: 'unknown', type: 'unknown' };
+      console.log('Received provider:', provider, 'for', businessName);
       
-      // Check if it's a known restaurant
-      for (const [restaurant, platform] of Object.entries(restaurantPlatforms)) {
-        if (nameLower.includes(restaurant)) {
-          detected = { platform, type: 'restaurant' };
-          break;
-        }
+      // Set the platform from what we received
+      if (provider && provider !== 'unknown') {
+        setDetectedPlatform({
+          platform: provider,  // Use the provider we received ('resy')
+          type: provider === 'resy' || provider === 'opentable' ? 'restaurant' : 
+                provider === 'peloton' ? 'fitness' : 'other'
+        });
       }
-      
-      // If still unknown, check for type hints
-      if (detected.platform === 'unknown') {
-        if (nameLower.includes('studio') || nameLower.includes('fitness')) {
-          detected = { platform: 'peloton', type: 'fitness' };
-        } else if (nameLower.includes('camp')) {
-          detected = { platform: 'camp', type: 'camp' };
-        }
-      }
-      
-      console.log('Detected platform:', detected);
-      setDetectedPlatform(detected);
     }
-  }, [location.state, sessionData]);
+  }, [location.state]);
   
   // Get provider-specific configuration
   const providerConfig = getProviderConfig(currentProvider, bookingDetails.date);
