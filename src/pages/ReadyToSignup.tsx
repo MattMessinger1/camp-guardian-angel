@@ -355,7 +355,7 @@ export default function ReadyToSignup() {
       return;
     }
     
-  }, [location.state, realPlanId, isPlanCreating, user, planId, navigate]);
+  }, [location.state, realPlanId, isPlanCreating, user, planId]);
 
   // Quick check for registration times (3 second timeout)
   const quickCheckForTimes = async (url: string): Promise<{ foundTime: boolean; time?: string }> => {
