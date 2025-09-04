@@ -19,7 +19,6 @@ const getProviderType = (provider: string): string => {
     'resy': 'restaurant',
     'opentable': 'restaurant',
     'yelp': 'restaurant',
-    'peloton': 'fitness',
     'soulcycle': 'fitness',
     'barrys': 'fitness',
     'equinox': 'fitness',
@@ -578,7 +577,7 @@ export default function ReadyToSignup() {
     }
   };
 
-  // Save and activate the registration plan
+  // Use reserve-init with location.state data - the existing 7-step flow handles everything!
   const saveAndActivate = async () => {
     if (!user || !registrationTime) {
       toast({
@@ -589,86 +588,60 @@ export default function ReadyToSignup() {
       return;
     }
 
+    if (!sessionData) {
+      toast({
+        title: "Missing session data", 
+        description: "No provider data available",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      if (isInternetSession) {
-        console.log('💾 Creating new registration plan for internet session...');
-        
-        // Determine provider type based on the detected provider
-        const detectedProvider = sessionData?.provider || detectProvider(sessionData?.url);
-        const providerType = getProviderType(detectedProvider);
-        
-        console.log('📊 Provider info for registration plan:', {
-          detectedProvider,
-          providerType,
-          url: sessionData?.url,
-          businessName: sessionData?.businessName
-        });
-        
-        // Create new registration plan for internet session
-        const { data: newPlan, error: planError } = await supabase
-          .from('registration_plans')
-          .insert({
-            user_id: user.id,
-            detect_url: sessionData?.url,
-            signup_url: sessionData?.url,
-            provider_type: providerType,
-            provider_name: detectedProvider,
-            business_name: sessionData?.businessName || sessionData?.title || 'Activity',
-            manual_open_at: registrationTime,
-            automation_rules: {
-              loginRequired: analysis?.loginRequired,
-              captchaDetected: analysis?.captchaVisible,
-              credentials_saved: credentials.email ? true : false,
-              provider: detectedProvider
-            },
-            status: 'active'
-          })
-          .select()
-          .single();
-          
-        if (planError) {
-          console.error('Error creating registration plan:', planError);
-          throw planError;
+      console.log('🚀 Starting reserve-init with location.state data:', {
+        url: sessionData.url,
+        businessName: sessionData.businessName,
+        provider: sessionData.provider,
+        registrationTime,
+        userId: user.id
+      });
+
+      // Call the existing reserve-init edge function with the correct data
+      const { data, error } = await supabase.functions.invoke('reserve-init', {
+        body: {
+          url: sessionData.url,
+          businessName: sessionData.businessName || sessionData.title,
+          provider: sessionData.provider,
+          registrationTime,
+          userId: user.id,
+          metadata: {
+            source: 'readyToSignup',
+            originalSessionId: sessionData.id,
+            ...sessionData
+          }
         }
-        
-        console.log('✅ Created new registration plan:', newPlan.id);
-      } else {
-        console.log('💾 Updating existing registration plan...');
-        
-        // Update existing plan with registration time and automation rules
-        const { error: planError } = await supabase
-          .from('registration_plans')
-          .update({
-            manual_open_at: registrationTime,
-            automation_rules: {
-              loginRequired: analysis?.loginRequired,
-              captchaDetected: analysis?.captchaVisible,
-              credentials_saved: credentials.email ? true : false
-            },
-            status: 'active'
-          })
-          .eq('id', planData!.id);
-          
-        if (planError) {
-          console.error('Error updating registration plan:', planError);
-          throw planError;
-        }
-        
-        console.log('✅ Updated registration plan:', planData!.id);
+      });
+
+      if (error) {
+        console.error('Reserve-init error:', error);
+        throw error;
       }
+
+      console.log('✅ Reserve-init success:', data);
       
       toast({
         title: 'Registration automation activated!',
-        description: 'Your automated registration is now set up'
+        description: 'Your automated registration is now set up and running'
       });
       
-      navigate('/dashboard');
+      // Navigate to dashboard or pending signups to see the reservation
+      navigate('/pending-signups');
       
     } catch (error) {
-      console.error('Save error:', error);
+      console.error('Activation error:', error);
       toast({
-        title: "Save Failed",
-        description: "Could not save your registration plan. Please try again.",
+        title: "Activation Failed",
+        description: "Could not activate your registration automation. Please try again.",
         variant: "destructive"
       });
     }
