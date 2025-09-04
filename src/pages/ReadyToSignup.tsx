@@ -167,9 +167,51 @@ export default function ReadyToSignup() {
   const currentProvider = analysis?.provider || detectProvider(sessionData?.url || planData?.detect_url || '');
   const isResyProvider = currentProvider === 'resy' || (sessionData?.url || planData?.detect_url || '').includes('resy.com');
   
+  // State for detected platform
+  const [detectedPlatform, setDetectedPlatform] = useState<{ platform: string; type: string }>({ platform: 'unknown', type: 'unknown' });
+  
   // Detect platform for restaurant type detection
-  const businessName = sessionData?.businessName || sessionData?.title || sessionData?.activities?.name || '';
-  const detectedPlatform = detectPlatform(businessName);
+  const businessName = sessionData?.businessName || sessionData?.title || sessionData?.activities?.name || location.state?.businessName || '';
+
+  // Fix the provider detection logic at the component level
+  useEffect(() => {
+    // Get the business name from location state or form data
+    const businessName = location.state?.businessName || sessionData?.businessName || sessionData?.title || '';
+    
+    if (businessName) {
+      // Hardcode known restaurants for now
+      const restaurantPlatforms = {
+        'carbone': 'resy',
+        'don angie': 'resy',
+        'rao\'s': 'resy',
+        'eleven madison park': 'opentable',
+        'gramercy tavern': 'opentable'
+      };
+      
+      const nameLower = businessName.toLowerCase();
+      let detected = { platform: 'unknown', type: 'unknown' };
+      
+      // Check if it's a known restaurant
+      for (const [restaurant, platform] of Object.entries(restaurantPlatforms)) {
+        if (nameLower.includes(restaurant)) {
+          detected = { platform, type: 'restaurant' };
+          break;
+        }
+      }
+      
+      // If still unknown, check for type hints
+      if (detected.platform === 'unknown') {
+        if (nameLower.includes('studio') || nameLower.includes('fitness')) {
+          detected = { platform: 'peloton', type: 'fitness' };
+        } else if (nameLower.includes('camp')) {
+          detected = { platform: 'camp', type: 'camp' };
+        }
+      }
+      
+      console.log('Detected platform:', detected);
+      setDetectedPlatform(detected);
+    }
+  }, [location.state, sessionData]);
   
   // Get provider-specific configuration
   const providerConfig = getProviderConfig(currentProvider, bookingDetails.date);
