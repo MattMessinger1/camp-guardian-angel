@@ -51,7 +51,7 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
         item: 'Session details confirmed',
         status: 'complete',
         priority: 'high',
-        description: `${sessionData?.activities?.name || 'Session'} in ${sessionData?.activities?.city || 'Unknown location'}`
+            description: `${sessionData?.activities?.name || sessionData?.businessName || 'Session'} in ${sessionData?.activities?.city || 'Unknown location'}`
       },
       {
         category: 'Registration Timing',
@@ -187,7 +187,7 @@ export function useSmartReadiness(sessionId: string, sessionData: any) {
             item: 'Session details confirmed',
             status: 'complete',
             priority: 'high',
-            description: `${sessionData?.activities?.name || 'Session'} in ${sessionData?.activities?.city || 'Unknown location'}`
+            description: `${sessionData?.activities?.name || sessionData?.businessName || 'Session'} in ${sessionData?.activities?.city || 'Unknown location'}`
           },
           {
             category: 'Registration Timing',

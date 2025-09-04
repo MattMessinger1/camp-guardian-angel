@@ -91,7 +91,7 @@ export default function ReadyToSignup() {
   const [isPlanCreating, setIsPlanCreating] = useState(false);
 
   const { data: planData } = useQuery({
-    queryKey: ['registration-plan', realPlanId || planId],
+    queryKey: ['reservation-hold-data', realPlanId || planId],
     queryFn: async () => {
       const queryId = realPlanId || planId;
       
@@ -101,17 +101,35 @@ export default function ReadyToSignup() {
         return null;
       }
       
-      // Query the database for all plan IDs
-      
+      // Query reservation_holds with joined session and activity data
       const { data, error } = await supabase
-        .from('registration_plans')
-        .select('*')
+        .from('reservation_holds')
+        .select(`
+          id,
+          status,
+          parent_email,
+          sessions (
+            id,
+            title,
+            start_at,
+            registration_open_at,
+            activities (
+              id,
+              name,
+              kind,
+              city,
+              state,
+              canonical_url,
+              provider_id
+            )
+          )
+        `)
         .eq('id', queryId)
-        .single();
+        .maybeSingle();
 
       if (error && error.code === 'PGRST116') {
-        // Plan not found - this is ok for temporary sessions
-        console.log('Plan not found in database (expected for temporary sessions):', queryId);
+        // Reservation hold not found - this is ok for temporary sessions
+        console.log('Reservation hold not found in database (expected for temporary sessions):', queryId);
         return null;
       }
       
@@ -171,8 +189,8 @@ export default function ReadyToSignup() {
   };
 
   // Detect provider from current session
-  const currentProvider = analysis?.provider || detectProvider(sessionData?.url || planData?.detect_url || '');
-  const isResyProvider = currentProvider === 'resy' || (sessionData?.url || planData?.detect_url || '').includes('resy.com');
+  const currentProvider = analysis?.provider || detectProvider(sessionData?.url || planData?.sessions?.activities?.canonical_url || '');
+  const isResyProvider = currentProvider === 'resy' || (sessionData?.url || planData?.sessions?.activities?.canonical_url || '').includes('resy.com');
   
   // State for detected platform
   const [detectedPlatform, setDetectedPlatform] = useState<{ platform: string; type: string }>({ platform: 'unknown', type: 'unknown' });
@@ -215,38 +233,111 @@ export default function ReadyToSignup() {
       pathname: location.pathname
     });
     
-    // If we have location.state data, always create a proper plan in the database
+    // If we have location.state data, create proper activities/sessions/reservations flow
     if (stateData && !realPlanId && !isPlanCreating) {
-      console.log('🚀 Creating proper plan from location.state data:', stateData);
+      console.log('🚀 Creating activities → sessions → reservations flow from location.state:', stateData);
       setIsPlanCreating(true);
       
-      // Create a proper registration plan directly in database
-      const createPlan = async () => {
+      // Create proper activities/sessions/reservations flow
+      const createFlow = async () => {
         try {
-          console.log('🚀 Creating registration plan directly in database');
+          console.log('🚀 Creating activities → sessions → reservations flow');
           
-          const newPlanId = crypto.randomUUID();
-          const { data: plan, error: planError } = await supabase.from('registration_plans').insert({
-            id: newPlanId,
-            name: stateData.businessName || stateData.title || 'Activity',
-            url: stateData.url || 'https://example.com',
-            provider: stateData.provider || 'unknown',
-            user_id: user?.id || null,
-            created_from: 'ready_to_signup'
-          }).select().single();
-
-          if (planError) {
-            console.error('❌ Failed to create plan:', planError);
+          const businessName = stateData.businessName || stateData.title || 'Activity';
+          const provider = stateData.provider || 'unknown';
+          const city = stateData.city || 'Unknown';
+          const state = stateData.state || 'Unknown';
+          
+          // 1. Create or find Activity
+          let activity;
+          const { data: existingActivity } = await supabase
+            .from('activities')
+            .select('id')
+            .eq('name', businessName)
+            .eq('provider_id', provider)
+            .maybeSingle();
+            
+          if (existingActivity) {
+            activity = existingActivity;
+            console.log('✅ Using existing activity:', activity.id);
+          } else {
+            const { data: newActivity, error: activityError } = await supabase
+              .from('activities')
+              .insert({
+                name: businessName,
+                kind: getProviderType(provider),
+                city: city,
+                state: state,
+                canonical_url: stateData.url || 'https://example.com',
+                provider_id: provider
+              })
+              .select('id')
+              .single();
+              
+            if (activityError) {
+              console.error('❌ Failed to create activity:', activityError);
+              setIsPlanCreating(false);
+              setStage('error');
+              return;
+            }
+            activity = newActivity;
+            console.log('✅ Created new activity:', activity.id);
+          }
+          
+          // 2. Create Session
+          const sessionTitle = provider === 'resy' ? 'Dinner Reservation' : 
+                              provider === 'peloton' ? 'Class Registration' : 
+                              'Registration';
+          
+          const { data: session, error: sessionError } = await supabase
+            .from('sessions')
+            .insert({
+              activity_id: activity.id,
+              title: sessionTitle,
+              start_at: stateData.targetDate ? new Date(stateData.targetDate).toISOString() : null,
+              registration_open_at: stateData.registrationOpenAt ? new Date(stateData.registrationOpenAt).toISOString() : null
+            })
+            .select('id')
+            .single();
+            
+          if (sessionError) {
+            console.error('❌ Failed to create session:', sessionError);
             setIsPlanCreating(false);
             setStage('error');
             return;
           }
-
-          console.log('✅ Plan created successfully:', plan.id);
-          setRealPlanId(plan.id);
+          console.log('✅ Created session:', session.id);
           
-          // Navigate to the new plan URL with the real plan data
-          navigate(`/ready-to-signup/${plan.id}`, { 
+          // 3. Create Reservation (this becomes our planId)
+          // Note: reservations table has different schema, using correct fields
+          const { data: reservation, error: reservationError } = await supabase
+            .from('reservation_holds')
+            .insert({
+              session_id: session.id,
+              user_id: user?.id || 'temp-user-id',
+              status: 'active',
+              parent_email: user?.email || 'temp@example.com',
+              parent_phone_e164: '+15550000000',
+              child_initials: 'C',
+              child_birth_year: 2010,
+              hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+              timezone: 'America/New_York'
+            })
+            .select('id')
+            .single();
+            
+          if (reservationError) {
+            console.error('❌ Failed to create reservation:', reservationError);
+            setIsPlanCreating(false);
+            setStage('error');
+            return;
+          }
+          console.log('✅ Created reservation:', reservation.id);
+          
+          setRealPlanId(reservation.id);
+          
+          // Navigate to the new reservation URL with the original state
+          navigate(`/ready-to-signup/${reservation.id}`, { 
             replace: true,
             state: stateData  // Preserve the original state
           });
@@ -254,13 +345,13 @@ export default function ReadyToSignup() {
           setIsPlanCreating(false);
           
         } catch (error) {
-          console.error('❌ Failed to create plan:', error);
+          console.error('❌ Failed to create activities flow:', error);
           setIsPlanCreating(false);
           setStage('error');
         }
       };
       
-      createPlan();
+      createFlow();
       return;
     }
     
@@ -330,26 +421,30 @@ export default function ReadyToSignup() {
       return;
     }
 
-    // Handle real registration plan from database
+    // Handle real reservation hold data from database
     if (planData) {
-      const detectedProvider = detectProvider(planData.detect_url || '');
-      const isResyUrl = planData.detect_url?.includes('resy.com') || detectedProvider === 'resy';
+      const session = planData.sessions;
+      const activity = session?.activities;
+      const provider = activity?.provider_id || 'unknown';
       
       setSessionData({
         id: planData.id,
-        title: isResyUrl ? 'Restaurant Reservation' : 'Registration',
-        url: planData.detect_url,
+        title: session?.title || 'Registration',
+        url: activity?.canonical_url,
         price_min: 0, // Default since we don't have price in current schema
         activities: {
-          name: isResyUrl ? 'Restaurant Reservation' : 'Registration',
-          city: '',
-          state: ''
-        }
+          name: activity?.name || 'Activity',
+          city: activity?.city || '',
+          state: activity?.state || ''
+        },
+        registration_open_at: session?.registration_open_at,
+        provider: provider,
+        businessName: activity?.name
       });
       
-      // If plan already has registration time, show confirm stage
-      if (planData.manual_open_at) {
-        setRegistrationTime(planData.manual_open_at);
+      // If session already has registration time, show confirm stage
+      if (session?.registration_open_at) {
+        setRegistrationTime(session.registration_open_at);
         setStage('confirm_time');
       } else {
         setStage('manual_time');
@@ -369,32 +464,32 @@ export default function ReadyToSignup() {
     try {
       console.log('🔍 Starting initial analysis for URL:', sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url);
       
-      let urlToAnalyze = sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url || planData?.detect_url;
+      let urlToAnalyze = sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url || planData?.sessions?.activities?.canonical_url;
       
-      // If no URL is available and this is a Resy provider, try to discover it
-      if (!urlToAnalyze && currentProvider === 'resy') {
-        setDiscovering(true);
-        try {
-          const { data } = await supabase.functions.invoke('discover-booking-url', {
-            body: { venueName: sessionDataToAnalyze.businessName || sessionDataToAnalyze.title, provider: 'resy' }
-          });
-          
-          if (data?.discoveredUrl) {
-            urlToAnalyze = data.discoveredUrl;
-            
-            // Update plan with discovered URL
-            if (planData?.id) {
-              await supabase.from('registration_plans')
-                .update({ detect_url: data.discoveredUrl })
-                .eq('id', planData.id);
+          // If no URL is available and this is a Resy provider, try to discover it
+          if (!urlToAnalyze && currentProvider === 'resy') {
+            setDiscovering(true);
+            try {
+              const { data } = await supabase.functions.invoke('discover-booking-url', {
+                body: { venueName: sessionDataToAnalyze.businessName || sessionDataToAnalyze.title, provider: 'resy' }
+              });
+              
+              if (data?.discoveredUrl) {
+                urlToAnalyze = data.discoveredUrl;
+                
+                // Update activity with discovered URL
+                if (planData?.sessions?.activities?.id) {
+                  await supabase.from('activities')
+                    .update({ canonical_url: data.discoveredUrl })
+                    .eq('id', planData.sessions.activities.id);
+                }
+              }
+            } catch (error) {
+              console.error('URL discovery failed:', error);
+            } finally {
+              setDiscovering(false);
             }
           }
-        } catch (error) {
-          console.error('URL discovery failed:', error);
-        } finally {
-          setDiscovering(false);
-        }
-      }
       
       if (!urlToAnalyze) {
         console.log('❌ No URL found for analysis - sessionData:', sessionDataToAnalyze);
@@ -497,7 +592,7 @@ export default function ReadyToSignup() {
     
     try {
       // NOW we can use browser automation with their credentials to get the actual class times after logging in
-      const urlForLogin = sessionData?.url || planData?.detect_url;
+      const urlForLogin = sessionData?.url || planData?.sessions?.activities?.canonical_url;
       
       console.log('🔐 Starting browser automation with credentials for URL:', {
         url: urlForLogin,
