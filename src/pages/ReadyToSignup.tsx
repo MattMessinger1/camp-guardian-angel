@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ export default function ReadyToSignup() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
+  const location = useLocation();
   const planId = params.id || params.sessionId;
   const isInternetSession = planId?.startsWith('internet-');
 
@@ -64,12 +65,38 @@ export default function ReadyToSignup() {
 
   // Auto-analyze for plans without registration time
   useEffect(() => {
-    if (!sessionData?.url) return;
+    console.log('📍 ReadyToSignup received:', {
+      sessionId: planId,
+      sessionData,
+      pathname: location.pathname,
+      planData
+    });
     
-    const url = sessionData.url;
+    if (!sessionData?.url && !planData?.detect_url) return;
+    
+    const url = sessionData?.url || planData?.detect_url;
     const provider = detectProvider(url);
+    const name = sessionData?.title || '';
     
-    console.log('🔍 Smart analysis starting for:', provider, url);
+    console.log('🔍 Smart analysis starting for:', { provider, url, name });
+    
+    // Add debug section temporarily
+    console.log('🐛 Debug Info:', {
+      sessionId: planId,
+      businessName: sessionData?.title,
+      planDataName: 'N/A - field not in schema',
+      url: url,
+      provider: provider,
+      pathname: location.pathname
+    });
+    
+    // Debug what was actually selected
+    if (name.toLowerCase().includes('carbone') || url.includes('carbone')) {
+      console.log('🍝 Detected Carbone restaurant - should not be here!');
+      // This should have gone to CarboneSetup component
+      navigate('/ready-to-signup/carbone-resy');
+      return;
+    }
     
     // Step 1: Check if it's Resy/Carbone - use specific setup flow
     if (provider === 'resy' || url.includes('resy.com')) {
@@ -601,6 +628,19 @@ export default function ReadyToSignup() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Setup Registration Automation</h1>
+      
+      
+      {/* Temporary debug section */}
+      <Card className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+        <div className="text-xs font-mono space-y-1">
+          <div><strong>Debug Info:</strong></div>
+          <div><strong>Session ID:</strong> {planId}</div>
+          <div><strong>Business Name:</strong> {sessionData?.title}</div>
+          <div><strong>URL:</strong> {sessionData?.url || planData?.detect_url}</div>
+          <div><strong>Provider:</strong> {analysis?.provider || 'Not detected yet'}</div>
+          <div><strong>Current Stage:</strong> {stage}</div>
+        </div>
+      </Card>
       
       {/* Show what we're setting up */}
       <Card className="mb-6 p-4 bg-gray-50 dark:bg-gray-900">

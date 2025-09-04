@@ -113,7 +113,6 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     console.log('=== FUNCTION CALLED ===');
     console.log('Result:', result);
     console.log('User:', user);
-    console.log('Supabase:', supabase);
     
     if (!user?.id) {
       console.error('No user ID!');
@@ -121,13 +120,48 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
       return;
     }
     
+    // Check if this is Carbone - route to dedicated Carbone setup
+    if (result.businessName?.toLowerCase().includes('carbone') || 
+        result.name?.toLowerCase().includes('carbone') ||
+        result.url?.includes('carbone')) {
+      console.log('🍝 Carbone detected - navigating to Carbone setup');
+      navigate('/ready-to-signup/carbone-resy');
+      return;
+    }
+    
+    // Check if this is Peloton - route correctly
+    if (result.provider?.toLowerCase().includes('peloton') || 
+        result.name?.toLowerCase().includes('peloton') ||
+        result.url?.includes('peloton')) {
+      console.log('🚴 Peloton detected - navigating to Peloton setup');
+      const url = result.url || 'https://studio.onepeloton.com';
+      
+      const { data: plan, error } = await supabase
+        .from('registration_plans')
+        .insert({
+          user_id: user?.id,
+          name: 'Peloton Studio Registration',
+          url: url,
+          provider: 'peloton',
+          created_from: 'internet_search'
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('Error creating Peloton plan:', error);
+        toast.error('Failed to create registration plan');
+        return;
+      }
+      
+      navigate(`/ready-to-signup/${plan.id}`);
+      return;
+    }
+    
     console.log('Creating real registration plan for:', result);
     
-    // Get the URL properly
-    const url = result.url || 
-      (result.provider?.toLowerCase().includes('peloton') ? 'https://studio.onepeloton.com' : null) ||
-      (result.name?.toLowerCase().includes('peloton') ? 'https://studio.onepeloton.com' : null) ||
-      'https://google.com';
+    // Get the URL properly for other providers
+    const url = result.url || 'https://google.com';
       
     // Create a REAL registration plan in the database
     const { data: plan, error } = await supabase
