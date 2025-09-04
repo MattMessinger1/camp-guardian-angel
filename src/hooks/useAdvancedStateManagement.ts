@@ -102,6 +102,19 @@ export function useAdvancedStateManagement(
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastStateRef = useRef<EnhancedSessionState | null>(null);
 
+  // Extract stable values to prevent infinite re-renders
+  const { 
+    sessionId, 
+    providerUrl, 
+    userId, 
+    providerId, 
+    autoSave = true, 
+    autoSaveInterval = 30000,
+    enablePartnershipFeatures,
+    enableCrossBrowserSync,
+    enableRecovery
+  } = options;
+
   // Initialize state management
   useEffect(() => {
     const initializeStateManagement = async () => {
@@ -111,19 +124,19 @@ export function useAdvancedStateManagement(
         console.log('Initializing enhanced state management with partnership features');
 
         // Initialize enhanced session state if partnership features are enabled
-        const initialState = options.enablePartnershipFeatures 
+        const initialState = enablePartnershipFeatures 
           ? await partnershipManagerRef.current.initializeEnhancedState({
-              sessionId: options.sessionId,
-              providerUrl: options.providerUrl,
-              userId: options.userId,
-              providerId: options.providerId,
-              enableCrossBrowserSync: options.enableCrossBrowserSync
+              sessionId,
+              providerUrl,
+              userId,
+              providerId,
+              enableCrossBrowserSync
             })
           : await stateManagerRef.current.initializeState({
-              sessionId: options.sessionId,
-              providerUrl: options.providerUrl,
-              userId: options.userId,
-              providerId: options.providerId
+              sessionId,
+              providerUrl,
+              userId,
+              providerId
             }) as EnhancedSessionState;
 
         setState(initialState);
@@ -144,8 +157,17 @@ export function useAdvancedStateManagement(
         }));
 
         // Start auto-save if enabled
-        if (options.autoSave !== false) {
-          startAutoSave();
+        if (autoSave) {
+          const interval = setInterval(() => {
+            if (lastStateRef.current) {
+              setStatus(prev => ({ 
+                ...prev, 
+                lastSaved: new Date().toISOString()
+              }));
+            }
+          }, autoSaveInterval);
+          
+          autoSaveIntervalRef.current = interval;
         }
 
         console.log('Advanced state management initialized successfully');
@@ -165,53 +187,12 @@ export function useAdvancedStateManagement(
 
     // Cleanup on unmount
     return () => {
-      stopAutoSave();
-      cleanup();
-    };
-  }, [options.sessionId, options.providerUrl]);
-
-  // Auto-save functionality
-  const startAutoSave = useCallback(() => {
-    const interval = options.autoSaveInterval || 30000; // Default 30 seconds
-    
-    autoSaveIntervalRef.current = setInterval(() => {
-      if (state && hasStateChanged()) {
-        saveCurrentState();
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+        autoSaveIntervalRef.current = null;
       }
-    }, interval);
-  }, [state, options.autoSaveInterval]);
-
-  const stopAutoSave = useCallback(() => {
-    if (autoSaveIntervalRef.current) {
-      clearInterval(autoSaveIntervalRef.current);
-      autoSaveIntervalRef.current = null;
-    }
-  }, []);
-
-  const hasStateChanged = useCallback((): boolean => {
-    if (!state || !lastStateRef.current) return false;
-    return state.updatedAt !== lastStateRef.current.updatedAt;
-  }, [state]);
-
-  const saveCurrentState = useCallback(async () => {
-    if (!state) return;
-
-    try {
-      // State is automatically saved by the state manager
-      lastStateRef.current = { ...state };
-      setStatus(prev => ({ 
-        ...prev, 
-        lastSaved: new Date().toISOString(),
-        error: null
-      }));
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-      setStatus(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Save failed'
-      }));
-    }
-  }, [state]);
+    };
+  }, [sessionId, providerUrl]); // Only depend on stable primitive values
 
   // State management actions
   const updateFormProgress = useCallback(async (
@@ -222,19 +203,19 @@ export function useAdvancedStateManagement(
 
     try {
       await stateManagerRef.current.updateFormProgress(
-        options.sessionId,
+        sessionId,
         formData,
         stepInfo
       );
 
-      const updatedState = options.enablePartnershipFeatures 
+      const updatedState = enablePartnershipFeatures 
         ? await partnershipManagerRef.current.initializeEnhancedState({
-            sessionId: options.sessionId,
-            providerUrl: options.providerUrl,
-            userId: options.userId,
-            providerId: options.providerId
+            sessionId,
+            providerUrl,
+            userId,
+            providerId
           }) as EnhancedSessionState
-        : stateManagerRef.current.getState(options.sessionId);
+        : stateManagerRef.current.getState(sessionId);
         
       if (updatedState) {
         setState(updatedState as EnhancedSessionState);
@@ -250,15 +231,15 @@ export function useAdvancedStateManagement(
         error: error instanceof Error ? error.message : 'Update failed'
       }));
     }
-  }, [state, options.sessionId]);
+  }, [sessionId, enablePartnershipFeatures]);
 
   const updateBrowserContext = useCallback(async (context: any) => {
     if (!state) throw new Error('State not initialized');
 
     try {
-      await stateManagerRef.current.updateBrowserContext(options.sessionId, context);
+      await stateManagerRef.current.updateBrowserContext(sessionId, context);
       
-      const updatedState = stateManagerRef.current.getState(options.sessionId);
+      const updatedState = stateManagerRef.current.getState(sessionId);
       if (updatedState) {
         setState(updatedState as EnhancedSessionState);
       }
@@ -266,15 +247,15 @@ export function useAdvancedStateManagement(
       console.error('Failed to update browser context:', error);
       throw error;
     }
-  }, [state, options.sessionId]);
+  }, [sessionId]);
 
   const updateQueueState = useCallback(async (queueInfo: any) => {
     if (!state) throw new Error('State not initialized');
 
     try {
-      await stateManagerRef.current.updateQueueState(options.sessionId, queueInfo);
+      await stateManagerRef.current.updateQueueState(sessionId, queueInfo);
       
-      const updatedState = stateManagerRef.current.getState(options.sessionId);
+      const updatedState = stateManagerRef.current.getState(sessionId);
       if (updatedState) {
         setState(updatedState as EnhancedSessionState);
         setStatus(prev => ({
@@ -286,18 +267,18 @@ export function useAdvancedStateManagement(
       console.error('Failed to update queue state:', error);
       throw error;
     }
-  }, [state, options.sessionId]);
+  }, [sessionId]);
 
   const createCheckpoint = useCallback(async (stepName: string): Promise<StateCheckpoint> => {
     if (!state) throw new Error('State not initialized');
 
     try {
       const checkpoint = await stateManagerRef.current.createCheckpoint(
-        options.sessionId,
+        sessionId,
         stepName
       );
 
-      const updatedState = stateManagerRef.current.getState(options.sessionId);
+      const updatedState = stateManagerRef.current.getState(sessionId);
       if (updatedState) {
         setState(updatedState as EnhancedSessionState);
       }
@@ -307,19 +288,19 @@ export function useAdvancedStateManagement(
       console.error('Failed to create checkpoint:', error);
       throw error;
     }
-  }, [state, options.sessionId]);
+  }, [sessionId]);
 
   const recoverFromCheckpoint = useCallback(async (checkpointId?: string): Promise<boolean> => {
     if (!state) throw new Error('State not initialized');
 
     try {
       const success = await stateManagerRef.current.recoverFromCheckpoint(
-        options.sessionId,
+        sessionId,
         checkpointId
       );
 
       if (success) {
-        const recoveredState = stateManagerRef.current.getState(options.sessionId);
+        const recoveredState = stateManagerRef.current.getState(sessionId);
         if (recoveredState) {
           setState(recoveredState as EnhancedSessionState);
           setStatus(prev => ({
@@ -339,16 +320,16 @@ export function useAdvancedStateManagement(
       }));
       return false;
     }
-  }, [state, options.sessionId]);
+  }, [sessionId]);
 
   const detectAndRecover = useCallback(async (failureContext: any): Promise<RecoveryResult> => {
-    if (!options.enableRecovery) {
+    if (!enableRecovery) {
       throw new Error('Recovery is disabled');
     }
 
     try {
       const result = await recoveryRef.current.detectAndRecover(
-        options.sessionId,
+        sessionId,
         failureContext
       );
 
@@ -367,14 +348,14 @@ export function useAdvancedStateManagement(
       console.error('Recovery failed:', error);
       throw error;
     }
-  }, [options.sessionId, options.enableRecovery]);
+  }, [sessionId, enableRecovery]);
 
   const createEmergencyBackup = useCallback(async (reason: string): Promise<string> => {
     if (!state) throw new Error('State not initialized');
 
     try {
       return await recoveryRef.current.createEmergencyBackup(
-        options.sessionId,
+        sessionId,
         state,
         reason
       );
@@ -382,23 +363,23 @@ export function useAdvancedStateManagement(
       console.error('Failed to create emergency backup:', error);
       throw error;
     }
-  }, [state, options.sessionId]);
+  }, [sessionId]);
 
   const exportState = useCallback(async (): Promise<string> => {
     if (!state) throw new Error('State not initialized');
 
     try {
-      return await stateManagerRef.current.getSerializedState(options.sessionId);
+      return await stateManagerRef.current.getSerializedState(sessionId);
     } catch (error) {
       console.error('Failed to export state:', error);
       throw error;
     }
-  }, [state, options.sessionId]);
+  }, [sessionId]);
 
   const importState = useCallback(async (serializedData: string): Promise<void> => {
     try {
       const restoredState = await stateManagerRef.current.restoreFromSerialized(
-        options.sessionId,
+        sessionId,
         serializedData
       );
 
@@ -412,32 +393,35 @@ export function useAdvancedStateManagement(
       console.error('Failed to import state:', error);
       throw error;
     }
-  }, [options.sessionId]);
+  }, [sessionId]);
 
   const checkAutomationAllowed = useCallback(async (automationType: string) => {
     try {
       return await providerIntelRef.current.isAutomationAllowed(
-        options.providerUrl,
+        providerUrl,
         automationType as any
       );
     } catch (error) {
       console.error('Failed to check automation permissions:', error);
       return { allowed: false, reason: 'Permission check failed' };
     }
-  }, [options.providerUrl]);
+  }, [providerUrl]);
 
   const getProviderConfig = useCallback(async () => {
     try {
-      return await providerIntelRef.current.getProviderConfig(options.providerUrl);
+      return await providerIntelRef.current.getProviderConfig(providerUrl);
     } catch (error) {
       console.error('Failed to get provider config:', error);
       return null;
     }
-  }, [options.providerUrl]);
+  }, [providerUrl]);
 
   const cleanup = useCallback(async () => {
     try {
-      stopAutoSave();
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+        autoSaveIntervalRef.current = null;
+      }
       await stateManagerRef.current.cleanupExpiredStates();
     } catch (error) {
       console.error('Cleanup failed:', error);
@@ -447,7 +431,7 @@ export function useAdvancedStateManagement(
   const detectAndRecoverEnhanced = useCallback(async (failureContext: any): Promise<EnhancedRecoveryResult> => {
     try {
       return await enhancedRecoveryRef.current.detectAndRecoverEnhanced(
-        options.sessionId,
+        sessionId,
         failureContext,
         state || undefined
       );
@@ -455,21 +439,21 @@ export function useAdvancedStateManagement(
       console.error('Enhanced recovery failed:', error);
       throw error;
     }
-  }, [options.sessionId, state]);
+  }, [sessionId]);
 
   const recoverWithPartnershipEscalation = useCallback(async (failureContext: any) => {
     if (!state) throw new Error('State not initialized');
 
     try {
       return await partnershipManagerRef.current.recoverWithPartnershipEscalation(
-        options.sessionId,
+        sessionId,
         failureContext
       );
     } catch (error) {
       console.error('Partnership recovery failed:', error);
       return { success: false, escalated: false };
     }
-  }, [state, options.sessionId]);
+  }, [sessionId]);
 
   const actions: StateManagementActions = {
     updateFormProgress,
