@@ -355,11 +355,11 @@ export default function ReadyToSignup() {
       
       setSessionData({
         id: planData.id,
-        title: isResyUrl ? 'Restaurant Reservation' : 'Class Registration',
+        title: isResyUrl ? 'Restaurant Reservation' : 'Registration',
         url: planData.detect_url,
         price_min: 0, // Default since we don't have price in current schema
         activities: {
-          name: isResyUrl ? 'Restaurant Reservation' : 'Class Registration',
+          name: isResyUrl ? 'Restaurant Reservation' : 'Registration',
           city: '',
           state: ''
         }
