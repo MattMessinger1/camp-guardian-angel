@@ -391,7 +391,15 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       if (!user) {
                         localStorage.setItem('pending_plan_id', plan.id);
                       }
-                      navigate(`/ready-to-signup/${plan.id}`);
+                      
+                      // Pass the state with the navigation
+                      const navigationState = {
+                        businessName: result.name || result.providerName || result.campName,
+                        url: actualUrl,
+                        provider: result.providerName || result.provider_platform || 'unknown'
+                      };
+                      
+                      navigate(`/ready-to-signup/${plan.id}`, { state: navigationState });
                     }
                   }}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 ml-4"
