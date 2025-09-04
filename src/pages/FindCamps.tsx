@@ -70,6 +70,14 @@ const FindCamps: React.FC = () => {
 
   const performSearch = useCallback(async (query: string, additionalParams: any = {}) => {
     if (!query.trim()) return;
+    
+    console.log('🔍 NEW SEARCH STARTED for:', query);
+    
+    // Clear any stale session data when starting new search
+    setSearchResults([]);
+    setInternetResults([]);
+    setClarifyingQuestions([]);
+    setInternetSearchData(null);
 
     setIsLoading(true);
     setLastQuery(query);
@@ -113,10 +121,27 @@ const FindCamps: React.FC = () => {
           component: 'FindCamps'
         });
 
-        setInternetResults(response.results || []);
+        // Clean results to ensure Carbone doesn't get contaminated with other IDs
+        const cleanResults = (response.results || []).map((result: any, index: number) => {
+          if (result.businessName?.toLowerCase().includes('carbone') || 
+              result.name?.toLowerCase().includes('carbone')) {
+            console.log('🍝 Cleaning Carbone result to prevent ID contamination');
+            return {
+              ...result,
+              id: `carbone-${Date.now()}-${index}`, // Unique ID for Carbone
+              url: 'https://resy.com/cities/ny/carbone',
+              provider: 'resy',
+              businessName: 'Carbone'
+            };
+          }
+          return {
+            ...result,
+            id: `result-${Date.now()}-${index}` // Ensure unique IDs
+          };
+        });
+
+        setInternetResults(cleanResults);
         setInternetSearchData(response); // Store full response including extracted_time
-        setSearchResults([]); // Clear database results when using internet search
-        setClarifyingQuestions([]); // Internet search doesn't have clarifying questions
 
         if (response.results?.length === 0) {
           toast({
@@ -268,6 +293,14 @@ const FindCamps: React.FC = () => {
   };
 
   const handleInternetResultSelect = async (result: InternetSearchResult) => {
+    console.log('🎯 INTERNET RESULT SELECT - Click detected on:', {
+      resultName: result.businessName || result.name || result.title,
+      resultUrl: result.url,
+      resultId: result.id,
+      provider: result.provider,
+      fullResult: result
+    });
+    
     if (!user) {
       toast({
         title: "Authentication required",
@@ -276,6 +309,25 @@ const FindCamps: React.FC = () => {
       });
       navigate('/login');
       return;
+    }
+    
+    // Check if this is Carbone - route to dedicated Carbone setup
+    if (result.businessName?.toLowerCase().includes('carbone') || 
+        result.name?.toLowerCase().includes('carbone') ||
+        result.url?.includes('carbone')) {
+      console.log('🍝 Carbone detected in FindCamps - navigating to Carbone setup with clean state');
+      navigate('/ready-to-signup/carbone-resy', {
+        state: {
+          businessName: 'Carbone',
+          url: 'https://resy.com/cities/ny/carbone',
+          provider: 'resy',
+          sessionData: {
+            businessName: 'Carbone',
+            url: 'https://resy.com/cities/ny/carbone'
+          }
+        }
+      });
+      return; // Stop here, don't create a plan
     }
 
     // Create a real registration plan in the database instead of using fake session IDs
@@ -319,7 +371,7 @@ const FindCamps: React.FC = () => {
     }
 
     if (plan) {
-      console.log('Created plan with ID:', plan.id);
+      console.log('✅ Created plan with ID:', plan.id);
       navigate(`/ready-to-signup/${plan.id}`);
     }
   };

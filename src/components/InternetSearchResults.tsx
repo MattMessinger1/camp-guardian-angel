@@ -110,9 +110,13 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
   };
 
   const handleSessionSelect = async (result: any, sessionDetails?: any) => {
-    console.log('=== FUNCTION CALLED ===');
-    console.log('Result:', result);
-    console.log('User:', user);
+    console.log('🎯 NAVIGATION DEBUG - Click detected on:', {
+      resultName: result.businessName || result.name,
+      resultUrl: result.url,
+      sessionId: result.session_id || result.id,
+      provider: result.provider,
+      fullResult: result
+    });
     
     if (!user?.id) {
       console.error('No user ID!');
@@ -124,9 +128,19 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     if (result.businessName?.toLowerCase().includes('carbone') || 
         result.name?.toLowerCase().includes('carbone') ||
         result.url?.includes('carbone')) {
-      console.log('🍝 Carbone detected - navigating to Carbone setup');
-      navigate('/ready-to-signup/carbone-resy');
-      return;
+      console.log('🍝 Carbone detected - navigating to Carbone setup with clean state');
+      navigate('/ready-to-signup/carbone-resy', {
+        state: {
+          businessName: 'Carbone',
+          url: 'https://resy.com/cities/ny/carbone',
+          provider: 'resy',
+          sessionData: {
+            businessName: 'Carbone',
+            url: 'https://resy.com/cities/ny/carbone'
+          }
+        }
+      });
+      return; // Stop here, don't continue to default navigation
     }
     
     // Check if this is Peloton - route correctly
@@ -158,7 +172,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
       return;
     }
     
-    console.log('Creating real registration plan for:', result);
+    console.log('🔧 Creating real registration plan for other provider:', result);
     
     // Get the URL properly for other providers
     const url = result.url || 'https://google.com';
