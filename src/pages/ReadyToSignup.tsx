@@ -215,24 +215,51 @@ export default function ReadyToSignup() {
       setIsPlanCreating(true);
       
       // Create the plan via reserve-init - this creates a real database entry
-      supabase.functions.invoke('reserve-init', {
-        body: {
-          session_id: stateData.id || 'unknown',
-          parent: {
-            email: user?.email || 'temp@example.com',
-            first_name: 'Parent',
-            last_name: 'User',
-            phone: '555-0000'
+      // For anonymous users, use test mode
+      const invokeOptions = user ? 
+        // Authenticated user - use normal auth
+        {
+          body: {
+            session_id: stateData.id || 'unknown',
+            parent: {
+              email: user.email || 'temp@example.com',
+              first_name: 'Parent',
+              last_name: 'User',
+              phone: '555-0000'
+            },
+            child: {
+              name: 'Child',
+              dob: '2010-01-01'
+            },
+            url: stateData.url,
+            business_name: stateData.businessName || stateData.title || 'Activity',
+            provider: stateData.provider || 'unknown'
+          }
+        } : 
+        // Anonymous user - use test mode
+        {
+          body: {
+            session_id: stateData.id || 'unknown',
+            parent: {
+              email: 'temp@example.com',
+              first_name: 'Parent',
+              last_name: 'User',
+              phone: '555-0000'
+            },
+            child: {
+              name: 'Child',
+              dob: '2010-01-01'
+            },
+            url: stateData.url,
+            business_name: stateData.businessName || stateData.title || 'Activity',
+            provider: stateData.provider || 'unknown'
           },
-          child: {
-            name: 'Child',
-            dob: '2010-01-01'
-          },
-          url: stateData.url,
-          business_name: stateData.businessName || stateData.title || 'Activity',
-          provider: stateData.provider || 'unknown'
-        }
-      }).then(({ data, error }) => {
+          headers: {
+            'x-test-mode': 'true'
+          }
+        };
+      
+      supabase.functions.invoke('reserve-init', invokeOptions).then(({ data, error }) => {
         setIsPlanCreating(false);
         
         if (error) {
