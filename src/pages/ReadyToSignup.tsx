@@ -891,14 +891,22 @@ export default function ReadyToSignup() {
             
             <div className="space-y-2">
               <Input
+                placeholder={`${
+                  detectedPlatform?.platform === 'resy' ? 'Resy' :
+                  detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
+                  'Your'
+                } email`}
                 type="email"
-                placeholder="Resy email"
                 value={resyCredentials.email}
                 onChange={(e) => setResyCredentials({...resyCredentials, email: e.target.value})}
               />
               <Input
+                placeholder={`${
+                  detectedPlatform?.platform === 'resy' ? 'Resy' :
+                  detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
+                  'Your'
+                } password`}
                 type="password"
-                placeholder="Resy password"
                 value={resyCredentials.password}
                 onChange={(e) => setResyCredentials({...resyCredentials, password: e.target.value})}
               />
@@ -1192,21 +1200,38 @@ export default function ReadyToSignup() {
           {detectedPlatform.type === 'restaurant' && detectedPlatform.platform !== 'resy' && (
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Connect {detectedPlatform.platform} Account</CardTitle>
+                <CardTitle>
+                  Connect {detectedPlatform?.platform === 'resy' ? 'Resy' : 
+                           detectedPlatform?.platform === 'opentable' ? 'OpenTable' : 
+                           detectedPlatform?.platform === 'peloton' ? 'Peloton' :
+                           'Your'} Account
+                </CardTitle>
                 <CardDescription>
-                  {businessName} uses {detectedPlatform.platform} for reservations
+                  {businessName} uses {
+                    detectedPlatform?.platform === 'resy' ? 'Resy' :
+                    detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
+                    detectedPlatform?.platform || 'this platform'
+                  } for reservations
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Input 
+                  placeholder={`${
+                    detectedPlatform?.platform === 'resy' ? 'Resy' :
+                    detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
+                    'Your'
+                  } email`}
                   type="email"
-                  placeholder={`${detectedPlatform.platform} email`}
                   value={restaurantCredentials.email}
                   onChange={(e) => setRestaurantCredentials({...restaurantCredentials, email: e.target.value})}
                 />
                 <Input 
+                  placeholder={`${
+                    detectedPlatform?.platform === 'resy' ? 'Resy' :
+                    detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
+                    'Your'
+                  } password`}
                   type="password"
-                  placeholder={`${detectedPlatform.platform} password`}
                   value={restaurantCredentials.password}
                   onChange={(e) => setRestaurantCredentials({...restaurantCredentials, password: e.target.value})}
                 />
@@ -1371,14 +1396,22 @@ export default function ReadyToSignup() {
             <h3 className="font-medium">{providerConfig.credentialLabel} Credentials</h3>
             <div className="space-y-2">
               <Input
+                placeholder={`${
+                  detectedPlatform?.platform === 'resy' ? 'Resy' :
+                  detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
+                  'Your'
+                } email`}
                 type="email"
-                placeholder={`${providerConfig.credentialLabel} Email`}
                 value={resyCredentials.email}
                 onChange={(e) => setResyCredentials({...resyCredentials, email: e.target.value})}
               />
               <Input
+                placeholder={`${
+                  detectedPlatform?.platform === 'resy' ? 'Resy' :
+                  detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
+                  'Your'
+                } password`}
                 type="password"
-                placeholder={`${providerConfig.credentialLabel} Password`}
                 value={resyCredentials.password}
                 onChange={(e) => setResyCredentials({...resyCredentials, password: e.target.value})}
               />
