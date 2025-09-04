@@ -187,19 +187,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
         normalizedName: normalizedName
       });
       
-      // If this is Carbone, FORCE a new ID
-      if (displayName.toLowerCase().includes('carbone')) {
-        const newId = `carbone-${Date.now()}-${index}`;
-        console.log('🍝 FORCING Carbone to new ID:', newId);
-        return {
-          ...primaryResult,
-          sessionId: newId,
-          name: displayName,
-          sessions: [],
-          sessionDates: [],
-          sessionTimes: []
-        };
-      }
+      // Normal flow for all providers including Carbone
       
       // Combine all sessions from all results for this business
       const allSessions: Array<{date: string, time: string, availability?: number, price?: number}> = [];
@@ -342,20 +330,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       originalSessionId: result.sessionId
                     });
                     
-                    // FORCE new ID for Carbone
-                    if ((result.name || result.providerName || result.campName || '').toLowerCase().includes('carbone')) {
-                      const carboneId = `carbone-fresh-${Date.now()}`;
-                      console.log('🍝 FORCING Carbone navigation with new ID:', carboneId);
-                      navigate(`/ready-to-signup/${carboneId}`, {
-                        state: {
-                          id: carboneId,
-                          businessName: 'Carbone',
-                          url: 'https://resy.com/cities/ny/carbone',
-                          provider: 'resy'
-                        }
-                      });
-                      return;
-                    }
+                    // Normal flow for all providers
                     
                     // Get user if exists, but don't require it
                     const { data: { user } } = await supabase.auth.getUser();
