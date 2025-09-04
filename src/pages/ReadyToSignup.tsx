@@ -132,7 +132,7 @@ export default function ReadyToSignup() {
     }
     
     // Step 2: Check other known providers - show verification step
-    if (['peloton', 'soulcycle', 'barrys', 'equinox', 'corepower', 'orangetheory'].includes(provider)) {
+    if (['soulcycle', 'barrys', 'equinox', 'corepower', 'orangetheory'].includes(provider)) {
       console.log('✅ Known provider detected:', provider, '- showing verification');
       
       setAnalysis({
@@ -830,13 +830,13 @@ export default function ReadyToSignup() {
       {stage === 'verify_pattern' && (
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">
-            {analysis?.provider === 'peloton' ? 'Peloton' : analysis?.provider || 'Provider'} Registration Timing
+            {analysis?.provider ? analysis.provider.charAt(0).toUpperCase() + analysis.provider.slice(1) : 'Provider'} Registration Timing
           </h2>
           
           <Alert className="mb-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
             <p className="font-medium">⚠️ Please verify your studio's booking pattern</p>
             <p className="text-sm mt-2">
-              Different {analysis?.provider === 'peloton' ? 'Peloton' : 'fitness'} studios may have different booking windows.
+              Different studios may have different booking windows.
               Check your studio's website to confirm when classes open for booking.
             </p>
           </Alert>
@@ -896,7 +896,7 @@ export default function ReadyToSignup() {
             </div>
             
             <div className="text-sm text-muted-foreground">
-              <p>💡 Tip: Check your {analysis?.provider === 'peloton' ? 'Peloton' : 'fitness'} app or website to see when the furthest bookable class becomes available.</p>
+              <p>💡 Tip: Check your fitness app or website to see when the furthest bookable class becomes available.</p>
             </div>
           </div>
           
@@ -924,7 +924,7 @@ export default function ReadyToSignup() {
               <div className="text-sm">
                 You've verified the registration timing for this provider.
                 <br />
-                We know {analysis.provider === 'peloton' ? 'Peloton' : analysis.provider} requires an account to see class schedules.
+                We know {analysis.provider ? analysis.provider.charAt(0).toUpperCase() + analysis.provider.slice(1) : 'this provider'} requires an account to see class schedules.
               </div>
             </Alert>
           )}
