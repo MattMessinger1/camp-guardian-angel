@@ -117,16 +117,44 @@ const FindCamps: React.FC = () => {
 
         const response = data;
 
+        // 📡 DETAILED PERPLEXITY API LOGGING
+        console.log('📡 RAW Perplexity API response:', data);
+        console.log('📡 Perplexity results array:', data.results);
+        console.log('📡 First result structure:', data.results?.[0]);
+        console.log('📡 Response success status:', response.success);
+        console.log('📡 Response error (if any):', response.error);
+
         if (!response.success) {
           throw new Error(response.error || 'Internet search failed');
         }
 
-        // LOG: Raw search results from Perplexity
+        // LOG: Raw search results from Perplexity with detailed field analysis
         console.log('🔍 Raw search result from Perplexity - ALL RESULTS:', response.results);
         response.results?.forEach((result: any, index: number) => {
+          console.log(`📦 Processing result ${index}:`, result);
+          console.log(`📦 Available fields for result ${index}:`, Object.keys(result || {}));
+          console.log(`📦 URL-related fields for result ${index}:`, {
+            url: result.url,
+            signup_url: result.signup_url,
+            link: result.link,
+            reference_url: result.reference_url,
+            source_url: result.source_url,
+            website: result.website,
+            providerUrl: result.providerUrl
+          });
+          
           if (result.businessName?.toLowerCase().includes('carbone') || 
               result.name?.toLowerCase().includes('carbone')) {
             console.log('🔍 Raw search result for Carbone:', result);
+            console.log('🔍 Carbone URL fields specifically:', {
+              url: result.url,
+              signup_url: result.signup_url,
+              link: result.link,
+              reference_url: result.reference_url,
+              source_url: result.source_url,
+              website: result.website,
+              providerUrl: result.providerUrl
+            });
           }
         });
 
