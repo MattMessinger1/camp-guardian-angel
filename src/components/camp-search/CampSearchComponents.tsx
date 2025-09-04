@@ -335,14 +335,23 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     // Get user if exists, but don't require it
                     const { data: { user } } = await supabase.auth.getUser();
                     
-                    // Use actual URL from the search result, not hardcoded
-                    const actualUrl = result.url || result.signup_url || result.providerUrl || 
-                      `https://www.google.com/search?q=${encodeURIComponent((result.name || result.providerName || result.campName) + ' registration')}`;
+                    // Use actual URL from the search result - prioritize provided URLs
+                    const actualUrl = result.url || result.signup_url || result.providerUrl;
+                    
+                    if (!actualUrl) {
+                      console.error('No URL provided for result:', result.name || result.providerName || result.campName);
+                      toast({
+                        title: "Error",
+                        description: "No booking URL available for this provider.",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
                     
                     console.log('📊 Creating registration plan with URL:', {
                       resultName: result.name || result.providerName || result.campName,
                       actualUrl,
-                      hasProvidedUrl: !!(result.url || result.signup_url || result.providerUrl)
+                      hasProvidedUrl: true
                     });
                     
                     const { data: plan, error } = await supabase
