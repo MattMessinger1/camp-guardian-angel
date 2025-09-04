@@ -73,7 +73,7 @@ export default function ReadyToSignup() {
       locationState: location.state
     });
     
-    // Use location.state directly for internet results, don't query database
+    // Use location.state directly for all internet results - this is required data
     const stateData = location.state;
     
     if (stateData) {
@@ -83,10 +83,10 @@ export default function ReadyToSignup() {
       return;
     }
     
-    // Don't cache problematic data for temporary sessions
+    // If no location state and this is an internet/temporary session, show error
     if (planId?.includes('internet-') || planId?.includes('carbone-')) {
-      console.log('Temporary session detected - not caching data');
-      // Use state data only, don't persist
+      console.log('Temporary session without state data - showing error');
+      setStage('error');
       return;
     }
     
@@ -233,28 +233,16 @@ export default function ReadyToSignup() {
       return;
     }
 
-    // Handle internet sessions from URL parameters
+    // Handle internet sessions - but require location.state
     if (isInternetSession) {
-      console.log('🌐 Handling internet session with URL parameters');
-      const businessName = searchParams.get('businessName') || 'Demo Business';
-      const location = searchParams.get('location') || 'Demo Location';
-      const selectedDate = searchParams.get('selectedDate') || new Date().toISOString().split('T')[0];
-      const selectedTime = searchParams.get('selectedTime') || 'Morning (9:00 AM)';
+      if (!location.state) {
+        console.log('🚨 Internet session without required state data');
+        setStage('error');
+        return;
+      }
       
-      setSessionData({
-        id: planId,
-        title: businessName || 'Demo Registration',
-        url: 'https://example.com', // Demo URL for internet sessions
-        price_min: 0,
-        activities: {
-          name: businessName || 'Demo Activity',
-          city: location.split(',')[0] || 'Demo City',
-          state: location.split(',')[1]?.trim() || 'Demo State'
-        },
-        selectedDate,
-        selectedTime,
-        isInternetSession: true
-      });
+      console.log('🌐 Handling internet session with state data');
+      setSessionData(location.state);
       setStage('manual_time');
       return;
     }
@@ -564,7 +552,7 @@ export default function ReadyToSignup() {
           .from('registration_plans')
           .insert({
             user_id: user.id,
-            detect_url: sessionData?.url || 'https://example.com',
+            detect_url: sessionData?.url || sessionData?.signup_url,
             manual_open_at: registrationTime,
             automation_rules: {
               loginRequired: analysis?.loginRequired,
@@ -624,15 +612,15 @@ export default function ReadyToSignup() {
     }
   };
 
-  // Error state
-  if (stage === 'error' || !sessionData) {
+  // Error state - show specific message when no provider is selected
+  if (stage === 'error' || (!sessionData && !location.state)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
         <div className="max-w-4xl mx-auto">
           <Card className="p-6 text-center">
-            <h1 className="text-xl font-semibold mb-2">Session Not Found</h1>
+            <h1 className="text-xl font-semibold mb-2">No Provider Selected</h1>
             <p className="text-muted-foreground mb-4">
-              The registration session could not be loaded.
+              Please search and select a provider first. No provider data was found for this session.
             </p>
             <Button onClick={() => navigate('/search')} variant="outline">
               Search for Activities
@@ -662,7 +650,7 @@ export default function ReadyToSignup() {
       
       {/* Show what we're setting up */}
       <Card className="mb-6 p-4 bg-gray-50 dark:bg-gray-900">
-        <div className="font-medium">{sessionData?.title || sessionData?.activities?.name || 'Registration'}</div>
+        <div className="font-medium">{sessionData?.businessName || sessionData?.title || sessionData?.activities?.name || 'Registration'}</div>
         <div className="text-sm text-muted-foreground">{sessionData?.url || sessionData?.signup_url}</div>
       </Card>
       
