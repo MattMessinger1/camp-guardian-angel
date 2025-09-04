@@ -10,8 +10,9 @@ import { getTestScenario } from '@/lib/test-scenarios';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import ProviderInfo from '@/components/ProviderInfo';
-import { detectProvider } from '@/utils/providerDetection';
+import { detectProvider, detectPlatform } from '@/utils/providerDetection';
 import { useQuery } from '@tanstack/react-query';
+import { CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 // Helper function to determine provider type based on detected provider
 const getProviderType = (provider: string): string => {
@@ -128,6 +129,12 @@ export default function ReadyToSignup() {
   const [resyCredentials, setResyCredentials] = useState({ email: '', password: '' });
   const [resyLoginSuccess, setResyLoginSuccess] = useState(false);
   const [isTestingLogin, setIsTestingLogin] = useState(false);
+  
+  // Restaurant credentials state (for non-Resy restaurants)
+  const [restaurantCredentials, setRestaurantCredentials] = useState({ email: '', password: '' });
+  const [isCredentialsSaving, setIsCredentialsSaving] = useState(false);
+  const [credentialsSaved, setCredentialsSaved] = useState(false);
+  
   const [discovering, setDiscovering] = useState(false);
   const [bookingDetails, setBookingDetails] = useState({
     date: '',
@@ -153,6 +160,10 @@ export default function ReadyToSignup() {
   // Detect provider from current session
   const currentProvider = analysis?.provider || detectProvider(sessionData?.url || planData?.detect_url || '');
   const isResyProvider = currentProvider === 'resy' || (sessionData?.url || planData?.detect_url || '').includes('resy.com');
+  
+  // Detect platform for restaurant type detection
+  const businessName = sessionData?.businessName || sessionData?.title || sessionData?.activities?.name || '';
+  const detectedPlatform = detectPlatform(businessName);
   
   // Get provider-specific configuration
   const providerConfig = getProviderConfig(currentProvider, bookingDetails.date);
@@ -546,6 +557,56 @@ export default function ReadyToSignup() {
     }
     
     setIsTestingLogin(false);
+  };
+
+  // Save restaurant credentials using existing store-camp-credentials edge function
+  const saveRestaurantCredentials = async () => {
+    if (!restaurantCredentials.email || !restaurantCredentials.password || !user) {
+      toast({
+        title: "Missing information",
+        description: "Please provide both email and password",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCredentialsSaving(true);
+    
+    try {
+      console.log('🔐 Saving restaurant credentials for platform:', detectedPlatform.platform);
+      
+      const { data, error } = await supabase.functions.invoke('store-camp-credentials', {
+        body: {
+          email: restaurantCredentials.email,
+          password: restaurantCredentials.password,
+          provider_name: detectedPlatform.platform,
+          camp_id: planData?.id || 'temp-camp-id'
+        }
+      });
+
+      if (error) {
+        console.error('Error saving credentials:', error);
+        throw error;
+      }
+
+      console.log('✅ Credentials saved successfully:', data);
+      setCredentialsSaved(true);
+      
+      toast({
+        title: "Credentials Saved",
+        description: `${detectedPlatform.platform} account connected successfully`,
+      });
+      
+    } catch (error) {
+      console.error('Failed to save credentials:', error);
+      toast({
+        title: "Save failed",
+        description: "Could not save credentials - please try again",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCredentialsSaving(false);
+    }
   };
 
   // Arm Resy booking function
@@ -1057,6 +1118,49 @@ export default function ReadyToSignup() {
               </div>
             </div>
           )}
+          
+          {/* Restaurant credentials section for non-Resy restaurants */}
+          {detectedPlatform.type === 'restaurant' && detectedPlatform.platform !== 'resy' && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Connect {detectedPlatform.platform} Account</CardTitle>
+                <CardDescription>
+                  {businessName} uses {detectedPlatform.platform} for reservations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Input 
+                  type="email"
+                  placeholder={`${detectedPlatform.platform} email`}
+                  value={restaurantCredentials.email}
+                  onChange={(e) => setRestaurantCredentials({...restaurantCredentials, email: e.target.value})}
+                />
+                <Input 
+                  type="password"
+                  placeholder={`${detectedPlatform.platform} password`}
+                  value={restaurantCredentials.password}
+                  onChange={(e) => setRestaurantCredentials({...restaurantCredentials, password: e.target.value})}
+                />
+                <Button 
+                  onClick={saveRestaurantCredentials}
+                  disabled={!restaurantCredentials.email || !restaurantCredentials.password || isCredentialsSaving}
+                  className="w-full"
+                >
+                  {isCredentialsSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : credentialsSaved ? (
+                    '✅ Credentials Saved'
+                  ) : (
+                    'Save & Verify Credentials'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+          
           <Input
             type="datetime-local"
             value={registrationTime}
