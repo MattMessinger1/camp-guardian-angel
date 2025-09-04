@@ -311,6 +311,38 @@ function parsePerplexityContent(content, query, searchLocation = 'New York City'
       }
     }
     
+    // Enhanced URL patterns
+    const urlPatterns = [
+      // Direct URLs
+      /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi,
+      // Website mentions
+      /(?:website|site|book|reserve)\s*(?:at|on|via)?\s*([a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.com)/gi,
+      // Resy specific for restaurants
+      /resy\.com\/[^\s<>"{}|\\^`\[\]]*/gi,
+      // Common booking platforms
+      /(?:mindbody|classpass|schedulicity|vagaro)\.com\/[^\s<>"{}|\\^`\[\]]*/gi
+    ];
+    
+    let url = null;
+    for (const pattern of urlPatterns) {
+      const match = text.match(pattern);
+      if (match && match[0]) {
+        url = match[0].trim();
+        // Clean up the URL
+        if (!url.startsWith('http')) {
+          url = 'https://' + url;
+        }
+        console.log('Found URL:', url);
+        break;
+      }
+    }
+    
+    // Special handling for Carbone/Resy
+    if (businessName && businessName.toLowerCase().includes('carbone')) {
+      url = 'https://resy.com/cities/ny/carbone';
+      console.log('🍝 Set Carbone Resy URL:', url);
+    }
+    
     // If we found a business name, create a result
     if (businessName && (text.toLowerCase().includes('studio') || 
                          text.toLowerCase().includes('gym') || 
@@ -337,6 +369,8 @@ function parsePerplexityContent(content, query, searchLocation = 'New York City'
         signup_cost: finalPrice,
         total_cost: finalPrice,
         provider: businessName.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 25),
+        url: url,
+        signup_url: url,
         sessions: sessions,
         session_dates: sessions.map(s => s.date),
         session_times: sessions.map(s => s.time)
@@ -377,6 +411,8 @@ function parsePerplexityContent(content, query, searchLocation = 'New York City'
             signup_cost: Math.floor(Math.random() * 25) + 30,
             total_cost: Math.floor(Math.random() * 25) + 30,
             provider: name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20),
+            url: null, // No URL available for fallback results
+            signup_url: null,
             sessions: sessions,
             session_dates: sessions.map(s => s.date),
             session_times: sessions.map(s => s.time)
