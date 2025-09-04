@@ -168,6 +168,25 @@ const FindCamps: React.FC = () => {
         const processedResults = (response.results || []).map((result: any, index: number) => {
           console.log('🔄 Processing result:', result.businessName || result.name);
           
+          // Extract URL from multiple possible fields
+          const extractedUrl = result.url || result.signup_url || result.link || 
+                              result.reference_url || result.source_url || 
+                              result.website || result.providerUrl;
+          
+          console.log('🔗 URL extraction for result:', {
+            name: result.businessName || result.name,
+            extractedUrl,
+            availableFields: {
+              url: result.url,
+              signup_url: result.signup_url,
+              link: result.link,
+              reference_url: result.reference_url,
+              source_url: result.source_url,
+              website: result.website,
+              providerUrl: result.providerUrl
+            }
+          });
+          
           // For Carbone, create a completely new object with NO peloton contamination
           if (result.businessName?.toLowerCase().includes('carbone') || 
               result.name?.toLowerCase().includes('carbone')) {
@@ -177,6 +196,8 @@ const FindCamps: React.FC = () => {
               businessName: 'Carbone',
               name: 'Carbone',
               url: 'https://resy.com/cities/ny/carbone',
+              signup_url: 'https://resy.com/cities/ny/carbone',
+              providerUrl: 'https://resy.com/cities/ny/carbone',
               provider: 'resy',
               description: 'Italian restaurant in NYC requiring Resy booking',
               location: 'Greenwich Village, NYC',
@@ -191,11 +212,28 @@ const FindCamps: React.FC = () => {
             return carboneResult;
           }
           
-          // For other results, ensure unique IDs
-          return {
+          // For other results, extract and map URLs properly
+          const processedResult = {
             ...result,
-            id: result.id || `result-${Date.now()}-${index}` // Ensure unique IDs
+            id: result.id || `result-${Date.now()}-${index}`, // Ensure unique IDs
+            // Map URL fields to expected names
+            url: extractedUrl,
+            signup_url: extractedUrl,
+            providerUrl: extractedUrl,
+            // Preserve original fields in case they're needed
+            originalUrl: result.url,
+            originalLink: result.link,
+            originalReferenceUrl: result.reference_url
           };
+          
+          console.log('✅ Processed result with URLs:', {
+            name: processedResult.businessName || processedResult.name,
+            url: processedResult.url,
+            signup_url: processedResult.signup_url,
+            providerUrl: processedResult.providerUrl
+          });
+          
+          return processedResult;
         });
 
         console.log('✅ Processed results:', processedResults.length);
