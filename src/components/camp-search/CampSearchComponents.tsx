@@ -383,7 +383,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     navigate('/ready-to-signup/pending', { 
                       state: {
                         businessName,
-                        url: finalUrl,
+                        businessUrl: finalUrl,
                         provider,
                         title: businessName
                       }
