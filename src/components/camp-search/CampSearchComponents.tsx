@@ -334,73 +334,54 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 
                 <Button 
                   onClick={async () => {
-                    console.log('🎯 BUTTON CLICK - Using data:', {
-                      resultId: result.sessionId,
-                      businessName: result.name || result.providerName || result.campName,
-                      originalSessionId: result.sessionId
-                    });
-                    
-                    // Normal flow for all providers
-                    
-                    // Get user if exists, but don't require it
-                    const { data: { user } } = await supabase.auth.getUser();
-                    
-                    // Use actual URL from the search result - prioritize provided URLs
+                    const businessName = result.name || result.providerName || result.campName;
                     const actualUrl = result.url || result.signup_url || result.providerUrl;
                     
-                    // LOG: Check URL before navigation for Carbone
-                    if ((result.name || result.providerName || result.campName)?.toLowerCase().includes('carbone')) {
-                      console.log('🚀 Navigation state being passed for Carbone:', {
-                        businessName: result.name || result.providerName || result.campName, 
-                        url: actualUrl, 
-                        provider: result.providerName || result.provider_platform || 'unknown'
-                      });
-                      console.log('🔍 Carbone URL check - actualUrl:', actualUrl);
-                      console.log('🔍 Carbone URL components - url:', result.url, 'signup_url:', result.signup_url, 'providerUrl:', result.providerUrl);
-                    }
-                    
-                    
-                    console.log('📊 Creating registration plan with URL:', {
-                      resultName: result.name || result.providerName || result.campName,
+                    console.log('🎯 BUTTON CLICK - Creating real database record for:', {
+                      businessName,
                       actualUrl,
-                      hasProvidedUrl: true
+                      hasSessionId: !!result.sessionId,
+                      isInternetResult: result.sessionId === null || result.sessionId?.toString().startsWith('internet-')
                     });
                     
-                    const { data: plan, error } = await supabase
-                      .from('registration_plans')
-                      .insert({
-                        user_id: user?.id || null,  // Allow null for anonymous
-                        detect_url: actualUrl,
-                        status: 'pending'
-                      })
-                      .select()
-                      .single();
-                      
-                    if (error) {
-                      console.error('Failed to create plan:', error);
-                      toast({
-                        title: "Error",
-                        description: "Something went wrong. Please try again.",
-                        variant: "destructive"
-                      });
+                    // Check if this is a real session or internet result
+                    if (result.sessionId && !result.sessionId.toString().startsWith('internet-') && result.sessionId !== null) {
+                      // Real session - navigate directly
+                      console.log('📍 Using existing session:', result.sessionId);
+                      navigate(`/ready-to-signup/${result.sessionId}`);
                       return;
                     }
                     
-                    if (plan) {
-                      // Store plan ID for anonymous users to claim later
-                      if (!user) {
-                        localStorage.setItem('pending_plan_id', plan.id);
-                      }
-                      
-                      // Pass the state with the navigation
-                      const navigationState = {
-                        businessName: result.name || result.providerName || result.campName,
-                        url: actualUrl,
-                        provider: result.providerName || result.provider_platform || 'unknown'
-                      };
-                      
-                      navigate(`/ready-to-signup/${plan.id}`, { state: navigationState });
+                    // Internet result - create real database records using the flow
+                    const { data: { user } } = await supabase.auth.getUser();
+                    
+                    // Detect provider for better URL handling
+                    let provider = 'unknown';
+                    let finalUrl = actualUrl;
+                    
+                    if (businessName?.toLowerCase().includes('carbone')) {
+                      provider = 'resy';
+                      finalUrl = finalUrl || 'https://resy.com/cities/ny/carbone';
+                    } else if (businessName?.toLowerCase().includes('peloton')) {
+                      provider = 'peloton'; 
+                      finalUrl = finalUrl || 'https://studio.onepeloton.com';
                     }
+                    
+                    console.log('🚀 Creating activity → session → reservation flow for internet result:', {
+                      businessName, 
+                      finalUrl, 
+                      provider
+                    });
+                    
+                    // Navigate to ReadyToSignup with state data to create the flow
+                    navigate('/ready-to-signup/pending', { 
+                      state: {
+                        businessName,
+                        url: finalUrl,
+                        provider,
+                        title: businessName
+                      }
+                    });
                   }}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 ml-4"
                 >

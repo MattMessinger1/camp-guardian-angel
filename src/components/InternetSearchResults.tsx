@@ -67,8 +67,8 @@ interface InternetSearchResultsProps {
 
 const processSearchResults = (results: InternetSearchResult[]) => {
   return results.map((result, index) => {
-    // Create truly unique IDs for each result
-    const uniqueId = `${result.businessName?.toLowerCase().replace(/\s+/g, '-') || 'activity'}-${Date.now()}-${index}`;
+    // Don't create fake IDs - use temporary markers for display only
+    const tempDisplayId = `temp-${index}`;
     
     // Extract URL from multiple possible fields (same logic as FindCamps.tsx)
     const extractedUrl = result.url || result.signup_url || result.link || 
@@ -85,8 +85,8 @@ const processSearchResults = (results: InternetSearchResult[]) => {
     
     return {
       ...result,
-      id: uniqueId,
-      session_id: uniqueId,
+      id: tempDisplayId, // Temporary ID for display only
+      session_id: null, // No session ID for internet results
       // Ensure correct data associations
       businessName: result.businessName || result.name,
       // Preserve URLs properly - don't convert to empty string

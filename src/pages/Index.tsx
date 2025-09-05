@@ -107,7 +107,7 @@ const Index = () => {
         if (internetSearchResponse.data?.success && internetSearchResponse.data?.results?.length > 0) {
           // Transform internet results to match our SearchResult interface
           const internetResults = internetSearchResponse.data.results.map((result: any) => ({
-            sessionId: `internet-${Date.now()}-${Math.random()}`,
+            sessionId: null, // Don't generate fake IDs for internet results
             name: result.name, // Map backend name field
             campName: result.name || result.title, // Use name as primary
             providerName: result.provider,
