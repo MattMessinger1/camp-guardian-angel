@@ -11,6 +11,8 @@ interface RestaurantBookingProps {
 }
 
 export function RestaurantBookingUI({ plan, providerType }: RestaurantBookingProps) {
+  console.log('🍽️ RestaurantBookingUI rendering with:', { plan, providerType });
+  
   const navigate = useNavigate();
   const [credentials, setCredentials] = useState({
     email: '',
@@ -252,6 +254,8 @@ export function RestaurantBookingUI({ plan, providerType }: RestaurantBookingPro
     minDate.setDate(minDate.getDate() + (bookingWindow?.days_in_advance || 30));
     return minDate.toISOString().split('T')[0];
   };
+  
+  console.log('🍽️ RestaurantBookingUI about to render JSX');
   
   return (
     <div className="space-y-6">
