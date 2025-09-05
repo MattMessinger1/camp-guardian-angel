@@ -153,12 +153,19 @@ export function RestaurantBookingUI({ plan, providerType }: RestaurantBookingPro
         setCredentialsVerified(true);
         toast.success('Credentials verified successfully!');
         
-        // Save encrypted credentials to reservation hold
+        // Save encrypted credentials to registration plan
+        const currentRules = plan.rules || {};
         await supabase
-          .from('reservation_holds')
+          .from('registration_plans')
           .update({
-            credentials_verified: true,
-            updated_at: new Date().toISOString()
+            rules: {
+              ...currentRules,
+              credentials: {
+                email: credentials.email,
+                password_encrypted: btoa(credentials.password),
+                verified_at: new Date().toISOString()
+              }
+            }
           })
           .eq('id', plan.id);
       } else {
@@ -200,16 +207,25 @@ export function RestaurantBookingUI({ plan, providerType }: RestaurantBookingPro
     try {
       const bookingOpenDate = calculateBookingOpenDate(preferences.preferred_date);
       
-      // Save the automation configuration to reservation hold
+      // Save the automation configuration to registration plan
+      const currentRules = plan.rules || {};
       const { error: updateError } = await supabase
-        .from('reservation_holds')
+        .from('registration_plans')
         .update({
-          automation_scheduled: true,
-          target_date: preferences.preferred_date,
-          party_size: preferences.party_size,
-          preferred_time: preferences.preferred_time,
-          status: 'active',
-          updated_at: new Date().toISOString()
+          rules: {
+            ...currentRules,
+            preferences: {
+              party_size: preferences.party_size,
+              preferred_date: preferences.preferred_date,
+              preferred_time: preferences.preferred_time,
+              flexible_dates: preferences.flexible_dates
+            },
+            automation_config: {
+              automation_scheduled: true,
+              target_date: preferences.preferred_date,
+              scheduled_at: new Date().toISOString()
+            }
+          }
         })
         .eq('id', plan.id);
       

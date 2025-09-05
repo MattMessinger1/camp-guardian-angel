@@ -215,19 +215,20 @@ export default function ReadyToSignup() {
         throw sessionError;
       }
       
-      // Create reservation hold
+      // Create registration plan for restaurant booking
       const { data: reservation, error: reservationError } = await supabase
-        .from('reservation_holds')
+        .from('registration_plans')
         .insert({
           id: newSessionId,
-          session_id: session.id,
-          status: 'active',
-          parent_email: 'temp@example.com',
-          parent_phone_e164: '+15550000000',
-          child_initials: 'C',
-          child_birth_year: 2010,
-          hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          timezone: 'America/New_York'
+          created_from: 'manual_booking',
+          name: locationState.businessName,
+          url: locationState.businessUrl,
+          rules: {
+            provider_type: providerType,
+            credentials: {},
+            preferences: {},
+            automation_config: {}
+          }
         })
         .select()
         .single();
