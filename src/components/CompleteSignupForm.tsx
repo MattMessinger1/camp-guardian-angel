@@ -306,7 +306,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     }
   };
 
-  // Save form data to localStorage
+  // Save form data to localStorage - KEPT for manual calls only
   const saveFormData = useCallback(() => {
     const formData = {
       email,
@@ -328,7 +328,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     }
   }, [formStorageKey, email, password, guardianName, children, hasPaymentMethod, phone, phoneVerified, consentGiven, upfrontPaymentConsent, successFeeConsent]);
 
-  // Restore form data from localStorage
+  // Restore form data from localStorage - KEPT for manual calls only
   const restoreFormData = useCallback(() => {
     try {
       const saved = localStorage.getItem(formStorageKey);
@@ -355,19 +355,58 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
     }
   }, [formStorageKey]);
 
-  // Auto-save form data when key fields change
+  // Auto-save form data when key fields change - FIXED to prevent infinite loops
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      saveFormData();
+      // Inline save to avoid useCallback dependency chain
+      const formData = {
+        email,
+        password,
+        guardianName,
+        children,
+        hasPaymentMethod,
+        phone,
+        phoneVerified,
+        consentGiven,
+        upfrontPaymentConsent,
+        successFeeConsent,
+        timestamp: Date.now()
+      };
+      try {
+        localStorage.setItem(formStorageKey, JSON.stringify(formData));
+      } catch (error) {
+        console.warn('Failed to save form data:', error);
+      }
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [saveFormData]);
+  }, [formStorageKey, email, password, guardianName, children, hasPaymentMethod, phone, phoneVerified, consentGiven, upfrontPaymentConsent, successFeeConsent]);
 
-  // Restore form data on component mount
+  // Restore form data on component mount - FIXED to prevent infinite loops  
   useEffect(() => {
-    restoreFormData();
-  }, [restoreFormData]);
+    // Inline restore to avoid useCallback dependency chain
+    try {
+      const saved = localStorage.getItem(formStorageKey);
+      if (saved) {
+        const formData = JSON.parse(saved);
+        if (Date.now() - formData.timestamp < 30 * 60 * 1000) {
+          setEmail(formData.email || "");
+          setPassword(formData.password || "");
+          setGuardianName(formData.guardianName || "");
+          setChildren(formData.children || [{ name: "", dob: "" }]);
+          setHasPaymentMethod(formData.hasPaymentMethod || false);
+          setPhone(formData.phone || "");
+          setPhoneVerified(formData.phoneVerified || false);
+          setConsentGiven(formData.consentGiven || false);
+          setUpfrontPaymentConsent(formData.upfrontPaymentConsent || false);
+          setSuccessFeeConsent(formData.successFeeConsent || false);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to restore form data:', error);
+      localStorage.removeItem(formStorageKey);
+    }
+  }, [formStorageKey]); // Only depend on formStorageKey, run once on mount
 
   // Handle dynamic form value changes
   const handleDynamicFormChange = (field: string, value: string) => {

@@ -68,6 +68,8 @@ interface LiveCaptchaEvent {
 }
 
 export function CaptchaMonitoringDashboard() {
+  console.log('🔍 CaptchaMonitoringDashboard render at:', new Date().toISOString());
+  
   const { toast } = useToast();
   const [metrics, setMetrics] = useState<CaptchaMetrics | null>(null);
   const [liveCaptchas, setLiveCaptchas] = useState<LiveCaptchaEvent[]>([]);
@@ -76,6 +78,8 @@ export function CaptchaMonitoringDashboard() {
 
   // Load real-time metrics  
   const loadMetrics = useCallback(async () => {
+    console.log('📊 Loading CAPTCHA metrics at:', new Date().toISOString());
+    
     try {
       // Fetch CAPTCHA performance data
       const { data: captchaData, error: captchaError } = await supabase
@@ -133,8 +137,9 @@ export function CaptchaMonitoringDashboard() {
         communicationChannel: 'sms' as const 
       })) || []);
 
+      console.log('✅ Metrics loaded successfully');
     } catch (error) {
-      console.error('Failed to load CAPTCHA metrics:', error);
+      console.error('❌ Failed to load CAPTCHA metrics:', error);
       throw error; // Re-throw to handle in effect
     } finally {
       setLoading(false);
