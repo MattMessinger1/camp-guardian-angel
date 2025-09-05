@@ -74,7 +74,7 @@ export function CaptchaMonitoringDashboard() {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Load real-time metrics
+  // Load real-time metrics  
   const loadMetrics = useCallback(async () => {
     try {
       // Fetch CAPTCHA performance data
@@ -101,25 +101,6 @@ export function CaptchaMonitoringDashboard() {
         .limit(10);
 
       if (liveError) throw liveError;
-
-      // Calculate success rates by provider
-      const providerStats = captchaData?.reduce((acc: any, captcha: any) => {
-        const provider = captcha.provider || 'unknown';
-        if (!acc[provider]) {
-          acc[provider] = { total: 0, completed: 0 };
-        }
-        acc[provider].total++;
-        if (captcha.status === 'completed') {
-          acc[provider].completed++;
-        }
-        return acc;
-      }, {}) || {};
-
-      const providerSuccess = Object.entries(providerStats).map(([provider, stats]: [string, any]) => ({
-        provider,
-        successRate: (stats.completed / stats.total) * 100,
-        totalCaptchas: stats.total
-      }));
 
       setMetrics({
         totalCaptchas,
@@ -148,31 +129,39 @@ export function CaptchaMonitoringDashboard() {
         status: event.status,
         timeElapsed: Math.floor((Date.now() - new Date(event.created_at).getTime()) / 1000),
         parentNotified: !!event.parent_notified,
-        difficulty: 'medium' as const, // Default difficulty
-        communicationChannel: 'sms' as const // Default channel
+        difficulty: 'medium' as const, 
+        communicationChannel: 'sms' as const 
       })) || []);
 
     } catch (error) {
       console.error('Failed to load CAPTCHA metrics:', error);
-      toast({
-        title: "Error Loading Metrics",
-        description: "Failed to fetch CAPTCHA performance data",
-        variant: "destructive",
-      });
+      throw error; // Re-throw to handle in effect
     } finally {
       setLoading(false);
     }
-  }, []); // Remove toast dependency to prevent infinite loop
+  }, []);
 
-  // Auto-refresh metrics
+  // Auto-refresh metrics with error handling
   useEffect(() => {
-    loadMetrics();
+    const loadData = async () => {
+      try {
+        await loadMetrics();
+      } catch (error) {
+        toast({
+          title: "Error Loading Metrics",
+          description: "Failed to fetch CAPTCHA performance data",
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadData();
     
     if (autoRefresh) {
-      const interval = setInterval(loadMetrics, 10000); // Refresh every 10 seconds
+      const interval = setInterval(loadData, 10000); // Refresh every 10 seconds
       return () => clearInterval(interval);
     }
-  }, [loadMetrics, autoRefresh]);
+  }, [loadMetrics, autoRefresh]); // Remove toast dependency
 
   // Test predictive CAPTCHA system
   const testPredictiveSystem = async () => {
