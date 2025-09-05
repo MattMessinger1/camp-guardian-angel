@@ -139,7 +139,7 @@ export default function ReadyToSignup() {
       if (error) throw error;
       return data;
     },
-    enabled: !!(realPlanId || (planId && !isInternetSession)) && !isPlanCreating
+    enabled: !!(realPlanId || (planId && !isInternetSession && planId !== 'pending')) && !isPlanCreating
   });
 
   // Progressive flow stages
@@ -960,7 +960,19 @@ export default function ReadyToSignup() {
       )}
       
       {/* Progressive stages */}
-      {stage === 'loading' && (
+      {planId === 'pending' && isPlanCreating && (
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin"/>
+            <div>Setting up your registration...</div>
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Creating your personalized signup automation
+          </p>
+        </Card>
+      )}
+      
+      {stage === 'loading' && planId !== 'pending' && (
         <Card className="p-6">
           <div className="flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin"/>
