@@ -3051,7 +3051,7 @@ export type Database = {
           status: Database["public"]["Enums"]["hold_status"]
           timezone: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           address_enc?: string | null
@@ -3075,7 +3075,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["hold_status"]
           timezone?: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           address_enc?: string | null
@@ -3099,7 +3099,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["hold_status"]
           timezone?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

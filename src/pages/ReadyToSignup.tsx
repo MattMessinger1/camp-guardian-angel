@@ -316,13 +316,17 @@ export default function ReadyToSignup() {
                 provider_id: provider
               })
               .select('id')
-              .single();
+              .maybeSingle();
               
             if (activityError) {
               console.error('❌ Failed to create activity:', activityError);
-              creationStartedRef.current = false;
               setIsPlanCreating(false);
               setStage('error');
+              toast({
+                title: "Setup Error",
+                description: "Unable to create activity record. Please try again.",
+                variant: "destructive"
+              });
               return;
             }
             activity = newActivity;
@@ -343,13 +347,17 @@ export default function ReadyToSignup() {
               registration_open_at: stateData.registrationOpenAt ? new Date(stateData.registrationOpenAt).toISOString() : null
             })
             .select('id')
-            .single();
+            .maybeSingle();
             
           if (sessionError) {
             console.error('❌ Failed to create session:', sessionError);
-            creationStartedRef.current = false;
             setIsPlanCreating(false);
             setStage('error');
+            toast({
+              title: "Setup Error", 
+              description: "Unable to create session record. Please try again.",
+              variant: "destructive"
+            });
             return;
           }
           console.log('✅ Created session:', session.id);
@@ -370,13 +378,17 @@ export default function ReadyToSignup() {
               timezone: 'America/New_York'
             })
             .select('id')
-            .single();
+            .maybeSingle();
             
           if (reservationError) {
             console.error('❌ Failed to create reservation:', reservationError);
-            creationStartedRef.current = false;
             setIsPlanCreating(false);
             setStage('error');
+            toast({
+              title: "Setup Error",
+              description: "Unable to create reservation hold. Please try again.", 
+              variant: "destructive"
+            });
             return;
           }
           console.log('✅ Created reservation:', reservation.id);
@@ -393,9 +405,17 @@ export default function ReadyToSignup() {
           
         } catch (error) {
           console.error('❌ Failed to create activities flow:', error);
-          // Don't reset creationStartedRef on error to prevent infinite retries
+          // DON'T reset creationStartedRef to prevent infinite loop
+          // creationStartedRef.current = false; // REMOVED - this was causing infinite loop
           setIsPlanCreating(false);
           setStage('error');
+          
+          // Show user-friendly error
+          toast({
+            title: "Setup Error",
+            description: "Unable to set up your registration. Please try again.",
+            variant: "destructive"
+          });
         }
       };
       
@@ -830,7 +850,7 @@ export default function ReadyToSignup() {
           preferredTimes: [bookingDetails.time1, bookingDetails.time2, bookingDetails.time3]
         },
         status: 'armed'
-      }).select().single();
+      }).select().maybeSingle();
       
       // Schedule the execution
       await supabase.functions.invoke('arm-signup', {
