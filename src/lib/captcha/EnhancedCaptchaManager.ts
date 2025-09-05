@@ -174,7 +174,12 @@ export class EnhancedCaptchaManager extends CaptchaHandler {
     // Create enhanced event
     const enhancedEvent: EnhancedCaptchaEvent = {
       ...baseCaptchaEvent,
-      prediction: prediction || {
+      prediction: prediction ? {
+        likelihood: prediction.confidence, // Map confidence to likelihood
+        confidence: prediction.confidence,
+        triggeredBy: 'pattern_detection' as const,
+        predictedDifficulty: 'medium' as const
+      } : {
         likelihood: 0.8,
         confidence: 0.7,
         triggeredBy: 'real_detection' as const,
@@ -599,7 +604,6 @@ export class EnhancedCaptchaManager extends CaptchaHandler {
       console.warn('Failed to log enhanced metrics:', error);
     }
   }
-}
 
   // Add helper method for accessing captcha events
   async getCaptchaEvent(captchaId: string): Promise<CaptchaEvent | undefined> {
@@ -610,7 +614,21 @@ export class EnhancedCaptchaManager extends CaptchaHandler {
         .eq('id', captchaId)
         .single();
       
-      return data as CaptchaEvent;
+      if (!data) return undefined;
+      
+      // Map database columns to CaptchaEvent interface
+      return {
+        id: data.id,
+        sessionId: data.session_id,
+        userId: data.user_id,
+        provider: data.provider,
+        challengeUrl: data.challenge_url,
+        magicUrl: data.magic_url,
+        detectedAt: data.detected_at,
+        expiresAt: data.expires_at,
+        status: data.status as 'pending' | 'solved' | 'expired',
+        metadata: data.meta as any
+      } as CaptchaEvent;
     } catch {
       return undefined;
     }

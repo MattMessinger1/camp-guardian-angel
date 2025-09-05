@@ -271,12 +271,17 @@ export class ParentCommunicationManager {
   ): Promise<CommunicationMetrics> {
     const timeFilter = this.getTimeFilter(timeframe);
     
-    const { data, error } = await supabase
+    let query = supabase
       .from('compliance_audit')
       .select('*')
       .gte('created_at', timeFilter)
-      .eq('event_type', 'PARENT_NOTIFICATION')
-      .eq(userId ? 'user_id' : 'dummy', userId || 'dummy');
+      .eq('event_type', 'PARENT_NOTIFICATION');
+    
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+    
+    const { data, error } = await query;
 
     if (error) throw error;
 
