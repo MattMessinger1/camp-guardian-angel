@@ -14,6 +14,7 @@ import ProviderInfo from '@/components/ProviderInfo';
 import { detectProvider, detectPlatform } from '@/utils/providerDetection';
 import { useQuery } from '@tanstack/react-query';
 import { CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import AnonymousSignup from '@/components/AnonymousSignup';
 import { format } from 'date-fns';
 
 // Helper function to determine provider type based on detected provider
@@ -164,6 +165,9 @@ export default function ReadyToSignup() {
   const [isCredentialsSaving, setIsCredentialsSaving] = useState(false);
   const [credentialsSaved, setCredentialsSaved] = useState(false);
   
+  // Anonymous signup state
+  const [showAnonymousSignup, setShowAnonymousSignup] = useState(false);
+  
   // Pattern discovery state
   const [isDiscoveringPattern, setIsDiscoveringPattern] = useState(false);
   const [discoveredPattern, setDiscoveredPattern] = useState<any>(null);
@@ -189,6 +193,38 @@ export default function ReadyToSignup() {
     openDate.setHours(10, 0, 0, 0); // 10:00 AM ET
     
     return openDate;
+  };
+
+  // Handle anonymous signup completion
+  const handleAnonymousSignupComplete = async (newUser: any) => {
+    console.log('✅ Anonymous signup completed:', newUser);
+    setShowAnonymousSignup(false);
+    
+    // Update the reservation with the new user ID if we have a real plan ID
+    if (realPlanId) {
+      try {
+        const { error } = await supabase
+          .from('reservation_holds')
+          .update({ 
+            user_id: newUser.id,
+            parent_email: newUser.email 
+          })
+          .eq('id', realPlanId);
+          
+        if (error) {
+          console.error('Failed to update reservation with user:', error);
+        } else {
+          console.log('✅ Updated reservation with new user');
+        }
+      } catch (error) {
+        console.error('Error updating reservation:', error);
+      }
+    }
+    
+    toast({
+      title: "Account created!",
+      description: "You can now proceed with your reservation setup.",
+    });
   };
 
   // Detect provider from current session
@@ -236,18 +272,12 @@ export default function ReadyToSignup() {
       pathname: location.pathname,
       creationStarted: creationStartedRef.current,
       userId: user?.id,
-      authStatus: user?.id ? '✅ AUTHENTICATED' : '❌ NOT_AUTHENTICATED'
+      authStatus: user?.id ? '✅ AUTHENTICATED' : '⚪ ANONYMOUS (OK for try-before-signup)'
     });
-
-    // Check if user is authenticated
-    if (stateData && !user?.id) {
-      console.error('❌ USER NOT AUTHENTICATED - Database creation will fail');
-      console.log('👆 Please sign in first before testing the flow');
-      console.log('🔄 Redirecting to auth...');
-    }
     
     // If we have location.state data, create proper activities/sessions/reservations flow
-    if (stateData && !realPlanId && !isPlanCreating && !creationStartedRef.current && user?.id) {
+    // No authentication required - let anonymous users create records
+    if (stateData && !realPlanId && !isPlanCreating && !creationStartedRef.current) {
       console.log('🚀 Creating activities → sessions → reservations flow from location.state:', stateData);
       creationStartedRef.current = true;
       setIsPlanCreating(true);
@@ -325,12 +355,12 @@ export default function ReadyToSignup() {
           console.log('✅ Created session:', session.id);
           
           // 3. Create Reservation (this becomes our planId)
-          // Note: reservations table has different schema, using correct fields
+          // Support anonymous users - they can create reservations without user_id
           const { data: reservation, error: reservationError } = await supabase
             .from('reservation_holds')
             .insert({
               session_id: session.id,
-              user_id: user.id, // Use user.id directly since we've already validated user exists
+              user_id: user?.id || null, // Optional for anonymous users
               status: 'active',
               parent_email: user?.email || 'temp@example.com',
               parent_phone_e164: '+15550000000',
@@ -373,7 +403,7 @@ export default function ReadyToSignup() {
       return;
     }
     
-  }, [location.state, realPlanId, isPlanCreating, user?.id]); // Add proper dependencies
+  }, [location.state, realPlanId, isPlanCreating]); // Removed user?.id dependency - anonymous users supported
 
   // Quick check for registration times (3 second timeout)
   const quickCheckForTimes = async (url: string): Promise<{ foundTime: boolean; time?: string }> => {
@@ -973,6 +1003,26 @@ export default function ReadyToSignup() {
         />
       )}
       
+      {/* Anonymous signup modal - shown when user needs to create account */}
+      {showAnonymousSignup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute -top-10 right-0 text-white hover:text-gray-300"
+              onClick={() => setShowAnonymousSignup(false)}
+            >
+              ✕ Skip for now
+            </Button>
+            <AnonymousSignup
+              onSignupComplete={handleAnonymousSignupComplete}
+              businessName={sessionData?.businessName || businessName}
+            />
+          </div>
+        </div>
+      )}
+      
       {/* Progressive stages */}
       {planId === 'pending' && isPlanCreating && (
         <Card className="p-6">
@@ -1268,25 +1318,41 @@ export default function ReadyToSignup() {
               value={credentials.password}
               onChange={(e) => setCredentials({...credentials, password: e.target.value})}
             />
-            <div className="flex gap-3">
-              <Button 
-                onClick={handleLoginSubmit} 
-                className="flex-1"
-                disabled={!credentials.email || !credentials.password || isAnalyzing}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Analyzing...
-                  </>
-                ) : (
-                  'Connect Account'
-                )}
-              </Button>
-              <Button variant="ghost" onClick={() => setStage('manual_time')} className="flex-1">
-                Skip - Set time manually
-              </Button>
-            </div>
+             <div className="flex gap-3">
+               <Button 
+                 onClick={handleLoginSubmit} 
+                 className="flex-1"
+                 disabled={!credentials.email || !credentials.password || isAnalyzing}
+               >
+                 {isAnalyzing ? (
+                   <>
+                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                     Analyzing...
+                   </>
+                 ) : (
+                   'Connect Account'
+                 )}
+               </Button>
+               <Button variant="ghost" onClick={() => setStage('manual_time')} className="flex-1">
+                 Skip - Set time manually
+               </Button>
+             </div>
+             
+             {/* Option to create new account if user doesn't have one */}
+             {!user && (
+               <div className="mt-4 pt-4 border-t border-border">
+                 <p className="text-sm text-muted-foreground text-center mb-3">
+                   Don't have an account yet?
+                 </p>
+                 <Button 
+                   variant="outline" 
+                   onClick={() => setShowAnonymousSignup(true)}
+                   className="w-full"
+                 >
+                   Create Account with {businessName || sessionData?.businessName || 'Us'}
+                 </Button>
+               </div>
+             )}
           </div>
         </Card>
       )}
