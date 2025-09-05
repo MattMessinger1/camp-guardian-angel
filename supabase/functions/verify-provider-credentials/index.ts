@@ -25,15 +25,11 @@ serve(async (req) => {
     const sessionResponse = await fetch('https://api.browserbase.com/v1/sessions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${browserbaseToken}`,
+        'X-BB-API-Key': browserbaseToken,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        projectId: browserbaseProject,
-        options: {
-          headless: true,
-          viewport: { width: 1920, height: 1080 }
-        }
+        projectId: browserbaseProject
       })
     });
     
@@ -74,7 +70,7 @@ serve(async (req) => {
       await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${browserbaseToken}`
+          'X-BB-API-Key': browserbaseToken
         }
       });
       
@@ -95,7 +91,7 @@ serve(async (req) => {
       await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${browserbaseToken}`
+          'X-BB-API-Key': browserbaseToken
         }
       });
       throw error;
@@ -124,7 +120,7 @@ async function verifyResyCredentials(sessionId: string, email: string, password:
   await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}/navigate`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${browserbaseToken}`,
+      'X-BB-API-Key': browserbaseToken,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -139,7 +135,7 @@ async function verifyResyCredentials(sessionId: string, email: string, password:
   const scriptResult = await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}/execute`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${browserbaseToken}`,
+      'X-BB-API-Key': browserbaseToken,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -176,7 +172,7 @@ async function verifyResyCredentials(sessionId: string, email: string, password:
   const verifyResult = await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}/execute`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${browserbaseToken}`,
+      'X-BB-API-Key': browserbaseToken,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
