@@ -234,11 +234,12 @@ export default function ReadyToSignup() {
       hasRealPlanId: !!realPlanId,
       isPlanCreating,
       pathname: location.pathname,
-      creationStarted: creationStartedRef.current
+      creationStarted: creationStartedRef.current,
+      userId: user?.id
     });
     
     // If we have location.state data, create proper activities/sessions/reservations flow
-    if (stateData && !realPlanId && !isPlanCreating && !creationStartedRef.current) {
+    if (stateData && !realPlanId && !isPlanCreating && !creationStartedRef.current && user?.id) {
       console.log('🚀 Creating activities → sessions → reservations flow from location.state:', stateData);
       creationStartedRef.current = true;
       setIsPlanCreating(true);
@@ -247,20 +248,6 @@ export default function ReadyToSignup() {
       const createFlow = async () => {
         try {
           console.log('🚀 Creating activities → sessions → reservations flow');
-          
-          // Ensure user is authenticated before creating reservations
-          if (!user || !user.id) {
-            console.error('❌ User not authenticated, cannot create reservation');
-            toast({
-              title: "Authentication Required",
-              description: "Please log in to create a reservation.",
-              variant: "destructive",
-            });
-            creationStartedRef.current = false;
-            setIsPlanCreating(false);
-            setStage('error');
-            return;
-          }
           
           const businessName = stateData.businessName || stateData.title || 'Activity';
           const provider = stateData.provider || 'unknown';
@@ -358,17 +345,17 @@ export default function ReadyToSignup() {
           
           setRealPlanId(reservation.id);
           
-          // Navigate to the new reservation URL with the original state
+          // Navigate to the new reservation URL WITHOUT preserving state to prevent loop
           navigate(`/ready-to-signup/${reservation.id}`, { 
-            replace: true,
-            state: stateData  // Preserve the original state
+            replace: true
+            // Do NOT preserve state - this was causing the infinite loop!
           });
           
           setIsPlanCreating(false);
           
         } catch (error) {
           console.error('❌ Failed to create activities flow:', error);
-          creationStartedRef.current = false;
+          // Don't reset creationStartedRef on error to prevent infinite retries
           setIsPlanCreating(false);
           setStage('error');
         }
@@ -378,7 +365,7 @@ export default function ReadyToSignup() {
       return;
     }
     
-  }, [location.state, realPlanId, isPlanCreating, user, planId]);
+  }, [location.state, realPlanId, isPlanCreating, user?.id]); // Add proper dependencies
 
   // Quick check for registration times (3 second timeout)
   const quickCheckForTimes = async (url: string): Promise<{ foundTime: boolean; time?: string }> => {
