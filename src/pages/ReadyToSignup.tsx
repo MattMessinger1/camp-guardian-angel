@@ -248,6 +248,20 @@ export default function ReadyToSignup() {
         try {
           console.log('🚀 Creating activities → sessions → reservations flow');
           
+          // Ensure user is authenticated before creating reservations
+          if (!user || !user.id) {
+            console.error('❌ User not authenticated, cannot create reservation');
+            toast({
+              title: "Authentication Required",
+              description: "Please log in to create a reservation.",
+              variant: "destructive",
+            });
+            creationStartedRef.current = false;
+            setIsPlanCreating(false);
+            setStage('error');
+            return;
+          }
+          
           const businessName = stateData.businessName || stateData.title || 'Activity';
           const provider = stateData.provider || 'unknown';
           const city = stateData.city || 'Unknown';
@@ -321,7 +335,7 @@ export default function ReadyToSignup() {
             .from('reservation_holds')
             .insert({
               session_id: session.id,
-              user_id: user?.id || null,
+              user_id: user.id, // Use user.id directly since we've already validated user exists
               status: 'active',
               parent_email: user?.email || 'temp@example.com',
               parent_phone_e164: '+15550000000',
