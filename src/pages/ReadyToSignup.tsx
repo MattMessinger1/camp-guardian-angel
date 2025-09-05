@@ -794,7 +794,8 @@ export default function ReadyToSignup() {
           email: restaurantCredentials.email,
           password: restaurantCredentials.password,
           provider_name: detectedPlatform.platform,
-          camp_id: planData?.id || 'temp-camp-id'
+          provider_url: location.state?.url || 'https://resy.com/cities/ny/carbone',
+          session_id: planId !== 'pending' ? planId : null
         }
       });
 
