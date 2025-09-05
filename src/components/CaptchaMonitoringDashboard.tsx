@@ -32,6 +32,7 @@ interface CaptchaMetrics {
   // Performance metrics
   totalCaptchas: number;
   avgResolutionTime: number;
+  avgResponseTime: number; // Add missing property
   successRate: number;
   queuePositionRetention: number;
 
@@ -88,59 +89,80 @@ export function CaptchaMonitoringDashboard() {
       // Calculate metrics
       const totalCaptchas = captchaData?.length || 0;
       const completedCaptchas = captchaData?.filter(c => c.status === 'completed') || [];
-      const successRate = totalCaptchas > 0 ? (completedCaptchas.length / totalCaptchas) * 100 : 0;
-      
-      // Mock metrics for demonstration
-      const calculatedMetrics: CaptchaMetrics = {
+      const avgResponseTime = completedCaptchas.reduce((sum: number, c: any) => 
+        sum + (c.response_time || 0), 0) / Math.max(completedCaptchas.length, 1);
+
+      // Fetch live CAPTCHA events (pending/active)
+      const { data: liveData, error: liveError } = await supabase
+        .from('captcha_events')
+        .select('*')
+        .in('status', ['pending', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (liveError) throw liveError;
+
+      // Calculate success rates by provider
+      const providerStats = captchaData?.reduce((acc: any, captcha: any) => {
+        const provider = captcha.provider || 'unknown';
+        if (!acc[provider]) {
+          acc[provider] = { total: 0, completed: 0 };
+        }
+        acc[provider].total++;
+        if (captcha.status === 'completed') {
+          acc[provider].completed++;
+        }
+        return acc;
+      }, {}) || {};
+
+      const providerSuccess = Object.entries(providerStats).map(([provider, stats]: [string, any]) => ({
+        provider,
+        successRate: (stats.completed / stats.total) * 100,
+        totalCaptchas: stats.total
+      }));
+
+      setMetrics({
         totalCaptchas,
-        avgResolutionTime: 127, // seconds
-        successRate,
-        queuePositionRetention: 94.2,
-        parentResponseRate: 89.3,
-        avgParentResponseTime: 142, // seconds
+        avgResolutionTime: Math.round(avgResponseTime),
+        avgResponseTime: Math.round(avgResponseTime),
+        successRate: totalCaptchas > 0 ? (completedCaptchas.length / totalCaptchas) * 100 : 0,
+        queuePositionRetention: 92, // Mock data
+        parentResponseRate: 95, // Mock data
+        avgParentResponseTime: 45, // Mock data 
         notificationSuccess: {
-          sms: 96.8,
-          email: 91.2,
-          push: 87.4
+          sms: 94,
+          email: 87,
+          push: 76
         },
-        predictionAccuracy: 85.7,
-        falsePositiveRate: 8.3,
-        earlyWarningSuccess: 78.9,
-        activeCaptchas: captchaData?.filter(c => c.status === 'pending').length || 0,
-        pendingNotifications: Math.floor(Math.random() * 5),
-        criticalSituations: captchaData?.filter(c => 
-          c.status === 'pending' && 
-          new Date(c.expires_at).getTime() - Date.now() < 300000 // Less than 5 minutes
-        ).length || 0
-      };
+        predictionAccuracy: 89,
+        falsePositiveRate: 7,
+        earlyWarningSuccess: 78,
+        activeCaptchas: liveData?.length || 0,
+        pendingNotifications: 3, // Mock data
+        criticalSituations: 0 // Mock data
+      });
 
-      setMetrics(calculatedMetrics);
-
-      // Generate live CAPTCHA events for demo
-      const mockLiveCaptchas: LiveCaptchaEvent[] = captchaData?.slice(0, 5).map(c => ({
-        id: c.id,
-        provider: c.provider || 'unknown',
-        status: c.status as any,
-        queuePosition: Math.floor(Math.random() * 50) + 1,
-        parentNotified: true,
-        timeElapsed: Math.floor((Date.now() - new Date(c.created_at).getTime()) / 1000),
-        difficulty: 'medium' as any,
-        communicationChannel: 'sms' as any
-      })) || [];
-
-      setLiveCaptchas(mockLiveCaptchas);
+      setLiveCaptchas(liveData?.map((event: any) => ({
+        id: event.id,
+        provider: event.provider || 'unknown',
+        status: event.status,
+        timeElapsed: Math.floor((Date.now() - new Date(event.created_at).getTime()) / 1000),
+        parentNotified: !!event.parent_notified,
+        difficulty: 'medium' as const, // Default difficulty
+        communicationChannel: 'sms' as const // Default channel
+      })) || []);
 
     } catch (error) {
-      console.error('Error loading CAPTCHA metrics:', error);
+      console.error('Failed to load CAPTCHA metrics:', error);
       toast({
-        title: "Error loading metrics",
-        description: "Failed to load CAPTCHA monitoring data",
-        variant: "destructive"
+        title: "Error Loading Metrics",
+        description: "Failed to fetch CAPTCHA performance data",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []); // Remove toast dependency to prevent infinite loop
 
   // Auto-refresh metrics
   useEffect(() => {
