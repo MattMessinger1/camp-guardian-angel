@@ -1,1755 +1,487 @@
+// src/pages/ReadyToSignup.tsx - FIXED VERSION
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { getTestScenario } from '@/lib/test-scenarios';
-import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
-import ProviderInfo from '@/components/ProviderInfo';
-import { detectProvider, detectPlatform } from '@/utils/providerDetection';
-import { useQuery } from '@tanstack/react-query';
-import { CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import AnonymousSignup from '@/components/AnonymousSignup';
-import { format } from 'date-fns';
+import { toast } from 'sonner';
 
-// Helper function to determine provider type based on detected provider
-const getProviderType = (provider: string): string => {
-  const providerTypeMap: { [key: string]: string } = {
-    'resy': 'restaurant',
-    'opentable': 'restaurant',
-    'yelp': 'restaurant',
-    'soulcycle': 'fitness',
-    'barrys': 'fitness',
-    'equinox': 'fitness',
-    'corepower': 'fitness',
-    'orangetheory': 'fitness',
-    'classpass': 'fitness',
-    'mindbody': 'fitness',
-    'eventbrite': 'event',
-    'ticketmaster': 'event'
-  };
+interface LocationState {
+  businessName: string;
+  businessUrl: string;  
+  provider?: string;
+  searchResult?: any;
+}
+
+// Global state manager for persistence
+class StateManager {
+  private static KEY = 'carbone_booking_state';
   
-  return providerTypeMap[provider?.toLowerCase()] || 'general';
-};
-
-// Provider-specific configuration
-const getProviderConfig = (provider: string, targetDate?: string) => {
-  const calculateResyOpenTime = (targetDateStr: string) => {
-    if (!targetDateStr) return '';
-    const targetDateObj = new Date(targetDateStr);
-    const openDate = new Date(targetDateObj);
-    openDate.setDate(openDate.getDate() - 30);
-    openDate.setHours(10, 0, 0, 0); // 10:00 AM ET
-    return openDate.toISOString();
-  };
-
-  switch(provider?.toLowerCase()) {
-    case 'resy':
-      return {
-        title: 'Restaurant Reservation Setup',
-        timeLabel: 'When do reservations open?',
-        timeHint: 'Carbone opens 30 days in advance at 10:00 AM ET',
-        defaultTime: targetDate ? calculateResyOpenTime(targetDate) : '',
-        fields: ['party_size', 'preferred_date', 'backup_times'],
-        credentialLabel: 'Resy Account'
-      };
-    case 'peloton':
-      return {
-        title: 'Class Registration Setup',
-        timeLabel: 'When does class registration open?',
-        timeHint: 'Usually 7 days in advance at noon',
-        fields: ['class_type', 'instructor_preference'],
-        credentialLabel: 'Peloton Account'
-      };
-    default:
-      return {
-        title: 'Registration Setup',
-        timeLabel: 'When does registration open?',
-        timeHint: 'Enter the date and time registration becomes available',
-        fields: [],
-        credentialLabel: 'Account'
-      };
+  static save(state: LocationState): void {
+    if (state?.businessUrl) {
+      console.log('💾 Saving state to storage:', state);
+      localStorage.setItem(this.KEY, JSON.stringify(state));
+    }
   }
-};
+  
+  static load(): LocationState | null {
+    try {
+      const stored = localStorage.getItem(this.KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('📂 Loaded state from storage:', parsed);
+        return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to load state:', e);
+    }
+    return null;
+  }
+  
+  static clear(): void {
+    console.log('🗑️ Clearing stored state');
+    localStorage.removeItem(this.KEY);
+  }
+}
 
 export default function ReadyToSignup() {
-  const params = useParams<{ id?: string; sessionId?: string }>();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const { sessionId } = useParams();
   const location = useLocation();
-  const planId = params.id || params.sessionId;
-  const isInternetSession = planId?.startsWith('internet-');
-
-  // State for plan creation flow
-  const [realPlanId, setRealPlanId] = useState<string | null>(null);
-  const [isPlanCreating, setIsPlanCreating] = useState(false);
+  const navigate = useNavigate();
   
-  // Ref to prevent multiple creation attempts
-  const creationStartedRef = useRef(false);
-
-  const { data: planData } = useQuery({
-    queryKey: ['reservation-hold-data', realPlanId || planId],
-    queryFn: async () => {
-      const queryId = realPlanId || planId;
-      
-      // Handle test mode - if the ID starts with "test-", return null since it's not in the database
-      if (queryId?.startsWith('test-')) {
-        console.log('Test mode detected, skipping database query for:', queryId);
-        return null;
-      }
-      
-      // Query reservation_holds with joined session and activity data
-      const { data, error } = await supabase
-        .from('reservation_holds')
-        .select(`
-          id,
-          status,
-          parent_email,
-          sessions (
-            id,
-            title,
-            start_at,
-            registration_open_at,
-            activities (
-              id,
-              name,
-              kind,
-              city,
-              state,
-              canonical_url,
-              provider_id
-            )
-          )
-        `)
-        .eq('id', queryId)
-        .maybeSingle();
-
-      if (error && error.code === 'PGRST116') {
-        // Reservation hold not found - this is ok for temporary sessions
-        console.log('Reservation hold not found in database (expected for temporary sessions):', queryId);
-        return null;
-      }
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!(realPlanId || (planId && !isInternetSession && planId !== 'pending')) && !isPlanCreating
-  });
-
-  // Progressive flow stages
-  const [stage, setStage] = useState('loading');
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [credentials, setCredentials] = useState({ email: '', password: '' });
-  const [registrationTime, setRegistrationTime] = useState('');
-  const [manualRegistrationTime, setManualRegistrationTime] = useState('');
-  const [browserSessionId, setBrowserSessionId] = useState<string | null>(null);
-  const [sessionData, setSessionData] = useState<any>(null);
-  const [providerStats, setProviderStats] = useState<any>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [registrationPlan, setRegistrationPlan] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   
-  // Resy-specific state
-  const [resyCredentials, setResyCredentials] = useState({ email: '', password: '' });
-  const [resyLoginSuccess, setResyLoginSuccess] = useState(false);
-  const [isTestingLogin, setIsTestingLogin] = useState(false);
+  // Track if we've already tried to create a plan
+  const planCreationAttempted = useRef(false);
   
-  // Restaurant credentials state (for non-Resy restaurants)
-  const [restaurantCredentials, setRestaurantCredentials] = useState({ email: '', password: '' });
-  const [isCredentialsSaving, setIsCredentialsSaving] = useState(false);
-  const [credentialsSaved, setCredentialsSaved] = useState(false);
-  
-  // Anonymous signup state
-  const [showAnonymousSignup, setShowAnonymousSignup] = useState(false);
-  
-  // Pattern discovery state
-  const [isDiscoveringPattern, setIsDiscoveringPattern] = useState(false);
-  const [discoveredPattern, setDiscoveredPattern] = useState<any>(null);
-  const [userConfirmedTime, setUserConfirmedTime] = useState<string>('');
-  
-  const [discovering, setDiscovering] = useState(false);
-  const [bookingDetails, setBookingDetails] = useState({
-    date: '',
-    partySize: '2',
-    time1: '7:30 PM',
-    time2: '8:00 PM',
-    time3: '9:00 PM'
-  });
-  const [bookingOpensAt, setBookingOpensAt] = useState<Date | null>(null);
-
-  // Restore location state from sessionStorage if it was lost during navigation
-  const getLocationStateData = () => {
-    const stateData = location.state;
-    if (stateData) return stateData;
-    
-    // Try to restore from sessionStorage
-    const savedState = sessionStorage.getItem('readyToSignup_locationState');
-    return savedState ? JSON.parse(savedState) : null;
-  };
-
-  // Calculate booking open time for Resy (30 days prior at 10 AM ET)
-  const calculateBookingOpenTime = (targetDate: string) => {
-    if (!targetDate) return null;
-    
-    const targetDateObj = new Date(targetDate);
-    const openDate = new Date(targetDateObj);
-    openDate.setDate(openDate.getDate() - 30);
-    openDate.setHours(10, 0, 0, 0); // 10:00 AM ET
-    
-    return openDate;
-  };
-
-  // Handle anonymous signup completion
-  const handleAnonymousSignupComplete = async (newUser: any) => {
-    console.log('✅ Anonymous signup completed:', newUser);
-    setShowAnonymousSignup(false);
-    
-    // Update the reservation with the new user ID if we have a real plan ID
-    if (realPlanId) {
-      try {
-        const { error } = await supabase
-          .from('reservation_holds')
-          .update({ 
-            user_id: newUser.id,
-            parent_email: newUser.email 
-          })
-          .eq('id', realPlanId);
-          
-        if (error) {
-          console.error('Failed to update reservation with user:', error);
-        } else {
-          console.log('✅ Updated reservation with new user');
-        }
-      } catch (error) {
-        console.error('Error updating reservation:', error);
-      }
+  // Get location state - ALWAYS check both sources
+  const getLocationState = (): LocationState | null => {
+    // Priority 1: Fresh navigation state
+    if (location.state?.businessUrl) {
+      const state = location.state as LocationState;
+      StateManager.save(state); // Always save when we have it
+      return state;
     }
     
-    toast({
-      title: "Account created!",
-      description: "You can now proceed with your reservation setup.",
-    });
-  };
-
-  // Detect provider from current session
-  const currentProvider = analysis?.provider || detectProvider(sessionData?.url || planData?.sessions?.activities?.canonical_url || '');
-  const isResyProvider = currentProvider === 'resy' || (sessionData?.url || planData?.sessions?.activities?.canonical_url || '').includes('resy.com');
-  
-  // State for detected platform
-  const [detectedPlatform, setDetectedPlatform] = useState<{ platform: string; type: string }>({ platform: 'unknown', type: 'unknown' });
-  
-  // Detect platform for restaurant type detection
-  const businessName = sessionData?.businessName || sessionData?.title || sessionData?.activities?.name || location.state?.businessName || '';
-
-  // Fix the provider detection logic at the component level
-  useEffect(() => {
-    if (location.state) {
-      // The provider is ALREADY in location.state!
-      const provider = location.state.provider;  // This is 'resy'!
-      const businessName = location.state.businessName;
-      
-      console.log('Received provider:', provider, 'for', businessName);
-      
-      // Set the platform from what we received
-      if (provider && provider !== 'unknown') {
-        setDetectedPlatform({
-          platform: provider,  // Use the provider we received ('resy')
-          type: provider === 'resy' || provider === 'opentable' ? 'restaurant' : 
-                provider === 'peloton' ? 'fitness' : 'other'
-        });
-      }
+    // Priority 2: Stored state
+    const stored = StateManager.load();
+    if (stored?.businessUrl) {
+      return stored;
     }
-  }, [location.state]);
-  
-  // Get provider-specific configuration
-  const providerConfig = getProviderConfig(currentProvider, bookingDetails.date);
-
-  // Initialize plan creation for location.state data - ALWAYS create real plans
-  useEffect(() => {
-    const stateData = getLocationStateData();
     
+    return null;
+  };
+  
+  const locationState = getLocationState();
+  
+  useEffect(() => {
     console.log('📍 ReadyToSignup initialization:', {
-      sessionId: planId,
-      hasLocationState: !!stateData,
-      hasRealPlanId: !!realPlanId,
-      isPlanCreating,
+      sessionId,
+      hasLocationState: !!locationState,
+      locationState,
       pathname: location.pathname,
-      creationStarted: creationStartedRef.current,
-      userId: user?.id,
-      authStatus: user?.id ? '✅ AUTHENTICATED' : '⚪ ANONYMOUS (OK for try-before-signup)'
+      isRealPlanId: sessionId && !sessionId.includes('test')
     });
     
-    // If we have location.state data, create proper activities/sessions/reservations flow
-    // No authentication required - let anonymous users create records
-    if (stateData && !realPlanId && !isPlanCreating && !creationStartedRef.current) {
-      console.log('🚀 Creating activities → sessions → reservations flow from location.state:', stateData);
+    // Don't clear state on unmount - we need it for navigation!
+    initializeRegistration();
+  }, [sessionId]);
+  
+  const initializeRegistration = async () => {
+    try {
+      setIsLoading(true);
       
-      // Store location state data in sessionStorage before navigation to preserve it
-      sessionStorage.setItem('readyToSignup_locationState', JSON.stringify(stateData));
+      // Skip test session IDs
+      if (sessionId?.includes('test')) {
+        console.log('⚠️ Skipping test session ID');
+        if (locationState && !planCreationAttempted.current) {
+          await createNewPlan();
+        }
+        return;
+      }
       
-      creationStartedRef.current = true;
-      setIsPlanCreating(true);
+      // Try to load existing plan from reservation_holds
+      if (sessionId) {
+        const { data: reservation, error } = await supabase
+          .from('reservation_holds')
+          .select(`
+            *,
+            sessions (
+              *,
+              activities (
+                id,
+                name,
+                canonical_url,
+                provider_id
+              )
+            )
+          `)
+          .eq('id', sessionId)
+          .maybeSingle();
+        
+        if (!error && reservation) {
+          console.log('✅ Found existing reservation:', reservation);
+          
+          // Transform to expected format
+          const existingPlan = {
+            id: reservation.id,
+            session_id: reservation.id,
+            provider_name: reservation.sessions?.activities?.name || locationState?.businessName,
+            provider_url: reservation.sessions?.activities?.canonical_url || locationState?.businessUrl,
+            provider_type: detectProviderType(reservation.sessions?.activities?.canonical_url || locationState?.businessUrl || ''),
+            status: reservation.status,
+            preferences: {},
+            ...reservation
+          };
+          
+          setRegistrationPlan(existingPlan);
+          setIsLoading(false);
+          return;
+        }
+      }
       
-      // Create proper activities/sessions/reservations flow
-      const createFlow = async () => {
-        try {
-          console.log('🚀 Creating activities → sessions → reservations flow');
-          
-          const businessName = stateData.businessName || stateData.title || 'Activity';
-          const provider = stateData.provider || 'unknown';
-          const city = stateData.city || 'Unknown';
-          const state = stateData.state || 'Unknown';
-          
-          // 1. Create or find Activity
-          let activity;
-          const { data: existingActivity } = await supabase
-            .from('activities')
-            .select('id')
-            .eq('name', businessName)
-            .eq('provider_id', provider)
-            .maybeSingle();
-            
-          if (existingActivity) {
-            activity = existingActivity;
-            console.log('✅ Using existing activity:', activity.id);
-          } else {
-            const { data: newActivity, error: activityError } = await supabase
-              .from('activities')
-              .insert({
-                name: businessName,
-                kind: getProviderType(provider),
-                city: city,
-                state: state,
-                canonical_url: stateData.url || 'https://example.com',
-                provider_id: provider
-              })
-              .select('id')
-              .maybeSingle();
-              
-            if (activityError) {
-              console.error('❌ Failed to create activity:', activityError);
-              setIsPlanCreating(false);
-              setStage('error');
-              toast({
-                title: "Setup Error",
-                description: "Unable to create activity record. Please try again.",
-                variant: "destructive"
-              });
-              return;
-            }
-            activity = newActivity;
-            console.log('✅ Created new activity:', activity.id);
-          }
-          
-          // 2. Create Session
-          const sessionTitle = provider === 'resy' ? 'Dinner Reservation' : 
-                              provider === 'peloton' ? 'Class Registration' : 
-                              'Registration';
-          
-          const { data: session, error: sessionError } = await supabase
-            .from('sessions')
-            .insert({
-              activity_id: activity.id,
-              title: sessionTitle,
-              start_at: stateData.targetDate ? new Date(stateData.targetDate).toISOString() : null,
-              registration_open_at: stateData.registrationOpenAt ? new Date(stateData.registrationOpenAt).toISOString() : null
-            })
-            .select('id')
-            .maybeSingle();
-            
-          if (sessionError) {
-            console.error('❌ Failed to create session:', sessionError);
-            setIsPlanCreating(false);
-            setStage('error');
-            toast({
-              title: "Setup Error", 
-              description: "Unable to create session record. Please try again.",
-              variant: "destructive"
-            });
-            return;
-          }
-          console.log('✅ Created session:', session.id);
-          
-          // 3. Create Reservation (this becomes our planId)
-          // Support anonymous users - they can create reservations without user_id
-          const { data: reservation, error: reservationError } = await supabase
-            .from('reservation_holds')
-            .insert({
-              session_id: session.id,
-              user_id: user?.id || null, // Optional for anonymous users
-              status: 'active',
-              parent_email: user?.email || 'temp@example.com',
-              parent_phone_e164: '+15550000000',
-              child_initials: 'C',
-              child_birth_year: 2010,
-              hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
-              timezone: 'America/New_York'
-            })
-            .select('id')
-            .maybeSingle();
-            
-          if (reservationError) {
-            console.error('❌ Failed to create reservation:', reservationError);
-            setIsPlanCreating(false);
-            setStage('error');
-            toast({
-              title: "Setup Error",
-              description: "Unable to create reservation hold. Please try again.", 
-              variant: "destructive"
-            });
-            return;
-          }
-          console.log('✅ Created reservation:', reservation.id);
-          
-          setRealPlanId(reservation.id);
-          
-          // Navigate to the new reservation URL WITHOUT preserving state to prevent loop
-          navigate(`/ready-to-signup/${reservation.id}`, { 
-            replace: true
-            // Do NOT preserve state - this was causing the infinite loop!
-          });
-          
-          setIsPlanCreating(false);
-          
-        } catch (error) {
-          console.error('❌ Failed to create activities flow:', error);
-          // DON'T reset creationStartedRef to prevent infinite loop
-          // creationStartedRef.current = false; // REMOVED - this was causing infinite loop
-          setIsPlanCreating(false);
-          setStage('error');
-          
-          // Show user-friendly error
-          toast({
-            title: "Setup Error",
-            description: "Unable to set up your registration. Please try again.",
-            variant: "destructive"
-          });
+      // No plan found - create one if we have the data
+      if (locationState?.businessUrl && !planCreationAttempted.current && !isCreatingPlan) {
+        console.log('📝 No plan found, creating new one');
+        await createNewPlan();
+      } else if (!locationState) {
+        console.error('❌ No location state available');
+        toast.error('Booking information lost. Please search again.');
+        StateManager.clear();
+        navigate('/');
+      }
+      
+    } catch (error) {
+      console.error('❌ Initialization error:', error);
+      toast.error('Failed to initialize booking');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const createNewPlan = async () => {
+    if (!locationState?.businessUrl || planCreationAttempted.current) {
+      console.log('⚠️ Skipping plan creation:', { 
+        hasUrl: !!locationState?.businessUrl, 
+        attempted: planCreationAttempted.current 
+      });
+      return;
+    }
+    
+    planCreationAttempted.current = true;
+    setIsCreatingPlan(true);
+    
+    try {
+      const newSessionId = crypto.randomUUID();
+      const providerType = detectProviderType(locationState.businessUrl);
+      
+      console.log('🚀 Creating plan:', {
+        businessName: locationState.businessName,
+        url: locationState.businessUrl,
+        type: providerType,
+        sessionId: newSessionId
+      });
+      
+      // Create activity first
+      const { data: activity, error: activityError } = await supabase
+        .from('activities')
+        .insert({
+          name: locationState.businessName,
+          canonical_url: locationState.businessUrl,
+          provider_id: locationState.provider || 'unknown',
+          kind: providerType.split('-')[0] // 'restaurant' or 'fitness'
+        })
+        .select()
+        .single();
+      
+      if (activityError) {
+        console.error('❌ Activity creation error:', activityError);
+        throw activityError;
+      }
+      
+      // Create session
+      const { data: session, error: sessionError } = await supabase
+        .from('sessions')
+        .insert({
+          activity_id: activity.id,
+          title: `${locationState.businessName} Booking`
+        })
+        .select()
+        .single();
+      
+      if (sessionError) {
+        console.error('❌ Session creation error:', sessionError);
+        throw sessionError;
+      }
+      
+      // Create reservation hold
+      const { data: reservation, error: reservationError } = await supabase
+        .from('reservation_holds')
+        .insert({
+          id: newSessionId,
+          session_id: session.id,
+          status: 'active',
+          parent_email: 'temp@example.com',
+          parent_phone_e164: '+15550000000',
+          child_initials: 'C',
+          child_birth_year: 2010,
+          hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          timezone: 'America/New_York'
+        })
+        .select()
+        .single();
+      
+      if (reservationError) {
+        console.error('❌ Reservation creation error:', reservationError);
+        throw reservationError;
+      }
+      
+      console.log('✅ Plan created successfully:', reservation);
+      
+      // Transform to expected format
+      const newPlan = {
+        id: reservation.id,
+        session_id: reservation.id,
+        provider_name: locationState.businessName,
+        provider_url: locationState.businessUrl,
+        provider_type: providerType,
+        status: 'active',
+        preferences: {
+          party_size: 2,
+          preferred_date: '',
+          preferred_time: ''
         }
       };
       
-      createFlow();
-      return;
-    }
-    
-  }, [location.state, realPlanId, isPlanCreating]); // Removed user?.id dependency - anonymous users supported
-
-  // Quick check for registration times (3 second timeout)
-  const quickCheckForTimes = async (url: string): Promise<{ foundTime: boolean; time?: string }> => {
-    try {
-      console.log('⚡ Starting 3-second quick check for:', url);
+      setRegistrationPlan(newPlan);
       
-      // Use a Promise.race with 3 second timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Quick check timeout')), 3000)
-      );
-      
-      const checkPromise = fetch(url, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; QuickTimeChecker/1.0)'
-        }
-      }).then(response => response.text()).then(html => {
-        // Look for common time patterns in the HTML
-        const timePatterns = [
-          /(\d{1,2}:\d{2}\s*[AP]M)/i,
-          /registration opens at (\d{1,2}:\d{2})/i,
-          /booking available at (\d{1,2}:\d{2})/i,
-          /classes open at (\d{1,2}:\d{2})/i
-        ];
-        
-        for (const pattern of timePatterns) {
-          const match = html.match(pattern);
-          if (match) {
-            return { foundTime: true, time: match[1] || match[0] };
-          }
-        }
-        
-        return { foundTime: false };
-      });
-      
-      return await Promise.race([checkPromise, timeoutPromise]) as { foundTime: boolean; time?: string };
-      
-    } catch (error) {
-      console.log('⚡ Quick check failed:', error.message);
-      return { foundTime: false };
-    }
-  };
-
-  // Load plan data and set session
-  useEffect(() => {
-    if (!planId) {
-      setStage('error');
-      return;
-    }
-
-    // All sessions should now be proper database entries - no special handling
-
-    // Check for test scenario first
-    const testScenario = getTestScenario(planId);
-    if (testScenario) {
-      console.log('🔍 Using test scenario:', testScenario.name);
-      setSessionData(testScenario.sessionData);
-      if ((testScenario.sessionData as any).signup_url || (testScenario.sessionData as any).url) {
-        analyzeInitial(testScenario.sessionData);
-      } else {
-        setStage('manual_time');
-      }
-      return;
-    }
-
-    // Handle real reservation hold data from database
-    if (planData) {
-      const session = planData.sessions;
-      const activity = session?.activities;
-      const provider = activity?.provider_id || 'unknown';
-      
-      setSessionData({
-        id: planData.id,
-        title: session?.title || 'Registration',
-        url: activity?.canonical_url,
-        price_min: 0, // Default since we don't have price in current schema
-        activities: {
-          name: activity?.name || 'Activity',
-          city: activity?.city || '',
-          state: activity?.state || ''
-        },
-        registration_open_at: session?.registration_open_at,
-        provider: provider,
-        businessName: activity?.name
-      });
-      
-      // If session already has registration time, show confirm stage
-      if (session?.registration_open_at) {
-        setRegistrationTime(session.registration_open_at);
-        setStage('confirm_time');
-      } else {
-        setStage('manual_time');
-      }
-    } else if (planId && !planData && !isInternetSession) {
-      setStage('error');
-    }
-  }, [planId, planData, isInternetSession, searchParams]);
-
-  // Main analysis function
-  const analyzeInitial = async (sessionDataToAnalyze: any) => {
-    console.log('🎯 analyzeInitial called with:', sessionDataToAnalyze);
-    console.log('🎯 URL to analyze:', sessionDataToAnalyze?.url || sessionDataToAnalyze?.signup_url);
-    
-    setStage('analyzing');
-    
-    try {
-      console.log('🔍 Starting initial analysis for URL:', sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url);
-      
-      let urlToAnalyze = sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url || planData?.sessions?.activities?.canonical_url;
-      
-          // If no URL is available and this is a Resy provider, try to discover it
-          if (!urlToAnalyze && currentProvider === 'resy') {
-            setDiscovering(true);
-            try {
-              const { data } = await supabase.functions.invoke('discover-booking-url', {
-                body: { venueName: sessionDataToAnalyze.businessName || sessionDataToAnalyze.title, provider: 'resy' }
-              });
-              
-              if (data?.discoveredUrl) {
-                urlToAnalyze = data.discoveredUrl;
-                
-                // Update activity with discovered URL
-                if (planData?.sessions?.activities?.id) {
-                  await supabase.from('activities')
-                    .update({ canonical_url: data.discoveredUrl })
-                    .eq('id', planData.sessions.activities.id);
-                }
-              }
-            } catch (error) {
-              console.error('URL discovery failed:', error);
-            } finally {
-              setDiscovering(false);
-            }
-          }
-      
-      if (!urlToAnalyze) {
-        console.log('❌ No URL found for analysis - sessionData:', sessionDataToAnalyze);
-        setStage('manual_time');
-        return;
-      }
-      
-      console.log('🚀 Calling browser-automation with dynamic URL:', {
-        action: 'analyze',
-        url: urlToAnalyze,
-        urlSource: sessionDataToAnalyze.url ? 'sessionData.url' : 'sessionData.signup_url',
-        businessName: sessionDataToAnalyze.businessName,
-        provider: sessionDataToAnalyze.provider,
-        enableVision: true
-      });
-      
-      const { data, error } = await supabase.functions.invoke('browser-automation', {
-        body: {
-          action: 'analyze',
-          url: urlToAnalyze,
-          enableVision: true
-        }
-      });
-
-      console.log('📦 Browser-automation response:', { data, error });
-
-      if (error) {
-        console.error('Analysis error:', error);
-        setStage('manual_time');
-        return;
-      }
-      
-      if (data?.analysis) {
-        setAnalysis(data.analysis);
-        setBrowserSessionId(data.sessionId);
-        
-        console.log('📊 Analysis result:', data.analysis);
-        
-        // Load provider stats if we detected a provider
-        const detectedProvider = data.analysis.provider || detectProvider(sessionDataToAnalyze.url || sessionDataToAnalyze.signup_url);
-        await loadProviderStats(detectedProvider);
-        
-        // Determine next stage based on analysis
-        if (data.analysis.registrationTime && data.analysis.confidence > 0.7) {
-          setRegistrationTime(data.analysis.registrationTime);
-          setStage('confirm_time');
-        } else if (data.analysis.loginRequired) {
-          setStage('need_login');
-        } else {
-          setStage('manual_time');
-        }
-      } else {
-        setStage('manual_time');
-      }
-    } catch (error) {
-      console.error('Analysis failed:', error);
-      setStage('manual_time');
-    }
-  };
-
-  // Load provider statistics
-  const loadProviderStats = async (provider: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('automation_results')
-        .select('success, captcha_encountered')
-        .eq('provider', provider)
-        .limit(10)
-        .order('created_at', { ascending: false });
-      
-      if (!error && data && data.length > 0) {
-        const successRate = Math.round((data.filter(d => d.success).length / data.length) * 100);
-        const captchaRate = Math.round((data.filter(d => d.captcha_encountered).length / data.length) * 100);
-        
-        setProviderStats({
-          successRate,
-          captchaRate,
-          totalAttempts: data.length
+      // Navigate to the new URL with state
+      if (newSessionId !== sessionId) {
+        navigate(`/ready-to-signup/${newSessionId}`, {
+          state: locationState,
+          replace: true
         });
       }
+      
     } catch (error) {
-      console.error('Failed to load provider stats:', error);
-    }
-  };
-
-  // Handle login with credentials - NOW we can use browser automation with their credentials
-  const handleLoginSubmit = async () => {
-    if (!credentials.email || !credentials.password) {
-      toast({
-        title: "Missing information",
-        description: "Please provide both email and password",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    console.log('🔐 Starting browser automation with user credentials...');
-    setStage('analyzing');
-    setIsAnalyzing(true);
-    
-    try {
-      // NOW we can use browser automation with their credentials to get the actual class times after logging in
-      const urlForLogin = sessionData?.url || planData?.sessions?.activities?.canonical_url;
-      
-      console.log('🔐 Starting browser automation with credentials for URL:', {
-        url: urlForLogin,
-        urlSource: sessionData?.url ? 'sessionData.url' : 'planData.detect_url',
-        businessName: sessionData?.businessName,
-        provider: sessionData?.provider,
-        hasCredentials: !!(credentials.email && credentials.password)
-      });
-      
-      const { data, error } = await supabase.functions.invoke('browser-automation', {
-        body: {
-          action: 'analyze',
-          url: urlForLogin,
-          credentials,
-          enableVision: true
-        }
-      });
-
-      if (error) {
-        console.error('Login analysis error:', error);
-        setStage('manual_time');
-        setIsAnalyzing(false);
-        return;
-      }
-      
-      console.log('📊 Analysis with login result:', data);
-      
-      if (data?.analysis) {
-        setAnalysis(prev => ({ ...prev, ...data.analysis }));
-        setBrowserSessionId(data.sessionId);
-        
-        if (data.analysis.registrationTime) {
-          console.log('✅ Registration time found after login:', data.analysis.registrationTime);
-          setRegistrationTime(data.analysis.registrationTime);
-          setStage('confirm_time');
-        } else {
-          console.log('❓ No registration time found, going to manual');
-          setStage('manual_time');
-        }
-      } else {
-        setStage('manual_time');
-      }
-    } catch (error) {
-      console.error('Login failed:', error);
-      toast({
-        title: "Login failed",
-        description: "Could not login with provided credentials",
-        variant: "destructive"
-      });
-      setStage('manual_time');
+      console.error('❌ Error creating plan:', error);
+      toast.error('Failed to create booking plan');
+      planCreationAttempted.current = false; // Reset on error
     } finally {
-      setIsAnalyzing(false);
+      setIsCreatingPlan(false);
     }
   };
-
-  // Test Resy login function
-  const testResyLogin = async () => {
-    setIsTestingLogin(true);
+  
+  const detectProviderType = (url: string): string => {
+    if (!url) return 'general';
+    const urlLower = url.toLowerCase();
     
-    // First test system credentials
-    console.log('🧪 Testing system credentials...');
-    try {
-      const credTest = await supabase.functions.invoke('test-credentials', {});
-      console.log('Credential test results:', credTest);
-      
-      if (credTest.data?.overall) {
-        console.log('✅ All system credentials working');
-      } else {
-        console.log('⚠️ Some system credentials missing:', credTest.data);
-        toast({
-          title: "System Setup Issue",
-          description: "Missing API credentials. Check console for details.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.log('❌ Credential test failed:', error);
-    }
+    // Restaurant providers - CHECK THESE FIRST
+    if (urlLower.includes('resy.com')) return 'restaurant-resy';
+    if (urlLower.includes('opentable.com')) return 'restaurant-opentable';
+    if (urlLower.includes('tock.com')) return 'restaurant-tock';
+    if (urlLower.includes('yelp.com')) return 'restaurant-yelp';
     
-    try {
-      const { data, error } = await supabase.functions.invoke('browser-automation', {
-        body: {
-          action: 'test_resy_login',
-          credentials: resyCredentials
-        }
-      });
-      
-      if (data?.success) {
-        setResyLoginSuccess(true);
-        toast({
-          title: "Success!",
-          description: "✅ Resy login works! Payment method found.",
-        });
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Check your credentials and try again",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Test login error:', error);
-      toast({
-        title: "Login failed",
-        description: "Could not test login - try again",
-        variant: "destructive"
-      });
-    }
+    // Fitness providers  
+    if (urlLower.includes('peloton')) return 'fitness-peloton';
+    if (urlLower.includes('equinox')) return 'fitness-equinox';
+    if (urlLower.includes('soulcycle')) return 'fitness-soulcycle';
     
-    setIsTestingLogin(false);
+    return 'general';
   };
-
-  // Save restaurant credentials using existing store-camp-credentials edge function
-  const saveRestaurantCredentials = async () => {
-    if (!restaurantCredentials.email || !restaurantCredentials.password || !user) {
-      toast({
-        title: "Missing information",
-        description: "Please provide both email and password",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsCredentialsSaving(true);
+  
+  const renderProviderUI = () => {
+    if (!registrationPlan) return null;
     
-    try {
-      console.log('🔐 Saving restaurant credentials for platform:', detectedPlatform.platform);
-      
-      const { data, error } = await supabase.functions.invoke('store-camp-credentials', {
-        body: {
-          email: restaurantCredentials.email,
-          password: restaurantCredentials.password,
-          provider_name: detectedPlatform.platform,
-          provider_url: location.state?.url || 'https://resy.com/cities/ny/carbone',
-          session_id: planId !== 'pending' ? planId : null
-        }
-      });
-
-      if (error) {
-        console.error('Error saving credentials:', error);
-        throw error;
-      }
-
-      console.log('✅ Credentials saved successfully:', data);
-      setCredentialsSaved(true);
-      
-      toast({
-        title: "Credentials Saved",
-        description: `${detectedPlatform.platform} account connected successfully`,
-      });
-      
-    } catch (error) {
-      console.error('Failed to save credentials:', error);
-      toast({
-        title: "Save failed",
-        description: "Could not save credentials - please try again",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCredentialsSaving(false);
-    }
-  };
-
-  // Arm Resy booking function
-  const armResyBooking = async () => {
-    if (!user || !bookingOpensAt) return;
+    // Determine provider type from plan OR URL
+    const providerType = registrationPlan.provider_type || 
+                        detectProviderType(registrationPlan.provider_url || locationState?.businessUrl || '');
     
-    try {
-      // Save credentials (will be encrypted by edge function)
-      await supabase.from('provider_credentials').upsert({
-        user_id: user.id,
-        provider_domain: 'resy.com',
-        username: resyCredentials.email,
-        password_encrypted: resyCredentials.password
-      });
-      
-      // Create booking plan
-      const { data: plan } = await supabase.from('registration_plans').insert({
-        id: crypto.randomUUID(),
-        user_id: user.id,
-        provider_url: 'https://resy.com/cities/ny/carbone',
-        provider_name: 'carbone_resy',
-        manual_open_at: bookingOpensAt.toISOString(),
-        booking_details: {
-          restaurant: 'Carbone',
-          date: bookingDetails.date,
-          partySize: bookingDetails.partySize,
-          preferredTimes: [bookingDetails.time1, bookingDetails.time2, bookingDetails.time3]
-        },
-        status: 'armed'
-      }).select().maybeSingle();
-      
-      // Schedule the execution
-      await supabase.functions.invoke('arm-signup', {
-        body: {
-          planId: plan.id,
-          executeAt: bookingOpensAt.toISOString(),
-          prewarmAt: new Date(bookingOpensAt.getTime() - 5*60000).toISOString()
-        }
-      });
-      
-      toast({
-        title: "🎯 ARMED!",
-        description: "Will book Carbone at exactly 10:00:00 AM",
-      });
-      navigate('/pending-signups');
-      
-    } catch (error) {
-      console.error('Arm booking error:', error);
-      toast({
-        title: "Setup failed",
-        description: "Could not arm booking - please try again",
-        variant: "destructive"
-      });
+    console.log('🎨 Rendering UI:', {
+      provider: registrationPlan.provider_name,
+      type: providerType,
+      url: registrationPlan.provider_url
+    });
+    
+    // ALWAYS show restaurant UI for restaurant types
+    if (providerType.startsWith('restaurant-')) {
+      return <RestaurantBookingUI plan={registrationPlan} providerType={providerType} />;
     }
+    
+    if (providerType.startsWith('fitness-')) {
+      return <FitnessBookingUI plan={registrationPlan} providerType={providerType} />;
+    }
+    
+    return <GeneralProviderUI plan={registrationPlan} />;
   };
-
-  // Use reserve-init with location.state data - the existing 7-step flow handles everything!
-  const saveAndActivate = async () => {
-    if (!user || !registrationTime) {
-      toast({
-        title: "Missing information",
-        description: "Please set a registration time first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!sessionData) {
-      toast({
-        title: "Missing session data", 
-        description: "No provider data available",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      console.log('🚀 Starting reserve-init with location.state data:', {
-        url: sessionData.url,
-        businessName: sessionData.businessName,
-        provider: sessionData.provider,
-        registrationTime,
-        userId: user.id
-      });
-
-      // Enhanced: Call setup-registration with Resy-specific handling
-      const requestBody = {
-        url: sessionData.url,
-        businessName: sessionData.businessName || sessionData.title,
-        provider: sessionData.provider || detectedPlatform?.platform,
-        registrationTime,
-        userId: user.id,
-        metadata: {
-          source: 'readyToSignup',
-          originalSessionId: sessionData.id,
-          platform: detectedPlatform?.platform,
-          platformType: detectedPlatform?.type,
-          ...sessionData
-        }
-      };
-
-      console.log('🚀 Calling reserve-init with enhanced data:', requestBody);
-
-      const { data, error } = await supabase.functions.invoke('reserve-init', {
-        body: requestBody
-      });
-
-      if (error) {
-        console.error('Reserve-init error:', error);
-        throw error;
-      }
-
-      console.log('✅ Reserve-init success:', data);
-      
-      toast({
-        title: 'Registration automation activated!',
-        description: 'Your automated registration is now set up and running'
-      });
-      
-      // Navigate to dashboard or pending signups to see the reservation
-      navigate('/pending-signups');
-      
-    } catch (error) {
-      console.error('Activation error:', error);
-      toast({
-        title: "Activation Failed",
-        description: "Could not activate your registration automation. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Error state - show specific message when no provider is selected
-  if (stage === 'error' || (!sessionData && !location.state)) {
+  
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
-        <div className="max-w-4xl mx-auto">
-          <Card className="p-6 text-center">
-            <h1 className="text-xl font-semibold mb-2">No Provider Selected</h1>
-            <p className="text-muted-foreground mb-4">
-              Please search and select a provider first. No provider data was found for this session.
-            </p>
-            <Button onClick={() => navigate('/search')} variant="outline">
-              Search for Activities
-            </Button>
-          </Card>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading booking session...</p>
         </div>
       </div>
     );
   }
-
+  
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      {/* Hero section with venue */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-4">
-          {detectedPlatform?.type === 'restaurant' ? 
-            `Book ${businessName || 'Restaurant'} Reservation` : 
-            detectedPlatform?.type === 'fitness' ?
-            `Book ${businessName || 'Class'}` :
-            'Setup Registration'}
-        </h1>
-        
-        {/* Update the subtitle to show the venue name clearly */}
-        <h2 className="text-xl text-center mb-2">
-          {businessName}
-        </h2>
-
-        {/* Show platform badge */}
-        {detectedPlatform?.platform !== 'unknown' && (
-          <div className="text-center mb-6">
-            <Badge className={
-              detectedPlatform.platform === 'resy' ? 'bg-red-500 hover:bg-red-600' : 
-              detectedPlatform.platform === 'opentable' ? 'bg-red-600 hover:bg-red-700' :
-              'bg-blue-500 hover:bg-blue-600'
-            }>
-              {detectedPlatform.platform.toUpperCase()}
-            </Badge>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        {registrationPlan ? (
+          <>
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold mb-2">
+                {registrationPlan.provider_name || locationState?.businessName || 'Booking Setup'}
+              </h1>
+              <p className="text-gray-600">
+                {registrationPlan.provider_type?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </p>
+            </div>
+            {renderProviderUI()}
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-600 mb-4">No booking information found</p>
+            <button
+              onClick={() => {
+                StateManager.clear();
+                navigate('/');
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Start New Search
+            </button>
           </div>
-        )}
-
-        {detectedPlatform?.platform === 'resy' && (
-          <p className="text-muted-foreground mb-4">
-            We'll automatically book your table when reservations open
-          </p>
         )}
       </div>
+    </div>
+  );
+}
 
-      {/* Show what we're setting up */}
-      <Card className="mb-6 p-4 bg-gray-50 dark:bg-gray-900">
-        <div className="font-medium">{sessionData?.businessName || sessionData?.title || sessionData?.activities?.name || 'Registration'}</div>
-        <div className="text-sm text-muted-foreground">{sessionData?.url || sessionData?.signup_url}</div>
-      </Card>
+// Restaurant Booking UI Component
+function RestaurantBookingUI({ plan, providerType }: { plan: any; providerType: string }) {
+  const [credentials, setCredentials] = useState({
+    email: '',
+    password: ''
+  });
+  
+  const [preferences, setPreferences] = useState({
+    party_size: 2,
+    preferred_date: '',
+    preferred_time: ''
+  });
+  
+  const providerName = providerType.split('-')[1];
+  
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-2">Restaurant Reservation System</h2>
+        <p className="text-gray-700">
+          We'll automatically book your table at <strong>{plan.provider_name}</strong> using {providerName}
+        </p>
+        <a 
+          href={plan.provider_url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="inline-flex items-center mt-3 text-blue-600 hover:text-blue-800"
+        >
+          View on {providerName} →
+        </a>
+      </div>
       
-      {/* Provider information and tips */}
-      {(analysis?.provider || (sessionData?.url && detectProvider(sessionData.url))) && (
-        <ProviderInfo 
-          provider={analysis?.provider || detectProvider(sessionData?.url || sessionData?.signup_url)} 
-          stats={providerStats}
-        />
-      )}
-      
-      {/* Anonymous signup modal - shown when user needs to create account */}
-      {showAnonymousSignup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute -top-10 right-0 text-white hover:text-gray-300"
-              onClick={() => setShowAnonymousSignup(false)}
-            >
-              ✕ Skip for now
-            </Button>
-            <AnonymousSignup
-              onSignupComplete={handleAnonymousSignupComplete}
-              businessName={sessionData?.businessName || businessName}
-            />
-          </div>
-        </div>
-      )}
-      
-      {/* Progressive stages */}
-      {planId === 'pending' && isPlanCreating && (
-        <Card className="p-6">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin"/>
-            <div>Setting up your registration...</div>
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Creating your personalized signup automation
-          </p>
-        </Card>
-      )}
-      
-      {stage === 'loading' && planId !== 'pending' && (
-        <Card className="p-6">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin"/>
-            <div>Loading session data...</div>
-          </div>
-        </Card>
-      )}
-      
-      {stage === 'analyzing' && (
-        <Card className="p-6">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin"/>
-            <div>Analyzing registration page...</div>
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            This may take a moment while we check for registration details.
-          </p>
-        </Card>
-      )}
-      
-      {stage === 'resy_setup' && (
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Carbone via Resy Setup</h2>
-          
-          {/* Step 1: Resy Account */}
-          <div className="space-y-4">
-            <Alert className="bg-primary/5 border-primary/20">
-              <p className="font-medium">First: Set up your Resy account</p>
-              <ol className="text-sm mt-2 space-y-1">
-                <li>1. Create account at resy.com</li>
-                <li>2. Add and save a payment method</li>
-                <li>3. Verify it shows "Payment saved ✓"</li>
-              </ol>
-            </Alert>
-            
-            <div className="space-y-2">
-              <Input
-                placeholder={`${
-                  detectedPlatform?.platform === 'resy' ? 'Resy' :
-                  detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
-                  'Your'
-                } email`}
-                type="email"
-                value={resyCredentials.email}
-                onChange={(e) => setResyCredentials({...resyCredentials, email: e.target.value})}
-              />
-              <Input
-                placeholder={`${
-                  detectedPlatform?.platform === 'resy' ? 'Resy' :
-                  detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
-                  'Your'
-                } password`}
-                type="password"
-                value={resyCredentials.password}
-                onChange={(e) => setResyCredentials({...resyCredentials, password: e.target.value})}
-              />
-            </div>
-            
-            <Button
-              onClick={testResyLogin}
-              disabled={!resyCredentials.email || !resyCredentials.password || isTestingLogin}
-              className="w-full"
-            >
-              {isTestingLogin ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Testing Login...
-                </>
-              ) : (
-                'Test Resy Login'
-              )}
-            </Button>
-          </div>
-          
-          {/* Step 2: Booking Details */}
-          {resyLoginSuccess && (
-            <div className="space-y-4 mt-6 pt-6 border-t">
-              <h3 className="font-medium">Carbone Booking Details</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium block mb-1">Date (30+ days out)</label>
-                  <Input
-                    type="date"
-                    value={bookingDetails.date}
-                    min={new Date(Date.now() + 31*24*60*60*1000).toISOString().split('T')[0]}
-                    onChange={(e) => {
-                      setBookingDetails({...bookingDetails, date: e.target.value});
-                      // Calculate when booking opens (30 days before at 10 AM)
-                      const opensAt = new Date(e.target.value);
-                      opensAt.setDate(opensAt.getDate() - 30);
-                      opensAt.setHours(10, 0, 0, 0);
-                      setBookingOpensAt(opensAt);
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium block mb-1">Party Size</label>
-                  <select 
-                    className="w-full p-2 border border-input rounded-md bg-background"
-                    value={bookingDetails.partySize}
-                    onChange={(e) => setBookingDetails({...bookingDetails, partySize: e.target.value})}
-                  >
-                    <option value="2">2 guests</option>
-                    <option value="4">4 guests</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium block mb-2">Preferred Times (will try all)</label>
-                <div className="space-y-2">
-                  <Input 
-                    placeholder="7:30 PM" 
-                    value={bookingDetails.time1} 
-                    onChange={(e) => setBookingDetails({...bookingDetails, time1: e.target.value})} 
-                  />
-                  <Input 
-                    placeholder="8:00 PM" 
-                    value={bookingDetails.time2}
-                    onChange={(e) => setBookingDetails({...bookingDetails, time2: e.target.value})} 
-                  />
-                  <Input 
-                    placeholder="9:00 PM" 
-                    value={bookingDetails.time3}
-                    onChange={(e) => setBookingDetails({...bookingDetails, time3: e.target.value})} 
-                  />
-                </div>
-              </div>
-              
-              {bookingOpensAt && (
-                <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                  <p className="font-medium">📅 Booking opens:</p>
-                  <p>{bookingOpensAt.toLocaleString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZoneName: 'short'
-                  })}</p>
-                </Alert>
-              )}
-            </div>
-          )}
-          
-          {/* Step 3: Arm Automation */}
-          {resyLoginSuccess && bookingOpensAt && (
-            <Button
-              onClick={armResyBooking}
-              className="w-full mt-6 bg-foreground hover:bg-foreground/90 text-background"
-            >
-              🎯 ARM AUTO-BOOKING for {bookingOpensAt.toLocaleDateString()}
-            </Button>
-          )}
-        </Card>
-      )}
-
-      {stage === 'verify_pattern' && (
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {analysis?.provider ? analysis.provider.charAt(0).toUpperCase() + analysis.provider.slice(1) : 'Provider'} Registration Timing
-          </h2>
-          
-          <Alert className="mb-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
-            <p className="font-medium">⚠️ Please verify your studio's booking pattern</p>
-            <p className="text-sm mt-2">
-              Different studios may have different booking windows.
-              Check your studio's website to confirm when classes open for booking.
-            </p>
-          </Alert>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Common patterns (select if applicable):
-              </label>
-              <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    const date = new Date();
-                    date.setDate(date.getDate() + 7);
-                    date.setHours(6, 0, 0, 0);
-                    setManualRegistrationTime(date.toISOString().slice(0, 16));
-                  }}
-                  className="w-full text-left p-2 border rounded hover:bg-gray-50 transition-colors"
-                >
-                  📅 7 days in advance at 6:00 AM
-                </button>
-                <button
-                  onClick={() => {
-                    const date = new Date();
-                    date.setDate(date.getDate() + 7);
-                    date.setHours(12, 0, 0, 0);
-                    setManualRegistrationTime(date.toISOString().slice(0, 16));
-                  }}
-                  className="w-full text-left p-2 border rounded hover:bg-gray-50 transition-colors"
-                >
-                  📅 7 days in advance at 12:00 PM (noon)
-                </button>
-                <button
-                  onClick={() => {
-                    const date = new Date();
-                    date.setDate(date.getDate() + 14);
-                    date.setHours(6, 0, 0, 0);
-                    setManualRegistrationTime(date.toISOString().slice(0, 16));
-                  }}
-                  className="w-full text-left p-2 border rounded hover:bg-gray-50 transition-colors"
-                >
-                  📅 14 days in advance at 6:00 AM
-                </button>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Or enter the exact time classes open:
-              </label>
-              <Input
-                type="datetime-local"
-                value={manualRegistrationTime}
-                onChange={(e) => setManualRegistrationTime(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            
-            <div className="text-sm text-muted-foreground">
-              <p>💡 Tip: Check your fitness app or website to see when the furthest bookable class becomes available.</p>
-            </div>
-          </div>
-          
-          <Button 
-            onClick={() => {
-              setRegistrationTime(manualRegistrationTime);
-              setStage('need_login');
-            }}
-            disabled={!manualRegistrationTime}
-            className="w-full mt-4"
-          >
-            Save & Continue to Login
-          </Button>
-        </Card>
-      )}
-
-      {stage === 'need_login' && (
-        <Card className="p-6">
-          <h2 className="font-semibold mb-4">
-            {analysis?.knownProvider ? 'Account Required' : 'Login Required'}
-          </h2>
-          
-          {analysis?.knownProvider && (
-            <Alert className="mb-4">
-              <div className="text-sm">
-                You've verified the registration timing for this provider.
-                <br />
-                We know {analysis.provider ? analysis.provider.charAt(0).toUpperCase() + analysis.provider.slice(1) : 'this provider'} requires an account to see class schedules.
-              </div>
-            </Alert>
-          )}
-          
-          <p className="text-sm text-muted-foreground mb-4">
-            {analysis?.knownProvider 
-              ? 'Please provide your account credentials to set up automated registration.'
-              : 'This site requires login to see registration details. Please provide your account credentials.'
-            }
-          </p>
-          
-          <div className="space-y-4">
-            <Input
+      <div className="bg-white border rounded-lg shadow-sm p-6">
+        <h3 className="font-semibold text-lg mb-4">
+          {providerName.charAt(0).toUpperCase() + providerName.slice(1)} Account
+        </h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email Address
+            </label>
+            <input
               type="email"
-              placeholder="Email"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder={`Your ${providerName} account email`}
               value={credentials.email}
               onChange={(e) => setCredentials({...credentials, email: e.target.value})}
             />
-            <Input
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
               type="password"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Password"
               value={credentials.password}
               onChange={(e) => setCredentials({...credentials, password: e.target.value})}
             />
-             <div className="flex gap-3">
-               <Button 
-                 onClick={handleLoginSubmit} 
-                 className="flex-1"
-                 disabled={!credentials.email || !credentials.password || isAnalyzing}
-               >
-                 {isAnalyzing ? (
-                   <>
-                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                     Analyzing...
-                   </>
-                 ) : (
-                   'Connect Account'
-                 )}
-               </Button>
-               <Button variant="ghost" onClick={() => setStage('manual_time')} className="flex-1">
-                 Skip - Set time manually
-               </Button>
-             </div>
-             
-             {/* Option to create new account if user doesn't have one */}
-             {!user && (
-               <div className="mt-4 pt-4 border-t border-border">
-                 <p className="text-sm text-muted-foreground text-center mb-3">
-                   Don't have an account yet?
-                 </p>
-                 <Button 
-                   variant="outline" 
-                   onClick={() => setShowAnonymousSignup(true)}
-                   className="w-full"
-                 >
-                   Create Account with {businessName || sessionData?.businessName || 'Us'}
-                 </Button>
-               </div>
-             )}
           </div>
-        </Card>
-      )}
+        </div>
+      </div>
       
-      {stage === 'confirm_time' && (
-        <Card className="p-6">
-          <h2 className="font-semibold mb-4">Registration Time Detected</h2>
-          <Alert className="mb-4 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-            <div className="font-medium">Registration opens: {new Date(registrationTime).toLocaleString()}</div>
-            {analysis?.registrationTimeText && (
-              <div className="text-sm text-muted-foreground mt-1">
-                Found: "{analysis.registrationTimeText}"
-              </div>
-            )}
-          </Alert>
-          <div className="flex gap-3">
-            <Button onClick={saveAndActivate} className="flex-1">
-              Confirm & Activate
-            </Button>
-            <Button variant="outline" onClick={() => setStage('manual_time')}>
-              Change Time
-            </Button>
+      <div className="bg-white border rounded-lg shadow-sm p-6">
+        <h3 className="font-semibold text-lg mb-4">Reservation Details</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Party Size
+            </label>
+            <select 
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              value={preferences.party_size}
+              onChange={(e) => setPreferences({...preferences, party_size: +e.target.value})}
+            >
+              {[1,2,3,4,5,6,7,8].map(n => (
+                <option key={n} value={n}>{n} {n === 1 ? 'Person' : 'People'}</option>
+              ))}
+            </select>
           </div>
-        </Card>
-      )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date
+            </label>
+            <input
+              type="date"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              value={preferences.preferred_date}
+              onChange={(e) => setPreferences({...preferences, preferred_date: e.target.value})}
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+        </div>
+      </div>
       
-      {stage === 'manual_time' && !isResyProvider && (
-        <Card className="p-6">
-          <h2 className="font-semibold mb-4">{providerConfig.title}</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            {providerConfig.timeLabel} {providerConfig.timeHint && `(${providerConfig.timeHint})`}
-          </p>
-          {analysis && (
-            <div className="mb-4 p-3 bg-muted rounded-lg">
-              <div className="text-sm">
-                <div><strong>Provider:</strong> {analysis.provider || 'Unknown'}</div>
-                {analysis.loginRequired && <div><strong>Login Required:</strong> Yes</div>}
-                {analysis.captchaVisible && <div><strong>CAPTCHA Detected:</strong> Yes</div>}
-              </div>
-            </div>
-          )}
-          
-          {/* Restaurant credentials section for non-Resy restaurants */}
-          {detectedPlatform.type === 'restaurant' && detectedPlatform.platform !== 'resy' && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>
-                  Connect {detectedPlatform?.platform === 'resy' ? 'Resy' : 
-                           detectedPlatform?.platform === 'opentable' ? 'OpenTable' : 
-                           detectedPlatform?.platform === 'peloton' ? 'Peloton' :
-                           'Your'} Account
-                </CardTitle>
-                <CardDescription>
-                  {businessName} uses {
-                    detectedPlatform?.platform === 'resy' ? 'Resy' :
-                    detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
-                    detectedPlatform?.platform || 'this platform'
-                  } for reservations
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Input 
-                  placeholder={`${
-                    detectedPlatform?.platform === 'resy' ? 'Resy' :
-                    detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
-                    'Your'
-                  } email`}
-                  type="email"
-                  value={restaurantCredentials.email}
-                  onChange={(e) => setRestaurantCredentials({...restaurantCredentials, email: e.target.value})}
-                />
-                <Input 
-                  placeholder={`${
-                    detectedPlatform?.platform === 'resy' ? 'Resy' :
-                    detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
-                    'Your'
-                  } password`}
-                  type="password"
-                  value={restaurantCredentials.password}
-                  onChange={(e) => setRestaurantCredentials({...restaurantCredentials, password: e.target.value})}
-                />
-                <Button 
-                  onClick={saveRestaurantCredentials}
-                  disabled={!restaurantCredentials.email || !restaurantCredentials.password || isCredentialsSaving}
-                  className="w-full"
-                >
-                  {isCredentialsSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Saving...
-                    </>
-                  ) : credentialsSaved ? (
-                    '✅ Credentials Saved'
-                  ) : (
-                    'Save & Verify Credentials'
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Pattern Discovery - Add after credentials saved */}
-          {credentialsSaved && !discoveredPattern && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Discover Booking Window</CardTitle>
-                <CardDescription>
-                  Let us find when reservations open for {businessName}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  onClick={async () => {
-                    setIsDiscoveringPattern(true);
-                    try {
-                      const { data } = await supabase.functions.invoke('discover-booking-pattern', {
-                        body: { 
-                          venueName: businessName, 
-                          platform: detectedPlatform.platform, 
-                          credentials: restaurantCredentials 
-                        }
-                      });
-                      
-                      if (data?.success && data?.pattern) {
-                        setDiscoveredPattern(data.pattern);
-                        
-                        // Calculate booking time
-                        if (bookingDetails.date) {
-                          const targetDate = new Date(bookingDetails.date);
-                          const bookingDate = new Date(targetDate);
-                          bookingDate.setDate(bookingDate.getDate() - (data.pattern.daysInAdvance || 30));
-                          setUserConfirmedTime(bookingDate.toISOString().slice(0, 16));
-                        }
-                      } else {
-                        toast({
-                          title: "Discovery failed",
-                          description: "Could not automatically find booking pattern",
-                          variant: "destructive"
-                        });
-                      }
-                    } catch (error) {
-                      console.error('Pattern discovery error:', error);
-                      toast({
-                        title: "Discovery failed", 
-                        description: "Could not automatically find booking pattern",
-                        variant: "destructive"
-                      });
-                    } finally {
-                      setIsDiscoveringPattern(false);
-                    }
-                  }} 
-                  disabled={isDiscoveringPattern}
-                  className="w-full"
-                >
-                  {isDiscoveringPattern ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Discovering...
-                    </>
-                  ) : (
-                    'Find When Bookings Open'
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+      <button
+        disabled={!credentials.email || !credentials.password}
+        className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+      >
+        Start Automated Booking
+      </button>
+    </div>
+  );
+}
 
-          {/* Show pattern for confirmation */}
-          {discoveredPattern && (
-            <Card className="mb-6 border-orange-500">
-              <CardHeader>
-                <CardTitle>Confirm Booking Time</CardTitle>
-                <CardDescription>
-                  Please verify the discovered booking pattern
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Alert>
-                  <AlertDescription>
-                    Found: "{discoveredPattern.pattern}"
-                    <br/>
-                    {userConfirmedTime && (
-                      <>Booking opens: {format(new Date(userConfirmedTime), 'MMM d @ h:mm a')}</>
-                    )}
-                  </AlertDescription>
-                </Alert>
-                <div>
-                  <label className="text-sm font-medium block mb-2">
-                    Adjust booking time if needed:
-                  </label>
-                  <Input 
-                    type="datetime-local" 
-                    value={userConfirmedTime} 
-                    onChange={(e) => setUserConfirmedTime(e.target.value)} 
-                  />
-                </div>
-                <Button 
-                  onClick={() => {
-                    setRegistrationTime(userConfirmedTime);
-                    toast({
-                      title: "Booking time confirmed",
-                      description: `Set for ${format(new Date(userConfirmedTime), 'MMM d @ h:mm a')}`,
-                    });
-                  }}
-                  disabled={!userConfirmedTime}
-                  className="w-full"
-                >
-                  Confirm Time
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-          
-          <Input
-            type="datetime-local"
-            value={registrationTime}
-            onChange={(e) => setRegistrationTime(e.target.value)}
-            className="mb-4"
-          />
-          <Button 
-            onClick={saveAndActivate} 
-            disabled={!registrationTime} 
-            className="w-full"
-          >
-            Save & Activate
-          </Button>
-        </Card>
-      )}
+// Fitness UI (simplified)
+function FitnessBookingUI({ plan, providerType }: { plan: any; providerType: string }) {
+  return (
+    <div className="bg-green-50 p-6 rounded-lg">
+      <h2>Fitness Class Booking</h2>
+      <p>{plan.provider_name}</p>
+    </div>
+  );
+}
 
-      {/* Resy-specific manual time setup */}
-      {stage === 'manual_time' && isResyProvider && (
-        <Card className="p-6">
-          <h2 className="font-semibold mb-4">Restaurant Reservation Setup</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Reservations at Carbone open exactly 30 days in advance at 10:00 AM ET
-          </p>
-
-          {/* Resy Account Credentials */}
-          <div className="space-y-4 mb-6">
-            <h3 className="font-medium">{providerConfig.credentialLabel} Credentials</h3>
-            <div className="space-y-2">
-              <Input
-                placeholder={`${
-                  detectedPlatform?.platform === 'resy' ? 'Resy' :
-                  detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
-                  'Your'
-                } email`}
-                type="email"
-                value={resyCredentials.email}
-                onChange={(e) => setResyCredentials({...resyCredentials, email: e.target.value})}
-              />
-              <Input
-                placeholder={`${
-                  detectedPlatform?.platform === 'resy' ? 'Resy' :
-                  detectedPlatform?.platform === 'opentable' ? 'OpenTable' :
-                  'Your'
-                } password`}
-                type="password"
-                value={resyCredentials.password}
-                onChange={(e) => setResyCredentials({...resyCredentials, password: e.target.value})}
-              />
-              <Button
-                onClick={testResyLogin}
-                disabled={!resyCredentials.email || !resyCredentials.password || isTestingLogin}
-                variant="outline"
-                className="w-full"
-              >
-                {isTestingLogin ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Testing Connection...
-                  </>
-                ) : (
-                  'Test Connection'
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Booking Details */}
-          <div className="space-y-4 mb-6 p-4 bg-muted/30 rounded-lg">
-            <h3 className="font-medium">Reservation Details</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium block mb-1">Preferred Date</label>
-                <Input
-                  type="date"
-                  value={bookingDetails.date}
-                  min={new Date(Date.now() + 31*24*60*60*1000).toISOString().split('T')[0]}
-                  onChange={(e) => {
-                    setBookingDetails({...bookingDetails, date: e.target.value});
-                    const calculatedOpenTime = calculateBookingOpenTime(e.target.value);
-                    setBookingOpensAt(calculatedOpenTime);
-                    if (calculatedOpenTime) {
-                      setRegistrationTime(calculatedOpenTime.toISOString().slice(0, 16));
-                    }
-                  }}
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium block mb-1">Party Size</label>
-                <select 
-                  className="w-full p-2 border border-input rounded-md bg-background"
-                  value={bookingDetails.partySize}
-                  onChange={(e) => setBookingDetails({...bookingDetails, partySize: e.target.value})}
-                >
-                  <option value="2">2 guests</option>
-                  <option value="4">4 guests</option>
-                  <option value="6">6 guests</option>
-                  <option value="8">8 guests</option>
-                </select>
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium block mb-2">Backup Times (in order of preference)</label>
-              <div className="space-y-2">
-                <Input 
-                  placeholder="Primary time (e.g., 7:30 PM)" 
-                  value={bookingDetails.time1} 
-                  onChange={(e) => setBookingDetails({...bookingDetails, time1: e.target.value})} 
-                />
-                <Input 
-                  placeholder="Backup time 1 (e.g., 8:00 PM)" 
-                  value={bookingDetails.time2}
-                  onChange={(e) => setBookingDetails({...bookingDetails, time2: e.target.value})} 
-                />
-                <Input 
-                  placeholder="Backup time 2 (e.g., 9:00 PM)" 
-                  value={bookingDetails.time3}
-                  onChange={(e) => setBookingDetails({...bookingDetails, time3: e.target.value})} 
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Auto-calculated booking time display */}
-          {bookingOpensAt && (
-            <Alert className="mb-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-              <p className="font-medium">📅 We'll attempt to book at 10:00 AM ET on:</p>
-              <p className="text-lg font-semibold">
-                {bookingOpensAt.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </Alert>
-          )}
-
-          <Button 
-            onClick={saveAndActivate} 
-            disabled={!registrationTime || !resyCredentials.email || !resyCredentials.password || !bookingDetails.date} 
-            className="w-full"
-          >
-            Save & Activate Restaurant Reservation
-          </Button>
-        </Card>
-      )}
+// General UI (simplified)  
+function GeneralProviderUI({ plan }: { plan: any }) {
+  return (
+    <div className="bg-gray-50 p-6 rounded-lg">
+      <h2>General Provider</h2>
+      <p>{plan.provider_name}</p>
     </div>
   );
 }
