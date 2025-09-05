@@ -235,8 +235,16 @@ export default function ReadyToSignup() {
       isPlanCreating,
       pathname: location.pathname,
       creationStarted: creationStartedRef.current,
-      userId: user?.id
+      userId: user?.id,
+      authStatus: user?.id ? '✅ AUTHENTICATED' : '❌ NOT_AUTHENTICATED'
     });
+
+    // Check if user is authenticated
+    if (stateData && !user?.id) {
+      console.error('❌ USER NOT AUTHENTICATED - Database creation will fail');
+      console.log('👆 Please sign in first before testing the flow');
+      console.log('🔄 Redirecting to auth...');
+    }
     
     // If we have location.state data, create proper activities/sessions/reservations flow
     if (stateData && !realPlanId && !isPlanCreating && !creationStartedRef.current && user?.id) {
