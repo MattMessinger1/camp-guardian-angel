@@ -92,47 +92,38 @@ export default function ReadyToSignup() {
     try {
       setIsLoading(true);
       
-      // Skip test session IDs
-      if (sessionId?.includes('test')) {
-        console.log('⚠️ Skipping test session ID');
+      // Skip test session IDs and 'pending'
+      if (sessionId?.includes('test') || sessionId === 'pending') {
+        console.log('⚠️ Skipping test/pending session ID');
         if (locationState && !planCreationAttempted.current) {
           await createNewPlan();
         }
         return;
       }
       
-      // Try to load existing plan from reservation_holds
+      // Try to load existing plan from registration_plans
       if (sessionId) {
-        const { data: reservation, error } = await supabase
-          .from('reservation_holds')
-          .select(`
-            *,
-            sessions (
-              *,
-              activities (
-                id,
-                name,
-                canonical_url,
-                provider_id
-              )
-            )
-          `)
+        const { data: plan, error } = await supabase
+          .from('registration_plans')
+          .select('*')
           .eq('id', sessionId)
           .maybeSingle();
         
-        if (!error && reservation) {
-          console.log('✅ Found existing reservation:', reservation);
+        if (!error && plan) {
+          console.log('✅ Found existing plan:', plan);
           
           // Transform to expected format
+          const rules = plan.rules as any || {};
           const existingPlan = {
-            id: reservation.id,
-            session_id: reservation.id,
-            provider_name: reservation.sessions?.activities?.name || locationState?.businessName,
-            provider_url: reservation.sessions?.activities?.canonical_url || locationState?.businessUrl,
-            provider_type: detectProviderType(reservation.sessions?.activities?.canonical_url || locationState?.businessUrl || ''),
-            status: reservation.status,
-            preferences: {},
-            ...reservation
+            id: plan.id,
+            session_id: plan.session_id,
+            provider_name: rules.business_name || locationState?.businessName,
+            provider_url: rules.business_url || locationState?.businessUrl,
+            provider_type: rules.provider_type || detectProviderType(rules.business_url || locationState?.businessUrl || ''),
+            status: plan.status,
+            rules: rules,
+            preferences: rules.preferences || {},
+            ...plan
           };
           
           setRegistrationPlan(existingPlan);
@@ -220,11 +211,13 @@ export default function ReadyToSignup() {
         .from('registration_plans')
         .insert({
           id: newSessionId,
-          created_from: 'manual_booking',
-          name: locationState.businessName,
-          url: locationState.businessUrl,
+          session_id: session.id,
+          status: 'pending',
           rules: {
+            business_name: locationState.businessName,
+            business_url: locationState.businessUrl,
             provider_type: providerType,
+            provider: locationState.provider || 'unknown',
             credentials: {},
             preferences: {},
             automation_config: {}
