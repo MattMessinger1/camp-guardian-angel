@@ -183,6 +183,16 @@ export default function ReadyToSignup() {
   });
   const [bookingOpensAt, setBookingOpensAt] = useState<Date | null>(null);
 
+  // Restore location state from sessionStorage if it was lost during navigation
+  const getLocationStateData = () => {
+    const stateData = location.state;
+    if (stateData) return stateData;
+    
+    // Try to restore from sessionStorage
+    const savedState = sessionStorage.getItem('readyToSignup_locationState');
+    return savedState ? JSON.parse(savedState) : null;
+  };
+
   // Calculate booking open time for Resy (30 days prior at 10 AM ET)
   const calculateBookingOpenTime = (targetDate: string) => {
     if (!targetDate) return null;
@@ -262,7 +272,7 @@ export default function ReadyToSignup() {
 
   // Initialize plan creation for location.state data - ALWAYS create real plans
   useEffect(() => {
-    const stateData = location.state;
+    const stateData = getLocationStateData();
     
     console.log('📍 ReadyToSignup initialization:', {
       sessionId: planId,
@@ -279,6 +289,10 @@ export default function ReadyToSignup() {
     // No authentication required - let anonymous users create records
     if (stateData && !realPlanId && !isPlanCreating && !creationStartedRef.current) {
       console.log('🚀 Creating activities → sessions → reservations flow from location.state:', stateData);
+      
+      // Store location state data in sessionStorage before navigation to preserve it
+      sessionStorage.setItem('readyToSignup_locationState', JSON.stringify(stateData));
+      
       creationStartedRef.current = true;
       setIsPlanCreating(true);
       
