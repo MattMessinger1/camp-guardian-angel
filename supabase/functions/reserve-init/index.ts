@@ -1,380 +1,266 @@
-// deno-lint-ignore-file no-explicit-any
-// TODO: Add alert for PI nearing auth timeout (7 days)
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.54.0';
 import Stripe from "https://esm.sh/stripe@14.21.0";
-import { RESERVATION_STATES, validateReservationStatusUpdate } from "../_shared/states.ts";
-import { requirePaymentMethodOrThrow } from "../_shared/billing.ts";
-import { checkQuotas, acquireUserSessionLock, releaseUserSessionLock } from "../_shared/quotas.ts";
-import { isChildDuplicateError, getChildDuplicateErrorMessage } from "../_shared/childFingerprint.ts";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-test-mode",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
+// Handle both legacy and new request formats
+interface LegacyReserveInitRequest {
+  session_id: string;
+  parent: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  child: {
+    name: string;
+    dob: string;
+    notes?: string;
+  };
+}
+
+interface NewReserveInitRequest {
+  url: string;
+  businessName: string;
+  provider?: string;
+  registrationTime: string;
+  userId: string;
+  metadata?: any;
+}
+
+type ReserveInitRequest = LegacyReserveInitRequest | NewReserveInitRequest;
+
+function isLegacyRequest(req: ReserveInitRequest): req is LegacyReserveInitRequest {
+  return 'session_id' in req && 'parent' in req && 'child' in req;
+}
+
+function isNewRequest(req: ReserveInitRequest): req is NewReserveInitRequest {
+  return 'url' in req && 'businessName' in req && 'userId' in req;
+}
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { 
-      status: 405,
-      headers: corsHeaders
-    });
-  }
-
-  // Get the authenticated user (or handle test mode)
-  const authHeader = req.headers.get('Authorization');
-  const isTestMode = !authHeader || authHeader === 'Bearer test' || req.headers.get('x-test-mode') === 'true';
-  
-  if (!isTestMode && !authHeader) {
-    return new Response(JSON.stringify({ error: "Missing authorization header" }), { 
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-
-  // Create client with service role for database operations
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { 
-    auth: { persistSession: false } 
-  });
-
-  // Create user client to verify authentication
-  const userSupabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
-    global: {
-      headers: { Authorization: authHeader }
-    }
-  });
-
-  const stripe = new Stripe(STRIPE_SECRET_KEY, {
-    apiVersion: "2023-10-16",
-  });
-
   try {
-    console.log('🔧 Environment check:', {
-      hasSupabaseUrl: !!SUPABASE_URL,
-      hasSupabaseServiceRole: !!SUPABASE_SERVICE_ROLE,
-      hasStripeKey: !!STRIPE_SECRET_KEY,
-      hasAnonKey: !!Deno.env.get("SUPABASE_ANON_KEY")
-    });
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Log authorization header details for debugging
-    console.log('🔐 Auth header details:', {
-      hasAuthHeader: !!authHeader,
-      authHeaderLength: authHeader?.length || 0,
-      authHeaderStart: authHeader?.substring(0, 20) || 'none'
-    });
-
-    // Real reservation processing (no more PUBLIC_DATA_MODE)
-    console.log('💼 Processing real reservation with Stripe integration');
-
-    // Handle test mode or verify user authentication
-    let user: any;
+    const requestBody: ReserveInitRequest = await req.json();
     
-    if (isTestMode) {
-      console.log('🧪 Test mode detected, using mock user data');
-      user = {
-        id: 'test-user-123',
-        email: 'test@example.com',
-        user_metadata: {}
-      };
-    } else {
-      console.log('🔍 Attempting user authentication...');
-      const { data: userData, error: authError } = await userSupabase.auth.getUser();
-      
-      if (authError) {
-        console.error('❌ Authentication error details:', {
-          message: authError.message,
-          code: authError.name,
-          details: authError
-        });
-        return new Response(JSON.stringify({ 
-          error: "Authentication failed", 
-          details: authError.message,
-          code: authError.name
-        }), { 
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-      
-      if (!userData.user) {
-        console.error('❌ No user found in authentication response');
-        return new Response(JSON.stringify({ 
-          error: "No authenticated user found",
-          details: "Authentication succeeded but no user data returned"
-        }), { 
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-      
-      user = userData.user;
-    }
+    // NEW FORMAT: Handle setup-registration flow (from ReadyToSignup)
+    if (isNewRequest(requestBody)) {
+      const {
+        url,
+        businessName,
+        provider = 'unknown',
+        registrationTime,
+        userId,
+        metadata = {}
+      } = requestBody;
 
-    console.log('✅ User ready:', {
-      userId: user.id,
-      email: user.email,
-      testMode: isTestMode
-    });
+      console.log('🚀 Starting reserve-init (new format) for:', { businessName, provider, url });
 
-    const { session_id, parent, child } = await req.json();
-    
-    if (isTestMode) {
-      console.log('🧪 Test mode: Using mock data for session lookup');
-      // In test mode, return mock reservation data without database operations
-      const mockReservationId = `test-reservation-${Date.now()}`;
-      const mockPaymentIntent = {
-        id: `pi_test_${Date.now()}`,
-        client_secret: `pi_test_${Date.now()}_secret_test123`
-      };
-      
-      console.log('✅ [TEST MODE] Mock reservation created:', {
-        reservation_id: mockReservationId,
-        payment_intent_id: mockPaymentIntent.id,
-        session_id,
-        parent_email: parent?.email,
-        child_name: child?.name
-      });
-      
-      return new Response(JSON.stringify({
-        reservation_id: mockReservationId,
-        payment_intent_client_secret: mockPaymentIntent.client_secret,
-        test_mode: true,
-        mock_data: {
-          session_id,
-          parent: parent?.email,
-          child: child?.name,
-          amount_cents: 2000
-        }
-      }), { 
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json" 
-        }
-      });
-    }
-    
-    // Continue with real processing for authenticated users
-    if (!session_id || !parent?.email || !parent?.phone || !child?.name || !child?.dob) {
-      return new Response(JSON.stringify({ error: "missing_fields" }), { 
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    console.log("reserve-init: processing reservation", { session_id, parent_email: parent.email, user_id: user.id });
-
-    // Get client IP for quota checking
-    const clientIP = req.headers.get('CF-Connecting-IP') || 
-                     req.headers.get('X-Forwarded-For') || 
-                     req.headers.get('X-Real-IP') || 
-                     'unknown';
-
-    // Acquire advisory lock for user+session to prevent race conditions
-    let lockId: number | null = null;
-    try {
-      const lock = await acquireUserSessionLock({
-        userId: user.id,
-        sessionId: session_id,
-        supabase
-      });
-      lockId = lock.lockId;
-
-      // SCHEDULER PRE-DISPATCH GUARDS: Payment Method + Quotas
-      console.log(`[FAIRNESS-SCHEDULER] Running admission guards for user ${user.id}, session ${session_id}`);
-      
-      // Guard 1: Payment method requirement (Prompt 1)
-      try {
-        await requirePaymentMethodOrThrow(user.id, user.email!);
-        console.log(`[FAIRNESS-SCHEDULER] Payment method verified for user ${user.id}`);
-      } catch (error: any) {
-        if (error.code === 'NO_PM') {
-          console.log(`[FAIRNESS-SCHEDULER] Payment method required - marking needs_user_action`);
-          // Note: In real system, this would be flagged as 'needs_user_action' in queue
-          return new Response(JSON.stringify({ 
-            error: "Payment method required. Please add a payment method before creating reservations.",
-            code: "NO_PAYMENT_METHOD",
-            action_required: "setup_payment_method"
-          }), { 
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
-        }
-        throw error;
-      }
-
-      // Guard 2: Consolidated quota checks (Prompt 4 + 2-cap)
-      const quotaResult = await checkQuotas({
-        userId: user.id,
-        childId: null, // Will be checked after child creation
-        sessionId: session_id,
-        ip: clientIP,
-        supabase
-      });
-
-      if (!quotaResult.ok) {
-        console.log(`[FAIRNESS-SCHEDULER] Quota check failed: ${quotaResult.code} - ${quotaResult.message}`);
-        // Note: In real system, this would be flagged as 'quota_blocked:{code}' in queue
-        return new Response(JSON.stringify({ 
-          error: quotaResult.message,
-          code: `QUOTA_BLOCKED_${quotaResult.code}`,
-          quota_exceeded: quotaResult.code
-        }), { 
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-
-      console.log(`[FAIRNESS-SCHEDULER] All admission guards passed - proceeding to enqueue reservation`);
-      // Only eligible reservations reach this point and get enqueued for barrier GO
-
-      // Lookup session for platform and provider key snapshot
-      const { data: sessionRow, error: sErr } = await supabase
-        .from("sessions")
-        .select("id, activity_id, platform, provider_session_key")
-        .eq("id", session_id)
+      // Step 1: Create or find activity
+      let activityId: string;
+      const { data: existingActivity } = await supabase
+        .from('activities')
+        .select('id')
+        .eq('name', businessName)
+        .eq('canonical_url', url)
         .single();
-      
-      if (sErr || !sessionRow) {
-        console.error("Session lookup failed:", sErr);
-        throw sErr ?? new Error("session_not_found");
+
+      if (existingActivity) {
+        activityId = existingActivity.id;
+        console.log('📍 Using existing activity:', activityId);
+      } else {
+        const { data: newActivity, error: activityError } = await supabase
+          .from('activities')
+          .insert({
+            name: businessName,
+            canonical_url: url,
+            provider_id: provider,
+            kind: provider === 'resy' ? 'restaurant' : 'fitness'
+          })
+          .select('id')
+          .single();
+
+        if (activityError) throw activityError;
+        activityId = newActivity.id;
+        console.log('✅ Created new activity:', activityId);
       }
 
-      // Upsert parent (handle potential duplicates) - using service role to bypass RLS
-      const { data: pIns, error: pErr } = await supabase
-        .from("parents")
+      // Step 2: Create session
+      const { data: session, error: sessionError } = await supabase
+        .from('sessions')
         .insert({
-          user_id: user.id, // Link to authenticated user
-          name: parent.name ?? null, 
-          email: parent.email, 
-          phone: parent.phone
+          activity_id: activityId,
+          name: `${businessName} Registration`,
+          start_at: registrationTime,
+          registration_open_at: registrationTime,
+          provider: provider,
+          status: 'scheduled',
+          price_min: provider === 'resy' ? 0 : 100,
+          metadata: {
+            ...metadata,
+            automationType: provider === 'resy' ? 'restaurant_booking' : 'general'
+          }
         })
-        .select("id")
+        .select('id')
         .single();
-      
-      if (pErr) {
-        console.error("Parent upsert failed:", pErr);
-        throw pErr;
-      }
 
-      // Insert child
-      const { data: cIns, error: cErr } = await supabase
-        .from("children")
+      if (sessionError) throw sessionError;
+      console.log('✅ Created session:', session.id);
+
+      // Step 3: Create reservation
+      const { data: reservation, error: reservationError } = await supabase
+        .from('reservations')
         .insert({
-          parent_id: pIns.id, 
-          name: child.name, 
-          dob: child.dob, 
-          notes: child.notes ?? null
+          user_id: userId,
+          session_id: session.id,
+          status: 'pending',
+          provider_url: url,
+          automation_status: 'ready',
+          metadata: {
+            provider,
+            businessName,
+            registrationTime,
+            source: 'reserve-init-new',
+            ...metadata
+          }
         })
-        .select("id")
+        .select('id')
         .single();
-      
-      if (cErr) {
-        console.error("Child insert failed:", cErr);
+
+      if (reservationError) throw reservationError;
+      console.log('✅ Created reservation:', reservation.id);
+
+      // Step 4: Connect Resy automation if applicable
+      if (provider === 'resy') {
+        console.log('🍴 Setting up Resy automation...');
         
-        // Check if this is a duplicate child fingerprint error
-        if (isChildDuplicateError(cErr)) {
-          return new Response(JSON.stringify({ 
-            error: getChildDuplicateErrorMessage(),
-            code: "CHILD_DUPLICATE"
-          }), { 
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+        try {
+          // Discover the actual booking URL if needed
+          if (!url.includes('resy.com') || url === 'https://resy.com') {
+            const { data: urlDiscovery } = await supabase.functions.invoke('discover-booking-url', {
+              body: {
+                venueName: businessName,
+                provider: 'resy'
+              }
+            });
+            
+            if (urlDiscovery?.url) {
+              await supabase
+                .from('reservations')
+                .update({ provider_url: urlDiscovery.url })
+                .eq('id', reservation.id);
+              console.log('📍 Updated with discovered URL:', urlDiscovery.url);
+            }
+          }
+
+          // Set up signup monitoring
+          await supabase.functions.invoke('watch-signup-open', {
+            body: {
+              reservationId: reservation.id,
+              provider: 'resy',
+              checkUrl: url,
+              businessName
+            }
           });
+          console.log('👁️ Connected Resy monitoring');
+
+        } catch (automationError) {
+          console.error('⚠️ Resy automation setup failed:', automationError);
         }
-        
-        throw cErr;
       }
-
-      // Create PaymentIntent with manual capture
-      const amountCents = 2000;
-      console.log("Creating Stripe PaymentIntent for amount:", amountCents);
-      
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amountCents,
-        currency: "usd",
-        capture_method: "manual",
-        automatic_payment_methods: {
-          enabled: true,
-        },
-        metadata: {
-          session_id: sessionRow.id,
-          parent_id: pIns.id,
-          child_id: cIns.id,
-        }
-      });
-
-      // Create reservation (pending)
-      const { data: rIns, error: rErr } = await supabase
-        .from("reservations")
-        .insert({
-          session_id: sessionRow.id,
-          parent_id: pIns.id,
-          child_id: cIns.id,
-          status: RESERVATION_STATES.PENDING,
-          price_fee_cents: amountCents,
-          stripe_payment_intent_id: paymentIntent.id,
-          provider_platform: sessionRow.platform,
-          provider_session_key: sessionRow.provider_session_key
-        })
-        .select("id")
-        .single();
-      
-      if (rErr) {
-        console.error("Reservation insert failed:", rErr);
-        throw rErr;
-      }
-
-      // Enhanced logging for observability
-      console.log(JSON.stringify({ 
-        type: 'reserve_init', 
-        session_id: sessionRow.id,
-        parent_email: parent.email,
-        reservation_id: rIns.id, 
-        pi: paymentIntent.id,
-        platform: sessionRow.platform,
-        amount_cents: amountCents,
-        timestamp: new Date().toISOString()
-      }));
 
       return new Response(JSON.stringify({
-        reservation_id: rIns.id,
-        payment_intent_client_secret: paymentIntent.client_secret
-      }), { 
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json" 
-        }
+        success: true,
+        activityId,
+        sessionId: session.id,
+        reservationId: reservation.id,
+        provider,
+        automationConnected: provider === 'resy'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-
-    } finally {
-      // Always release the lock
-      if (lockId !== null) {
-        await releaseUserSessionLock({
-          lockId,
-          supabase
-        });
-      }
     }
 
-  } catch (e: any) {
-    console.error("reserve-init error:", e);
-    return new Response(JSON.stringify({ 
-      error: e?.message ?? "reserve_init_error" 
-    }), { 
-      status: 400,
-      headers: { 
-        ...corsHeaders,
-        "Content-Type": "application/json" 
+    // LEGACY FORMAT: Handle original reserve-init flow (existing components)
+    if (isLegacyRequest(requestBody)) {
+      const { session_id, parent, child } = requestBody;
+      
+      console.log('🚀 Starting reserve-init (legacy format) for session:', session_id);
+
+      // Get authenticated user
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        throw new Error('Authorization required');
       }
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !userData.user) {
+        throw new Error('Invalid authentication');
+      }
+
+      // Get session details
+      const { data: session, error: sessionError } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('id', session_id)
+        .single();
+
+      if (sessionError || !session) {
+        throw new Error('Session not found');
+      }
+
+      // Create reservation with basic structure (no Stripe for now)
+      const { data: reservation, error: reservationError } = await supabase
+        .from('reservations')
+        .insert({
+          user_id: userData.user.id,
+          session_id: session_id,
+          status: 'pending',
+          provider_url: session.signup_url || '',
+          automation_status: 'ready',
+          metadata: {
+            parent,
+            child,
+            source: 'reserve-init-legacy'
+          }
+        })
+        .select('id')
+        .single();
+
+      if (reservationError) throw reservationError;
+      console.log('✅ Created legacy reservation:', reservation.id);
+
+      return new Response(JSON.stringify({
+        success: true,
+        reservation_id: reservation.id,
+        session_id: session_id
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Neither format matched
+    throw new Error('Invalid request format');
+
+  } catch (error) {
+    console.error('❌ Reserve-init error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

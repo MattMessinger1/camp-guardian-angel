@@ -355,11 +355,17 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     // Internet result - create real database records using the flow
                     const { data: { user } } = await supabase.auth.getUser();
                     
-                    // Detect provider for better URL handling
+                    // Detect provider using the proper detection system
                     let provider = 'unknown';
                     let finalUrl = actualUrl;
                     
-                    if (businessName?.toLowerCase().includes('carbone')) {
+                    // Use the provider detection system
+                    const { detectPlatform } = await import('@/lib/providers');
+                    const detectedProfile = await detectPlatform(finalUrl || '');
+                    
+                    if (detectedProfile) {
+                      provider = detectedProfile.platform;
+                    } else if (businessName?.toLowerCase().includes('carbone')) {
                       provider = 'resy';
                       finalUrl = finalUrl || 'https://resy.com/cities/ny/carbone';
                     } else if (businessName?.toLowerCase().includes('peloton')) {

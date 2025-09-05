@@ -848,20 +848,26 @@ export default function ReadyToSignup() {
         userId: user.id
       });
 
-      // Call the existing reserve-init edge function with the correct data
-      const { data, error } = await supabase.functions.invoke('reserve-init', {
-        body: {
-          url: sessionData.url,
-          businessName: sessionData.businessName || sessionData.title,
-          provider: sessionData.provider,
-          registrationTime,
-          userId: user.id,
-          metadata: {
-            source: 'readyToSignup',
-            originalSessionId: sessionData.id,
-            ...sessionData
-          }
+      // Enhanced: Call setup-registration with Resy-specific handling
+      const requestBody = {
+        url: sessionData.url,
+        businessName: sessionData.businessName || sessionData.title,
+        provider: sessionData.provider || detectedPlatform?.platform,
+        registrationTime,
+        userId: user.id,
+        metadata: {
+          source: 'readyToSignup',
+          originalSessionId: sessionData.id,
+          platform: detectedPlatform?.platform,
+          platformType: detectedPlatform?.type,
+          ...sessionData
         }
+      };
+
+      console.log('🚀 Calling reserve-init with enhanced data:', requestBody);
+
+      const { data, error } = await supabase.functions.invoke('reserve-init', {
+        body: requestBody
       });
 
       if (error) {
