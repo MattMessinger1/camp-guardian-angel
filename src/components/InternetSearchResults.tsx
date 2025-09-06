@@ -7,6 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ProviderBadge } from "@/components/ui/provider-badge";
+import { ProviderLoadingBadge, ProviderDetectingBadge, LoadingProgress } from "@/components/ui/provider-loading";
+import { extractUrl, generateFallbackUrl } from "@/utils/urlExtraction";
+import { detectProviderFast, detectProvidersAsync } from "@/utils/asyncProviderDetection";
+import { useState, useEffect } from "react";
 
 // Helper function to extract Jackrabbit org ID from URL or business name
 function extractJackrabbitOrgId(input: string): string | null {
@@ -21,14 +25,7 @@ function extractJackrabbitOrgId(input: string): string | null {
   return null;
 }
 
-function generateDefaultUrl(providerName: string): string {
-  const name = providerName?.toLowerCase() || '';
-  if (name.includes('peloton')) return 'https://studio.onepeloton.com';
-  if (name.includes('soulcycle')) return 'https://www.soul-cycle.com';
-  if (name.includes('barry')) return 'https://www.barrysbootcamp.com';
-  if (name.includes('equinox')) return 'https://www.equinox.com';
-  return `https://www.google.com/search?q=${encodeURIComponent(providerName || 'fitness class')}`;
-}
+// Removed - using generateFallbackUrl from urlExtraction utility
 
 interface InternetSearchResult {
   id?: string;
@@ -79,67 +76,56 @@ interface InternetSearchResultsProps {
 
 const processSearchResults = (results: InternetSearchResult[]) => {
   return results.map((result, index) => {
-    // Don't create fake IDs - use temporary markers for display only
     const tempDisplayId = `temp-${index}`;
+    const extractedUrl = extractUrl(result);
     
-    // Extract URL from multiple possible fields (same logic as FindCamps.tsx)
-    const extractedUrl = result.url || result.signup_url || result.link || 
-                        result.reference_url || result.source_url || 
-                        result.website || result.providerUrl;
-    
-    console.log('🔗 InternetSearchResults URL processing:', {
+    console.log('🔗 URL extraction:', {
       name: result.businessName || result.name,
       extractedUrl,
-      originalUrl: result.url,
-      signup_url: result.signup_url,
-      providerUrl: result.providerUrl
+      originalFields: { url: result.url, signup_url: result.signup_url }
     });
     
     return {
       ...result,
-      id: tempDisplayId, // Temporary ID for display only
-      session_id: null, // No session ID for internet results
-      // Ensure correct data associations
+      id: tempDisplayId,
+      session_id: null,
       businessName: result.businessName || result.name,
-      // Preserve URLs properly - don't convert to empty string
       url: extractedUrl || undefined,
       signup_url: extractedUrl || undefined, 
       providerUrl: extractedUrl || undefined,
-      provider: detectProvider(result)
+      provider: detectProviderFast(result) // Fast sync detection for immediate render
     };
   });
 };
 
-const detectProvider = (result: InternetSearchResult) => {
-  const name = (result.businessName || result.name || '').toLowerCase();
-  const url = (result.url || result.signup_url || result.providerUrl || '').toLowerCase();
-  
-  // Restaurants
-  if (name.includes('carbone') || url.includes('carbone')) return 'resy';
-  if (name.includes('don angie') || url.includes('don-angie')) return 'resy';
-  if (name.includes("rao's") || url.includes('raos')) return 'resy';
-  if (url.includes('resy.com')) return 'resy';
-  if (url.includes('opentable.com')) return 'opentable';
-  
-  // Fitness
-  if (name.includes('peloton') || url.includes('peloton')) return 'peloton';
-  
-  // Camps & Classes  
-  if (name.includes('camp') || name.includes('dance') || name.includes('gymnastics')) {
-    if (url.includes('jackrabbit') || name.includes('jackrabbit')) return 'jackrabbit_class';
-    if (url.includes('daysmart') || name.includes('daysmart')) return 'daysmart_recreation';
-    return 'jackrabbit_class'; // Default for camps
-  }
-  
-  return 'unknown';
-};
+// Removed - using detectProviderFast from asyncProviderDetection utility
 
 export function InternetSearchResults({ results, extractedTime, onSelect }: InternetSearchResultsProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   
+  // State for async provider detection
+  const [providerDetections, setProviderDetections] = useState<Map<number, any>>(new Map());
+  const [isDetecting, setIsDetecting] = useState(true);
+  
   // Process results to ensure unique IDs
   const processedResults = processSearchResults(results);
+  
+  // Run async provider detection in background
+  useEffect(() => {
+    if (processedResults.length === 0) return;
+    
+    setIsDetecting(true);
+    detectProvidersAsync(processedResults)
+      .then(detections => {
+        setProviderDetections(detections);
+        setIsDetecting(false);
+      })
+      .catch(error => {
+        console.error('Provider detection failed:', error);
+        setIsDetecting(false);
+      });
+  }, [results]);
 
   const handleSearchResultClick = (result: any) => {
     // Clear any cached session data first including Carbone-related data
@@ -149,27 +135,20 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     sessionStorage.clear();
     console.log('✅ Cleared all cached session data including Carbone state');
     
-    // Extract URL from multiple possible fields
-    const extractedUrl = result.url || result.signup_url || result.link || 
-                        result.reference_url || result.source_url || 
-                        result.website || result.providerUrl;
+    // Extract URL using optimized utility
+    const extractedUrl = extractUrl(result) || generateFallbackUrl(result.businessName || result.name || '');
     
     console.log('🔗 handleSearchResultClick URL extraction:', {
       name: result.businessName || result.name,
-      extractedUrl,
-      availableFields: {
-        url: result.url,
-        signup_url: result.signup_url,
-        providerUrl: result.providerUrl
-      }
+      extractedUrl
     });
     
     // Create fresh session data
     const freshData = {
       id: `${result.businessName || result.name}-${Date.now()}`,
       businessName: result.businessName || result.name,
-      url: extractedUrl || 'https://google.com',
-      provider: result.businessName?.includes('Carbone') ? 'resy' : detectProvider(result)
+      url: extractedUrl,
+      provider: result.businessName?.includes('Carbone') ? 'resy' : detectProviderFast(result)
     };
     
     console.log('🎯 NAVIGATION DEBUG - Click detected with fresh data:', freshData);
@@ -297,6 +276,16 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
     );
   }
 
+  // Show loading state while detecting providers
+  if (isDetecting && processedResults.length > 0) {
+    return (
+      <LoadingProgress 
+        message="Analyzing providers and optimizing results..." 
+        progress={50}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground">
@@ -326,6 +315,10 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
         )}
       
       {processedResults.map((result, index) => {
+        // Get enhanced provider detection result
+        const detection = providerDetections.get(index);
+        const provider = detection?.provider || result.provider;
+        const confidence = detection?.confidence || 'low';
         
         // Special Carbone UI
         if (result.businessName === 'Carbone' || result.name === 'Carbone') {
@@ -368,7 +361,11 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
                 <h2 className="text-xl font-bold text-foreground">
                   {result.businessName || result.name || result.title}
                 </h2>
-                <ProviderBadge platform={result.provider} size="sm" />
+                {isDetecting ? (
+                  <ProviderDetectingBadge size="sm" />
+                ) : (
+                  <ProviderBadge platform={provider} size="sm" />
+                )}
               </div>
               
               {/* Location - simplified and corrected */}
