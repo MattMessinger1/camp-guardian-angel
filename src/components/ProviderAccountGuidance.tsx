@@ -147,7 +147,7 @@ export function ProviderAccountGuidance({
           </div>
         )}
 
-        <div className={`bg-${guidance.color}-50 p-3 rounded-lg`}>
+        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
           <div className="flex items-center gap-2 mb-2">
             <Shield className="h-4 w-4 text-blue-600" />
             <span className="font-semibold text-blue-900">Credential Security</span>
