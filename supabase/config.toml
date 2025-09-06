@@ -194,3 +194,6 @@ verify_jwt = false
 
 [functions.test-credentials]
 verify_jwt = false
+
+[functions.jackrabbit-import-classes]
+verify_jwt = true

@@ -10,6 +10,7 @@ import type { SearchResult } from '@/components/camp-search/CampSearchComponents
 import { InternetSearchToggle } from '@/components/InternetSearchToggle';
 import { InternetSearchResults } from '@/components/InternetSearchResults';
 import { ClarifyingQuestionsCard } from '@/components/camp-search/ClarifyingQuestionsCard';
+import { JackrabbitImportDialog } from '@/components/JackrabbitImportDialog';
 import { cleanupInvalidRegistrationPlans } from '@/utils/cleanupDatabase';
 
 interface InternetSearchResult {
@@ -568,11 +569,21 @@ const FindCamps: React.FC = () => {
         </div>
 
         {/* Search Box */}
-        <div className="mb-8">
+        <div className="mb-8 space-y-4">
           <CampSearchBox
             onSearch={handleSearch}
             isLoading={isLoading}
           />
+          
+          {/* Jackrabbit Import Option */}
+          <div className="flex justify-center">
+            <JackrabbitImportDialog onImportComplete={() => {
+              // Refresh search results after import
+              if (lastQuery) {
+                handleSearch(lastQuery);
+              }
+            }} />
+          </div>
         </div>
 
         {/* Clarifying Questions - only for database search */}
