@@ -46,30 +46,49 @@ const adapter: ProviderAdapter = {
         return { ok: false, reason: 'Invalid Jackrabbit URL - missing organization ID' };
       }
 
-      // Check if login credentials are available in vault/context
-      const hasCredentials = ctx.metadata?.vault?.jackrabbit_login;
-      if (!hasCredentials) {
-        return { ok: false, reason: 'Parent organization credentials not found in vault' };
+      // Detect if this is OpeningsDirect (no login required) vs Parent Portal (login required)
+      const requiresAuth = !ctx.canonical_url.includes('/Openings/OpeningsDirect');
+      console.log(`[JR-PRECHECK] Auth required: ${requiresAuth} for URL: ${ctx.canonical_url}`);
+
+      // Check if login credentials are available when auth is required
+      if (requiresAuth) {
+        const hasCredentials = ctx.metadata?.vault?.jackrabbit_login;
+        if (!hasCredentials) {
+          return { ok: false, reason: 'Parent organization credentials not found in vault' };
+        }
       }
 
-      // Verify child fields are available
+      // Verify child fields are available and collect missing ones
       const childData = ctx.child_token as ChildData;
+      const missing: string[] = [];
+      
       if (!childData?.dob) {
-        return { ok: false, reason: 'Child date of birth required for registration' };
+        missing.push('child_dob');
       }
 
-      if (!childData.emergency_contacts || childData.emergency_contacts.length === 0) {
-        return { ok: false, reason: 'Emergency contact information required' };
+      if (!childData?.emergency_contacts || childData.emergency_contacts.length === 0) {
+        missing.push('emergency_contacts');
+      }
+
+      // If we have missing required fields, return them
+      if (missing.length > 0) {
+        return { 
+          ok: false, 
+          reason: `Missing required fields: ${missing.join(', ')}`,
+          requires_auth: requiresAuth,
+          missing 
+        };
       }
 
       // Test connectivity to the registration page
       const testUrl = `${url.origin}/regv2.asp?id=${orgId}`;
-      
-      // In a real implementation, you would make an HTTP request here
-      // For now, we'll assume connectivity is good
       console.log(`Testing connectivity to: ${testUrl}`);
 
-      return { ok: true };
+      return { 
+        ok: true, 
+        requires_auth: requiresAuth, 
+        missing: [] 
+      };
     } catch (error) {
       console.error('Jackrabbit precheck failed:', error);
       return { ok: false, reason: 'Failed to validate Jackrabbit setup' };
@@ -145,31 +164,46 @@ const adapter: ProviderAdapter = {
 
   async reserve(ctx: ProviderContext, candidate: ProviderSessionCandidate): Promise<ReserveResult> {
     try {
-      const loginData = ctx.metadata?.vault?.jackrabbit_login as JackrabbitLoginData;
       const childData = ctx.child_token as ChildData;
 
-      if (!loginData || !childData) {
+      if (!childData) {
         return { 
           success: false, 
           candidate, 
-          reason: 'Missing login credentials or child data' 
+          reason: 'Missing child data' 
         };
       }
 
       // Step 1: Navigate to enrollment page
       const enrollmentUrl = candidate.url || ctx.canonical_url;
       
-      // Step 2: Check if login is required and perform login
-      const loginResult = await login({ 
-        plan: { provider_org_id: candidate.provider_id || ctx.metadata?.orgId || '' }, 
-        bbSessionId: ctx.session_id || 'session-placeholder' 
-      });
-      if (!loginResult.ok) {
-        return { 
-          success: false, 
-          candidate, 
-          reason: loginResult.reason || 'Failed to login to Jackrabbit system' 
-        };
+      // Step 2: Check if login is required - skip for OpeningsDirect
+      const requiresAuth = !ctx.canonical_url.includes('/Openings/OpeningsDirect');
+      console.log(`[JR-RESERVE] Auth required: ${requiresAuth}`);
+      
+      if (requiresAuth) {
+        const loginData = ctx.metadata?.vault?.jackrabbit_login as JackrabbitLoginData;
+        if (!loginData) {
+          return { 
+            success: false, 
+            candidate, 
+            reason: 'Missing login credentials for Parent Portal' 
+          };
+        }
+
+        const loginResult = await login({ 
+          plan: { provider_org_id: candidate.provider_id || ctx.metadata?.orgId || '' }, 
+          bbSessionId: ctx.session_id || 'session-placeholder' 
+        });
+        if (!loginResult.ok) {
+          return { 
+            success: false, 
+            candidate, 
+            reason: loginResult.reason || 'Failed to login to Jackrabbit system' 
+          };
+        }
+      } else {
+        console.log('[JR-RESERVE] Skipping login for OpeningsDirect URL');
       }
 
       // Step 3: Click Register/Enroll button
