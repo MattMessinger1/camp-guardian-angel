@@ -71,6 +71,19 @@ export function loadAdapter(platform: ProviderPlatform): ProviderAdapter {
       return shopifyAdapter;
     case 'playmetrics':
       return playmetricsAdapter;
+    // New platforms use generic adapters until specific ones are built
+    case 'resy':
+    case 'opentable':
+    case 'peloton':
+    case 'ticketmaster':
+    case 'eventbrite':
+      // For now, return a basic adapter that logs and fails gracefully
+      return {
+        precheck: async (ctx) => ({ ok: false, reason: `${platform} adapter not yet implemented` }),
+        findSessions: async (ctx, intent) => [],
+        reserve: async (ctx, candidate) => ({ success: false, reason: `${platform} reservation not yet implemented` }),
+        finalizePayment: async (ctx, candidate) => ({ success: false, error: `${platform} payment not yet implemented` })
+      };
     default:
       throw new Error(`No adapter for platform: ${platform}`);
   }

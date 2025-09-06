@@ -9,7 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { ProviderBadge } from "@/components/ui/provider-badge";
 import { ProviderLoadingBadge, ProviderDetectingBadge, LoadingProgress } from "@/components/ui/provider-loading";
 import { extractUrl, generateFallbackUrl } from "@/utils/urlExtraction";
-import { detectProviderFast, detectProvidersAsync } from "@/utils/asyncProviderDetection";
+import { detectProviderFast } from "@/utils/asyncProviderDetection";
+import { useProviderDetection } from "@/hooks/useProviderDetection";
 import { useState, useEffect } from "react";
 
 // Helper function to extract Jackrabbit org ID from URL or business name
@@ -104,28 +105,11 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // State for async provider detection
-  const [providerDetections, setProviderDetections] = useState<Map<number, any>>(new Map());
-  const [isDetecting, setIsDetecting] = useState(true);
-  
   // Process results to ensure unique IDs
   const processedResults = processSearchResults(results);
   
-  // Run async provider detection in background
-  useEffect(() => {
-    if (processedResults.length === 0) return;
-    
-    setIsDetecting(true);
-    detectProvidersAsync(processedResults)
-      .then(detections => {
-        setProviderDetections(detections);
-        setIsDetecting(false);
-      })
-      .catch(error => {
-        console.error('Provider detection failed:', error);
-        setIsDetecting(false);
-      });
-  }, [results]);
+  // Use the new provider detection hook
+  const { detections, isDetecting, error } = useProviderDetection(processedResults);
 
   const handleSearchResultClick = (result: any) => {
     // Clear any cached session data first including Carbone-related data
@@ -316,7 +300,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
       
       {processedResults.map((result, index) => {
         // Get enhanced provider detection result
-        const detection = providerDetections.get(index);
+        const detection = detections.get(index);
         const provider = detection?.provider || result.provider;
         const confidence = detection?.confidence || 'low';
         
