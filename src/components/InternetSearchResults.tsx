@@ -10,6 +10,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ProviderBadge } from "@/components/ui/provider-badge";
 
+// Helper function to extract Jackrabbit org ID from URL or business name
+function extractJackrabbitOrgId(input: string): string | null {
+  // Try to extract from URL patterns like https://abc123.jackrabbitclass.com
+  const urlMatch = input.match(/https?:\/\/([^.]+)\.jackrabbitclass\.com/i);
+  if (urlMatch) return urlMatch[1];
+  
+  // Try to extract from business name if it contains an org ID pattern  
+  const nameMatch = input.match(/\b([a-zA-Z0-9]{3,})\b/);
+  if (nameMatch) return nameMatch[1].toLowerCase();
+  
+  return null;
+}
+
 function generateDefaultUrl(providerName: string): string {
   const name = providerName?.toLowerCase() || '';
   if (name.includes('peloton')) return 'https://studio.onepeloton.com';
@@ -211,6 +224,20 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
       console.error('No user ID!');
       toast.error('Please sign in first');
       return;
+    }
+    
+    // Check if this is a Jackrabbit provider - route to class browser
+    if (freshData.businessName?.toLowerCase().includes('jackrabbit') || 
+        freshData.url?.includes('jackrabbitclass.com') ||
+        freshData.provider === 'jackrabbit_class') {
+      console.log('🎓 Jackrabbit detected - navigating to class browser');
+      const orgId = extractJackrabbitOrgId(freshData.url || freshData.businessName || '');
+      if (orgId) {
+        navigate(`/jackrabbit/classes/${orgId}`, { 
+          state: { businessName: freshData.businessName, provider: 'jackrabbit_class' }
+        });
+        return;
+      }
     }
     
     // Check if this is Carbone - route to dedicated Carbone setup

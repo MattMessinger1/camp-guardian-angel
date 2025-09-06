@@ -55,6 +55,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
     YMCATest: lazy(() => import('./pages/YMCATest')),
     PrewarmTest: lazy(() => import('./pages/PrewarmTest')),
     JackrabbitTest: lazy(() => import('./pages/JackrabbitTest')),
+    JackrabbitClassBrowser: lazy(() => import('./pages/JackrabbitClassBrowser')),
     PendingSignups: lazy(() => import('./pages/PendingSignups')),
     ApprovePage: lazy(() => import('./pages/ApprovePage')),
     Operations: lazy(() => import('./pages/Operations')),
@@ -100,6 +101,9 @@ export default function App() {
         <ErrorBoundary>
           <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
             <Routes>
+              {/* Jackrabbit Class Browser - Always Available */}
+              <Route path="/jackrabbit/classes/:providerId" element={<DevPages.JackrabbitClassBrowser />} />
+              
               {/* Core V1.0 Production Routes - Always Available */}
               <Route path="/" element={<HomePage />} />
               <Route path="/signup" element={<EnhancedSignupPage />} />

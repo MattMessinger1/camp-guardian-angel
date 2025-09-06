@@ -13,6 +13,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { ClarifyingQuestionsCard } from './ClarifyingQuestionsCard';
 import { ProviderBadge } from '@/components/ui/provider-badge';
 
+// Helper function to extract Jackrabbit org ID from URL or business name
+function extractJackrabbitOrgId(input: string): string | null {
+  // Try to extract from URL patterns like https://abc123.jackrabbitclass.com
+  const urlMatch = input.match(/https?:\/\/([^.]+)\.jackrabbitclass\.com/i);
+  if (urlMatch) return urlMatch[1];
+  
+  // Try to extract from business name if it contains an org ID pattern
+  const nameMatch = input.match(/\b([a-zA-Z0-9]{3,})\b/);
+  if (nameMatch) return nameMatch[1].toLowerCase();
+  
+  return null;
+}
+
 export interface SearchResult {
   sessionId: string;
   campName: string;
@@ -373,6 +386,18 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     
                     if (detectedProfile) {
                       provider = detectedProfile.platform;
+                      
+                      // Check if this is a Jackrabbit provider - route to class browser
+                      if (provider === 'jackrabbit_class') {
+                        console.log('🎓 Jackrabbit detected - navigating to class browser');
+                        const orgId = extractJackrabbitOrgId(finalUrl || businessName || '');
+                        if (orgId) {
+                          navigate(`/jackrabbit/classes/${orgId}`, { 
+                            state: { businessName, provider: 'jackrabbit_class' }
+                          });
+                          return;
+                        }
+                      }
                     } else if (businessName?.toLowerCase().includes('carbone')) {
                       provider = 'resy';
                       finalUrl = finalUrl || 'https://resy.com/cities/ny/carbone';
