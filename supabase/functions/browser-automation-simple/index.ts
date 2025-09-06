@@ -280,21 +280,24 @@ async function handleCloseSession(apiKey: string, request: BrowserSessionRequest
 }
 
 // Helper functions
-function determineAuthRequirement(url: string): boolean {
+function determineAuthRequirement(url: string | undefined): boolean {
+  if (!url) return false;
   return url.includes('communitypass') || url.includes('portal') || url.includes('register.');
 }
 
-function requiresAccountCreation(url: string): boolean {
+function requiresAccountCreation(url: string | undefined): boolean {
+  if (!url) return false;
   return url.includes('communitypass');
 }
 
-function getPageType(url: string): string {
+function getPageType(url: string | undefined): string {
+  if (!url) return 'unknown';
   if (url.includes('communitypass')) return 'login_wall';
   if (url.includes('seattle') || url.includes('activecommunities')) return 'direct_registration';
   return 'registration_form';
 }
 
-function getExpectedFormFields(url: string): any[] {
+function getExpectedFormFields(url: string | undefined): any[] {
   const baseFields = [
     { name: 'child_name', type: 'text', required: true, label: 'Child Name' },
     { name: 'parent_email', type: 'email', required: true, label: 'Email' },
@@ -310,6 +313,7 @@ function getExpectedFormFields(url: string): any[] {
   }
 
   return baseFields;
+}
 }
 
 function getSimulatedActivities(url: string): any[] {

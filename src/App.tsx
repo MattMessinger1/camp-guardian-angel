@@ -54,6 +54,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
     ReadyToSignup: lazy(() => import('./pages/ReadyToSignup')),
     YMCATest: lazy(() => import('./pages/YMCATest')),
     PrewarmTest: lazy(() => import('./pages/PrewarmTest')),
+    JackrabbitTest: lazy(() => import('./pages/JackrabbitTest')),
     PendingSignups: lazy(() => import('./pages/PendingSignups')),
     ApprovePage: lazy(() => import('./pages/ApprovePage')),
     Operations: lazy(() => import('./pages/Operations')),
@@ -188,6 +189,11 @@ export default function App() {
                   <Route path="/prewarm-test" element={
                     <ProtectedRoute>
                       <DevPages.PrewarmTest />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/jackrabbit-test" element={
+                    <ProtectedRoute>
+                      <DevPages.JackrabbitTest />
                     </ProtectedRoute>
                   } />
                   <Route path="/admin/*" element={
