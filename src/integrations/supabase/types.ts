@@ -5037,6 +5037,11 @@ export type Database = {
         | "daysmart_recreation"
         | "shopify_product"
         | "playmetrics"
+        | "resy"
+        | "opentable"
+        | "peloton"
+        | "ticketmaster"
+        | "eventbrite"
       reservation_state:
         | "info_collected"
         | "account_setup"
@@ -5190,6 +5195,11 @@ export const Constants = {
         "daysmart_recreation",
         "shopify_product",
         "playmetrics",
+        "resy",
+        "opentable",
+        "peloton",
+        "ticketmaster",
+        "eventbrite",
       ],
       reservation_state: [
         "info_collected",
