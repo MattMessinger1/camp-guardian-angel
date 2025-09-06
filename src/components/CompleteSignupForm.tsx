@@ -64,6 +64,32 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
   // Generate a unique key for this form session
   const formStorageKey = `signup-form-${sessionId || 'default'}`;
   
+  // Fetch plan data for organization ID
+  const [plan, setPlan] = useState<any>(null);
+  
+  // Fetch plan data when sessionId changes
+  useEffect(() => {
+    const fetchPlan = async () => {
+      if (!sessionId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('registration_plans')
+          .select('*')
+          .eq('id', sessionId)
+          .maybeSingle();
+        
+        if (!error && data) {
+          setPlan(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch plan:', err);
+      }
+    };
+    
+    fetchPlan();
+  }, [sessionId]);
+  
   // Use session requirements discovery
   const {
     requirements,
@@ -570,6 +596,7 @@ export default function CompleteSignupForm({ sessionId, discoveredRequirements, 
           <PreRegistrationAccountSetup
             sessionId={sessionId}
             onAccountSetupComplete={handleAccountSetupComplete}
+            plan={plan}
           />
           
           {/* Automation Status Display */}

@@ -48,12 +48,14 @@ interface PreRegistrationAccountSetupProps {
   sessionId?: string | null;
   onAccountSetupComplete: (accountData: any) => void;
   campUrl?: string;
+  plan?: any; // Add plan prop to access provider_org_id
 }
 
 export function PreRegistrationAccountSetup({ 
   sessionId, 
   onAccountSetupComplete,
-  campUrl 
+  campUrl,
+  plan 
 }: PreRegistrationAccountSetupProps) {
   const { toast } = useToast();
   
@@ -181,7 +183,8 @@ export function PreRegistrationAccountSetup({
           provider_url: providerUrl,
           email: accountEmail,
           password: accountPassword, // Will be encrypted server-side
-          provider_name: accountRequirement?.provider_name || 'Camp Provider'
+          provider_name: accountRequirement?.provider_name || 'Camp Provider',
+          organization_id: plan?.provider_org_id || null // Pass org ID for JackRabbit
         }
       });
 
@@ -410,6 +413,19 @@ export function PreRegistrationAccountSetup({
                 </Button>
               </div>
             </div>
+
+            {/* Show Organization ID for JackRabbit */}
+            {plan?.provider_org_id && (
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <Label className="text-sm font-medium text-blue-900">Organization ID:</Label>
+                <div className="text-sm text-blue-700 font-mono mt-1">
+                  {plan.provider_org_id}
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  This will be used for your JackRabbit registration
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center space-x-2">
               <Checkbox

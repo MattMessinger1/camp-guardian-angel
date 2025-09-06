@@ -167,11 +167,15 @@ export default function ReadyToSignup() {
       const newSessionId = crypto.randomUUID();
       const providerType = detectProviderType(locationState.businessUrl);
       
+      // Extract organization ID from JackRabbit URLs
+      const providerOrgId = extractOrgIdFromUrl(locationState.businessUrl);
+      
       console.log('🚀 Creating plan:', {
         businessName: locationState.businessName,
         url: locationState.businessUrl,
         type: providerType,
-        sessionId: newSessionId
+        sessionId: newSessionId,
+        orgId: providerOrgId
       });
       
       // Create activity first
@@ -213,6 +217,7 @@ export default function ReadyToSignup() {
           id: newSessionId,
           session_id: session.id,
           status: 'pending',
+          provider_org_id: providerOrgId,
           rules: {
             business_name: locationState.businessName,
             business_url: locationState.businessUrl,
@@ -283,6 +288,31 @@ export default function ReadyToSignup() {
     if (urlLower.includes('soulcycle')) return 'fitness-soulcycle';
     
     return 'general';
+  };
+
+  // Extract organization ID from JackRabbit URLs
+  const extractOrgIdFromUrl = (url: string): string | null => {
+    if (!url) return null;
+    
+    try {
+      const urlObj = new URL(url);
+      
+      // Check for JackRabbit patterns
+      if (urlObj.hostname.includes('jackrabbit') || url.includes('regv2.asp')) {
+        // Look for id parameter (JackRabbit org ID)
+        const id = urlObj.searchParams.get('id');
+        if (id) return id;
+        
+        // Look for OrgID parameter (alternative format)
+        const orgId = urlObj.searchParams.get('OrgID');
+        if (orgId) return orgId;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to extract org ID from URL:', error);
+      return null;
+    }
   };
   
   const renderProviderUI = () => {
