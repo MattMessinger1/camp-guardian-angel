@@ -58,7 +58,7 @@ serve(async (req) => {
   }
 
   try {
-    const { session_id, provider_url, email, password, provider_name } = await req.json()
+    const { session_id, provider_url, email, password, provider_name, organization_id } = await req.json()
 
     if (!provider_url || !email || !password) {
       return new Response(
@@ -96,7 +96,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('🔐 Storing credentials for user:', userId, 'provider:', provider_name || provider_url)
+    console.log('🔐 Storing credentials for user:', userId, 'provider:', provider_name || provider_url, 'org:', organization_id ? '[REDACTED]' : 'none')
 
     // Simple encryption (in production, use proper encryption)
     const encryptedPassword = btoa(password) // Base64 encoding as simple "encryption"
@@ -105,20 +105,21 @@ serve(async (req) => {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
-    // Store credentials in database
+    // Store credentials in database using the new account_credentials table
     const { error: insertError } = await supabase
-      .from('provider_credentials')
+      .from('account_credentials')
       .upsert({
         user_id: userId,
         session_id: session_id || null,
         provider_url,
         provider_name: provider_name || null,
+        organization_id: organization_id || null,
         email,
         encrypted_password: encryptedPassword,
         expires_at: expiresAt.toISOString(),
         used_successfully: false
       }, {
-        onConflict: 'user_id,provider_url'
+        onConflict: 'user_id,provider_url,organization_id'
       })
 
     if (insertError) {

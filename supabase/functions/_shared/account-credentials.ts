@@ -13,8 +13,9 @@ export interface AccountCredentials {
   user_id: string;
   provider_url: string;
   provider_name: string;
+  organization_id?: string;
   email: string;
-  password_encrypted: string;
+  encrypted_password: string;
   expires_at: string;
   created_at: string;
   updated_at: string;
@@ -50,7 +51,7 @@ function decryptPassword(encryptedPassword: string): string {
 }
 
 /**
- * Store account credentials for a user and provider
+ * Store account credentials for a user and provider with optional organization ID
  */
 export async function storeAccountCredentials(params: {
   userId: string;
@@ -58,32 +59,29 @@ export async function storeAccountCredentials(params: {
   providerName: string;
   email: string;
   password: string;
+  organizationId?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
   
   try {
-    console.log('[CREDENTIALS] Storing account credentials for:', {
-      userId: params.userId,
-      providerUrl: params.providerUrl,
-      providerName: params.providerName,
-      email: params.email
-    });
+    console.log('[CREDENTIALS] Storing account credentials for provider:', params.providerName, 'org:', params.organizationId ? '[REDACTED]' : 'none');
 
     const encryptedPassword = encryptPassword(params.password);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiration
 
     const { error } = await supabase
-      .from('provider_credentials')
+      .from('account_credentials')
       .upsert({
         user_id: params.userId,
         provider_url: params.providerUrl,
         provider_name: params.providerName,
+        organization_id: params.organizationId || null,
         email: params.email,
-        password_encrypted: encryptedPassword,
+        encrypted_password: encryptedPassword,
         expires_at: expiresAt.toISOString()
       }, {
-        onConflict: 'user_id,provider_url'
+        onConflict: 'user_id,provider_url,organization_id'
       });
 
     if (error) {
@@ -101,35 +99,60 @@ export async function storeAccountCredentials(params: {
 }
 
 /**
- * Retrieve account credentials for a user and provider
+ * Retrieve account credentials for a user and provider with optional organization ID
+ * Prefers exact match (user_id, provider_url, organization_id) when provided
+ * Falls back to (user_id, provider_url) if no org-specific match found
  */
 export async function getAccountCredentials(params: {
   userId: string;
   providerUrl: string;
+  organizationId?: string;
 }): Promise<{ credentials: AccountCredentials | null; error?: string }> {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
   
   try {
-    console.log('[CREDENTIALS] Retrieving credentials for:', {
-      userId: params.userId,
-      providerUrl: params.providerUrl
-    });
+    console.log('[CREDENTIALS] Retrieving credentials for provider with org:', params.organizationId ? '[REDACTED]' : 'none');
 
-    const { data, error } = await supabase
-      .from('provider_credentials')
+    // First try exact match with organization_id if provided
+    let query = supabase
+      .from('account_credentials')
       .select('*')
       .eq('user_id', params.userId)
       .eq('provider_url', params.providerUrl)
-      .gt('expires_at', new Date().toISOString()) // Only get non-expired credentials
-      .single();
+      .gt('expires_at', new Date().toISOString()); // Only get non-expired credentials
+
+    if (params.organizationId) {
+      query = query.eq('organization_id', params.organizationId);
+    } else {
+      query = query.is('organization_id', null);
+    }
+
+    let { data, error } = await query.maybeSingle();
+
+    // If no exact match and organizationId was provided, try fallback without org constraint
+    if (!data && !error && params.organizationId) {
+      console.log('[CREDENTIALS] No org-specific match, trying fallback');
+      const fallbackResult = await supabase
+        .from('account_credentials')
+        .select('*')
+        .eq('user_id', params.userId)
+        .eq('provider_url', params.providerUrl)
+        .gt('expires_at', new Date().toISOString())
+        .is('organization_id', null)
+        .maybeSingle();
+      
+      data = fallbackResult.data;
+      error = fallbackResult.error;
+    }
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        console.log('[CREDENTIALS] No valid credentials found');
-        return { credentials: null };
-      }
       console.error('[CREDENTIALS] Retrieval error:', error);
       return { credentials: null, error: error.message };
+    }
+    
+    if (!data) {
+      console.log('[CREDENTIALS] No valid credentials found');
+      return { credentials: null };
     }
 
     console.log('[CREDENTIALS] Successfully retrieved credentials');
@@ -142,11 +165,12 @@ export async function getAccountCredentials(params: {
 }
 
 /**
- * Get decrypted login credentials for browser automation
+ * Get decrypted login credentials for browser automation with optional organization ID
  */
 export async function getDecryptedCredentials(params: {
   userId: string;
   providerUrl: string;
+  organizationId?: string;
 }): Promise<{ email?: string; password?: string; error?: string }> {
   const { credentials, error } = await getAccountCredentials(params);
   
@@ -159,7 +183,7 @@ export async function getDecryptedCredentials(params: {
   }
 
   try {
-    const decryptedPassword = decryptPassword(credentials.password_encrypted);
+    const decryptedPassword = decryptPassword(credentials.encrypted_password);
     return {
       email: credentials.email,
       password: decryptedPassword
@@ -171,11 +195,12 @@ export async function getDecryptedCredentials(params: {
 }
 
 /**
- * Check if user has valid credentials for a provider
+ * Check if user has valid credentials for a provider with optional organization ID
  */
 export async function hasValidCredentials(params: {
   userId: string;
   providerUrl: string;
+  organizationId?: string;
 }): Promise<boolean> {
   const { credentials } = await getAccountCredentials(params);
   return credentials !== null;
@@ -189,7 +214,7 @@ export async function cleanupExpiredCredentials(): Promise<{ cleaned: number; er
   
   try {
     const { data, error } = await supabase
-      .from('provider_credentials')
+      .from('account_credentials')
       .delete()
       .lt('expires_at', new Date().toISOString())
       .select('id');

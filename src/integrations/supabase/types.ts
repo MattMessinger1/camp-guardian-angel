@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_credentials: {
+        Row: {
+          created_at: string | null
+          email: string
+          encrypted_password: string
+          expires_at: string
+          id: string
+          organization_id: string | null
+          provider_name: string | null
+          provider_url: string
+          session_id: string | null
+          updated_at: string | null
+          used_successfully: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          encrypted_password: string
+          expires_at: string
+          id?: string
+          organization_id?: string | null
+          provider_name?: string | null
+          provider_url: string
+          session_id?: string | null
+          updated_at?: string | null
+          used_successfully?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          encrypted_password?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string | null
+          provider_name?: string | null
+          provider_url?: string
+          session_id?: string | null
+          updated_at?: string | null
+          used_successfully?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           canonical_url: string | null
