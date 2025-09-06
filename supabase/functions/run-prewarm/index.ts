@@ -4,6 +4,91 @@ import { REGISTRATION_STATES, PREWARM_STATES } from "../_shared/states.ts";
 import { requirePaymentMethodOrThrow } from "../_shared/billing.ts";
 import { checkQuotas } from "../_shared/quotas.ts";
 
+// Import Jackrabbit adapter functionality
+const jackrabbitAdapter = {
+  async precheck(ctx: any) {
+    // Call the actual adapter via edge function
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    const { data, error } = await supabase.functions.invoke('jackrabbit-precheck', { body: ctx });
+    return data || { ok: false, reason: error?.message || 'Precheck failed' };
+  },
+  
+  async login({ plan, bbSessionId }: { plan: { provider_org_id: string }, bbSessionId: string }) {
+    // Call login via get-account-credentials and browser-automation
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    
+    try {
+      // Get credentials
+      const { data: credentials, error: credError } = await supabase.functions.invoke('get-account-credentials', {
+        body: {
+          providerUrl: 'jackrabbit',
+          organizationId: plan.provider_org_id
+        }
+      });
+
+      if (credError || !credentials?.email) {
+        return { ok: false, reason: 'Login credentials not found' };
+      }
+
+      // Build login URL
+      const loginUrl = `https://app.jackrabbitclass.com/jr3.0/ParentPortal/Login?orgID=${plan.provider_org_id}`;
+
+      // Navigate to login
+      await supabase.functions.invoke('browser-automation', {
+        body: {
+          action: 'navigate',
+          sessionId: bbSessionId,
+          url: loginUrl
+        }
+      });
+
+      // Perform login
+      const { data: loginResult, error: loginError } = await supabase.functions.invoke('browser-automation', {
+        body: {
+          action: 'interact',
+          sessionId: bbSessionId,
+          steps: [
+            {
+              action: 'type',
+              selector: 'input[name="username"], input[type="email"]',
+              text: credentials.email
+            },
+            {
+              action: 'type', 
+              selector: 'input[name="password"], input[type="password"]',
+              text: credentials.password
+            },
+            {
+              action: 'click',
+              selector: 'button[type="submit"], button:has-text("Log In")'
+            }
+          ]
+        }
+      });
+
+      if (loginError) {
+        return { ok: false, reason: 'Login interaction failed' };
+      }
+
+      // Verify login success
+      const { data: verifyResult } = await supabase.functions.invoke('browser-automation', {
+        body: {
+          action: 'extract',
+          sessionId: bbSessionId,
+          waitFor: '.logout, :has-text("Parent Portal")'
+        }
+      });
+
+      const loginSuccess = verifyResult?.pageData?.includes('logout') || 
+                          verifyResult?.pageData?.includes('Parent Portal');
+
+      return { ok: loginSuccess };
+    } catch (error) {
+      return { ok: false, reason: `Login error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -109,7 +194,21 @@ serve(async (req) => {
         needs_correction: Math.abs(timingInfo.skewMs) > 500
       });
 
-      // Step 3.2: Load pending registrations with billing profiles via user_id
+      // Step 3.2: Load registration plans and ensure browser sessions
+      const { data: registrationPlans, error: plansError } = await admin
+        .from('registration_plans')
+        .select(`
+          id, user_id, camp_id, detect_url, bb_session_id, organization_id,
+          camps:camp_id(provider_id, name, url)
+        `)
+        .eq('status', 'active')
+        .not('detect_url', 'is', null);
+
+      if (plansError) {
+        console.warn(`[RUN-PREWARM] Failed to load registration plans: ${plansError.message}`);
+      }
+
+      // Step 3.3: Load pending registrations with billing profiles via user_id
       const { data: pendingRegistrations, error: regError } = await admin
         .from('registrations')
         .select(`
@@ -243,6 +342,21 @@ serve(async (req) => {
         timestamp: new Date().toISOString(), 
         ready: stripeReady 
       });
+
+      // Step 7.5: Pre-warm Jackrabbit sessions with login and navigation
+      if (registrationPlans && registrationPlans.length > 0) {
+        const jackrabbitPlans = registrationPlans.filter(plan => 
+          plan.detect_url?.includes('jackrabbitclass.com')
+        );
+        
+        for (const plan of jackrabbitPlans) {
+          try {
+            await prewarmJackrabbitSession(admin, plan);
+          } catch (error) {
+            console.error(`[RUN-PREWARM] Failed to prewarm Jackrabbit session for plan ${plan.id}:`, error);
+          }
+        }
+      }
 
       // Step 8: Handle timing based on open_time_exact flag and manual testing
       let registrationResult;
@@ -855,4 +969,166 @@ async function checkProviderPageOpenState(siteUrl: string | null): Promise<boole
     console.warn(`[PAGE-CHECK] Failed to check provider page:`, e);
     return false; // Conservative approach - don't assume open on error
   }
+}
+
+// Helper function to pre-warm Jackrabbit session with login and navigation
+async function prewarmJackrabbitSession(admin: any, plan: any): Promise<void> {
+  console.log(`[JACKRABBIT-PREWARM] Starting prewarm for plan ${plan.id}`);
+  
+  try {
+    // Ensure bb_session_id exists on plan
+    let bbSessionId = plan.bb_session_id;
+    if (!bbSessionId) {
+      bbSessionId = `prewarm-${plan.id}-${Date.now()}`;
+      
+      // Update plan with new session ID
+      await admin
+        .from('registration_plans')
+        .update({ 
+          bb_session_id: bbSessionId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', plan.id);
+        
+      console.log(`[JACKRABBIT-PREWARM] Created browser session ${bbSessionId} for plan ${plan.id}`);
+    }
+
+    // Build adapter context
+    const ctx = {
+      canonical_url: plan.detect_url,
+      metadata: { 
+        orgId: plan.organization_id,
+        vault: { jackrabbit_login: true } // Signal that credentials may be available
+      },
+      child_token: {
+        dob: '2015-06-15', // Placeholder for prewarm
+        emergency_contacts: [{ name: 'Test', phone: '555-0123', relationship: 'Parent' }]
+      },
+      session_id: bbSessionId
+    };
+
+    // Step 1: Run adapter precheck
+    console.log(`[JACKRABBIT-PREWARM] Running precheck for ${plan.detect_url}`);
+    const precheckResult = await jackrabbitAdapter.precheck(ctx);
+    
+    if (!precheckResult.ok) {
+      console.log(`[JACKRABBIT-PREWARM] Precheck failed: ${precheckResult.reason}`);
+      return;
+    }
+
+    // Step 2: If auth required, perform login
+    if (precheckResult.requires_auth) {
+      console.log(`[JACKRABBIT-PREWARM] Login required, attempting login`);
+      
+      const loginResult = await jackrabbitAdapter.login({
+        plan: { provider_org_id: plan.organization_id },
+        bbSessionId: bbSessionId
+      });
+      
+      if (!loginResult.ok) {
+        console.log(`[JACKRABBIT-PREWARM] Login failed: ${loginResult.reason}`);
+        return;
+      }
+      
+      console.log(`[JACKRABBIT-PREWARM] Login successful for org ${plan.organization_id}`);
+    } else {
+      console.log(`[JACKRABBIT-PREWARM] No login required for OpeningsDirect URL`);
+    }
+
+    // Step 3: Navigate to enrollment page
+    const { data: navResult, error: navError } = await admin.functions.invoke('browser-automation', {
+      body: {
+        action: 'navigate',
+        sessionId: bbSessionId,
+        url: plan.detect_url
+      }
+    });
+
+    if (navError || !navResult?.success) {
+      console.error(`[JACKRABBIT-PREWARM] Navigation failed:`, navError || navResult?.error);
+      return;
+    }
+
+    // Step 4: Take screenshot and save artifact
+    const { data: screenshotResult, error: screenshotError } = await admin.functions.invoke('browser-automation', {
+      body: {
+        action: 'extract',
+        sessionId: bbSessionId,
+        captureScreenshot: true
+      }
+    });
+
+    let screenshotUrl = null;
+    if (!screenshotError && screenshotResult?.screenshot) {
+      // Save screenshot as artifact (simplified - would normally upload to storage)
+      screenshotUrl = screenshotResult.screenshot;
+    }
+
+    // Step 5: Log automation event 'prewarm_ready'
+    await admin
+      .from('automation_events')
+      .insert({
+        event_type: 'prewarm_ready',
+        plan_id: plan.id,
+        session_id: bbSessionId,
+        metadata: {
+          url: plan.detect_url,
+          organization_id: plan.organization_id,
+          requires_auth: precheckResult.requires_auth,
+          screenshot_url: screenshotUrl,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+    // Step 6: Start gentle keepalive until registration time
+    startKeepaliveTimer(admin, bbSessionId, plan.id);
+    
+    console.log(`[JACKRABBIT-PREWARM] Successfully prewarmed session for plan ${plan.id}`);
+
+  } catch (error) {
+    console.error(`[JACKRABBIT-PREWARM] Error prewarming plan ${plan.id}:`, error);
+    
+    // Log error event
+    await admin
+      .from('automation_events')
+      .insert({
+        event_type: 'prewarm_failed',
+        plan_id: plan.id,
+        metadata: {
+          error: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString()
+        }
+      });
+  }
+}
+
+// Helper function to start gentle keepalive for browser session
+async function startKeepaliveTimer(admin: any, sessionId: string, planId: string): Promise<void> {
+  console.log(`[KEEPALIVE] Starting keepalive timer for session ${sessionId}`);
+  
+  // Simple keepalive with periodic no-op browser actions
+  const keepaliveInterval = setInterval(async () => {
+    try {
+      // Gentle no-op action to keep session alive
+      await admin.functions.invoke('browser-automation', {
+        body: {
+          action: 'extract',
+          sessionId: sessionId,
+          waitFor: 'body' // Simple selector check
+        }
+      });
+      
+      console.log(`[KEEPALIVE] Session ${sessionId} kept alive`);
+      
+    } catch (error) {
+      console.warn(`[KEEPALIVE] Failed to keep session ${sessionId} alive:`, error);
+      clearInterval(keepaliveInterval);
+    }
+  }, 60000); // Every 60 seconds
+
+  // Clear interval after 30 minutes (reasonable prewarm window)
+  setTimeout(() => {
+    clearInterval(keepaliveInterval);
+    console.log(`[KEEPALIVE] Keepalive timer expired for session ${sessionId}`);
+  }, 30 * 60 * 1000);
 }

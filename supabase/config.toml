@@ -186,5 +186,11 @@ verify_jwt = false
 [functions.discover-booking-url]
 verify_jwt = false
 
+[functions.store-camp-credentials]
+verify_jwt = true
+
+[functions.jackrabbit-precheck]
+verify_jwt = false
+
 [functions.test-credentials]
 verify_jwt = false
