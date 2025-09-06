@@ -8,6 +8,7 @@ import type {
 } from '../types';
 import { matchWeek } from '../../matching/weekOf';
 import { sortCandidates } from '../../matching/bundles';
+import { createClient } from '@supabase/supabase-js';
 
 interface JackrabbitLoginData {
   username: string;
@@ -159,12 +160,15 @@ const adapter: ProviderAdapter = {
       const enrollmentUrl = candidate.url || ctx.canonical_url;
       
       // Step 2: Check if login is required and perform login
-      const isLoggedIn = await performLogin(enrollmentUrl, loginData);
-      if (!isLoggedIn) {
+      const loginResult = await login({ 
+        plan: { provider_org_id: candidate.provider_id || ctx.metadata?.orgId || '' }, 
+        bbSessionId: ctx.session_id || 'session-placeholder' 
+      });
+      if (!loginResult.ok) {
         return { 
           success: false, 
           candidate, 
-          reason: 'Failed to login to Jackrabbit system' 
+          reason: loginResult.reason || 'Failed to login to Jackrabbit system' 
         };
       }
 
@@ -307,16 +311,118 @@ function parseClassTiming(card: ClassCard): { start_at: string | null; end_at: s
   return { start_at, end_at };
 }
 
-async function performLogin(url: string, loginData: JackrabbitLoginData): Promise<boolean> {
-  // In a real implementation, this would:
-  // 1. Check if already logged in
-  // 2. Navigate to login page if needed
-  // 3. Fill username/password fields
-  // 4. Submit login form
-  // 5. Verify successful login
-  
-  console.log(`Performing login for: ${loginData.username}`);
-  return true; // Simulate successful login
+async function login({ plan, bbSessionId }: { 
+  plan: { provider_org_id: string }; 
+  bbSessionId: string 
+}): Promise<{ ok: boolean; reason?: string }> {
+  try {
+    // Step 1: Read credentials using shared account-credentials system
+    const supabase = createClient(
+      'https://ezvwyfqtyanwnoyymhav.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dnd5ZnF0eWFud25veXltaGF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NjY5MjQsImV4cCI6MjA3MDQ0MjkyNH0.FxQZcpBxYVmnUI-yyE15N7y-ai6ADPiQV9X8szQtIjI'
+    );
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return { ok: false, reason: 'User not authenticated' };
+    }
+
+    // Call edge function to get decrypted credentials
+    const { data: credentialsResult, error: credError } = await supabase.functions.invoke('get-account-credentials', {
+      body: {
+        userId: user.id,
+        providerUrl: 'jackrabbit',
+        organizationId: plan.provider_org_id
+      }
+    });
+
+    if (credError || !credentialsResult?.email) {
+      console.log('[JR-LOGIN] No credentials found for org:', plan.provider_org_id);
+      return { ok: false, reason: 'Login credentials not found' };
+    }
+
+    // Step 2: Build Parent Portal login URL
+    const loginUrl = `https://app.jackrabbitclass.com/jr3.0/ParentPortal/Login?orgID=${plan.provider_org_id}`;
+    console.log('[JR-LOGIN] Navigating to login URL for org:', plan.provider_org_id);
+
+    // Step 3: Navigate to login URL using browser automation
+    const { data: navResult, error: navError } = await supabase.functions.invoke('browser-automation', {
+      body: {
+        action: 'navigate',
+        sessionId: bbSessionId,
+        url: loginUrl
+      }
+    });
+
+    if (navError || !navResult?.success) {
+      console.error('[JR-LOGIN] Navigation failed:', navError || navResult?.error);
+      return { ok: false, reason: 'Failed to navigate to login page' };
+    }
+
+    // Step 4: Interact with login form
+    const { data: loginResult, error: loginError } = await supabase.functions.invoke('browser-automation', {
+      body: {
+        action: 'interact',
+        sessionId: bbSessionId,
+        steps: [
+          {
+            action: 'type',
+            selector: 'input[name="username"], input[type="email"]',
+            text: credentialsResult.email
+          },
+          {
+            action: 'type', 
+            selector: 'input[name="password"], input[type="password"]',
+            text: credentialsResult.password
+          },
+          {
+            action: 'click',
+            selector: 'button[type="submit"], button:has-text("Log In")'
+          }
+        ]
+      }
+    });
+
+    if (loginError) {
+      console.error('[JR-LOGIN] Login interaction failed:', loginError);
+      return { ok: false, reason: 'Failed to complete login interaction' };
+    }
+
+    // Step 5: Wait for post-login indicators
+    const { data: verifyResult, error: verifyError } = await supabase.functions.invoke('browser-automation', {
+      body: {
+        action: 'extract',
+        sessionId: bbSessionId,
+        waitFor: '.logout, :has-text("Parent Portal")'
+      }
+    });
+
+    if (verifyError) {
+      console.error('[JR-LOGIN] Login verification failed:', verifyError);
+      return { ok: false, reason: 'Could not verify successful login' };
+    }
+
+    // Check if login was successful based on page content
+    const loginSuccess = verifyResult?.pageData?.includes('logout') || 
+                        verifyResult?.pageData?.includes('Parent Portal') ||
+                        !verifyResult?.pageData?.includes('login');
+
+    if (loginSuccess) {
+      console.log('[JR-LOGIN] Login successful for org:', plan.provider_org_id);
+      return { ok: true };
+    } else {
+      console.log('[JR-LOGIN] Login failed - still on login page');
+      return { ok: false, reason: 'Login failed - credentials may be incorrect' };
+    }
+
+  } catch (error) {
+    console.error('[JR-LOGIN] Login exception:', error);
+    return { 
+      ok: false, 
+      reason: `Login error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    };
+  }
 }
 
 async function initiateRegistration(candidate: ProviderSessionCandidate): Promise<{
@@ -385,3 +491,6 @@ async function processProviderPayment(ctx: ProviderContext, candidate: ProviderS
 }
 
 export default adapter;
+
+// Export login function for use with browser automation
+export { login };

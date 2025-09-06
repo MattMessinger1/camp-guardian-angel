@@ -1,5 +1,8 @@
 project_id = "ezvwyfqtyanwnoyymhav"
 
+[functions.get-account-credentials]
+verify_jwt = true
+
 [functions.browser-automation]
 verify_jwt = true
 
