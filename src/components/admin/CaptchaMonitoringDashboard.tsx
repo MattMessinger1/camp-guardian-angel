@@ -279,7 +279,7 @@ export function CaptchaMonitoringDashboard({ userId }: CaptchaMonitoringDashboar
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">
-                      {formatPercentage(notificationMetrics?.engagementRate || 0)}
+                      {formatPercentage(notificationMetrics?.openRate || 0)}
                     </div>
                     <p className="text-xs text-muted-foreground">Engagement Rate</p>
                   </div>
@@ -292,11 +292,11 @@ export function CaptchaMonitoringDashboard({ userId }: CaptchaMonitoringDashboar
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Delivered</span>
-                    <span>{notificationMetrics?.delivered || 0}</span>
+                    <span>{notificationMetrics?.totalDelivered || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Opened</span>
-                    <span>{notificationMetrics?.opened || 0}</span>
+                    <span>{notificationMetrics?.totalOpened || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Completed</span>
@@ -385,16 +385,16 @@ export function CaptchaMonitoringDashboard({ userId }: CaptchaMonitoringDashboar
                       <p className="text-xs text-muted-foreground">Total Sent</p>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-blue-600">{notificationMetrics?.delivered || 0}</div>
+                      <div className="text-2xl font-bold text-blue-600">{notificationMetrics?.totalDelivered || 0}</div>
                       <p className="text-xs text-muted-foreground">Delivered</p>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-green-600">{notificationMetrics?.opened || 0}</div>
+                      <div className="text-2xl font-bold text-green-600">{notificationMetrics?.totalOpened || 0}</div>
                       <p className="text-xs text-muted-foreground">Opened</p>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-purple-600">{notificationMetrics?.completed || 0}</div>
-                      <p className="text-xs text-muted-foreground">Completed</p>
+                      <div className="text-2xl font-bold text-purple-600">{notificationMetrics?.totalClicked || 0}</div>
+                      <p className="text-xs text-muted-foreground">Clicked</p>
                     </div>
                   </div>
                 </div>

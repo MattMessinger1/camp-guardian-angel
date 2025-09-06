@@ -33,14 +33,14 @@ export interface CaptchaMetrics {
 
 export interface NotificationMetrics {
   totalSent: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  completed: number;
-  avgResponseTime: number;
+  totalDelivered: number;
+  totalOpened: number;
+  totalClicked: number;
   deliveryRate: number;
-  engagementRate: number;
-  byMethod?: Record<string, any>;
+  openRate: number;
+  clickRate: number;
+  avgResponseTime: number;
+  methodBreakdown: Record<string, any>;
 }
 
 export interface MonitoringOptions {
@@ -164,7 +164,7 @@ export function useNotificationMonitoring(options: MonitoringOptions = { timeRan
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'parent_notifications',
+        table: 'notifications',
         filter: `user_id=eq.${options.userId}`
       }, () => {
         // Refresh metrics when notifications are updated
@@ -201,11 +201,12 @@ export function useAutomationInterruptions(options: MonitoringOptions = { timeRa
       setError(null);
 
       const { data, error: queryError } = await supabase
-        .from('automation_interruptions')
+        .from('captcha_events')
         .select('*')
-        .eq(options.userId ? 'user_id' : 'id', options.userId || 'any')
-        .gte('detected_at', getDateRange(options.timeRange))
-        .order('detected_at', { ascending: false });
+        .eq('status', 'failed')
+        .gte('created_at', getDateRange(options.timeRange))
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (queryError) throw queryError;
 
@@ -216,7 +217,7 @@ export function useAutomationInterruptions(options: MonitoringOptions = { timeRa
     } finally {
       setLoading(false);
     }
-  }, [options.userId, options.timeRange]);
+  }, [options.timeRange]);
 
   useEffect(() => {
     fetchInterruptions();
@@ -232,11 +233,11 @@ export function useAutomationInterruptions(options: MonitoringOptions = { timeRa
     const channel = supabase
       .channel('automation-interruptions')
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: 'UPDATE',
         schema: 'public',
-        table: 'automation_interruptions'
+        table: 'captcha_events'
       }, (payload) => {
-        if (!options.userId || payload.new.user_id === options.userId) {
+        if (payload.new.status === 'failed') {
           setInterruptions(prev => [payload.new, ...prev]);
         }
       })
@@ -245,7 +246,7 @@ export function useAutomationInterruptions(options: MonitoringOptions = { timeRa
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [options.userId]);
+  }, []);
 
   return {
     interruptions,
@@ -263,13 +264,18 @@ export function useLiveCaptchaEvents(userId?: string) {
     // Fetch recent events
     const fetchRecentEvents = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('captcha_events')
           .select('*')
-          .eq(userId ? 'user_id' : 'id', userId || 'any')
           .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
           .order('created_at', { ascending: false })
           .limit(50);
+
+        if (userId) {
+          query = query.eq('user_id', userId);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         setEvents(data || []);
@@ -313,44 +319,41 @@ export function useNotificationTracking(notificationId: string) {
   const [notification, setNotification] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchNotification = useCallback(async () => {
+    if (!notificationId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('id', notificationId)
+        .single();
+
+      if (error) throw error;
+      setNotification(data);
+    } catch (error) {
+      logger.error('Failed to fetch notification', { error, notificationId });
+    } finally {
+      setLoading(false);
+    }
+  }, [notificationId]);
+
   useEffect(() => {
-    // Fetch notification details
-    const fetchNotification = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('parent_notifications')
-          .select('*')
-          .eq('id', notificationId)
-          .single();
-
-        if (error) throw error;
-        setNotification(data);
-      } catch (error) {
-        logger.error('Failed to fetch notification', { error, notificationId });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchNotification();
 
     // Subscribe to updates
-    const channel = supabase
-      .channel(`notification-${notificationId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'parent_notifications',
-        filter: `id=eq.${notificationId}`
-      }, (payload) => {
-        setNotification(payload.new);
-      })
+    const subscription = supabase
+      .channel('notification_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'notifications', filter: `id=eq.${notificationId}` },
+        () => fetchNotification()
+      )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(subscription);
     };
-  }, [notificationId]);
+  }, [fetchNotification, notificationId]);
 
   const markAsOpened = useCallback(async () => {
     return notificationManager.handleNotificationResponse(notificationId, 'opened');
