@@ -21,7 +21,7 @@ import {
   Brain,
   Sparkles
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { ProviderAccountGuidance } from "@/components/ProviderAccountGuidance";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AccountRequirement {
@@ -115,7 +115,78 @@ export function PreRegistrationAccountSetup({
   const [accountCreated, setAccountCreated] = useState(false);
   const [verificationStep, setVerificationStep] = useState(false);
 
-  // AI-powered analysis of camp registration page
+  // Provider-aware guidance and messaging
+  const getProviderGuidance = (provider: string, providerName?: string) => {
+    switch (provider) {
+      case 'jackrabbit_class':
+        return {
+          title: 'Jackrabbit Class Account Setup',
+          description: `To register for ${providerName || 'this class'}, you'll need a parent account on their Jackrabbit platform.`,
+          accountUrl: plan?.rules?.business_url || campUrl || '',
+          setupSteps: [
+            'Visit the class provider\'s parent portal',
+            'Create a parent account with your email and contact information',
+            'Add your child\'s information to your profile',
+            'Verify your email address if required'
+          ],
+          credentialNote: 'We\'ll securely store your Jackrabbit login to register instantly when spots open.'
+        };
+      case 'resy':
+      case 'restaurant-resy':
+        return {
+          title: 'Resy Account Setup',
+          description: `To book at ${providerName || 'this restaurant'}, you need a Resy account.`,
+          accountUrl: 'https://resy.com/signup',
+          setupSteps: [
+            'Create a Resy account at resy.com',
+            'Add your contact information and dining preferences',
+            'Add a payment method to your Resy account',
+            'Verify your phone number for booking confirmations'
+          ],
+          credentialNote: 'We\'ll use your Resy login to book instantly when reservations open.'
+        };
+      case 'peloton':
+      case 'fitness-peloton':
+        return {
+          title: 'Peloton Account Setup', 
+          description: `To book ${providerName || 'Peloton'} studio classes, you need an active Peloton membership.`,
+          accountUrl: 'https://studio.onepeloton.com/login',
+          setupSteps: [
+            'Log into your existing Peloton account',
+            'Ensure your membership is active and in good standing',
+            'Add a payment method for class booking fees',
+            'Verify your profile information is up to date'
+          ],
+          credentialNote: 'We\'ll use your Peloton login to book studio classes the moment they become available.'
+        };
+      default:
+        return {
+          title: 'Account Setup',
+          description: `To register for ${providerName || 'this activity'}, you may need an account on the provider's platform.`,
+          accountUrl: plan?.rules?.business_url || campUrl || '',
+          setupSteps: [
+            'Visit the provider\'s registration website',
+            'Create an account with your email and contact information', 
+            'Complete any required profile information',
+            'Verify your account if needed'
+          ],
+          credentialNote: 'We\'ll securely store your login credentials for instant registration.'
+        };
+    }
+  };
+
+  // Get provider info from plan
+  const provider = plan?.rules?.provider || plan?.provider_type || 'unknown';
+  const providerName = plan?.rules?.business_name || plan?.provider_name;
+  const isJackrabbitClass = provider === 'jackrabbit_class';
+  const guidance = getProviderGuidance(provider, providerName);
+
+  // Update account URL based on provider guidance
+  useEffect(() => {
+    if (guidance.accountUrl) {
+      setAccountUrl(guidance.accountUrl);
+    }
+  }, [guidance.accountUrl]);
   const analyzeAccountRequirements = async () => {
     if (!campUrl && !sessionId) return;
     
@@ -152,10 +223,15 @@ export function PreRegistrationAccountSetup({
     }
   };
 
-  // Initialize analysis
+  // Initialize based on provider type
   useEffect(() => {
-    analyzeAccountRequirements();
-  }, [campUrl, sessionId]);
+    // Skip AI analysis for known providers - use provider guidance instead
+    if (provider && provider !== 'unknown') {
+      setSetupStep('guidance');
+    } else {
+      analyzeAccountRequirements();
+    }
+  }, [campUrl, sessionId, provider]);
 
   const handleAccountCreated = () => {
     setAccountCreated(true);
@@ -209,7 +285,26 @@ export function PreRegistrationAccountSetup({
     });
   };
 
-  if (analyzing) {
+  // Get provider info from plan
+  const provider = plan?.rules?.provider || plan?.provider_type || 'unknown';
+  const providerName = plan?.rules?.business_name || plan?.provider_name;
+  const classData = plan?.rules?.classData || plan?.classData;
+  const providerInfo = plan?.rules?.providerInfo || plan?.providerInfo;
+  const providerUrl = plan?.rules?.business_url || campUrl;
+
+  // For known providers, skip AI analysis and show provider-specific guidance
+  if (provider && provider !== 'unknown' && setupStep === 'analysis') {
+    return (
+      <ProviderAccountGuidance
+        provider={provider}
+        providerName={providerName}
+        accountUrl={providerUrl}
+        classData={classData}
+        providerInfo={providerInfo}
+        onAccountCreated={handleAccountCreated}
+      />
+    );
+  }
     return (
       <Card>
         <CardHeader>

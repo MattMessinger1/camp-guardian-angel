@@ -10,6 +10,34 @@ interface LocationState {
   businessUrl: string;  
   provider?: string;
   searchResult?: any;
+  classData?: {
+    id: string;
+    name: string;
+    description?: string;
+    schedule: Array<{
+      day: string;
+      time: string;
+      duration?: string;
+    }>;
+    ageRange?: {
+      min: number;
+      max: number;
+    };
+    capacity?: number;
+    currentEnrollment?: number;
+    tuition?: {
+      amount: number;
+      period: string;
+    };
+    registrationOpensAt?: string;
+    location?: string;
+    instructor?: string;
+  };
+  providerInfo?: {
+    name: string;
+    website?: string;
+    location?: string;
+  };
 }
 
 // Global state manager for persistence
@@ -170,23 +198,35 @@ export default function ReadyToSignup() {
       // Extract organization ID from JackRabbit URLs
       const providerOrgId = extractOrgIdFromUrl(locationState.businessUrl);
       
+      // Handle Jackrabbit class data from state
+      const classData = locationState.classData;
+      const isJackrabbitClass = classData && locationState.provider === 'jackrabbit_class';
+      
       console.log('🚀 Creating plan:', {
         businessName: locationState.businessName,
         url: locationState.businessUrl,
         type: providerType,
         sessionId: newSessionId,
-        orgId: providerOrgId
+        orgId: providerOrgId,
+        isJackrabbitClass,
+        classData
       });
       
       // Create activity first
+      const activityData: any = {
+        name: isJackrabbitClass ? classData.name : locationState.businessName,
+        canonical_url: locationState.businessUrl,
+        provider_id: locationState.provider || 'unknown',
+        kind: isJackrabbitClass ? 'class' : providerType.split('-')[0] // 'class', 'restaurant' or 'fitness'
+      };
+      
+      if (isJackrabbitClass && classData.description) {
+        activityData.description = classData.description;
+      }
+      
       const { data: activity, error: activityError } = await supabase
         .from('activities')
-        .insert({
-          name: locationState.businessName,
-          canonical_url: locationState.businessUrl,
-          provider_id: locationState.provider || 'unknown',
-          kind: providerType.split('-')[0] // 'restaurant' or 'fitness'
-        })
+        .insert(activityData)
         .select()
         .single();
       
@@ -195,7 +235,34 @@ export default function ReadyToSignup() {
         throw activityError;
       }
       
-      // Create session
+      // Create session with enhanced Jackrabbit data
+      const sessionData: any = {
+        id: newSessionId,
+        activity_id: activity.id,
+        title: isJackrabbitClass ? `${classData.name} Class` : `${locationState.businessName} Registration`,
+        provider_org_id: providerOrgId,
+        platform: locationState.provider || detectProviderType(locationState.businessUrl)
+      };
+      
+      // Add Jackrabbit-specific session details
+      if (isJackrabbitClass) {
+        if (classData.schedule?.[0]) {
+          // Use first schedule entry for session timing
+          const schedule = classData.schedule[0];
+          sessionData.provider_session_key = `jackrabbit-${providerOrgId}-${classData.id}`;
+          sessionData.registration_open_at = classData.registrationOpensAt ? 
+            new Date(classData.registrationOpensAt) : null;
+        }
+        
+        if (classData.tuition) {
+          sessionData.upfront_fee_cents = Math.round(classData.tuition.amount * 100);
+        }
+        
+        if (classData.capacity) {
+          sessionData.capacity = classData.capacity;
+        }
+      }
+      
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
         .insert({
@@ -210,7 +277,30 @@ export default function ReadyToSignup() {
         throw sessionError;
       }
       
-      // Create registration plan for restaurant booking
+      // Create registration plan
+      const planRules = isJackrabbitClass ? {
+        business_name: locationState.businessName,
+        business_url: locationState.businessUrl,
+        provider_type: 'jackrabbit_class',
+        provider: 'jackrabbit_class',
+        classData: classData,
+        providerInfo: locationState.providerInfo,
+        credentials: {},
+        preferences: {},
+        automation_config: {
+          platform: 'jackrabbit_class',
+          org_id: providerOrgId
+        }
+      } : {
+        business_name: locationState.businessName,
+        business_url: locationState.businessUrl,
+        provider_type: providerType,
+        provider: locationState.provider || 'unknown',
+        credentials: {},
+        preferences: {},
+        automation_config: {}
+      };
+      
       const { data: reservation, error: reservationError } = await supabase
         .from('registration_plans')
         .insert({
@@ -218,15 +308,7 @@ export default function ReadyToSignup() {
           session_id: session.id,
           status: 'pending',
           provider_org_id: providerOrgId,
-          rules: {
-            business_name: locationState.businessName,
-            business_url: locationState.businessUrl,
-            provider_type: providerType,
-            provider: locationState.provider || 'unknown',
-            credentials: {},
-            preferences: {},
-            automation_config: {}
-          }
+          rules: planRules
         })
         .select()
         .single();
@@ -242,10 +324,12 @@ export default function ReadyToSignup() {
       const newPlan = {
         id: reservation.id,
         session_id: reservation.id,
-        provider_name: locationState.businessName,
+        provider_name: isJackrabbitClass ? classData.name : locationState.businessName,
         provider_url: locationState.businessUrl,
-        provider_type: providerType,
+        provider_type: isJackrabbitClass ? 'jackrabbit_class' : providerType,
         status: 'active',
+        classData: isJackrabbitClass ? classData : undefined,
+        providerInfo: locationState.providerInfo,
         preferences: {
           party_size: 2,
           preferred_date: '',
@@ -275,6 +359,9 @@ export default function ReadyToSignup() {
   const detectProviderType = (url: string): string => {
     if (!url) return 'general';
     const urlLower = url.toLowerCase();
+    
+    // Jackrabbit providers
+    if (urlLower.includes('jackrabbitclass.com') || urlLower.includes('jackrabbit')) return 'jackrabbit_class';
     
     // Restaurant providers - CHECK THESE FIRST
     if (urlLower.includes('resy.com')) return 'restaurant-resy';
