@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import { 
   User, 
   Shield, 
@@ -285,26 +286,21 @@ export function PreRegistrationAccountSetup({
     });
   };
 
-  // Get provider info from plan
-  const provider = plan?.rules?.provider || plan?.provider_type || 'unknown';
-  const providerName = plan?.rules?.business_name || plan?.provider_name;
-  const classData = plan?.rules?.classData || plan?.classData;
-  const providerInfo = plan?.rules?.providerInfo || plan?.providerInfo;
-  const providerUrl = plan?.rules?.business_url || campUrl;
-
   // For known providers, skip AI analysis and show provider-specific guidance
   if (provider && provider !== 'unknown' && setupStep === 'analysis') {
     return (
       <ProviderAccountGuidance
         provider={provider}
         providerName={providerName}
-        accountUrl={providerUrl}
-        classData={classData}
-        providerInfo={providerInfo}
+        accountUrl={guidance.accountUrl}
+        classData={plan?.rules?.classData || plan?.classData}
+        providerInfo={plan?.rules?.providerInfo || plan?.providerInfo}
         onAccountCreated={handleAccountCreated}
       />
     );
   }
+
+  if (setupStep === 'analysis' && analyzing) {
     return (
       <Card>
         <CardHeader>
