@@ -33,6 +33,7 @@ export function RestaurantBookingUI({ plan, providerType }: RestaurantBookingPro
   const [nextOpeningTime, setNextOpeningTime] = useState<Date | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [timeUntilOpening, setTimeUntilOpening] = useState<string>('');
+  const [loginError, setLoginError] = useState<string | null>(null);
   
   const providerName = providerType.split('-')[1];
   
@@ -53,6 +54,9 @@ export function RestaurantBookingUI({ plan, providerType }: RestaurantBookingPro
     
     // Try to analyze the actual booking window
     analyzeBookingWindow();
+    
+    // Check for recent login failures
+    checkRecentLoginFailures();
   }, []);
   
   useEffect(() => {
@@ -126,6 +130,48 @@ export function RestaurantBookingUI({ plan, providerType }: RestaurantBookingPro
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
     
     setTimeUntilOpening(`${hours}h ${minutes}m ${seconds}s`);
+  };
+
+  const checkRecentLoginFailures = async () => {
+    try {
+      // Check for recent Jackrabbit login failures
+      if (plan.detect_url?.includes('jackrabbitclass.com')) {
+        const { data: events, error } = await supabase
+          .from('attempt_events')
+          .select('metadata, event_type')
+          .eq('event_type', 'login_failed')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!error && events && events.length > 0) {
+          const metadata = events[0].metadata as any;
+          const errorCode = metadata?.error_code;
+          setLoginError(errorCode);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking login failures:', error);
+    }
+  };
+
+  const getFriendlyErrorMessage = (errorCode: string): string => {
+    switch (errorCode) {
+      case 'MISSING_CREDENTIALS':
+        return 'Jackrabbit login credentials not found. Please check your account settings.';
+      case 'INVALID_CREDENTIALS':
+        return 'Jackrabbit login failed - please verify your credentials are correct.';
+      case 'ORGID_MISSING':
+        return 'Organization ID missing from Jackrabbit URL.';
+      case 'NETWORK_LOGIN_TIMEOUT':
+        return 'Jackrabbit login timed out. Please check your connection.';
+      default:
+        return 'Jackrabbit login failed. Please check your credentials.';
+    }
+  };
+
+  const handleRecheckCredentials = () => {
+    // Navigate to account settings or credentials page
+    navigate('/account/credentials?provider=jackrabbit');
   };
   
   const verifyCredentials = async () => {
@@ -301,6 +347,27 @@ export function RestaurantBookingUI({ plan, providerType }: RestaurantBookingPro
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Jackrabbit Login Error Warning */}
+      {loginError && plan.detect_url?.includes('jackrabbitclass.com') && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-medium text-amber-800">Jackrabbit Login Issue</h3>
+              <p className="text-amber-700 text-sm mt-1">
+                {getFriendlyErrorMessage(loginError)}
+              </p>
+              <button 
+                onClick={handleRecheckCredentials}
+                className="mt-2 text-sm text-amber-800 underline hover:text-amber-900"
+              >
+                Re-check credentials in Account & Permissions →
+              </button>
+            </div>
+          </div>
         </div>
       )}
       

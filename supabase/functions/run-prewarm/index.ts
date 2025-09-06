@@ -18,73 +18,162 @@ const jackrabbitAdapter = {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
     
     try {
-      // Get credentials
-      const { data: credentials, error: credError } = await supabase.functions.invoke('get-account-credentials', {
-        body: {
-          providerUrl: 'jackrabbit',
-          organizationId: plan.provider_org_id
-        }
-      });
+      // Validate organization ID first
+      if (!plan.provider_org_id) {
+        return { ok: false, reason: 'ORGID_MISSING' };
+      }
 
-      if (credError || !credentials?.email) {
-        return { ok: false, reason: 'Login credentials not found' };
+      // Get credentials (with timeout)
+      const credTimeout = 5000; // 5 seconds
+      let credentials: any, credError: any;
+      
+      try {
+        const credResponse = await Promise.race([
+          supabase.functions.invoke('get-account-credentials', {
+            body: {
+              providerUrl: 'jackrabbit',
+              organizationId: plan.provider_org_id
+            }
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Credential fetch timeout')), credTimeout)
+          )
+        ]) as any;
+        
+        credentials = credResponse?.data;
+        credError = credResponse?.error;
+      } catch (timeoutError) {
+        credError = timeoutError;
+      }
+
+      if (credError || !credentials?.email || !credentials?.password) {
+        console.log('[JR-LOGIN-PREWARM] No credentials found for org ID (redacted)');
+        return { ok: false, reason: 'MISSING_CREDENTIALS' };
       }
 
       // Build login URL
       const loginUrl = `https://app.jackrabbitclass.com/jr3.0/ParentPortal/Login?orgID=${plan.provider_org_id}`;
+      console.log('[JR-LOGIN-PREWARM] Navigating to login URL for org ID (redacted)');
 
-      // Navigate to login
-      await supabase.functions.invoke('browser-automation', {
-        body: {
-          action: 'navigate',
-          sessionId: bbSessionId,
-          url: loginUrl
-        }
-      });
-
-      // Perform login
-      const { data: loginResult, error: loginError } = await supabase.functions.invoke('browser-automation', {
-        body: {
-          action: 'interact',
-          sessionId: bbSessionId,
-          steps: [
-            {
-              action: 'type',
-              selector: 'input[name="username"], input[type="email"]',
-              text: credentials.email
-            },
-            {
-              action: 'type', 
-              selector: 'input[name="password"], input[type="password"]',
-              text: credentials.password
-            },
-            {
-              action: 'click',
-              selector: 'button[type="submit"], button:has-text("Log In")'
+      // Navigate to login (with timeout)
+      const navTimeout = 15000; // 15 seconds
+      try {
+        await Promise.race([
+          supabase.functions.invoke('browser-automation', {
+            body: {
+              action: 'navigate',
+              sessionId: bbSessionId,
+              url: loginUrl
             }
-          ]
-        }
-      });
-
-      if (loginError) {
-        return { ok: false, reason: 'Login interaction failed' };
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Navigation timeout')), navTimeout)
+          )
+        ]);
+      } catch (navError) {
+        console.error('[JR-LOGIN-PREWARM] Navigation failed (no sensitive data logged)');
+        return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
       }
 
-      // Verify login success
-      const { data: verifyResult } = await supabase.functions.invoke('browser-automation', {
-        body: {
-          action: 'extract',
-          sessionId: bbSessionId,
-          waitFor: '.logout, :has-text("Parent Portal")'
-        }
-      });
+      // Perform login (with timeout)
+      const loginTimeout = 10000; // 10 seconds
+      let loginResult: any, loginError: any;
+      
+      try {
+        const loginResponse = await Promise.race([
+          supabase.functions.invoke('browser-automation', {
+            body: {
+              action: 'interact',
+              sessionId: bbSessionId,
+              steps: [
+                {
+                  action: 'type',
+                  selector: 'input[name="username"], input[type="email"]',
+                  text: credentials.email
+                },
+                {
+                  action: 'type', 
+                  selector: 'input[name="password"], input[type="password"]',
+                  text: credentials.password
+                },
+                {
+                  action: 'click',
+                  selector: 'button[type="submit"], button:has-text("Log In")'
+                }
+              ]
+            }
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Login interaction timeout')), loginTimeout)
+          )
+        ]) as any;
+        
+        loginResult = loginResponse?.data;
+        loginError = loginResponse?.error;
+      } catch (timeoutError) {
+        loginError = timeoutError;
+      }
+
+      if (loginError) {
+        console.error('[JR-LOGIN-PREWARM] Login interaction failed (no sensitive data logged)');
+        return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
+      }
+
+      // Verify login success (with timeout)
+      const verifyTimeout = 8000; // 8 seconds
+      let verifyResult: any, verifyError: any;
+      
+      try {
+        const verifyResponse = await Promise.race([
+          supabase.functions.invoke('browser-automation', {
+            body: {
+              action: 'extract',
+              sessionId: bbSessionId,
+              waitFor: '.logout, :has-text("Parent Portal")'
+            }
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Verification timeout')), verifyTimeout)
+          )
+        ]) as any;
+        
+        verifyResult = verifyResponse?.data;
+        verifyError = verifyResponse?.error;
+      } catch (timeoutError) {
+        verifyError = timeoutError;
+      }
+
+      if (verifyError) {
+        console.error('[JR-LOGIN-PREWARM] Login verification failed (no sensitive data logged)');
+        return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
+      }
 
       const loginSuccess = verifyResult?.pageData?.includes('logout') || 
-                          verifyResult?.pageData?.includes('Parent Portal');
+                          verifyResult?.pageData?.includes('Parent Portal') ||
+                          !verifyResult?.pageData?.includes('login');
 
-      return { ok: loginSuccess };
+      if (loginSuccess) {
+        console.log('[JR-LOGIN-PREWARM] Login successful for org ID (redacted)');
+        return { ok: true };
+      } else {
+        console.log('[JR-LOGIN-PREWARM] Login failed - credentials appear to be invalid');
+        return { ok: false, reason: 'INVALID_CREDENTIALS' };
+      }
+
     } catch (error) {
-      return { ok: false, reason: `Login error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+      console.error('[JR-LOGIN-PREWARM] Login exception (no sensitive data logged)');
+      
+      // Map specific errors to friendly codes
+      if (error instanceof Error) {
+        if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+          return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
+        }
+        if (error.message.includes('credentials') || error.message.includes('unauthorized')) {
+          return { ok: false, reason: 'INVALID_CREDENTIALS' };
+        }
+      }
+      
+      return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
     }
   }
 };
@@ -1027,10 +1116,24 @@ async function prewarmJackrabbitSession(admin: any, plan: any): Promise<void> {
       
       if (!loginResult.ok) {
         console.log(`[JACKRABBIT-PREWARM] Login failed: ${loginResult.reason}`);
+        
+        // Write automation event with friendly error reason
+        await admin
+          .from('attempt_events')
+          .insert({
+            event_type: 'login_failed',
+            metadata: {
+              error_code: loginResult.reason,
+              url: plan.detect_url,
+              organization_id: plan.organization_id,
+              timestamp: new Date().toISOString()
+            }
+          });
+        
         return;
       }
       
-      console.log(`[JACKRABBIT-PREWARM] Login successful for org ${plan.organization_id}`);
+      console.log(`[JACKRABBIT-PREWARM] Login successful for org ID (redacted)`);
     } else {
       console.log(`[JACKRABBIT-PREWARM] No login required for OpeningsDirect URL`);
     }
@@ -1066,11 +1169,9 @@ async function prewarmJackrabbitSession(admin: any, plan: any): Promise<void> {
 
     // Step 5: Log automation event 'prewarm_ready'
     await admin
-      .from('automation_events')
+      .from('attempt_events')
       .insert({
         event_type: 'prewarm_ready',
-        plan_id: plan.id,
-        session_id: bbSessionId,
         metadata: {
           url: plan.detect_url,
           organization_id: plan.organization_id,
@@ -1088,14 +1189,20 @@ async function prewarmJackrabbitSession(admin: any, plan: any): Promise<void> {
   } catch (error) {
     console.error(`[JACKRABBIT-PREWARM] Error prewarming plan ${plan.id}:`, error);
     
-    // Log error event
+    // Log error event with friendly error code
+    let errorCode = 'PREWARM_FAILED';
+    if (error instanceof Error) {
+      if (error.message.includes('credentials')) errorCode = 'MISSING_CREDENTIALS';
+      else if (error.message.includes('timeout')) errorCode = 'NETWORK_LOGIN_TIMEOUT';
+      else if (error.message.includes('orgId') || error.message.includes('organization')) errorCode = 'ORGID_MISSING';
+    }
+    
     await admin
-      .from('automation_events')
+      .from('attempt_events')
       .insert({
         event_type: 'prewarm_failed',
-        plan_id: plan.id,
         metadata: {
-          error: error instanceof Error ? error.message : String(error),
+          error_code: errorCode,
           timestamp: new Date().toISOString()
         }
       });

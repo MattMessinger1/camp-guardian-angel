@@ -350,6 +350,11 @@ async function login({ plan, bbSessionId }: {
   bbSessionId: string 
 }): Promise<{ ok: boolean; reason?: string }> {
   try {
+    // Validate organization ID first
+    if (!plan.provider_org_id) {
+      return { ok: false, reason: 'ORGID_MISSING' };
+    }
+
     // Step 1: Read credentials using shared account-credentials system
     const supabase = createClient(
       'https://ezvwyfqtyanwnoyymhav.supabase.co',
@@ -359,7 +364,7 @@ async function login({ plan, bbSessionId }: {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      return { ok: false, reason: 'User not authenticated' };
+      return { ok: false, reason: 'MISSING_CREDENTIALS' };
     }
 
     // Call edge function to get decrypted credentials
@@ -371,70 +376,115 @@ async function login({ plan, bbSessionId }: {
       }
     });
 
-    if (credError || !credentialsResult?.email) {
-      console.log('[JR-LOGIN] No credentials found for org:', plan.provider_org_id);
-      return { ok: false, reason: 'Login credentials not found' };
+    if (credError || !credentialsResult?.email || !credentialsResult?.password) {
+      console.log('[JR-LOGIN] No credentials found for org ID (redacted)');
+      return { ok: false, reason: 'MISSING_CREDENTIALS' };
     }
 
     // Step 2: Build Parent Portal login URL
     const loginUrl = `https://app.jackrabbitclass.com/jr3.0/ParentPortal/Login?orgID=${plan.provider_org_id}`;
-    console.log('[JR-LOGIN] Navigating to login URL for org:', plan.provider_org_id);
+    console.log('[JR-LOGIN] Navigating to login URL for org ID (redacted)');
 
-    // Step 3: Navigate to login URL using browser automation
-    const { data: navResult, error: navError } = await supabase.functions.invoke('browser-automation', {
-      body: {
-        action: 'navigate',
-        sessionId: bbSessionId,
-        url: loginUrl
-      }
-    });
+    // Step 3: Navigate to login URL using browser automation (with timeout)
+    const navigationTimeout = 15000; // 15 seconds
+    let navResult: any, navError: any;
+    
+    try {
+      const navResponse = await Promise.race([
+        supabase.functions.invoke('browser-automation', {
+          body: {
+            action: 'navigate',
+            sessionId: bbSessionId,
+            url: loginUrl
+          }
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Navigation timeout')), navigationTimeout)
+        )
+      ]) as any;
+      
+      navResult = navResponse?.data;
+      navError = navResponse?.error;
+    } catch (timeoutError) {
+      navError = timeoutError;
+    }
 
     if (navError || !navResult?.success) {
-      console.error('[JR-LOGIN] Navigation failed:', navError || navResult?.error);
-      return { ok: false, reason: 'Failed to navigate to login page' };
+      console.error('[JR-LOGIN] Navigation failed (no sensitive data logged)');
+      return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
     }
 
-    // Step 4: Interact with login form
-    const { data: loginResult, error: loginError } = await supabase.functions.invoke('browser-automation', {
-      body: {
-        action: 'interact',
-        sessionId: bbSessionId,
-        steps: [
-          {
-            action: 'type',
-            selector: 'input[name="username"], input[type="email"]',
-            text: credentialsResult.email
-          },
-          {
-            action: 'type', 
-            selector: 'input[name="password"], input[type="password"]',
-            text: credentialsResult.password
-          },
-          {
-            action: 'click',
-            selector: 'button[type="submit"], button:has-text("Log In")'
+    // Step 4: Interact with login form (with timeout)
+    const loginTimeout = 10000; // 10 seconds
+    let loginResult: any, loginError: any;
+    
+    try {
+      const loginResponse = await Promise.race([
+        supabase.functions.invoke('browser-automation', {
+          body: {
+            action: 'interact',
+            sessionId: bbSessionId,
+            steps: [
+              {
+                action: 'type',
+                selector: 'input[name="username"], input[type="email"]',
+                text: credentialsResult.email
+              },
+              {
+                action: 'type', 
+                selector: 'input[name="password"], input[type="password"]',
+                text: credentialsResult.password
+              },
+              {
+                action: 'click',
+                selector: 'button[type="submit"], button:has-text("Log In")'
+              }
+            ]
           }
-        ]
-      }
-    });
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Login interaction timeout')), loginTimeout)
+        )
+      ]) as any;
+      
+      loginResult = loginResponse?.data;
+      loginError = loginResponse?.error;
+    } catch (timeoutError) {
+      loginError = timeoutError;
+    }
 
     if (loginError) {
-      console.error('[JR-LOGIN] Login interaction failed:', loginError);
-      return { ok: false, reason: 'Failed to complete login interaction' };
+      console.error('[JR-LOGIN] Login interaction failed (no sensitive data logged)');
+      return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
     }
 
-    // Step 5: Wait for post-login indicators
-    const { data: verifyResult, error: verifyError } = await supabase.functions.invoke('browser-automation', {
-      body: {
-        action: 'extract',
-        sessionId: bbSessionId,
-        waitFor: '.logout, :has-text("Parent Portal")'
-      }
-    });
+    // Step 5: Wait for post-login indicators (with timeout)
+    const verifyTimeout = 8000; // 8 seconds
+    let verifyResult: any, verifyError: any;
+    
+    try {
+      const verifyResponse = await Promise.race([
+        supabase.functions.invoke('browser-automation', {
+          body: {
+            action: 'extract',
+            sessionId: bbSessionId,
+            waitFor: '.logout, :has-text("Parent Portal")'
+          }
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Verification timeout')), verifyTimeout)
+        )
+      ]) as any;
+      
+      verifyResult = verifyResponse?.data;
+      verifyError = verifyResponse?.error;
+    } catch (timeoutError) {
+      verifyError = timeoutError;
+    }
 
     if (verifyError) {
-      console.error('[JR-LOGIN] Login verification failed:', verifyError);
-      return { ok: false, reason: 'Could not verify successful login' };
+      console.error('[JR-LOGIN] Login verification failed (no sensitive data logged)');
+      return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
     }
 
     // Check if login was successful based on page content
@@ -443,19 +493,27 @@ async function login({ plan, bbSessionId }: {
                         !verifyResult?.pageData?.includes('login');
 
     if (loginSuccess) {
-      console.log('[JR-LOGIN] Login successful for org:', plan.provider_org_id);
+      console.log('[JR-LOGIN] Login successful for org ID (redacted)');
       return { ok: true };
     } else {
-      console.log('[JR-LOGIN] Login failed - still on login page');
-      return { ok: false, reason: 'Login failed - credentials may be incorrect' };
+      console.log('[JR-LOGIN] Login failed - credentials appear to be invalid');
+      return { ok: false, reason: 'INVALID_CREDENTIALS' };
     }
 
   } catch (error) {
-    console.error('[JR-LOGIN] Login exception:', error);
-    return { 
-      ok: false, 
-      reason: `Login error: ${error instanceof Error ? error.message : 'Unknown error'}` 
-    };
+    console.error('[JR-LOGIN] Login exception (no sensitive data logged)');
+    
+    // Map specific errors to friendly codes
+    if (error instanceof Error) {
+      if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+        return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
+      }
+      if (error.message.includes('credentials') || error.message.includes('unauthorized')) {
+        return { ok: false, reason: 'INVALID_CREDENTIALS' };
+      }
+    }
+    
+    return { ok: false, reason: 'NETWORK_LOGIN_TIMEOUT' };
   }
 }
 
