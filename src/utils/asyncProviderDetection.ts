@@ -63,33 +63,20 @@ export async function detectProviderAsync(result: SearchResult): Promise<Provide
     };
   }
 
-  const hostname = extractHostname(url);
-  if (!hostname) {
-    return {
-      provider: detectProviderFast(result),
-      confidence: 'low'
-    };
-  }
-
   try {
-    // Get cached provider profiles
-    const profiles = await providerCache.getProfiles();
+    // Use database-driven detection from providers/index.ts
+    const { detectPlatform } = await import('@/lib/providers/index');
+    const profile = await detectPlatform(url);
     
-    // Match against database patterns
-    for (const profile of profiles) {
-      for (const pattern of profile.domain_patterns || []) {
-        const regex = createPatternRegex(pattern);
-        if (regex.test(hostname)) {
-          return {
-            provider: profile.platform,
-            profile,
-            confidence: 'high'
-          };
-        }
-      }
+    if (profile) {
+      return {
+        provider: profile.platform,
+        profile,
+        confidence: 'high'
+      };
     }
 
-    // Fallback to fast detection
+    // Fallback to fast heuristic detection
     const fastResult = detectProviderFast(result);
     return {
       provider: fastResult,
@@ -97,7 +84,8 @@ export async function detectProviderAsync(result: SearchResult): Promise<Provide
     };
 
   } catch (error) {
-    console.error('Async provider detection failed:', error);
+    console.error('Database provider detection failed:', error);
+    // Fallback to fast detection on error
     return {
       provider: detectProviderFast(result),
       confidence: 'low'
