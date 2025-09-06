@@ -50,22 +50,24 @@ export class CrossBrowserSyncManager {
       console.log('Initializing cross-browser sync for session:', sessionId);
 
       const syncId = `sync_${sessionId}_${Date.now()}`;
-      const browserFingerprint = this.generateBrowserFingerprint();
       
+      // For now, store in localStorage as a fallback until cross_browser_sync table is available
+      const serializedState = this.serializer.serialize(initialState, {
+        compress: true,
+        encrypt: false,
+        includeCheckpoints: true,
+        excludeSensitiveData: true
+      });
+
       const syncData = {
         id: syncId,
         session_id: sessionId,
         sync_key: syncKey,
-        state_data: this.serializer.serialize(initialState, {
-          compress: true,
-          encrypt: false,
-          includeCheckpoints: true,
-          excludeSensitiveData: true
-        }),
+        state_data: serializedState,
         metadata: {
           lastSyncAt: new Date().toISOString(),
           syncVersion: 1,
-          browserFingerprint,
+          browserFingerprint: this.generateBrowserFingerprint(),
           deviceInfo: {
             userAgent: navigator.userAgent,
             platform: navigator.platform,
@@ -74,17 +76,18 @@ export class CrossBrowserSyncManager {
         },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       };
 
-      const { error } = await supabase
-        .from('cross_browser_sync')
-        .upsert(syncData);
-
-      if (error) throw error;
-
-      console.log('Cross-browser sync initialized with ID:', syncId);
-      return { success: true, syncId };
+      // Store in localStorage for now
+      try {
+        localStorage.setItem(`cross_browser_sync_${syncKey}`, JSON.stringify(syncData));
+        console.log('Cross-browser sync initialized with ID (localStorage):', syncId);
+        return { success: true, syncId };
+      } catch (storageError) {
+        console.warn('localStorage failed, sync disabled:', storageError);
+        return { success: false };
+      }
 
     } catch (error) {
       console.error('Failed to initialize cross-browser sync:', error);
@@ -106,30 +109,27 @@ export class CrossBrowserSyncManager {
         return { success: true };
       }
 
-      console.log('Syncing state to cross-browser storage');
-
-      // Get existing sync data
-      const { data: existingSync, error: fetchError } = await supabase
-        .from('cross_browser_sync')
-        .select('*')
-        .eq('sync_key', syncKey)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
+      console.log('Syncing state to localStorage');
 
       let syncVersion = 1;
       let conflicts: any[] = [];
 
-      // Check for conflicts if sync data exists
-      if (existingSync) {
-        const remoteState = this.serializer.deserialize(existingSync.state_data);
-        const conflictResult = this.detectAndResolveConflicts(currentState, remoteState);
-        
-        conflicts = conflictResult.conflicts;
-        syncVersion = (existingSync.metadata?.syncVersion || 0) + 1;
+      // Get existing sync data from localStorage
+      const existingSyncData = localStorage.getItem(`cross_browser_sync_${syncKey}`);
+      if (existingSyncData) {
+        try {
+          const existingSync = JSON.parse(existingSyncData);
+          const remoteState = this.serializer.deserialize(existingSync.state_data);
+          const conflictResult = this.detectAndResolveConflicts(currentState, remoteState);
+          
+          conflicts = conflictResult.conflicts;
+          syncVersion = (existingSync.metadata?.syncVersion || 0) + 1;
 
-        // Use resolved state for sync
-        currentState = conflictResult.resolvedState;
+          // Use resolved state for sync
+          currentState = conflictResult.resolvedState;
+        } catch (parseError) {
+          console.warn('Failed to parse existing sync data:', parseError);
+        }
       }
 
       // Serialize and save updated state
@@ -156,11 +156,8 @@ export class CrossBrowserSyncManager {
         updated_at: new Date().toISOString()
       };
 
-      const { error: saveError } = await supabase
-        .from('cross_browser_sync')
-        .upsert(syncData);
-
-      if (saveError) throw saveError;
+      // Store in localStorage
+      localStorage.setItem(`cross_browser_sync_${syncKey}`, JSON.stringify(syncData));
 
       console.log(`Cross-browser sync completed (version ${syncVersion})`);
       
@@ -182,20 +179,15 @@ export class CrossBrowserSyncManager {
    */
   async restoreFromSync(syncKey: string): Promise<CrossBrowserSyncResult> {
     try {
-      console.log('Restoring state from cross-browser sync');
+      console.log('Restoring state from localStorage');
 
-      const { data, error } = await supabase
-        .from('cross_browser_sync')
-        .select('*')
-        .eq('sync_key', syncKey)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (!data) {
+      const syncDataStr = localStorage.getItem(`cross_browser_sync_${syncKey}`);
+      if (!syncDataStr) {
         console.log('No sync data found for key:', syncKey);
         return { success: false };
       }
+
+      const data = JSON.parse(syncDataStr);
 
       // Check if sync data is too old
       const syncAge = Date.now() - new Date(data.updated_at).getTime();
@@ -263,13 +255,29 @@ export class CrossBrowserSyncManager {
    */
   async cleanupExpiredSyncs(): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('cross_browser_sync')
-        .delete()
-        .lt('expires_at', new Date().toISOString());
-
-      if (error) throw error;
-      console.log('Expired sync data cleaned up');
+      // Clean up localStorage entries
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('cross_browser_sync_')) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key) || '{}');
+            const expiresAt = new Date(data.expires_at);
+            if (expiresAt < new Date()) {
+              keysToRemove.push(key);
+            }
+          } catch (error) {
+            // Remove corrupted entries
+            keysToRemove.push(key);
+          }
+        }
+      }
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      if (keysToRemove.length > 0) {
+        console.log('Expired sync data cleaned up:', keysToRemove.length, 'entries');
+      }
 
     } catch (error) {
       console.error('Failed to cleanup expired syncs:', error);
