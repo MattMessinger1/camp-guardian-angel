@@ -27,7 +27,7 @@ export const UI_STRINGS = {
   SUCCESS_VERIFICATION_SENT: "Quick verification sent via SMS. Tap the link or enter the code to finish.",
 
   // Readiness Status
-  READINESS_READY_TITLE: "Ready for Signup",
+  READINESS_READY_TITLE: "Arm Your Signup",
   READINESS_READY_DESC: "All Set!",
   READINESS_IN_PROGRESS_TITLE: "In Progress", 
   READINESS_IN_PROGRESS_DESC: "Under Review",

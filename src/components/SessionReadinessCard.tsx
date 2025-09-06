@@ -295,7 +295,7 @@ export function SessionReadinessCard({ session, onReadinessUpdate }: SessionRead
             {readiness?.ready_for_signup ? (
               <Button className="flex-1 bg-secondary hover:bg-secondary/90" disabled>
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Ready for Signup
+                Arm Your Signup
               </Button>
             ) : (
               <Button variant="outline" className="flex-1">

@@ -7,7 +7,7 @@ export const READINESS_STATUS = {
 } as const;
 
 export const READINESS_LABELS = {
-  [READINESS_STATUS.READY_FOR_SIGNUP]: "Ready for Signup",
+  [READINESS_STATUS.READY_FOR_SIGNUP]: "Arm Your Signup",
   [READINESS_STATUS.NEEDS_SETUP]: "Setup Required",
   [READINESS_STATUS.IN_PROGRESS]: "In Progress", 
   [READINESS_STATUS.BLOCKED]: "Action Required"

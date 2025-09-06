@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { ProviderBadge } from "@/components/ui/provider-badge";
 
 function generateDefaultUrl(providerName: string): string {
   const name = providerName?.toLowerCase() || '';
@@ -99,11 +100,26 @@ const processSearchResults = (results: InternetSearchResult[]) => {
 };
 
 const detectProvider = (result: InternetSearchResult) => {
-  const name = (result.businessName || '').toLowerCase();
-  const url = (result.url || '').toLowerCase();
+  const name = (result.businessName || result.name || '').toLowerCase();
+  const url = (result.url || result.signup_url || result.providerUrl || '').toLowerCase();
   
+  // Restaurants
   if (name.includes('carbone') || url.includes('carbone')) return 'resy';
+  if (name.includes('don angie') || url.includes('don-angie')) return 'resy';
+  if (name.includes("rao's") || url.includes('raos')) return 'resy';
+  if (url.includes('resy.com')) return 'resy';
+  if (url.includes('opentable.com')) return 'opentable';
+  
+  // Fitness
   if (name.includes('peloton') || url.includes('peloton')) return 'peloton';
+  
+  // Camps & Classes  
+  if (name.includes('camp') || name.includes('dance') || name.includes('gymnastics')) {
+    if (url.includes('jackrabbit') || name.includes('jackrabbit')) return 'jackrabbit_class';
+    if (url.includes('daysmart') || name.includes('daysmart')) return 'daysmart_recreation';
+    return 'jackrabbit_class'; // Default for camps
+  }
+  
   return 'unknown';
 };
 
@@ -369,13 +385,12 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
         <Card key={index} className="p-6 w-full hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-foreground mb-2">
-                {result.name || result.title}
-              </h2>
-              
-              <p className="text-muted-foreground mb-3">
-                Provider: {result.provider}
-              </p>
+              <div className="flex items-start justify-between mb-2">
+                <h2 className="text-2xl font-bold text-foreground">
+                  {result.name || result.title}
+                </h2>
+                <ProviderBadge platform={result.provider} size="md" />
+              </div>
               
               <p className="text-muted-foreground mb-3">
                 {result.description}
@@ -537,7 +552,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
                 disabled={result.canAutomate === false}
               >
-                Get ready for signup
+                Arm Your Signup
               </Button>
               
               {result.url && (
@@ -565,7 +580,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
               Internet Search Results
             </h3>
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              These camps were found by searching the entire internet. When you click "Get ready for signup", 
+              These camps were found by searching the entire internet. When you click "Arm Your Signup", 
               we'll help you store your credentials and automate the registration process for any camp worldwide.
             </p>
           </div>

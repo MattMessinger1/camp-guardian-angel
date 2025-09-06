@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ClarifyingQuestionsCard } from './ClarifyingQuestionsCard';
+import { ProviderBadge } from '@/components/ui/provider-badge';
 
 export interface SearchResult {
   sessionId: string;
@@ -320,9 +321,15 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
               <div className="flex justify-between items-start mb-6">
                 <div className="flex-1">
                   {/* Business Name - Bold, Larger Text */}
-                  <h2 className="text-2xl font-bold text-foreground mb-1">
-                    {result.name || result.providerName || result.campName}
-                  </h2>
+                  <div className="flex items-start justify-between mb-1">
+                    <h2 className="text-2xl font-bold text-foreground">
+                      {result.name || result.providerName || result.campName}
+                    </h2>
+                    <ProviderBadge 
+                      platform={result.providerName || result.provider_platform || 'unknown'} 
+                      size="md" 
+                    />
+                  </div>
                   
                   {/* Camp Name (if different from business name) */}
                   {result.campName && result.campName !== (result.name || result.providerName) && (
@@ -331,6 +338,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                     </p>
                   )}
                 </div>
+                
                 
                 <Button 
                   onClick={async () => {
@@ -391,7 +399,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                   }}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 ml-4"
                 >
-                  Get ready for signup
+                  Arm Your Signup
                 </Button>
               </div>
 
