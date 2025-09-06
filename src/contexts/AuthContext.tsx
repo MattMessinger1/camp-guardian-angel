@@ -22,26 +22,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Get current session first
-    supabase.auth.getSession().then(({ data }) => {
+    // Set a timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
       if (mounted) {
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
+        console.warn('Auth initialization timed out, setting loading to false');
         setLoading(false);
       }
-    });
+    }, 5000); // 5 second timeout
+
+    // Get current session first
+    supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (mounted) {
+          if (error) {
+            console.error('Auth session error:', error);
+          }
+          setSession(data.session);
+          setUser(data.session?.user ?? null);
+          setLoading(false);
+          clearTimeout(timeout);
+        }
+      })
+      .catch((error) => {
+        if (mounted) {
+          console.error('Auth initialization failed:', error);
+          setLoading(false);
+          clearTimeout(timeout);
+        }
+      });
 
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (mounted) {
+        console.log('Auth state changed:', event, newSession?.user?.id || 'no user');
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
+        clearTimeout(timeout);
       }
     });
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
