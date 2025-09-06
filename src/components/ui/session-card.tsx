@@ -188,7 +188,7 @@ export function SessionCard({ session, showGetReadyButton = true, variant = 'def
             <Button asChild className="flex-1" variant="default">
               <Link to={`/signup?sessionId=${session.id}`}>
                 <ArrowRight className="h-4 w-4 mr-2" />
-                Arm Your Signup
+                Find Your Session
               </Link>
             </Button>
           ) : isRegistrationOpen ? (

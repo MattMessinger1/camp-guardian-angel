@@ -191,9 +191,12 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
   };
 
   const handleSearchResultClick = (result: any) => {
-    // Clear any cached session data first
+    // Clear any cached session data first including Carbone-related data
     localStorage.removeItem('currentSession');
+    localStorage.removeItem('carbone_booking_state');
+    localStorage.removeItem('bookingState');
     sessionStorage.clear();
+    console.log('✅ Cleared all cached session data including Carbone state');
     
     // Extract URL from multiple possible fields
     const extractedUrl = result.url || result.signup_url || result.link || 
@@ -440,120 +443,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
                   Age Range: {result.estimatedAgeRange}
                 </p>
               )}
-              
-              {/* Session Selection Dropdowns */}
-              {dates.length > 1 && (
-                <div className="mb-3">
-                  <label className="text-sm font-medium text-foreground mb-1 block">
-                    <Calendar className="inline h-4 w-4 mr-1" />
-                    Select Date
-                  </label>
-                  <Select onValueChange={(value) => handleDateChange(index, value)}>
-                    <SelectTrigger className="w-full bg-background border-input">
-                      <SelectValue placeholder="Choose a date" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border-input z-50">
-                      {dates.map((date, idx) => (
-                        <SelectItem key={idx} value={date} className="hover:bg-muted">
-                          {new Date(date).toLocaleDateString('en-US', { 
-                            weekday: 'short', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {times.length > 1 && (
-                <div className="mb-3">
-                  <label className="text-sm font-medium text-foreground mb-1 block">
-                    <Clock className="inline h-4 w-4 mr-1" />
-                    Select Time
-                  </label>
-                  <Select onValueChange={(value) => handleTimeChange(index, value)}>
-                    <SelectTrigger className="w-full bg-background border-input">
-                      <SelectValue placeholder="Choose a time" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border-input z-50">
-                      {times.map((time, idx) => (
-                        <SelectItem key={idx} value={time} className="hover:bg-muted">
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              <div className="mb-4 space-y-1">
-                {selectedSessionDetails ? (
-                  <>
-                    <p className="text-muted-foreground">
-                      Session cost: <span className="font-medium">${selectedSessionDetails.price}</span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      Available spots: <span className="font-medium">{selectedSessionDetails.availability}</span>
-                    </p>
-                  </>
-                ) : (result.signup_cost !== undefined && result.signup_cost !== null) ? (
-                  <p className="text-muted-foreground">
-                    Due at signup: <span className="font-medium">${result.signup_cost}</span>
-                  </p>
-                ) : result.estimatedPrice ? (
-                  <p className="text-muted-foreground">
-                    Estimated Fee: {result.estimatedPrice}
-                  </p>
-                ) : null}
-                
-                {(result.total_cost !== undefined && result.total_cost !== null) && (
-                  <p className="text-muted-foreground">
-                    Total cost: <span className="font-medium">${result.total_cost}</span>
-                  </p>
-                )}
-              </div>
-              
-              {result.sessions && result.sessions.length > 0 && (
-                <div className="mb-4 space-y-2">
-                  <p className="text-sm font-medium text-foreground">Available Sessions:</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-32 overflow-y-auto">
-                    {result.sessions.slice(0, 6).map((session, idx) => (
-                      <div key={idx} className="text-xs bg-muted p-2 rounded">
-                        <div className="font-medium">{new Date(session.date).toLocaleDateString()}</div>
-                        <div className="text-muted-foreground">{session.time}</div>
-                        <div className="text-muted-foreground">{session.availability} spots • ${session.price}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {result.sessions.length > 6 && (
-                    <p className="text-xs text-muted-foreground">
-                      +{result.sessions.length - 6} more sessions available
-                    </p>
-                  )}
-                </div>
-              )}
-              
-              <div className="flex gap-2 mb-3">
-                {result.confidence && (
-                  <Badge variant="outline" className="text-xs">
-                    {Math.round(result.confidence * 100)}% match
-                  </Badge>
-                )}
-                
-                {result.automationComplexity && (
-                  <Badge variant="secondary" className="text-xs">
-                    {result.automationComplexity} automation
-                  </Badge>
-                )}
-              </div>
-              
-              {result.url && (
-                <p className="text-xs text-muted-foreground italic mb-2">
-                  Found via internet search • Click to view website: {result.url}
-                </p>
-              )}
+               
             </div>
             
             <div className="ml-6 flex flex-col items-start gap-2">
@@ -579,7 +469,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
                 disabled={result.canAutomate === false}
               >
-                Arm Your Signup
+                Find Your Session
               </Button>
               
               {result.url && (
@@ -607,7 +497,7 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
               Internet Search Results
             </h3>
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              These camps were found by searching the entire internet. When you click "Arm Your Signup", 
+              These camps were found by searching the entire internet. When you click "Find Your Session", 
               we'll help you store your credentials and automate the registration process for any camp worldwide.
             </p>
           </div>
