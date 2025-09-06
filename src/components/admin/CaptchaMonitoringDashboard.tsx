@@ -299,8 +299,8 @@ export function CaptchaMonitoringDashboard({ userId }: CaptchaMonitoringDashboar
                     <span>{notificationMetrics?.totalOpened || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Completed</span>
-                    <span>{notificationMetrics?.completed || 0}</span>
+                    <span>Clicked</span>
+                    <span>{notificationMetrics?.totalClicked || 0}</span>
                   </div>
                 </div>
               </CardContent>
