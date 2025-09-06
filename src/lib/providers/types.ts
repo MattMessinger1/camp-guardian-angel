@@ -1,4 +1,4 @@
-export type ProviderPlatform = 'jackrabbit_class' | 'daysmart_recreation' | 'shopify_product' | 'playmetrics';
+export type ProviderPlatform = 'jackrabbit_class' | 'daysmart_recreation' | 'shopify_product' | 'playmetrics' | 'resy' | 'opentable' | 'peloton' | 'ticketmaster' | 'eventbrite';
 export type ProviderLoginType = 'none' | 'email_password' | 'account_required';
 
 export interface ProviderProfile {
