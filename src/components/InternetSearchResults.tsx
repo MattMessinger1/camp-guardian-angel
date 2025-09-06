@@ -1,9 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ExternalLink, Search, Zap, Calendar, Clock } from "lucide-react";
-import { useState } from "react";
+import { ExternalLink, Search, Zap, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -139,56 +137,9 @@ const detectProvider = (result: InternetSearchResult) => {
 export function InternetSearchResults({ results, extractedTime, onSelect }: InternetSearchResultsProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  // Track selected sessions for each result
-  const [selectedSessions, setSelectedSessions] = useState<Record<string, { date?: string; time?: string }>>({});
   
   // Process results to ensure unique IDs
   const processedResults = processSearchResults(results);
-
-  // Get unique dates and times from sessions array
-  const getSessionData = (result: InternetSearchResult) => {
-    if (!result.sessions || result.sessions.length === 0) {
-      return { dates: [], times: [], sessions: [] };
-    }
-
-    const uniqueDates = [...new Set(result.sessions.map(s => s.date))];
-    const uniqueTimes = [...new Set(result.sessions.map(s => s.time))];
-    
-    return { 
-      dates: uniqueDates, 
-      times: uniqueTimes, 
-      sessions: result.sessions 
-    };
-  };
-
-  // Get selected session details including price
-  const getSelectedSessionDetails = (result: InternetSearchResult, index: number) => {
-    const selectedSession = selectedSessions[index];
-    const { sessions } = getSessionData(result);
-    
-    if (selectedSession?.date && selectedSession?.time) {
-      const matchingSession = sessions.find(s => 
-        s.date === selectedSession.date && s.time === selectedSession.time
-      );
-      return matchingSession;
-    }
-    
-    return sessions[0]; // Default to first session
-  };
-
-  const handleDateChange = (resultIndex: number, date: string) => {
-    setSelectedSessions(prev => ({
-      ...prev,
-      [resultIndex]: { ...prev[resultIndex], date }
-    }));
-  };
-
-  const handleTimeChange = (resultIndex: number, time: string) => {
-    setSelectedSessions(prev => ({
-      ...prev,
-      [resultIndex]: { ...prev[resultIndex], time }
-    }));
-  };
 
   const handleSearchResultClick = (result: any) => {
     // Clear any cached session data first including Carbone-related data
@@ -375,8 +326,6 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
         )}
       
       {processedResults.map((result, index) => {
-        const { dates, times } = getSessionData(result);
-        const selectedSessionDetails = getSelectedSessionDetails(result, index);
         
         // Special Carbone UI
         if (result.businessName === 'Carbone' || result.name === 'Carbone') {
@@ -415,74 +364,30 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
         <Card key={index} className="p-6 w-full hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <div className="flex items-start justify-between mb-2">
-                <h2 className="text-2xl font-bold text-foreground">
-                  {result.name || result.title}
+              <div className="flex items-start justify-between mb-4">
+                <h2 className="text-xl font-bold text-foreground">
+                  {result.businessName || result.name || result.title}
                 </h2>
-                <ProviderBadge platform={result.provider} size="md" />
+                <ProviderBadge platform={result.provider} size="sm" />
               </div>
               
-              <p className="text-muted-foreground mb-3">
-                {result.description}
-              </p>
-              
-              {(result.location || result.street_address) && (
-                <p className="text-muted-foreground mb-2">
-                  Location: {result.street_address || result.location}
-                </p>
-              )}
-              
-              {result.estimatedDates && (
-                <p className="text-muted-foreground mb-2">
-                  Estimated Dates: {result.estimatedDates}
-                </p>
-              )}
-              
-              {result.estimatedAgeRange && (
-                <p className="text-muted-foreground mb-2">
-                  Age Range: {result.estimatedAgeRange}
-                </p>
-              )}
-               
+              {/* Location - simplified and corrected */}
+              <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                <MapPin className="h-4 w-4" />
+                <span>
+                  {result.location || result.street_address || 'Location not specified'}
+                </span>
+              </div>
             </div>
             
-            <div className="ml-6 flex flex-col items-start gap-2">
+            <div className="ml-6">
               <Button 
-                onClick={() => {
-                  const data = {
-                    id: result.id,
-                    businessName: result.businessName || result.name || result.title,
-                    url: result.url,
-                    provider: detectProvider(result),
-                    selectedDate: selectedSessions[index]?.date,
-                    selectedTime: selectedSessions[index]?.time,
-                    signupCost: selectedSessionDetails?.price || result.signup_cost,
-                    totalCost: selectedSessionDetails?.price || result.total_cost
-                  };
-                  
-                  console.log('Navigating with:', data);
-                  
-                  navigate(`/ready-to-signup/${result.id}`, {
-                    state: data
-                  });
-                }}
+                onClick={() => handleSearchResultClick(result)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
-                disabled={result.canAutomate === false}
               >
-                Find Your Session
+                <Zap className="h-4 w-4 mr-2" />
+                Choose Your Session
               </Button>
-              
-              {result.url && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(result.url, '_blank')}
-                  className="text-xs"
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Visit Site
-                </Button>
-              )}
             </div>
           </div>
         </Card>
@@ -497,8 +402,8 @@ export function InternetSearchResults({ results, extractedTime, onSelect }: Inte
               Internet Search Results
             </h3>
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              These camps were found by searching the entire internet. When you click "Find Your Session", 
-              we'll help you store your credentials and automate the registration process for any camp worldwide.
+              These camps were found by searching the entire internet. When you click "Choose Your Session", 
+              we'll help you find and set up your session registration.
             </p>
           </div>
         </div>
