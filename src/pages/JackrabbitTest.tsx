@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function JackrabbitTest() {
-  const [testUrl, setTestUrl] = useState('https://app.jackrabbitclass.com/jr3.0/Openings/OpeningsDirect?OrgID=533646&utm_source=chatgpt.com');
+  const [testUrl, setTestUrl] = useState('https://app.jackrabbitclass.com/regv2.asp?id=533646&hc=&initEmpty=&hdrColor=&WL=0&preLoadClassID=20433982&loc=');
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(`test-${Date.now()}`);
@@ -55,6 +55,43 @@ export default function JackrabbitTest() {
       console.error('Test failed:', error);
       setResults({
         error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
+    setLoading(false);
+  };
+
+  const testImport = async () => {
+    setLoading(true);
+    try {
+      // Extract org ID from URL
+      const url = new URL(testUrl);
+      const orgId = url.searchParams.get('OrgID') || url.searchParams.get('id');
+      
+      if (!orgId) {
+        throw new Error('No organization ID found in URL');
+      }
+
+      console.log('🏃‍♂️ Testing Jackrabbit import with:', { url: testUrl, orgId });
+
+      const { data: importResult, error: importError } = await supabase.functions.invoke('jackrabbit-import-classes', {
+        body: {
+          provider_url: testUrl,
+          organization_id: orgId,
+          user_id: 'test-user-id'
+        }
+      });
+
+      setResults({
+        ...results,
+        import: { importResult, importError },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Import test failed:', error);
+      setResults({
+        ...results,
+        importError: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
       });
     }
@@ -116,17 +153,20 @@ export default function JackrabbitTest() {
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={runPrecheck} disabled={loading}>
-              {loading ? 'Testing...' : 'Run Analysis Test'}
+            <Button onClick={testImport} disabled={loading}>
+              {loading ? 'Testing...' : 'Test Jackrabbit Import'}
+            </Button>
+            <Button onClick={runPrecheck} disabled={loading} variant="outline">
+              Run Analysis Test
             </Button>
             <Button onClick={testNavigation} disabled={loading} variant="outline">
               Test Navigation
             </Button>
           </div>
 
-          {testUrl.includes('/Openings/OpeningsDirect') && (
+          {testUrl.includes('/regv2.asp') && (
             <Badge variant="secondary">
-              OpeningsDirect URL - No login required
+              XLNC Dance Studio - Registration Page
             </Badge>
           )}
         </CardContent>
