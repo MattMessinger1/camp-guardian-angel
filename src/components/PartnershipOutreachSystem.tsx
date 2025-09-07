@@ -201,7 +201,7 @@ export function PartnershipOutreachSystem() {
     }
   };
 
-  const sendOutreach = async () => {
+  const prepareOutreach = async () => {
     if (!newCampaign.hostname || !newCampaign.contactEmail || !newCampaign.selectedTemplate) {
       toast({
         title: 'Missing required fields',
@@ -222,38 +222,40 @@ export function PartnershipOutreachSystem() {
 
       const emailContent = newCampaign.customMessage || personalizedBody;
 
-      const { error } = await supabase.functions.invoke('send-email-sendgrid', {
-        body: {
-          to: newCampaign.contactEmail,
-          subject: template.subject,
-          html: emailContent.replace(/\n/g, '<br>'),
-          from: 'partnerships@campgenie.com'
-        }
-      });
-
-      if (error) throw error;
-
-      // Create campaign record
+      // Create campaign record for tracking (but don't send email)
       const newCampaignRecord: OutreachCampaign = {
         id: Date.now().toString(),
         hostname: newCampaign.hostname,
         organization_name: newCampaign.organizationName || null,
-        status: 'sent',
+        status: 'pending', // Changed from 'sent' to 'pending'
         email_template: template.type,
-        sent_at: new Date().toISOString(),
+        sent_at: null, // Not sent yet
         last_follow_up: null,
         follow_up_count: 0,
         response_received: false,
         api_interest: newCampaign.apiInterest,
-        notes: null,
+        notes: 'Email prepared for manual sending', // Add note about manual process
         created_at: new Date().toISOString()
       };
 
       setCampaigns([newCampaignRecord, ...campaigns]);
 
+      // Show the prepared email content to user
+      const emailDetails = {
+        to: newCampaign.contactEmail,
+        subject: template.subject,
+        body: emailContent
+      };
+
       toast({
-        title: 'Outreach sent successfully',
-        description: `Partnership email sent to ${newCampaign.contactEmail}`
+        title: 'Outreach email prepared',
+        description: `Email ready for manual sending to ${newCampaign.contactEmail}. Check the campaign details to copy the email content.`
+      });
+
+      // Store the prepared email content in the campaign for manual copying
+      setSelectedCampaign({
+        ...newCampaignRecord,
+        notes: `PREPARED EMAIL:\n\nTo: ${emailDetails.to}\nSubject: ${emailDetails.subject}\n\nBody:\n${emailDetails.body}`
       });
 
       setDialogOpen(false);
@@ -268,7 +270,7 @@ export function PartnershipOutreachSystem() {
 
     } catch (error: any) {
       toast({
-        title: 'Failed to send outreach',
+        title: 'Failed to prepare outreach',
         description: error.message,
         variant: 'destructive'
       });
@@ -277,7 +279,7 @@ export function PartnershipOutreachSystem() {
     }
   };
 
-  const sendFollowUp = async (campaign: OutreachCampaign) => {
+  const prepareFollowUp = async (campaign: OutreachCampaign) => {
     setLoading(true);
     try {
       const followUpTemplate = templates.find(t => t.type === 'follow_up');
@@ -286,23 +288,19 @@ export function PartnershipOutreachSystem() {
       const personalizedBody = followUpTemplate.body
         .replace(/{{organization_name}}/g, campaign.organization_name || campaign.hostname);
 
-      const { error } = await supabase.functions.invoke('send-email-sendgrid', {
-        body: {
-          to: `contact@${campaign.hostname}`, // In real implementation, store contact email
-          subject: followUpTemplate.subject,
-          html: personalizedBody.replace(/\n/g, '<br>'),
-          from: 'partnerships@campgenie.com'
-        }
-      });
+      // Prepare follow-up email content for manual sending
+      const followUpContent = {
+        to: `contact@${campaign.hostname}`, // In real implementation, store contact email
+        subject: followUpTemplate.subject,
+        body: personalizedBody
+      };
 
-      if (error) throw error;
-
-      // Update campaign
+      // Update campaign to show follow-up is prepared
       const updatedCampaigns = campaigns.map(c => 
         c.id === campaign.id 
           ? { 
               ...c, 
-              last_follow_up: new Date().toISOString(),
+              notes: `FOLLOW-UP EMAIL PREPARED:\n\nTo: ${followUpContent.to}\nSubject: ${followUpContent.subject}\n\nBody:\n${followUpContent.body}`,
               follow_up_count: c.follow_up_count + 1
             }
           : c
@@ -310,13 +308,13 @@ export function PartnershipOutreachSystem() {
       setCampaigns(updatedCampaigns);
 
       toast({
-        title: 'Follow-up sent',
-        description: `Follow-up email sent to ${campaign.hostname}`
+        title: 'Follow-up email prepared',
+        description: `Follow-up email ready for manual sending to ${campaign.hostname}. Check campaign notes for email content.`
       });
 
     } catch (error: any) {
       toast({
-        title: 'Failed to send follow-up',
+        title: 'Failed to prepare follow-up',
         description: error.message,
         variant: 'destructive'
       });
@@ -459,13 +457,13 @@ export function PartnershipOutreachSystem() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={sendOutreach} disabled={loading}>
+              <Button onClick={prepareOutreach} disabled={loading}>
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  <Send className="h-4 w-4 mr-2" />
+                  <Edit className="h-4 w-4 mr-2" />
                 )}
-                Send Outreach
+                Prepare Email
               </Button>
             </div>
           </DialogContent>
@@ -600,7 +598,7 @@ export function PartnershipOutreachSystem() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => sendFollowUp(campaign)}
+                          onClick={() => prepareFollowUp(campaign)}
                           disabled={campaign.status === 'partnership' || loading}
                         >
                           <Send className="h-4 w-4" />

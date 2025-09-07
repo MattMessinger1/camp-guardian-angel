@@ -94,35 +94,62 @@ export class PartnershipManager {
   }
 
   /**
-   * Launch automated outreach campaign
+   * Prepare outreach campaign (manual workflow)
    */
-  async launchOutreachCampaign(campaign: OutreachCampaign): Promise<{ success: boolean; campaign_id?: string }> {
+  async prepareOutreachCampaign(campaign: OutreachCampaign): Promise<{ 
+    success: boolean; 
+    campaign_id?: string; 
+    prepared_outreach: Array<{
+      hostname: string;
+      provider_name: string;
+      email_content: string;
+      priority: string;
+    }>;
+  }> {
     try {
-      logger.info('Launching partnership outreach campaign', { campaign });
+      logger.info('Preparing manual outreach campaign', { campaign });
 
-      const results = await Promise.allSettled(
-        campaign.target_providers.map(hostname => 
-          this.initiateProviderOutreach(hostname, campaign)
-        )
-      );
+      const prepared_outreach = [];
+      
+      for (const hostname of campaign.target_providers) {
+        const mockPartnership: PartnershipOutreach = {
+          id: '',
+          provider_hostname: hostname,
+          provider_name: this.extractProviderName(hostname),
+          outreach_status: 'pending',
+          outreach_type: 'api_integration',
+          priority_level: campaign.priority,
+          success_rate: 0,
+          user_volume: 0,
+          partnership_value_score: 0
+        };
 
-      const successful = results.filter(r => r.status === 'fulfilled').length;
-      const success_rate = successful / results.length;
+        const emailContent = this.generateOutreachEmail(mockPartnership);
+        
+        prepared_outreach.push({
+          hostname,
+          provider_name: this.extractProviderName(hostname),
+          email_content: emailContent.content,
+          priority: campaign.priority
+        });
 
-      logger.info('Outreach campaign completed', { 
-        total: results.length, 
-        successful, 
-        success_rate 
+        // Create tracking record (but don't send email)
+        await this.createOutreachRecord(hostname, campaign);
+      }
+
+      logger.info('Outreach campaign prepared for manual sending', { 
+        total: prepared_outreach.length
       });
 
       return {
-        success: success_rate > 0.5,
-        campaign_id: `camp_${Date.now()}`
+        success: true,
+        campaign_id: `camp_${Date.now()}`,
+        prepared_outreach
       };
 
     } catch (error) {
-      logger.error('Outreach campaign failed', { error, campaign });
-      return { success: false };
+      logger.error('Outreach campaign preparation failed', { error, campaign });
+      return { success: false, prepared_outreach: [] };
     }
   }
 
@@ -337,7 +364,7 @@ Partnership Development Team`
     return opportunities.sort((a, b) => b.partnership_value_score - a.partnership_value_score);
   }
 
-  private async initiateProviderOutreach(hostname: string, campaign: OutreachCampaign): Promise<boolean> {
+  private async createOutreachRecord(hostname: string, campaign: OutreachCampaign): Promise<boolean> {
     try {
       // Check if outreach already exists
       const { data: existing } = await supabase
@@ -347,11 +374,11 @@ Partnership Development Team`
         .single();
 
       if (existing) {
-        logger.info('Outreach already exists for provider', { hostname });
+        logger.info('Outreach record already exists for provider', { hostname });
         return true;
       }
 
-      // Create new outreach record
+      // Create new outreach record (for tracking only)
       const { error } = await supabase
         .from('partnership_outreach')
         .insert({
@@ -365,12 +392,12 @@ Partnership Development Team`
 
       if (error) throw error;
 
-      // Log the outreach initiation
-      await this.logProviderCommunication(hostname, 'outreach_email', campaign.message_template);
+      // Log the outreach preparation (not actual sending)
+      await this.logProviderCommunication(hostname, 'outreach_prepared', campaign.message_template);
 
       return true;
     } catch (error) {
-      logger.error('Failed to initiate provider outreach', { error, hostname });
+      logger.error('Failed to create outreach record', { error, hostname });
       return false;
     }
   }

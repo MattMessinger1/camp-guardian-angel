@@ -66,7 +66,7 @@ export default function PartnershipDashboard({ className }: PartnershipDashboard
     }
   };
 
-  const handleLaunchOutreach = async (providers: string[]) => {
+  const handlePrepareOutreach = async (providers: string[]) => {
     try {
       const campaign = {
         target_providers: providers,
@@ -76,21 +76,30 @@ export default function PartnershipDashboard({ className }: PartnershipDashboard
         expected_response_rate: 0.15
       };
 
-      const result = await partnershipManager.launchOutreachCampaign(campaign);
+      const result = await partnershipManager.prepareOutreachCampaign(campaign);
       
       if (result.success) {
+        // Show prepared emails to user for manual sending
+        const emailDetails = result.prepared_outreach.map(p => 
+          `Provider: ${p.provider_name}\nHostname: ${p.hostname}\nPriority: ${p.priority}\n\nEmail Content:\n${p.email_content}\n\n---\n\n`
+        ).join('');
+        
         toast({
-          title: "Outreach campaign launched",
-          description: `Partnership outreach sent to ${providers.length} providers.`
+          title: "Outreach emails prepared",
+          description: `${providers.length} partnership emails ready for manual sending. Check console for email content.`
         });
+        
+        // Log the prepared emails for manual copying
+        console.log('PREPARED PARTNERSHIP EMAILS:\n\n', emailDetails);
+        
         loadPartnershipData();
       } else {
-        throw new Error('Campaign launch failed');
+        throw new Error('Campaign preparation failed');
       }
     } catch (error) {
       toast({
-        title: "Outreach failed",
-        description: "Unable to launch outreach campaign. Please try again.",
+        title: "Outreach preparation failed",
+        description: "Unable to prepare outreach campaign. Please try again.",
         variant: "destructive"
       });
     }
@@ -266,11 +275,11 @@ export default function PartnershipDashboard({ className }: PartnershipDashboard
                       </Badge>
                       <Button 
                         size="sm" 
-                        onClick={() => handleLaunchOutreach([partnership.provider_hostname])}
+                        onClick={() => handlePrepareOutreach([partnership.provider_hostname])}
                         disabled={partnership.outreach_status !== 'pending'}
                       >
                         <Mail className="h-4 w-4 mr-1" />
-                        Reach Out
+                        Prepare Email
                       </Button>
                     </div>
                   </div>
@@ -280,12 +289,12 @@ export default function PartnershipDashboard({ className }: PartnershipDashboard
                   <div className="flex justify-center pt-4">
                     <Button 
                       variant="outline"
-                      onClick={() => handleLaunchOutreach(
+                      onClick={() => handlePrepareOutreach(
                         partnerships.slice(0, 5).map(p => p.provider_hostname)
                       )}
                     >
                       <Target className="h-4 w-4 mr-2" />
-                      Launch Bulk Outreach (Top 5)
+                      Prepare Bulk Emails (Top 5)
                     </Button>
                   </div>
                 )}
