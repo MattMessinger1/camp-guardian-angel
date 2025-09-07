@@ -314,7 +314,6 @@ function getExpectedFormFields(url: string | undefined): any[] {
 
   return baseFields;
 }
-}
 
 function getSimulatedActivities(url: string): any[] {
   if (url.includes('seattle') || url.includes('activecommunities')) {
