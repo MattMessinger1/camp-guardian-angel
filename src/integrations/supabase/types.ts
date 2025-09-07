@@ -1898,6 +1898,69 @@ export type Database = {
           },
         ]
       }
+      partnership_outreach: {
+        Row: {
+          communication_log: Json | null
+          contact_email: string | null
+          created_at: string | null
+          id: string
+          last_contact_at: string | null
+          next_followup_at: string | null
+          outreach_attempts: number | null
+          outreach_status: string
+          outreach_type: string
+          partnership_terms: Json | null
+          partnership_value_score: number | null
+          priority_level: string
+          provider_hostname: string
+          provider_name: string | null
+          response_received: boolean | null
+          success_rate: number | null
+          updated_at: string | null
+          user_volume: number | null
+        }
+        Insert: {
+          communication_log?: Json | null
+          contact_email?: string | null
+          created_at?: string | null
+          id?: string
+          last_contact_at?: string | null
+          next_followup_at?: string | null
+          outreach_attempts?: number | null
+          outreach_status?: string
+          outreach_type?: string
+          partnership_terms?: Json | null
+          partnership_value_score?: number | null
+          priority_level?: string
+          provider_hostname: string
+          provider_name?: string | null
+          response_received?: boolean | null
+          success_rate?: number | null
+          updated_at?: string | null
+          user_volume?: number | null
+        }
+        Update: {
+          communication_log?: Json | null
+          contact_email?: string | null
+          created_at?: string | null
+          id?: string
+          last_contact_at?: string | null
+          next_followup_at?: string | null
+          outreach_attempts?: number | null
+          outreach_status?: string
+          outreach_type?: string
+          partnership_terms?: Json | null
+          partnership_value_score?: number | null
+          priority_level?: string
+          provider_hostname?: string
+          provider_name?: string | null
+          response_received?: boolean | null
+          success_rate?: number | null
+          updated_at?: string | null
+          user_volume?: number | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -2154,6 +2217,66 @@ export type Database = {
           },
         ]
       }
+      provider_communications: {
+        Row: {
+          automation_friendly: boolean | null
+          communication_type: string
+          contact_method: string
+          created_at: string | null
+          direction: string
+          follow_up_date: string | null
+          follow_up_required: boolean | null
+          id: string
+          message_content: string | null
+          partnership_interest_level: number | null
+          provider_hostname: string
+          recipient_email: string | null
+          response_data: Json | null
+          sender_email: string | null
+          status: string
+          subject: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          automation_friendly?: boolean | null
+          communication_type: string
+          contact_method: string
+          created_at?: string | null
+          direction: string
+          follow_up_date?: string | null
+          follow_up_required?: boolean | null
+          id?: string
+          message_content?: string | null
+          partnership_interest_level?: number | null
+          provider_hostname: string
+          recipient_email?: string | null
+          response_data?: Json | null
+          sender_email?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          automation_friendly?: boolean | null
+          communication_type?: string
+          contact_method?: string
+          created_at?: string | null
+          direction?: string
+          follow_up_date?: string | null
+          follow_up_required?: boolean | null
+          id?: string
+          message_content?: string | null
+          partnership_interest_level?: number | null
+          provider_hostname?: string
+          recipient_email?: string | null
+          response_data?: Json | null
+          sender_email?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       provider_credentials: {
         Row: {
           amount_strategy: string | null
@@ -2300,6 +2423,57 @@ export type Database = {
           platform_hint?: string | null
           site_url?: string | null
           stripe_connect_id?: string | null
+        }
+        Relationships: []
+      }
+      public_bot_info: {
+        Row: {
+          access_count: number | null
+          content: string
+          created_at: string | null
+          effective_date: string | null
+          id: string
+          info_type: string
+          last_updated_by: string | null
+          metadata: Json | null
+          next_review_date: string | null
+          published: boolean | null
+          review_required: boolean | null
+          title: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          access_count?: number | null
+          content: string
+          created_at?: string | null
+          effective_date?: string | null
+          id?: string
+          info_type: string
+          last_updated_by?: string | null
+          metadata?: Json | null
+          next_review_date?: string | null
+          published?: boolean | null
+          review_required?: boolean | null
+          title: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          access_count?: number | null
+          content?: string
+          created_at?: string | null
+          effective_date?: string | null
+          id?: string
+          info_type?: string
+          last_updated_by?: string | null
+          metadata?: Json | null
+          next_review_date?: string | null
+          published?: boolean | null
+          review_required?: boolean | null
+          title?: string
+          updated_at?: string | null
+          version?: number | null
         }
         Relationships: []
       }
@@ -4348,6 +4522,57 @@ export type Database = {
         }
         Relationships: []
       }
+      transparency_reports: {
+        Row: {
+          access_token: string | null
+          created_at: string | null
+          download_count: number | null
+          expires_at: string | null
+          id: string
+          last_accessed_at: string | null
+          privacy_level: string
+          provider_hostname: string | null
+          report_data: Json
+          report_period_end: string
+          report_period_start: string
+          report_type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string | null
+          download_count?: number | null
+          expires_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          privacy_level?: string
+          provider_hostname?: string | null
+          report_data?: Json
+          report_period_end: string
+          report_period_start: string
+          report_type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string | null
+          download_count?: number | null
+          expires_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          privacy_level?: string
+          provider_hostname?: string | null
+          report_data?: Json
+          report_period_end?: string
+          report_period_start?: string
+          report_type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           assisted_signup_consent_at: string | null
@@ -4718,6 +4943,14 @@ export type Database = {
         Args: { p_partnership_id: string }
         Returns: number
       }
+      calculate_partnership_priority: {
+        Args: {
+          p_hostname: string
+          p_success_rate?: number
+          p_user_volume?: number
+        }
+        Returns: string
+      }
       calculate_pattern_effectiveness: {
         Args: { p_pattern_id: string }
         Returns: number
@@ -4787,6 +5020,15 @@ export type Database = {
           plan_provider: string
           plan_url: string
         }[]
+      }
+      generate_transparency_report: {
+        Args: {
+          p_end_date: string
+          p_report_type: string
+          p_start_date: string
+          p_user_id: string
+        }
+        Returns: string
       }
       get_attempts_count_week: {
         Args: { p_child_id: string; p_tz?: string }
