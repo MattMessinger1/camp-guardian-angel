@@ -82,29 +82,24 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
     
     const results: SearchResult[] = [];
     
-    // Search the camps table with sessions for real data
-    const campSearchConditions = [];
+    // Search the activities table with sessions for real data
+    const activitySearchConditions = [];
     for (const term of searchTerms) {
-      campSearchConditions.push(
+      activitySearchConditions.push(
         `name.ilike.%${term}%`,
-        `website_url.ilike.%${term}%`
+        `city.ilike.%${term}%`,
+        `state.ilike.%${term}%`
       );
     }
     
-    const { data: campResults, error: campError } = await supabase
-      .from('camps')
+    const { data: activityResults, error: activityError } = await supabase
+      .from('activities')
       .select(`
         id,
         name,
-        website_url,
-        camp_locations(
-          id,
-          location_name,
-          city,
-          state,
-          postal_code,
-          address
-        ),
+        canonical_url,
+        city,
+        state,
         sessions!inner(
           id,
           start_at,
@@ -114,30 +109,28 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
           capacity,
           age_min,
           age_max,
-          registration_open_at
+          registration_open_at,
+          registration_url
         )
       `)
-      .or(campSearchConditions.join(','))
+      .or(activitySearchConditions.join(','))
       .gte('sessions.start_at', dateRange.start)
       .lte('sessions.start_at', dateRange.end)
       .limit(limit);
     
-    if (campError) {
-      console.error('Camp search error:', campError);
+    if (activityError) {
+      console.error('Activity search error:', activityError);
       return [];
     }
     
-    console.log(`Found ${campResults?.length || 0} matching camps with upcoming sessions`);
+    console.log(`Found ${activityResults?.length || 0} matching activities with upcoming sessions`);
     
-    // Process camp results
-    if (campResults && campResults.length > 0) {
-      for (const camp of campResults) {
-        const location = camp.camp_locations && camp.camp_locations.length > 0 
-          ? camp.camp_locations[0] 
-          : null;
+    // Process activity results
+    if (activityResults && activityResults.length > 0) {
+      for (const activity of activityResults) {
 
         // Get sessions within date range
-        const upcomingSessions = camp.sessions.filter((session: any) => {
+        const upcomingSessions = activity.sessions.filter((session: any) => {
           const sessionStart = new Date(session.start_at);
           const today = new Date();
           const futureLimit = new Date();
@@ -148,18 +141,18 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
         if (upcomingSessions.length > 0) {
           const confidence = calculateEnhancedMatchConfidence(
             searchTerms, 
-            camp.name, 
-            location?.city, 
-            location?.state,
+            activity.name, 
+            activity.city, 
+            activity.state,
             null
           );
           
           if (confidence > 0) {
             const reasoning = generateEnhancedReasoning(
               searchTerms, 
-              camp.name, 
-              location?.city, 
-              location?.state,
+              activity.name, 
+              activity.city, 
+              activity.state,
               null
             );
 
@@ -180,17 +173,17 @@ async function performFastSearch(query: string, limit: number): Promise<SearchRe
             const firstSession = upcomingSessions[0];
             
             results.push({
-              sessionId: camp.id,
-              campName: camp.name || 'Camp',
-              providerName: 'Camp Provider',
-              location: location ? {
-                city: location.city || '',
-                state: location.state || ''
-              } : undefined,
+              sessionId: firstSession.id,  // Use session ID instead of activity ID
+              campName: activity.name || 'Activity',
+              providerName: 'Provider',
+              location: {
+                city: activity.city || '',
+                state: activity.state || ''
+              },
               registrationOpensAt: firstSession?.registration_open_at,
               sessionDates,
               sessionTimes,
-              streetAddress: location?.address || 'Address TBD',
+              streetAddress: 'Address TBD',
               signupCost: firstSession?.price_min || 0,
               totalCost: firstSession?.price_max || firstSession?.price_min || 0,
               capacity: firstSession?.capacity,
