@@ -7,8 +7,11 @@ import App from './App.tsx'
 import './index.css'
 import { AuthProvider } from './contexts/AuthContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { diag } from '@/lib/diag'
 
 const queryClient = new QueryClient()
+
+diag('app:boot', { mode: import.meta.env.MODE, vitePort: (location as any).port });
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>

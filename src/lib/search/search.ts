@@ -4,8 +4,10 @@ import { matchesLocation } from "./geo";
 import { groupEntities } from "./entity";
 import { score } from "./rank";
 import { logSearchPhase } from "../logSearch";
+import { diag } from '@/lib/diag';
 
 export async function unifiedSearch(rawQuery: string, days: number) {
+  diag('unifiedSearch:start', { rawQuery, days });
   const parsed = parseQuery(rawQuery);
   const raw = await collectAll(parsed, days);
   
