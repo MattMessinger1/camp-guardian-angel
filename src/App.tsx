@@ -19,6 +19,7 @@ import ReadyToSignup from "./pages/ReadyToSignup";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { AuthListenerInstaller } from './components/auth/AuthListenerInstaller';
 
   // Development/Testing Pages (lazy loaded only when needed)
   const DevPages = {
@@ -98,6 +99,7 @@ export default function App() {
           v7_relativeSplatPath: true
         }}
       >
+        <AuthListenerInstaller />
         <ErrorBoundary>
           <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
             <Routes>
