@@ -330,28 +330,21 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
         return (
           <Card key={resultId} className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-all duration-200">
             <CardContent className="p-6">
-              {/* Header Section */}
-              <div className="flex justify-between items-start mb-6">
+              {/* Minimal Card Header */}
+              <div className="flex justify-between items-center">
                 <div className="flex-1">
-                  {/* Business Name - Bold, Larger Text */}
-                  <div className="flex items-start justify-between mb-1">
-                    <h2 className="text-2xl font-bold text-foreground">
-                      {result.name || result.providerName || result.campName}
-                    </h2>
-                    <ProviderBadge 
-                      platform={result.providerName || result.provider_platform || 'unknown'} 
-                      size="md" 
-                    />
-                  </div>
+                  {/* Provider Name (bold) */}
+                  <h2 className="text-xl font-bold text-foreground mb-1">
+                    {result.name || result.providerName || result.campName}
+                  </h2>
                   
-                  {/* Camp Name (if different from business name) */}
-                  {result.campName && result.campName !== (result.name || result.providerName) && (
-                    <p className="text-lg text-muted-foreground mb-3">
-                      {result.campName}
+                  {/* Location (city, state) - only if provided */}
+                  {result.location && (
+                    <p className="text-sm text-muted-foreground">
+                      {result.location.city}, {result.location.state}
                     </p>
                   )}
                 </div>
-                
                 
                 <Button 
                   onClick={async () => {
@@ -381,24 +374,38 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       return;
                     }
                     
-                    // 2) Resolve provider BEFORE create
+                    // 2) Resolve provider using server-side resolver
                     let platform = 'unknown';
                     let provider_org_id = null;
-                    let requires_auth = false;
+                    let org_display_name = null;
+                    let org_location = null;
                     
                     try {
-                      const url = new URL(actualUrl);
-                      if (url.host.includes('jackrabbitclass.com') && url.pathname.toLowerCase().includes('/openings/openingsdirect')) {
-                        platform = 'jackrabbit';
-                        provider_org_id = orgId;
-                        requires_auth = false;
-                      } else if (url.pathname.toLowerCase().includes('/parentportal/login')) {
-                        platform = 'jackrabbit';
-                        provider_org_id = orgId;
-                        requires_auth = true;
+                      const { data: resolverData, error: resolverError } = await supabase.functions.invoke('resolve-provider', {
+                        body: { url: actualUrl }
+                      });
+                      
+                      if (!resolverError && resolverData) {
+                        platform = resolverData.platform || 'unknown';
+                        provider_org_id = resolverData.provider_org_id;
+                        org_display_name = resolverData.org_display_name;
+                        org_location = resolverData.org_location;
                       }
                     } catch (error) {
-                      console.warn('URL parsing failed:', error);
+                      console.warn('Provider resolution failed:', error);
+                      // Fallback to basic URL parsing
+                      try {
+                        const url = new URL(actualUrl);
+                        if (url.host.includes('jackrabbitclass.com') && url.pathname.toLowerCase().includes('/openings/openingsdirect')) {
+                          platform = 'jackrabbit';
+                          provider_org_id = orgId;
+                        } else if (url.pathname.toLowerCase().includes('/parentportal/login')) {
+                          platform = 'jackrabbit';
+                          provider_org_id = orgId;
+                        }
+                      } catch (parseError) {
+                        console.warn('URL parsing failed:', parseError);
+                      }
                     }
                     
                     // Get authenticated user
@@ -413,7 +420,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       return;
                     }
                     
-                    // 3) Create the plan with specified fields
+                     // 3) Create the plan with enhanced data
                     const { data: plan, error } = await supabase
                       .from('registration_plans')
                       .insert({
@@ -421,7 +428,11 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                         detect_url: actualUrl,
                         platform: platform,
                         provider_org_id: provider_org_id,
-                        provider_confidence: 0.95
+                        provider_confidence: 0.95,
+                        // Store enhanced resolver data for better display
+                        name: org_display_name || businessName,
+                        provider_display_name: org_display_name,
+                        location: org_location
                       })
                       .select()
                       .single();
@@ -443,146 +454,6 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                 >
                   Select Your Session
                 </Button>
-              </div>
-
-              {/* Content Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Location & Address Column */}
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Location</p>
-                      <p className="text-sm text-muted-foreground">
-                        {result.location ? `${result.location.city}, ${result.location.state}` : 'Location TBD'}
-                      </p>
-                      {result.streetAddress && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {result.streetAddress}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Session Details Column */}
-                <div className="space-y-4">
-                  {/* Single Session Date & Time Dropdown */}
-                  {availableSessions.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">
-                        Session Date & Time
-                      </label>
-                      {availableSessions.length > 1 ? (
-                        <Select 
-                          value={selectedSessionKey || `${defaultSession?.date}-${defaultSession?.time}`}
-                          onValueChange={(sessionKey) => {
-                            const [date, time] = sessionKey.split('-');
-                            setSelectedSessions(prev => ({
-                              ...prev,
-                              [resultId]: { date, time, sessionKey }
-                            }));
-                          }}
-                        >
-                          <SelectTrigger className="w-full bg-background border border-border">
-                            <SelectValue placeholder="Choose session" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border border-border shadow-lg z-50">
-                            {availableSessions.slice(0, 50).map((session, idx) => (
-                              <SelectItem key={idx} value={`${session.date}-${session.time}`} className="hover:bg-muted">
-                                <span>
-                                  {formatDate(session.date)} - {session.time}
-                                  {session.availability && ` - ${session.availability} spots`}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            {formatDate(availableSessions[0].date)} - {availableSessions[0].time}
-                            {availableSessions[0].availability && ` - ${availableSessions[0].availability} spots`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Pricing Column */}
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground mb-2">Cost Breakdown</p>
-                    
-                    {/* Cost due at signup */}
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-muted-foreground">Due at signup:</span>
-                      <span className="text-sm font-medium">
-                        {result.signup_cost !== undefined
-                          ? formatCurrency(result.signup_cost)
-                          : result.signupCost !== undefined
-                            ? formatCurrency(result.signupCost)
-                            : selectedSession?.price !== undefined
-                              ? formatCurrency(selectedSession.price)
-                              : formatCurrency(0)
-                        }
-                      </span>
-                    </div>
-                    
-                    {/* Total activity cost */}
-                    <div className="flex justify-between items-center pt-2 border-t border-border">
-                      <span className="text-sm font-medium text-foreground">Total cost:</span>
-                      <span className="text-lg font-bold text-foreground">
-                        {result.total_cost !== undefined
-                          ? formatCurrency(result.total_cost)
-                          : result.totalCost !== undefined
-                            ? formatCurrency(result.totalCost)
-                            : result.signup_cost !== undefined
-                              ? formatCurrency(result.signup_cost)
-                              : result.signupCost !== undefined
-                                ? formatCurrency(result.signupCost)
-                                : selectedSession?.price !== undefined
-                                  ? formatCurrency(selectedSession.price)
-                                  : formatCurrency(0)
-                        }
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Additional Information */}
-              <div className="mt-6 pt-4 border-t border-border">
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  {result.registrationOpensAt && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span>Opens: {new Date(result.registrationOpensAt).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                  
-                  {result.capacity && (
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      <span>Capacity: {result.capacity}</span>
-                    </div>
-                  )}
-                  
-                  {result.ageRange && (
-                    <div className="flex items-center gap-1">
-                      <span>Ages: {result.ageRange.min}-{result.ageRange.max}</span>
-                    </div>
-                  )}
-                  
-                  {selectedSession?.availability && (
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      <span>Available spots: {selectedSession.availability}</span>
-                    </div>
-                  )}
-                </div>
               </div>
             </CardContent>
           </Card>
