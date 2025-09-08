@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { PaymentMethodBanner } from '@/components/PaymentMethodBanner'
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast"
+import { parseQuery } from '@/lib/search/query'
 
 const HomePage = () => {
   const { user, loading } = useAuth()
@@ -31,7 +32,16 @@ const HomePage = () => {
     console.log('🔍 SEARCH STARTED:', query);
     if (!query.trim()) return;
 
-    logger.info('Search initiated for query', { query, component: 'Home' });
+    // Parse the query to extract location and clean text
+    const parsedQuery = parseQuery(query);
+    console.log('📍 PARSED QUERY:', parsedQuery);
+    
+    logger.info('Search initiated for query', { 
+      query, 
+      parsedQuery,
+      component: 'Home' 
+    });
+
     setIsSearchLoading(true);
     console.log('🔄 Search loading set to true');
 
@@ -39,12 +49,17 @@ const HomePage = () => {
       // Step 1: Try fast search first for high-intent users
       logger.info('Attempting fast search first', { component: 'Home' });
       const fastSearchResponse = await supabase.functions.invoke('fast-camp-search', {
-        body: { query: query.trim(), limit: 10 }
+        body: { 
+          query: parsedQuery.text || query.trim(), 
+          location: parsedQuery.location,
+          limit: 10 
+        }
       });
 
       logger.info('Fast search response received', { 
         resultCount: fastSearchResponse?.data?.results?.length || 0,
         duration: fastSearchResponse?.data?.duration_ms,
+        parsedLocation: parsedQuery.location,
         component: 'Home'
       });
 
@@ -72,12 +87,19 @@ const HomePage = () => {
       }
 
       // Step 2: Direct fallback to internet search using Perplexity
-      console.log('🌐 STARTING INTERNET SEARCH for:', query.trim());
-      logger.info('Database searches found no results, searching the entire internet', { component: 'Home' });
+      console.log('🌐 STARTING INTERNET SEARCH for:', parsedQuery.text || query.trim());
+      logger.info('Database searches found no results, searching the entire internet', { 
+        component: 'Home',
+        parsedQuery 
+      });
       
       try {
         const internetSearchResponse = await supabase.functions.invoke('internet-activity-search', {
-          body: { query: query.trim(), limit: 8 }
+          body: { 
+            query: parsedQuery.text || query.trim(),
+            location: parsedQuery.location,
+            limit: 8 
+          }
         });
 
         console.log('🌐 INTERNET SEARCH RESPONSE:', internetSearchResponse);
@@ -134,9 +156,9 @@ const HomePage = () => {
         const demoResults = [
           {
             sessionId: `internet-demo-${Date.now()}-1`,
-            campName: `${query} Summer Program`,
+            campName: `${parsedQuery.text || query} Summer Program`,
             providerName: 'Found via Internet Search',
-            location: { city: 'Various', state: 'Locations' },
+            location: parsedQuery.location || { city: 'Various', state: 'Locations' },
             confidence: 0.8,
             reasoning: `Demo result for "${query}" - Internet search temporarily unavailable`,
             internetResult: {
@@ -147,9 +169,9 @@ const HomePage = () => {
           },
           {
             sessionId: `internet-demo-${Date.now()}-2`,
-            campName: `Elite ${query} Academy`,
+            campName: `Elite ${parsedQuery.text || query} Academy`,
             providerName: 'Demo Provider',
-            location: { city: 'Multiple', state: 'Cities' },
+            location: parsedQuery.location || { city: 'Multiple', state: 'Cities' },
             confidence: 0.75,
             reasoning: `Demo result for "${query}" - We'll find real results once internet search is configured`,
             internetResult: {
