@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.jackrabbit-import-classes]
 verify_jwt = true
+
+[functions.resolve-provider]
+verify_jwt = false
