@@ -1,9 +1,12 @@
-export interface RawResult {
+export type RawResult = {
   title: string;
+  url: string;
   snippet?: string;
+  startDate?: string;
+  endDate?: string;
+  price?: string;
+  venueName?: string;
   city?: string;
   state?: string;
-  url: string;
-  confidence?: number;
-  [key: string]: any;
-}
+  provider?: string; // "sawyer" | "mindbody" | "amilia" | "skiclub" | "generic"
+};
