@@ -134,6 +134,7 @@ export default function App() {
               <Route path="/test-signup" element={<DevPages.TestSignupPage />} />
               <Route path="/e2e-tests" element={<DevPages.E2ETestsPage />} />
               <Route path="/real-camp-tests" element={<DevPages.RealCampTests />} />
+              <Route path="/jackrabbit-test" element={<DevPages.JackrabbitTest />} />
               
               {/* Legacy Redirects */}
               <Route path="/accounthistory" element={<Navigate to="/account-history" replace />} />
@@ -193,11 +194,6 @@ export default function App() {
                   <Route path="/prewarm-test" element={
                     <ProtectedRoute>
                       <DevPages.PrewarmTest />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/jackrabbit-test" element={
-                    <ProtectedRoute>
-                      <DevPages.JackrabbitTest />
                     </ProtectedRoute>
                   } />
                   <Route path="/admin/*" element={
