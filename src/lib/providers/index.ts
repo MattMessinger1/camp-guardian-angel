@@ -15,6 +15,7 @@ import jackrabbitAdapter from './adapters/jackrabbit_class';
 import daysmartAdapter from './adapters/daysmart_recreation';
 import shopifyAdapter from './adapters/shopify_product';
 import playmetricsAdapter from './adapters/playmetrics';
+import skiclubproAdapter from './adapters/skiclubpro';
 
 let cachedProfiles: ProviderProfile[] | null = null;
 
@@ -71,6 +72,8 @@ export function loadAdapter(platform: ProviderPlatform): ProviderAdapter {
       return shopifyAdapter;
     case 'playmetrics':
       return playmetricsAdapter;
+    case 'skiclubpro':
+      return skiclubproAdapter;
     // New platforms use generic adapters until specific ones are built
     case 'resy':
     case 'opentable':
