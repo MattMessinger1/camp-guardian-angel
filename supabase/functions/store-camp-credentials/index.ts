@@ -2,6 +2,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 
+// XOR encryption helper to match runtime decrypt
+function xorEncrypt(pwd: string) {
+  const key = Deno.env.get('ENCRYPTION_KEY') || 'change-me-key';
+  const encrypted = Array.from(pwd)
+    .map((ch, i) => String.fromCharCode(ch.charCodeAt(0) ^ key.charCodeAt(i % key.length)))
+    .join('');
+  return btoa(encrypted);
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -98,8 +107,10 @@ serve(async (req) => {
 
     console.log('🔐 Storing credentials for user:', userId, 'provider:', provider_name || provider_url, 'org:', organization_id ? '[REDACTED]' : 'none')
 
-    // Simple encryption (in production, use proper encryption)
-    const encryptedPassword = btoa(password) // Base64 encoding as simple "encryption"
+    // XOR encryption to match runtime decrypt
+    const encryptedPassword = xorEncrypt(password)
+    
+    console.info('[store-camp-credentials] providerUrl=', provider_url, 'email=', email);
     
     // Set expiration to 30 days from now
     const expiresAt = new Date()
