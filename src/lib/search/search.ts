@@ -3,18 +3,26 @@ import { collectAll } from "./collect";
 import { matchesLocation } from "./geo";
 import { groupEntities } from "./entity";
 import { score } from "./rank";
+import { logSearchPhase } from "../logSearch";
 
 export async function unifiedSearch(rawQuery: string, days: number) {
   const parsed = parseQuery(rawQuery);
   const raw = await collectAll(parsed, days);
+  
+  logSearchPhase("collect", { query: rawQuery, raw_count: raw.length });
 
   const filtered = [];
   for (const r of raw) {
     const m = matchesLocation(r, parsed.location ?? undefined);
     if (m.pass) filtered.push({ ...r, _scoreAdj: m.scoreAdj });
   }
+  
+  logSearchPhase("geo", { kept_after_geo: filtered.length });
 
   const groups = groupEntities(filtered);
+  
+  logSearchPhase("dedupe", { group_count: Object.keys(groups).length });
+
   const cards = Object.values(groups).map(list => {
     const ranked = list
       .map(x => ({ x, s: score(x) + (x as any)._scoreAdj }))
