@@ -3854,6 +3854,7 @@ export type Database = {
           queue_type: string | null
           registration_open_at: string | null
           signup_url: string | null
+          site_locator: Json | null
           source_id: string | null
           source_url: string | null
           spots_available: number | null
@@ -3897,6 +3898,7 @@ export type Database = {
           queue_type?: string | null
           registration_open_at?: string | null
           signup_url?: string | null
+          site_locator?: Json | null
           source_id?: string | null
           source_url?: string | null
           spots_available?: number | null
@@ -3940,6 +3942,7 @@ export type Database = {
           queue_type?: string | null
           registration_open_at?: string | null
           signup_url?: string | null
+          site_locator?: Json | null
           source_id?: string | null
           source_url?: string | null
           spots_available?: number | null
@@ -5284,6 +5287,7 @@ export type Database = {
         | "peloton"
         | "ticketmaster"
         | "eventbrite"
+        | "skiclubpro"
       reservation_state:
         | "info_collected"
         | "account_setup"
@@ -5442,6 +5446,7 @@ export const Constants = {
         "peloton",
         "ticketmaster",
         "eventbrite",
+        "skiclubpro",
       ],
       reservation_state: [
         "info_collected",
