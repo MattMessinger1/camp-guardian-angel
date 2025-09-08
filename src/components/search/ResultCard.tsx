@@ -15,6 +15,18 @@ export function ResultCard({
 }) {
   const subtitle = city && state ? `${city}, ${state}` : "—";
   
+  const handleSelectSession = () => {
+    console.log('🔗 ResultCard click:', { title, url, city, state });
+    
+    if (!url || url === 'null') {
+      console.warn('⚠️ No URL available for result:', title);
+      alert(`Sorry, no direct booking URL available for ${title}. Please search for them online.`);
+      return;
+    }
+    
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+  
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -27,7 +39,7 @@ export function ResultCard({
         <Button 
           className="w-full"
           variant="default"
-          onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+          onClick={handleSelectSession}
         >
           <span className="inline-flex items-center gap-2">
             Select Your Session

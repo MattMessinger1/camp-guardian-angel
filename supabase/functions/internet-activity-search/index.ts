@@ -116,7 +116,9 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: `Find 3 ${activity} studios specifically in ${location}. Include studio name, complete street address with city and state, and price per class if available. Focus only on ${location} area businesses.`
+            content: location 
+              ? `Find 3 ${activity} studios specifically in ${location}. Include studio name, complete street address with city and state, and price per class if available. Focus only on ${location} area businesses.`
+              : `Find 3 ${activity} studios. Include studio name, complete street address with city and state, and price per class if available.`
           }
         ]
       })
@@ -124,7 +126,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       console.error('Perplexity API failed:', response.status, await response.text());
-      return createFallbackResults(query);
+      return createFallbackResults(query, location);
     }
 
     const data = await response.json();
@@ -133,7 +135,7 @@ serve(async (req) => {
     // Validate content exists and is a string
     if (!content || typeof content !== 'string') {
       console.log('No valid content from Perplexity, using fallback');
-      return createFallbackResults(query);
+      return createFallbackResults(query, location);
     }
     
     console.log('Perplexity content received, length:', content.length);
@@ -167,6 +169,8 @@ serve(async (req) => {
 function parseQueryLocation(query) {
   // Extract location patterns from search query
   const locationPatterns = [
+    // Wisconsin specific
+    /\b(madison|milwaukee|green bay|wisconsin|wi)\b/i,
     // City, State patterns
     /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),\s*([A-Z]{2})\b/i,
     // Major US cities
@@ -185,7 +189,7 @@ function parseQueryLocation(query) {
     /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:spin|cycling|class|studio)\b/i
   ];
   
-  let location = 'New York City'; // Default fallback
+  let location = null; // No default fallback - let the system handle it
   let activity = query;
   
   for (const pattern of locationPatterns) {
@@ -195,6 +199,11 @@ function parseQueryLocation(query) {
       
       // Map common abbreviations to full city names
       const locationMap = {
+        'madison': 'Madison, Wisconsin',
+        'milwaukee': 'Milwaukee, Wisconsin', 
+        'green bay': 'Green Bay, Wisconsin',
+        'wisconsin': 'Wisconsin',
+        'wi': 'Wisconsin',
         'austin': 'Austin, Texas',
         'tx': 'Texas',
         'texas': 'Texas',
@@ -226,7 +235,7 @@ function parseQueryLocation(query) {
   return { location, activity };
 }
 
-function parsePerplexityContent(content, query, searchLocation = 'New York City') {
+function parsePerplexityContent(content, query, searchLocation = null) {
   console.log('===== PARSING PERPLEXITY CONTENT =====');
   console.log('Query:', query);
   console.log('Content length:', content.length);
@@ -899,7 +908,7 @@ function createCarboneResult() {
   );
 }
 
-function createFallbackResults(query, location = 'New York City') {
+function createFallbackResults(query, location = null) {
   console.log('Creating fallback results for:', query, 'in', location);
   
   const activityType = detectActivityType(query, query);
@@ -908,6 +917,18 @@ function createFallbackResults(query, location = 'New York City') {
   
   // Generate location-appropriate addresses and names
   const locationMap = {
+    'Madison, Wisconsin': { 
+      addresses: ['123 State Street, Madison, WI 53703', '456 University Ave, Madison, WI 53706'],
+      area: 'Madison'
+    },
+    'Milwaukee, Wisconsin': { 
+      addresses: ['789 Water Street, Milwaukee, WI 53202', '321 Brady Street, Milwaukee, WI 53202'],
+      area: 'Milwaukee'
+    },
+    'Wisconsin': { 
+      addresses: ['123 State Street, Madison, WI 53703', '456 University Ave, Madison, WI 53706'],
+      area: 'Wisconsin'
+    },
     'Austin, Texas': { 
       addresses: ['2514 South Lamar, Austin, TX 78704', '1301 Barton Springs Rd, Austin, TX 78704'],
       area: 'Austin'
@@ -930,7 +951,10 @@ function createFallbackResults(query, location = 'New York City') {
     }
   };
   
-  const locationInfo = locationMap[location] || locationMap['New York City'];
+  const locationInfo = locationMap[location] || {
+    addresses: ['Address available upon inquiry', 'Contact for location details'],
+    area: 'Various Locations'
+  };
   const activityName = query.split(' ')[0] || 'Fitness';
   
   return new Response(
