@@ -4,6 +4,9 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { RestaurantBookingUI } from '@/components/RestaurantBookingUI';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface LocationState {
   businessName: string;
@@ -363,6 +366,9 @@ export default function ReadyToSignup() {
     // Jackrabbit providers
     if (urlLower.includes('jackrabbitclass.com') || urlLower.includes('jackrabbit')) return 'jackrabbit_class';
     
+    // SkiClubPro providers
+    if (urlLower.includes('skiclubpro.team')) return 'skiclubpro';
+    
     // Restaurant providers - CHECK THESE FIRST
     if (urlLower.includes('resy.com')) return 'restaurant-resy';
     if (urlLower.includes('opentable.com')) return 'restaurant-opentable';
@@ -418,6 +424,10 @@ export default function ReadyToSignup() {
     // ALWAYS show restaurant UI for restaurant types
     if (providerType.startsWith('restaurant-')) {
       return <RestaurantBookingUI plan={registrationPlan} providerType={providerType} />;
+    }
+    
+    if (providerType === 'skiclubpro') {
+      return <SkiClubProBookingUI plan={registrationPlan} />;
     }
     
     if (providerType.startsWith('fitness-')) {
@@ -478,6 +488,152 @@ function FitnessBookingUI({ plan, providerType }: { plan: any; providerType: str
     <div className="bg-green-50 p-6 rounded-lg">
       <h2>Fitness Class Booking</h2>
       <p>{plan.provider_name}</p>
+    </div>
+  );
+}
+
+// SkiClubPro UI with session locators
+function SkiClubProBookingUI({ plan }: { plan: any }) {
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSessions();
+  }, [plan.id]);
+
+  const loadSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('id, title, site_locator')
+        .eq('activity_id', plan.session_id)
+        .order('created_at');
+      
+      if (error) throw error;
+      setSessions(data || []);
+    } catch (error) {
+      console.error('Failed to load sessions:', error);
+      toast.error('Failed to load sessions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateSiteLocator = async (sessionId: string, programText: string, timeText: string) => {
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          site_locator: { program_text: programText, time_text: timeText }
+        })
+        .eq('id', sessionId);
+      
+      if (error) throw error;
+      toast.success('Session locator updated');
+    } catch (error) {
+      console.error('Failed to update site locator:', error);
+      toast.error('Failed to update session locator');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>SkiClubPro Registration Setup</CardTitle>
+          <CardDescription>
+            Configure program matching for each session to help our system find the correct programs on the website.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {sessions.length === 0 ? (
+            <p className="text-muted-foreground">No sessions found for this plan.</p>
+          ) : (
+            sessions.map((session) => (
+              <SessionLocatorInputs
+                key={session.id}
+                session={session}
+                onUpdate={updateSiteLocator}
+              />
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Session locator inputs component
+function SessionLocatorInputs({ 
+  session, 
+  onUpdate 
+}: { 
+  session: any; 
+  onUpdate: (sessionId: string, programText: string, timeText: string) => void;
+}) {
+  const siteLocator = session.site_locator || {};
+  const [programText, setProgramText] = useState(siteLocator.program_text || '');
+  const [timeText, setTimeText] = useState(siteLocator.time_text || '');
+
+  const handleProgramTextBlur = () => {
+    if (programText !== siteLocator.program_text) {
+      onUpdate(session.id, programText, timeText);
+    }
+  };
+
+  const handleTimeTextBlur = () => {
+    if (timeText !== siteLocator.time_text) {
+      onUpdate(session.id, programText, timeText);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg p-4 space-y-4">
+      <div className="font-medium text-sm">{session.title}</div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor={`program-${session.id}`} className="text-sm font-medium">
+            Program Text <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id={`program-${session.id}`}
+            placeholder="e.g., Alpine Racing, Ski Lessons"
+            value={programText}
+            onChange={(e) => setProgramText(e.target.value)}
+            onBlur={handleProgramTextBlur}
+            className="text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            Text that appears on the program cards to help identify this session
+          </p>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor={`time-${session.id}`} className="text-sm font-medium">
+            Time Text <span className="text-muted-foreground">(optional)</span>
+          </Label>
+          <Input
+            id={`time-${session.id}`}
+            placeholder="e.g., Weekends, 9am-12pm"
+            value={timeText}
+            onChange={(e) => setTimeText(e.target.value)}
+            onBlur={handleTimeTextBlur}
+            className="text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            Additional time-related text to help narrow down the selection
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
