@@ -365,7 +365,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       return;
                     }
                     
-                    // Validate URL; if missing but OrgID present, transform it
+                    // 1) Require a URL. If has OrgID but no URL, build OpeningsDirect
                     const orgId = extractJackrabbitOrgId(actualUrl || businessName || '');
                     if (!actualUrl && orgId) {
                       actualUrl = `https://app.jackrabbitclass.com/jr3.0/Openings/OpeningsDirect?OrgID=${orgId}`;
@@ -381,22 +381,27 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       return;
                     }
                     
-                    // Resolve provider based on URL patterns
+                    // 2) Resolve provider BEFORE create
                     let platform = 'unknown';
                     let provider_org_id = null;
                     let requires_auth = false;
                     
-                    if (actualUrl.includes('OpeningsDirect')) {
-                      platform = 'jackrabbit';
-                      provider_org_id = orgId;
-                      requires_auth = false;
-                    } else if (actualUrl.includes('ParentPortal/Login')) {
-                      platform = 'jackrabbit';
-                      provider_org_id = orgId;
-                      requires_auth = true;
+                    try {
+                      const url = new URL(actualUrl);
+                      if (url.host.includes('jackrabbitclass.com') && url.pathname.toLowerCase().includes('/openings/openingsdirect')) {
+                        platform = 'jackrabbit';
+                        provider_org_id = orgId;
+                        requires_auth = false;
+                      } else if (url.pathname.toLowerCase().includes('/parentportal/login')) {
+                        platform = 'jackrabbit';
+                        provider_org_id = orgId;
+                        requires_auth = true;
+                      }
+                    } catch (error) {
+                      console.warn('URL parsing failed:', error);
                     }
                     
-                    // Create plan with specified structure
+                    // Get authenticated user
                     const { data: { user } } = await supabase.auth.getUser();
                     if (!user) {
                       toast({
@@ -408,6 +413,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       return;
                     }
                     
+                    // 3) Create the plan with specified fields
                     const { data: plan, error } = await supabase
                       .from('registration_plans')
                       .insert({
@@ -415,8 +421,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                         detect_url: actualUrl,
                         platform: platform,
                         provider_org_id: provider_org_id,
-                        provider_confidence: 0.95,
-                        requires_auth: requires_auth
+                        provider_confidence: 0.95
                       })
                       .select()
                       .single();
@@ -431,7 +436,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onRegiste
                       return;
                     }
                     
-                    // Route to /ready-to-signup/<planId> (no '/pending')
+                    // 4) Navigate to /ready-to-signup/{planId} (NOT '/pending')
                     navigate(`/ready-to-signup/${plan.id}`);
                   }}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 ml-4"
