@@ -112,8 +112,8 @@ const HomePage = () => {
         }
 
         if (internetSearchResponse.data?.results?.length > 0) {
-          // Transform internet results to match our SearchResult interface
-          const internetResults = internetSearchResponse.data.results.map((result: any) => ({
+          // Transform internet results and apply location filtering
+          const allInternetResults = internetSearchResponse.data.results.map((result: any) => ({
             sessionId: null, // Don't generate fake IDs for internet results
             name: result.name, // Map backend name field
             campName: result.name || result.title, // Use name as primary
@@ -140,8 +140,31 @@ const HomePage = () => {
               url: result.url,
               canAutomate: result.canAutomate,
               automationComplexity: result.automationComplexity
-            }
+            },
+            // Add fields needed for location filtering
+            title: result.name || result.title,
+            city: result.location ? (typeof result.location === 'string' ? 
+              result.location.split(',')[0]?.trim() : result.location.city) : undefined,
+            state: result.location ? (typeof result.location === 'string' ? 
+              result.location.split(',')[1]?.trim() : result.location.state) : undefined,
+            url: result.url
           }));
+
+          // Apply location filtering if location was specified in query
+          let filteredResults = allInternetResults;
+          if (parsedQuery.location) {
+            const { matchesLocation } = await import('@/lib/search/geo');
+            filteredResults = allInternetResults.filter(result => {
+              const match = matchesLocation(result as any, parsedQuery.location);
+              if (!match.pass) {
+                console.log(`🌍 Filtered out ${result.name} - ${match.reason}`);
+              }
+              return match.pass;
+            });
+            console.log(`🌍 Location filtering: ${allInternetResults.length} → ${filteredResults.length} results`);
+          }
+
+          const internetResults = filteredResults;
 
           console.log('✅ INTERNET SEARCH SUCCESS:', internetResults.length, 'results');
           logger.info('Processed internet results', { resultCount: internetResults.length, component: 'Home' });

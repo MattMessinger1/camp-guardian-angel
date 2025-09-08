@@ -25,19 +25,14 @@ export function ResultCard({
       </CardHeader>
       <CardContent className="pt-0">
         <Button 
-          asChild 
           className="w-full"
           variant="default"
+          onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
         >
-          <a 
-            href={url} 
-            target="_blank" 
-            rel="noreferrer"
-            className="inline-flex items-center gap-2"
-          >
+          <span className="inline-flex items-center gap-2">
             Select Your Session
             <ExternalLink className="h-4 w-4" />
-          </a>
+          </span>
         </Button>
       </CardContent>
     </Card>
